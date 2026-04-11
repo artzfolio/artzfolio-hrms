@@ -489,6 +489,9 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 .bg-dark3{background:var(--dark3)}.border-gold{border:1px solid var(--gold-dim)}
 .chip{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid currentColor}
 </style>
+  <link rel="manifest" id="pwa-manifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-icon" id="pwa-apple-icon">
 </head>
 <body class="lang-both">
 
@@ -669,6 +672,11 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       <span class="en">Vishnu Image Folio Pvt Ltd</span>
     </div>
     <button id="admin-link-btn" onclick="openAdminLogin()" title="Admin / Manager Login">⚙ ADMIN</button>
+    <div id="pwa-install-banner" style="display:none;align-items:center;gap:10px;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:12px">
+      <span>📱 Add to Home Screen for app experience</span>
+      <button class="btn btn-gold btn-sm" onclick="window._pwaInstallEvent?.prompt();document.getElementById('pwa-install-banner').style.display='none'">Install</button>
+      <button onclick="document.getElementById('pwa-install-banner').style.display='none'" style="background:none;border:none;color:var(--gray-light);cursor:pointer">✕</button>
+    </div>
   </div>
 </div><!-- /screen-kiosk -->
 
@@ -696,6 +704,10 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
              onkeydown="if(event.key==='Enter')doAdminLogin()">
     </div>
     <div id="admin-login-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:var(--gray-light)">
+      <input type="checkbox" id="admin-remember-me" style="accent-color:var(--gold)">
+      <label for="admin-remember-me" style="cursor:pointer">Remember my role</label>
+    </div>
     <button class="btn btn-gold" style="width:100%" onclick="doAdminLogin()">Login</button>
     <button class="btn btn-dark btn-sm" style="width:100%;margin-top:10px" onclick="showScreen('kiosk')">
       ← Back to Kiosk
@@ -775,6 +787,55 @@ const LS = {
   s: (k,v) => localStorage.setItem('az3_'+k, JSON.stringify(v)),
   d: k => localStorage.removeItem('az3_'+k),
 };
+
+// PWA Setup
+(function setupPWA() {
+  // Generate manifest as blob
+  const manifest = {
+    name: 'ArtzFolio HRMS',
+    short_name: 'HRMS',
+    description: 'ArtzFolio HR Management System',
+    start_url: location.href,
+    display: 'standalone',
+    background_color: '#111111',
+    theme_color: '#C8922A',
+    orientation: 'portrait-primary',
+    icons: [
+      { src: 'https://ui-avatars.com/api/?name=AZ&background=C8922A&color=111111&size=192&bold=true', sizes: '192x192', type: 'image/png' },
+      { src: 'https://ui-avatars.com/api/?name=AZ&background=C8922A&color=111111&size=512&bold=true', sizes: '512x512', type: 'image/png' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const manifestEl = document.getElementById('pwa-manifest');
+  if (manifestEl) manifestEl.href = URL.createObjectURL(blob);
+  // Service Worker for offline caching
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+const CACHE = 'artzfolio-hrms-v1';
+self.addEventListener('install', e => { self.skipWaiting(); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))); });
+self.addEventListener('fetch', e => {
+  if (e.request.url.includes('script.google.com')) return; // Never cache GAS API
+  e.respondWith(caches.open(CACHE).then(cache=>
+    cache.match(e.request).then(cached => {
+      const fresh = fetch(e.request).then(r=>{ if(r.ok) cache.put(e.request, r.clone()); return r; }).catch(()=>cached);
+      return cached || fresh;
+    })
+  ));
+});`;
+    const swBlob = new Blob([swCode], {type:'text/javascript'});
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(()=>{});
+  }
+  // Add install banner
+  window._pwaInstallEvent = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    window._pwaInstallEvent = e;
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.style.display='flex';
+  });
+})();
 
 // ═══════════════════════════════════════════
 // TRANSLATIONS — All bilingual text
@@ -1063,6 +1124,7 @@ async function init() {
       (settingsRes.settings||[]).forEach(s => { State.settings[s.key]=s.value; });
       document.getElementById('kiosk-company').textContent = State.settings.companyName||'Vishnu Image Folio Pvt Ltd';
       document.getElementById('kiosk-brand').textContent = State.settings.brandName||'ArtzFolio';
+      applyBranding();
       if (State.settings.kioskTimeout) CFG.kioskTimeout = parseInt(State.settings.kioskTimeout)*1000;
     }
     if (empsRes.ok) {
@@ -1080,7 +1142,7 @@ async function init() {
 
 function updateClock() {
   const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
   const dateStr = now.toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   const el = document.getElementById('clock-time');
   const de = document.getElementById('clock-date');
@@ -1638,7 +1700,18 @@ function selectRole(r) {
     document.getElementById(`rtab-${id}`).className = 'role-tab' + (id===r?' active':'');
   });
 }
-async function openAdminLogin() { showScreen('admin-login'); document.getElementById('admin-pw-input').value=''; document.getElementById('admin-login-err').style.display='none'; }
+async function openAdminLogin() {
+  showScreen('admin-login');
+  document.getElementById('admin-pw-input').value='';
+  document.getElementById('admin-login-err').style.display='none';
+  // Restore remembered role
+  const rememberedRole = LS.g('adminRememberRole');
+  if (rememberedRole) {
+    selectRole(rememberedRole);
+    const cb = document.getElementById('admin-remember-me');
+    if (cb) cb.checked = true;
+  }
+}
 async function doAdminLogin() {
   const pw = document.getElementById('admin-pw-input').value;
   const errEl = document.getElementById('admin-login-err');
@@ -1651,9 +1724,13 @@ async function doAdminLogin() {
   if (pw === pwMap[selectedRole]) {
     State.adminRole = selectedRole;
     State.adminUser = selectedRole;
+    // Save remembered role if checkbox checked
+    const rememberCb = document.getElementById('admin-remember-me');
+    if (rememberCb?.checked) { LS.s('adminRememberRole', selectedRole); } else { LS.d('adminRememberRole'); }
     document.getElementById('admin-brand-role').textContent = `Role: ${selectedRole.charAt(0).toUpperCase()+selectedRole.slice(1)}`;
     document.getElementById('admin-user-info').textContent = selectedRole.toUpperCase();
     showScreen('admin');
+    applyRolePermissions();
     await switchTab('dashboard');
     checkPendingLeaves();
   } else {
@@ -1688,6 +1765,7 @@ async function checkPendingLeaves() {
 // ADMIN TAB SWITCHING
 // ═══════════════════════════════════════════
 async function switchTab(tab) {
+  if (!checkTabPermission(tab)) { toast('Access denied for your role','error'); return; }
   State.currentTab = tab;
   closeSidebar(); // auto-close sidebar on mobile when navigating
   document.querySelectorAll('.nav-item').forEach(n=>{n.className='nav-item'+(n.dataset.tab===tab?' active':'');});
@@ -3608,6 +3686,26 @@ async function renderSettings() {
     </div>`;
   }
   let html=`
+  <!-- Connection Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">🔗 Connection Settings (GAS Backend)</div>
+    <div class="settings-grid">
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">GAS Web App URL</label>
+        <input id="cfg-gasUrl" class="form-input" type="url" value="${escHtml(LS.g('gasUrl')||CFG.gasUrl||'')}" placeholder="https://script.google.com/macros/s/...../exec">
+      </div>
+      <div class="form-group">
+        <label class="form-label">API Token</label>
+        <input id="cfg-gasToken" class="form-input" type="text" value="${escHtml(LS.g('token')||CFG.token||'AZ_TOKEN_2026')}" placeholder="AZ_TOKEN_2026">
+      </div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="saveConnectionSettings()">💾 Save & Reconnect</button>
+      <button class="btn btn-dark btn-sm" onclick="if(confirm('This will clear saved URL and show the setup screen again. Continue?')){LS.d('gasUrl');LS.d('token');location.reload();}">🔄 Reset & Re-Setup</button>
+    </div>
+    <div id="conn-test-status" style="margin-top:8px;font-size:12px"></div>
+  </div>
+
   <!-- Policy Settings -->
   <div class="settings-section">
     <div class="settings-section-title">⚙ Policy Configuration</div>
@@ -3648,6 +3746,11 @@ async function renderSettings() {
     <div class="settings-grid">
       ${cfgField('companyName','Company Name')}
       ${cfgField('brandName','Brand Name')}
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Favicon / Tab Icon URL</label>
+        <input id="cfg-faviconUrl" class="form-input" type="url" value="${escHtml(LS.g('faviconUrl')||'')}" placeholder="https://example.com/icon.png or leave blank for default">
+        <div style="font-size:11px;color:var(--gray-light);margin-top:4px">Paste a direct image URL (PNG/ICO). Changes apply instantly after saving.</div>
+      </div>
       ${cfgField('factoryAddress','Factory Address')}
       ${cfgField('factoryLat','Factory GPS Latitude')}
       ${cfgField('factoryLng','Factory GPS Longitude')}
@@ -3690,6 +3793,44 @@ async function renderSettings() {
       <strong>Auto Clock-Out:</strong> Automatically clocks out employees who forgot to clock out, at their shift end time + buffer minutes.<br>
       <strong>Auto Mark Present:</strong> Marks employees as 'P' if they clocked in and are ${cfg['autoMarkPresentThreshold']||30}+ minutes into their shift.
     </div>
+  </div>
+
+  <!-- Role Permissions -->
+  <div class="settings-section">
+    <div class="settings-section-title">🔑 Role Access Permissions</div>
+    <p style="font-size:12px;color:var(--gray-light);margin-bottom:12px">
+      Control which tabs are visible to Manager and Supervisor roles. Owner always has full access.
+    </p>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--dark2)">
+            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--dark3)">Tab / Feature</th>
+            <th style="padding:8px;text-align:center;border-bottom:1px solid var(--dark3);color:var(--gold)">Manager</th>
+            <th style="padding:8px;text-align:center;border-bottom:1px solid var(--dark3);color:var(--gold-light)">Supervisor</th>
+          </tr>
+        </thead>
+        <tbody id="perms-table-body">
+          ${['dashboard','attendance','leaves','roster','employees','transactions','performance','payroll','fnf','reports','settings'].map(tab => {
+            const mgrKey = `perm_mgr_${tab}`;
+            const supKey = `perm_sup_${tab}`;
+            const mgrAllowed = LS.g(mgrKey) !== false;
+            const supAllowed = LS.g(supKey) !== false;
+            const label = tab.charAt(0).toUpperCase()+tab.slice(1);
+            return `<tr style="border-bottom:1px solid var(--dark3)">
+              <td style="padding:8px">${label}</td>
+              <td style="padding:8px;text-align:center">
+                <input type="checkbox" data-perm-key="${mgrKey}" ${mgrAllowed?'checked':''} style="accent-color:var(--gold)">
+              </td>
+              <td style="padding:8px;text-align:center">
+                <input type="checkbox" data-perm-key="${supKey}" ${supAllowed?'checked':''} style="accent-color:var(--gold-light)">
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-gold" style="margin-top:12px" onclick="saveRolePermissions()">💾 Save Permissions</button>
   </div>
 
   <!-- Points & Bonuses -->
@@ -3817,6 +3958,42 @@ async function renderSettings() {
   document.getElementById('admin-tab-content').innerHTML=html;
 }
 
+function saveRolePermissions() {
+  const checkboxes = document.querySelectorAll('[data-perm-key]');
+  checkboxes.forEach(cb => { LS.s(cb.dataset.permKey, cb.checked); });
+  toast('✓ Role permissions saved','success');
+}
+
+function checkTabPermission(tab) {
+  if (!State.adminRole || State.adminRole === 'owner') return true;
+  const key = `perm_${State.adminRole}_${tab}`;
+  const stored = LS.g(key);
+  return stored !== false; // default allow
+}
+
+function applyRolePermissions() {
+  const allNavItems = document.querySelectorAll('#admin-sidebar [data-tab]');
+  allNavItems.forEach(item => {
+    const tab = item.dataset.tab;
+    if (tab && !checkTabPermission(tab)) {
+      item.style.display = 'none';
+    } else {
+      item.style.display = '';
+    }
+  });
+}
+
+function applyBranding() {
+  const favUrl = LS.g('faviconUrl');
+  if (favUrl) {
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) { link = document.createElement('link'); link.rel='icon'; document.head.appendChild(link); }
+    link.href = favUrl;
+  }
+  const brand = State.settings?.brandName || LS.g('brandName') || 'ArtzFolio';
+  document.title = brand + ' HRMS';
+}
+
 async function savePolicySettings() {
   const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','shiftAutoClockoutBuffer','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold'];
   const updates={};
@@ -3830,7 +4007,15 @@ async function saveCompanySettings() {
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   const res=await API.call('updateSettings',{updates});
-  if(res.ok){toast('✓ Company info saved','success');}else toast('Error','error');
+  if(res.ok){
+    toast('✓ Company info saved','success');
+    // Update favicon
+    const favUrl = document.getElementById('cfg-faviconUrl')?.value?.trim();
+    if (favUrl) {
+      LS.s('faviconUrl', favUrl);
+      applyBranding();
+    }
+  }else toast('Error','error');
 }
 
 async function savePointsSettings() {
@@ -3842,6 +4027,32 @@ async function savePointsSettings() {
   if(pbsEl) updates['pointsBonusInSalary'] = pbsEl.checked ? 'true' : 'false';
   const res=await API.call('updateSettings',{updates});
   if(res.ok){toast('✓ Points settings saved','success');}else toast('Error','error');
+}
+
+async function saveConnectionSettings() {
+  const url = (document.getElementById('cfg-gasUrl')?.value||'').trim();
+  const token = (document.getElementById('cfg-gasToken')?.value||'').trim();
+  const statusEl = document.getElementById('conn-test-status');
+  if (!url) { toast('Please enter the GAS URL','warning'); return; }
+  statusEl.textContent = 'Testing connection…'; statusEl.style.color='var(--gold-light)';
+  const oldUrl = CFG.gasUrl, oldToken = CFG.token;
+  CFG.gasUrl = url; CFG.token = token||'AZ_TOKEN_2026';
+  try {
+    const ok = await API.ping();
+    if (ok) {
+      LS.s('gasUrl', url); LS.s('token', CFG.token);
+      statusEl.textContent = '✓ Connected! Settings saved.'; statusEl.style.color='var(--green)';
+      toast('✓ GAS URL updated and connected!','success');
+      await loadAppData();
+    } else {
+      CFG.gasUrl = oldUrl; CFG.token = oldToken;
+      statusEl.textContent = '✗ Connection failed. Check URL and token.'; statusEl.style.color='var(--red)';
+      toast('Connection failed — URL not saved','error');
+    }
+  } catch(e) {
+    CFG.gasUrl = oldUrl; CFG.token = oldToken;
+    statusEl.textContent = '✗ Error: '+e.message; statusEl.style.color='var(--red)';
+  }
 }
 
 async function saveAutomationSettings() {
