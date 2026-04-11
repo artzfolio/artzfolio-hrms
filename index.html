@@ -874,7 +874,7 @@ const API = {
       try {
         const res = await fetch(CFG.gasUrl, {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
+          headers: {'Content-Type':'text/plain'},
           body: JSON.stringify({...params, action, token:CFG.token, userId: State.adminUser||'kiosk'}),
         });
         const data = await res.json();
