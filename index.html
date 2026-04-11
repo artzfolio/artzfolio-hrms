@@ -1,0 +1,3187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#111111">
+<title>ArtzFolio HRMS v2</title>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+/* ───────────────────────────────────────────
+   BASE & VARIABLES
+─────────────────────────────────────────── */
+:root{
+  --gold:#C9A84C;--gold-light:#F0D080;--gold-dim:#8A6E2A;
+  --black:#111111;--dark:#1A1A1A;--dark2:#222222;--dark3:#2D2D2D;
+  --white:#FFFFFF;--off-white:#F5F0E8;--gray:#888888;--gray-light:#CCCCCC;
+  --red:#E53935;--green:#43A047;--blue:#1E88E5;--orange:#FB8C00;
+  --radius:12px;--radius-sm:8px;--shadow:0 4px 20px rgba(0,0,0,0.5);
+  --trans:all 0.22s ease;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;background:var(--black);color:var(--white)}
+button{cursor:pointer;border:none;outline:none;font-family:inherit}
+input,select,textarea{font-family:inherit;outline:none;border:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--dark2)}
+::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:4px}
+
+/* ───────────────────────────────────────────
+   BILINGUAL TEXT
+─────────────────────────────────────────── */
+.hi{display:block;font-size:0.82em;color:var(--gold-light);font-weight:500;line-height:1.2}
+.en{display:block;font-size:1em;line-height:1.3}
+.lang-en .hi{display:none}
+.lang-hi .en{display:none}
+.lang-both .en,.lang-both .hi{display:block}
+
+/* ───────────────────────────────────────────
+   SCREEN MANAGEMENT
+─────────────────────────────────────────── */
+.screen{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;display:none}
+.screen.active{display:flex;flex-direction:column}
+
+/* ───────────────────────────────────────────
+   TOAST NOTIFICATIONS
+─────────────────────────────────────────── */
+#toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px}
+.toast{background:var(--dark3);border-left:4px solid var(--gold);padding:12px 18px;border-radius:var(--radius-sm);
+       color:var(--white);min-width:260px;max-width:340px;box-shadow:var(--shadow);
+       animation:slideIn 0.3s ease;font-size:14px}
+.toast.success{border-color:var(--green)}
+.toast.error{border-color:var(--red)}
+.toast.warning{border-color:var(--orange)}
+@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ───────────────────────────────────────────
+   MODAL
+─────────────────────────────────────────── */
+#modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:8000;display:none;align-items:center;justify-content:center}
+#modal-overlay.open{display:flex}
+#modal-box{background:var(--dark2);border:1px solid var(--gold-dim);border-radius:var(--radius);
+           padding:24px;max-width:90vw;width:520px;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)}
+#modal-title{font-size:1.2rem;font-weight:700;color:var(--gold);margin-bottom:16px;border-bottom:1px solid var(--dark3);padding-bottom:12px}
+#modal-body{color:var(--white);line-height:1.6}
+#modal-footer{margin-top:20px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+
+/* ───────────────────────────────────────────
+   BUTTONS
+─────────────────────────────────────────── */
+.btn{padding:10px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;transition:var(--trans);display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn-gold{background:var(--gold);color:var(--black)}
+.btn-gold:hover{background:var(--gold-light)}
+.btn-dark{background:var(--dark3);color:var(--white);border:1px solid var(--gray)}
+.btn-dark:hover{border-color:var(--gold)}
+.btn-red{background:var(--red);color:var(--white)}
+.btn-green{background:var(--green);color:var(--white)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-lg{padding:14px 28px;font-size:16px}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ───────────────────────────────────────────
+   FORM INPUTS
+─────────────────────────────────────────── */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;color:var(--gold-light);margin-bottom:6px;font-weight:600}
+.form-input{width:100%;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);
+            padding:10px 14px;border-radius:var(--radius-sm);font-size:14px;transition:var(--trans)}
+.form-input:focus{border-color:var(--gold)}
+.form-input option{background:var(--dark2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:500px){.form-row{grid-template-columns:1fr}}
+
+/* ───────────────────────────────────────────
+   SETUP SCREEN
+─────────────────────────────────────────── */
+#screen-setup{background:var(--black);align-items:center;justify-content:center;padding:24px}
+.setup-box{background:var(--dark2);border:1px solid var(--gold);border-radius:var(--radius);padding:32px;max-width:500px;width:100%;text-align:center}
+.setup-logo{font-size:2rem;font-weight:900;color:var(--gold);margin-bottom:8px}
+.setup-sub{font-size:14px;color:var(--gray-light);margin-bottom:24px}
+.setup-step{background:var(--dark3);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;text-align:left;font-size:13px;line-height:1.6}
+.setup-step strong{color:var(--gold)}
+
+/* ───────────────────────────────────────────
+   KIOSK SCREEN
+─────────────────────────────────────────── */
+#screen-kiosk{background:var(--black);align-items:stretch;overflow:hidden}
+#kiosk-header{background:var(--dark);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--gold-dim);flex-shrink:0}
+#kiosk-brand{font-size:1.4rem;font-weight:900;color:var(--gold);letter-spacing:1px}
+#kiosk-clock{font-size:1.1rem;font-weight:700;color:var(--white);font-variant-numeric:tabular-nums}
+#kiosk-clock .kiosk-date{font-size:11px;color:var(--gray-light);display:block;text-align:right}
+#kiosk-lang-btn{background:none;color:var(--gold-light);font-size:12px;font-weight:600;padding:4px 10px;border:1px solid var(--gold-dim);border-radius:20px}
+#kiosk-body{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+#kiosk-main{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:16px}
+
+/* Face scan container */
+#face-container{width:280px;height:210px;border:2px solid var(--gold-dim);border-radius:var(--radius);
+                overflow:hidden;position:relative;background:var(--dark3);display:none}
+#face-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#face-canvas{position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(-1)}
+#face-status{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:11px;color:var(--gold-light);background:rgba(0,0,0,0.6);padding:4px}
+.face-ring{position:absolute;top:50%;left:50%;width:140px;height:140px;
+           border:2px solid var(--gold);border-radius:50%;transform:translate(-50%,-50%);
+           pointer-events:none;animation:pulseRing 2s infinite}
+@keyframes pulseRing{0%,100%{opacity:0.5;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}}
+
+/* PIN display */
+#pin-dots{display:flex;gap:12px;justify-content:center;margin:4px 0}
+.pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--gold-dim);background:transparent;transition:var(--trans)}
+.pin-dot.filled{background:var(--gold);border-color:var(--gold)}
+
+/* Mode toggle */
+#mode-toggle{display:flex;gap:0;border:1px solid var(--gold-dim);border-radius:20px;overflow:hidden}
+.mode-btn{padding:6px 18px;font-size:12px;font-weight:600;background:transparent;color:var(--gray-light);transition:var(--trans)}
+.mode-btn.active{background:var(--gold);color:var(--black)}
+
+/* Keypad */
+#keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:280px}
+.key-btn{background:var(--dark3);color:var(--white);font-size:1.4rem;font-weight:700;
+         padding:16px 0;border-radius:var(--radius-sm);border:1px solid var(--dark3);
+         transition:var(--trans);aspect-ratio:1.4}
+.key-btn:hover,.key-btn:active{background:var(--dark2);border-color:var(--gold-dim)}
+.key-btn.key-del{color:var(--red);font-size:1.1rem}
+.key-btn.key-enter{background:var(--gold);color:var(--black);border-color:var(--gold)}
+.key-btn.key-enter:hover{background:var(--gold-light)}
+
+/* Hint text */
+#kiosk-hint{font-size:13px;color:var(--gray);text-align:center}
+#kiosk-hint .hi{color:var(--gold-dim)}
+.kiosk-wrong-warn{color:var(--red);font-size:12px;text-align:center;padding:8px 16px;background:rgba(229,57,53,0.1);border-radius:var(--radius-sm);border:1px solid var(--red)}
+
+/* Employee action card */
+#emp-card{width:100%;display:none;flex-direction:column;gap:12px}
+#emp-card.visible{display:flex}
+.emp-card-top{background:var(--dark2);border:1px solid var(--gold-dim);border-radius:var(--radius);padding:16px;text-align:center}
+.emp-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--gold);margin:0 auto 10px;display:block;background:var(--dark3)}
+.emp-name{font-size:1.3rem;font-weight:800;color:var(--white)}
+.emp-dept{font-size:12px;color:var(--gold-light)}
+.emp-balance{font-size:1.5rem;font-weight:900;color:var(--gold);margin-top:6px}
+.emp-balance small{font-size:11px;color:var(--gray-light);display:block;font-weight:400}
+.status-chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-top:6px}
+.status-in{background:rgba(67,160,71,0.2);color:var(--green);border:1px solid var(--green)}
+.status-out{background:rgba(136,136,136,0.2);color:var(--gray-light);border:1px solid var(--gray)}
+.status-break{background:rgba(251,140,0,0.2);color:var(--orange);border:1px solid var(--orange)}
+
+.action-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.action-btn{padding:14px 10px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;
+            border:2px solid transparent;transition:var(--trans);text-align:center}
+.action-btn.primary{background:var(--gold);color:var(--black)}
+.action-btn.secondary{background:var(--dark3);color:var(--white);border-color:var(--dark3)}
+.action-btn.secondary:hover{border-color:var(--gold-dim)}
+.action-btn.danger{background:transparent;color:var(--red);border-color:var(--red)}
+.action-btn:disabled{opacity:0.35;cursor:not-allowed}
+.action-btn .hi{font-size:10px;color:inherit;opacity:0.8}
+.action-btn.primary .hi{color:var(--black)}
+
+/* Milestone and points mini cards */
+.mini-card{background:var(--dark3);border:1px solid var(--dark3);border-radius:var(--radius-sm);padding:12px 14px}
+.mini-card h4{font-size:11px;color:var(--gold-light);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+.progress-bar{height:6px;background:var(--dark2);border-radius:4px;overflow:hidden;margin:6px 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));border-radius:4px;transition:width 0.5s ease}
+.mini-stat{font-size:1.2rem;font-weight:800;color:var(--white)}
+.mini-sub{font-size:11px;color:var(--gray);margin-top:2px}
+.points-rank{font-size:2rem;font-weight:900;color:var(--gold)}
+.points-trail{font-size:12px;color:var(--orange);font-weight:600}
+.points-lead{font-size:12px;color:var(--green);font-weight:600}
+
+/* GPS indicator */
+.gps-indicator{font-size:11px;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px}
+.gps-ok{background:rgba(67,160,71,0.15);color:var(--green);border:1px solid var(--green)}
+.gps-warn{background:rgba(251,140,0,0.15);color:var(--orange);border:1px solid var(--orange)}
+.gps-off{background:rgba(136,136,136,0.15);color:var(--gray);border:1px solid var(--gray)}
+
+#kiosk-footer{padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#admin-link-btn{background:none;color:var(--dark3);font-size:11px;padding:4px 8px;border-radius:4px;transition:var(--trans)}
+#admin-link-btn:hover{color:var(--gold-dim)}
+
+/* ───────────────────────────────────────────
+   ADMIN LOGIN SCREEN
+─────────────────────────────────────────── */
+#screen-admin-login{background:var(--black);align-items:center;justify-content:center;padding:24px}
+.login-box{background:var(--dark2);border:1px solid var(--gold-dim);border-radius:var(--radius);
+           padding:32px;max-width:380px;width:100%;text-align:center;box-shadow:var(--shadow)}
+.login-logo{font-size:1.8rem;font-weight:900;color:var(--gold);margin-bottom:6px}
+.login-sub{font-size:12px;color:var(--gray-light);margin-bottom:24px}
+.login-role-tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--dark3);padding-bottom:12px}
+.role-tab{flex:1;padding:8px;font-size:12px;background:var(--dark3);color:var(--gray-light);border-radius:var(--radius-sm);border:1px solid transparent;transition:var(--trans)}
+.role-tab.active{background:var(--gold);color:var(--black);border-color:var(--gold)}
+
+/* ───────────────────────────────────────────
+   ADMIN PANEL
+─────────────────────────────────────────── */
+#screen-admin{background:var(--dark);flex-direction:row;overflow:hidden}
+
+/* Sidebar */
+#admin-sidebar{width:220px;background:var(--black);border-right:1px solid var(--dark3);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#admin-brand{padding:18px 16px;border-bottom:1px solid var(--dark3)}
+#admin-brand-name{font-size:1.1rem;font-weight:900;color:var(--gold)}
+#admin-brand-role{font-size:11px;color:var(--gray-light);margin-top:2px}
+.nav-section{padding:12px 0 4px;padding-left:16px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:1.5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px;color:var(--gray-light);
+          cursor:pointer;transition:var(--trans);border-left:3px solid transparent;border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.nav-item:hover{background:var(--dark2);color:var(--white)}
+.nav-item.active{background:rgba(201,168,76,0.1);color:var(--gold);border-left-color:var(--gold)}
+.nav-item .nav-icon{font-size:16px;width:20px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--red);color:var(--white);border-radius:20px;
+           font-size:10px;padding:1px 7px;font-weight:700;min-width:18px;text-align:center}
+
+#admin-sidebar-footer{margin-top:auto;padding:12px 16px;border-top:1px solid var(--dark3)}
+
+/* Main content */
+#admin-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#admin-topbar{background:var(--dark2);padding:12px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--dark3);flex-shrink:0}
+#admin-page-title{font-size:1.1rem;font-weight:700;color:var(--white);flex:1}
+#admin-search-global{background:var(--dark3);border:1px solid var(--dark3);color:var(--white);
+                     padding:8px 14px;border-radius:20px;width:220px;font-size:13px}
+#admin-search-global:focus{border-color:var(--gold-dim)}
+#btn-back-kiosk{background:none;color:var(--gold-light);font-size:12px;border:1px solid var(--gold-dim);padding:6px 14px;border-radius:20px}
+
+#admin-tab-content{flex:1;overflow-y:auto;padding:20px}
+
+/* Sidebar mobile toggle */
+#sidebar-toggle{display:none;background:none;color:var(--gold);font-size:1.4rem;padding:4px 8px}
+@media(max-width:768px){
+  #admin-sidebar{position:fixed;left:-220px;top:0;bottom:0;z-index:1000;transition:left 0.3s ease}
+  #admin-sidebar.open{left:0}
+  #sidebar-toggle{display:block}
+  #admin-topbar{padding:10px 14px}
+  #admin-search-global{width:140px}
+}
+
+/* ───────────────────────────────────────────
+   DASHBOARD TAB
+─────────────────────────────────────────── */
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:16px}
+.stat-card-val{font-size:2rem;font-weight:900;color:var(--gold)}
+.stat-card-lbl{font-size:11px;color:var(--gray-light);margin-top:4px}
+.stat-card-sub{font-size:12px;color:var(--gray);margin-top:2px}
+.stat-card.green .stat-card-val{color:var(--green)}
+.stat-card.red .stat-card-val{color:var(--red)}
+.stat-card.orange .stat-card-val{color:var(--orange)}
+.stat-card.blue .stat-card-val{color:var(--blue)}
+
+/* ───────────────────────────────────────────
+   TABLE STYLES
+─────────────────────────────────────────── */
+.table-wrap{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);overflow:hidden;overflow-x:auto}
+.az-table{width:100%;border-collapse:collapse;font-size:13px;min-width:600px}
+.az-table th{background:var(--black);color:var(--gold-light);font-weight:700;text-align:left;
+             padding:10px 14px;white-space:nowrap;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;
+             border-bottom:1px solid var(--dark3);cursor:pointer;user-select:none}
+.az-table th:hover{color:var(--gold)}
+.az-table td{padding:10px 14px;color:var(--white);border-bottom:1px solid var(--dark3);white-space:nowrap}
+.az-table tr:last-child td{border-bottom:none}
+.az-table tr:hover td{background:rgba(201,168,76,0.05)}
+.az-table tr.selected td{background:rgba(201,168,76,0.12)}
+
+/* Status badges */
+.badge{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+.badge-green{background:rgba(67,160,71,0.2);color:var(--green);border:1px solid var(--green)}
+.badge-red{background:rgba(229,57,53,0.2);color:var(--red);border:1px solid var(--red)}
+.badge-gold{background:rgba(201,168,76,0.2);color:var(--gold);border:1px solid var(--gold-dim)}
+.badge-gray{background:rgba(136,136,136,0.2);color:var(--gray-light);border:1px solid var(--gray)}
+.badge-orange{background:rgba(251,140,0,0.2);color:var(--orange);border:1px solid var(--orange)}
+.badge-blue{background:rgba(30,136,229,0.2);color:var(--blue);border:1px solid var(--blue)}
+
+/* Filters bar */
+.filters-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
+.filter-input{background:var(--dark3);border:1px solid var(--dark3);color:var(--white);
+              padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;min-width:140px}
+.filter-input:focus{border-color:var(--gold-dim)}
+.filter-label{font-size:11px;color:var(--gray-light);margin-right:-4px}
+
+/* Section headers */
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.section-title{font-size:1rem;font-weight:800;color:var(--white)}
+.section-title small{font-size:12px;color:var(--gray);font-weight:400;margin-left:8px}
+.section-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ───────────────────────────────────────────
+   EMPLOYEE CARDS (employee list)
+─────────────────────────────────────────── */
+.emp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.emp-list-card{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);
+               padding:16px;transition:var(--trans);cursor:pointer}
+.emp-list-card:hover{border-color:var(--gold-dim)}
+.emp-list-card .emp-lc-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.emp-lc-avatar{width:44px;height:44px;border-radius:50%;background:var(--dark3);border:2px solid var(--gold-dim);
+               object-fit:cover;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:var(--gold)}
+.emp-lc-name{font-weight:700;font-size:14px}
+.emp-lc-id{font-size:11px;color:var(--gray-light)}
+.emp-lc-chips{display:flex;flex-wrap:wrap;gap:4px}
+
+/* ───────────────────────────────────────────
+   ATTENDANCE GRID
+─────────────────────────────────────────── */
+.att-grid-wrap{overflow-x:auto}
+.att-grid{border-collapse:collapse;font-size:11px;white-space:nowrap}
+.att-grid th,.att-grid td{padding:6px 8px;border:1px solid var(--dark3);text-align:center}
+.att-grid th{background:var(--black);color:var(--gold-light);font-weight:600}
+.att-grid td.att-P{background:rgba(67,160,71,0.15);color:var(--green)}
+.att-grid td.att-IL{background:rgba(30,136,229,0.15);color:var(--blue)}
+.att-grid td.att-IHL{background:rgba(30,136,229,0.1);color:var(--blue)}
+.att-grid td.att-UL{background:rgba(229,57,53,0.2);color:var(--red)}
+.att-grid td.att-UHL{background:rgba(229,57,53,0.15);color:var(--red)}
+.att-grid td.att-H{background:rgba(201,168,76,0.15);color:var(--gold)}
+.att-grid td.att-WO{background:rgba(136,136,136,0.1);color:var(--gray)}
+.att-grid td.att-EW{background:rgba(251,140,0,0.15);color:var(--orange)}
+.att-grid td.att-SL,.att-grid td.att-PL{background:rgba(30,136,229,0.08);color:var(--blue)}
+.att-cell-editable{cursor:pointer;text-decoration:underline;text-decoration-color:var(--gold-dim)}
+
+/* ───────────────────────────────────────────
+   POINTS / LEADERBOARD
+─────────────────────────────────────────── */
+.leaderboard{display:flex;flex-direction:column;gap:10px}
+.lb-row{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius-sm);
+        padding:12px 16px;display:flex;align-items:center;gap:14px;transition:var(--trans)}
+.lb-row.rank1{border-color:var(--gold);background:rgba(201,168,76,0.08)}
+.lb-row.rank2{border-color:var(--gray-light)}
+.lb-row.rank3{border-color:var(--orange)}
+.lb-rank{font-size:1.3rem;font-weight:900;width:32px;text-align:center}
+.lb-rank.r1{color:var(--gold)}
+.lb-rank.r2{color:var(--gray-light)}
+.lb-rank.r3{color:var(--orange)}
+.lb-name{flex:1;font-weight:700}
+.lb-dept{font-size:11px;color:var(--gray-light)}
+.lb-points{font-size:1.3rem;font-weight:900;color:var(--gold)}
+.lb-weekly{font-size:10px;color:var(--gray);margin-top:2px}
+.lb-trail{font-size:11px;color:var(--orange);font-weight:600}
+.lb-lead{font-size:11px;color:var(--green);font-weight:600}
+
+/* ───────────────────────────────────────────
+   ROSTER GRID
+─────────────────────────────────────────── */
+.roster-grid{overflow-x:auto}
+.roster-table{border-collapse:collapse;font-size:11px;min-width:700px}
+.roster-table th,.roster-table td{padding:7px 10px;border:1px solid var(--dark3)}
+.roster-table th{background:var(--black);color:var(--gold-light);font-weight:600}
+.roster-cell{cursor:pointer}
+.roster-cell select{background:var(--dark3);color:var(--white);border:none;font-size:11px;width:55px}
+
+/* ───────────────────────────────────────────
+   SALARY SLIP
+─────────────────────────────────────────── */
+#slip-print-area{display:none}
+@media print{
+  body > *:not(#slip-print-area){display:none!important}
+  #slip-print-area{display:block!important;background:#fff;color:#000;padding:20mm;font-family:Arial}
+  .slip-header{text-align:center;border-bottom:2px solid #C9A84C;padding-bottom:10px;margin-bottom:16px}
+  .slip-company{font-size:16pt;font-weight:900;color:#1A1A1A}
+  .slip-month{font-size:11pt;color:#555}
+  .slip-emp-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:9pt}
+  .slip-table{width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:14px}
+  .slip-table th,.slip-table td{padding:5px 8px;border:1px solid #ccc}
+  .slip-table th{background:#F5F0E8;font-weight:700;text-align:left}
+  .slip-net{font-size:14pt;font-weight:900;text-align:center;background:#1A1A1A;color:#C9A84C;padding:10px;margin-top:12px}
+  .slip-sign{display:flex;justify-content:space-between;margin-top:24px;font-size:8pt;color:#555}
+}
+
+/* ───────────────────────────────────────────
+   REPORTS (pivot-style)
+─────────────────────────────────────────── */
+.report-controls{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.report-type-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+.report-type-btn{padding:6px 14px;background:var(--dark3);color:var(--gray-light);border-radius:20px;font-size:12px;border:1px solid var(--dark3);transition:var(--trans)}
+.report-type-btn.active{background:var(--gold);color:var(--black);border-color:var(--gold)}
+.report-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+
+/* ───────────────────────────────────────────
+   SETTINGS
+─────────────────────────────────────────── */
+.settings-section{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.settings-section-title{font-size:13px;font-weight:700;color:var(--gold);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--dark3);display:flex;align-items:center;gap:6px}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+
+/* milestone editor */
+.milestone-row{background:var(--dark3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px}
+.ms-yr{font-size:2rem;font-weight:900;color:var(--gold);min-width:50px;text-align:center}
+.ms-detail{flex:1}
+.ms-reward{font-weight:700;font-size:13px}
+.ms-desc{font-size:12px;color:var(--gray-light);margin-top:4px}
+
+/* salary bands */
+.band-row{background:var(--dark3);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:grid;grid-template-columns:80px repeat(4,1fr);gap:10px;align-items:center}
+.band-level{font-weight:700;color:var(--gold)}
+
+/* ───────────────────────────────────────────
+   MISC
+─────────────────────────────────────────── */
+.loading-spinner{width:36px;height:36px;border:3px solid var(--dark3);border-top-color:var(--gold);
+                 border-radius:50%;animation:spin 0.8s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:48px 24px;color:var(--gray)}
+.empty-state .empty-icon{font-size:3rem;margin-bottom:12px}
+.empty-state p{font-size:14px}
+.divider{height:1px;background:var(--dark3);margin:16px 0}
+.text-gold{color:var(--gold)}
+.text-red{color:var(--red)}
+.text-green{color:var(--green)}
+.text-gray{color:var(--gray-light)}
+.flex{display:flex}.gap-8{gap:8px}.gap-12{gap:12px}.flex-1{flex:1}.items-center{align-items:center}
+.mt-8{margin-top:8px}.mt-16{margin-top:16px}.mb-8{margin-bottom:8px}.mb-16{margin-bottom:16px}
+.font-bold{font-weight:700}.font-sm{font-size:12px}.font-xs{font-size:11px}
+.rounded{border-radius:var(--radius-sm)}.p-12{padding:12px}.p-16{padding:16px}
+.bg-dark3{background:var(--dark3)}.border-gold{border:1px solid var(--gold-dim)}
+.chip{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid currentColor}
+</style>
+</head>
+<body class="lang-both">
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div id="modal-title"></div>
+    <div id="modal-body"></div>
+    <div id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- SALARY SLIP PRINT AREA -->
+<div id="slip-print-area"></div>
+
+<!-- ══════════════════════════════════════════
+     SETUP SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="screen-setup">
+  <div class="setup-box">
+    <div class="setup-logo">⚙ ArtzFolio HRMS v2</div>
+    <div class="setup-sub">One-time setup required before first use</div>
+    <div class="setup-step">
+      <strong>Step 1 — Google Apps Script URL</strong><br>
+      Open your deployed GAS web app and paste the URL below.<br>
+      (See Setup Guide for how to deploy the GAS backend)
+    </div>
+    <div class="form-group">
+      <label class="form-label">GAS Web App URL</label>
+      <input id="setup-gas-url" class="form-input" type="url" placeholder="https://script.google.com/macros/s/...../exec">
+    </div>
+    <div class="setup-step">
+      <strong>Step 2 — API Token</strong><br>
+      Enter the token you set in your GAS Script Properties.<br>
+      Default is <code style="color:var(--gold)">AZ_TOKEN_2026</code> — change it after setup.
+    </div>
+    <div class="form-group">
+      <label class="form-label">API Token</label>
+      <input id="setup-token" class="form-input" type="text" placeholder="AZ_TOKEN_2026" value="AZ_TOKEN_2026">
+    </div>
+    <button class="btn btn-gold btn-lg" style="width:100%" onclick="finishSetup()">▶ Connect &amp; Launch</button>
+    <div id="setup-status" style="margin-top:12px;font-size:12px;color:var(--gray-light);text-align:center"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     KIOSK SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="screen-kiosk">
+  <div id="kiosk-header">
+    <div>
+      <div id="kiosk-brand">ArtzFolio</div>
+      <div id="kiosk-company" style="font-size:10px;color:var(--gray-light)"></div>
+    </div>
+    <div id="kiosk-clock">
+      <span id="clock-time">--:--:--</span>
+      <span class="kiosk-date" id="clock-date"></span>
+    </div>
+    <button id="kiosk-lang-btn" onclick="cycleLang()">EN / हि</button>
+  </div>
+
+  <div id="kiosk-body">
+    <div id="kiosk-main">
+
+      <!-- Face Scan Container -->
+      <div id="face-container">
+        <video id="face-video" autoplay muted playsinline></video>
+        <canvas id="face-canvas"></canvas>
+        <div class="face-ring"></div>
+        <div id="face-status">
+          <span class="en">Looking for face…</span>
+          <span class="hi">चेहरा खोज रहे हैं…</span>
+        </div>
+      </div>
+
+      <!-- PIN display dots -->
+      <div id="pin-dots"></div>
+
+      <!-- Auth mode toggle -->
+      <div id="mode-toggle">
+        <button class="mode-btn active" id="btn-mode-pin" onclick="setMode('pin')">
+          <span class="en">🔢 PIN</span>
+          <span class="hi">पिन</span>
+        </button>
+        <button class="mode-btn" id="btn-mode-face" onclick="setMode('face')">
+          <span class="en">📷 Face</span>
+          <span class="hi">चेहरा</span>
+        </button>
+      </div>
+
+      <!-- Hint -->
+      <div id="kiosk-hint">
+        <span class="en">Enter your PIN to continue</span>
+        <span class="hi">अपना पिन दर्ज करें</span>
+      </div>
+
+      <!-- Warning -->
+      <div id="pin-warning" style="display:none" class="kiosk-wrong-warn"></div>
+
+      <!-- Keypad (PIN mode) -->
+      <div id="keypad">
+        <button class="key-btn" onclick="keyPress('1')">1</button>
+        <button class="key-btn" onclick="keyPress('2')">2</button>
+        <button class="key-btn" onclick="keyPress('3')">3</button>
+        <button class="key-btn" onclick="keyPress('4')">4</button>
+        <button class="key-btn" onclick="keyPress('5')">5</button>
+        <button class="key-btn" onclick="keyPress('6')">6</button>
+        <button class="key-btn" onclick="keyPress('7')">7</button>
+        <button class="key-btn" onclick="keyPress('8')">8</button>
+        <button class="key-btn" onclick="keyPress('9')">9</button>
+        <button class="key-btn key-del" onclick="keyPress('del')">⌫</button>
+        <button class="key-btn" onclick="keyPress('0')">0</button>
+        <button class="key-btn key-enter" onclick="keyPress('enter')">✓</button>
+      </div>
+
+      <!-- Employee action card -->
+      <div id="emp-card">
+        <div class="emp-card-top">
+          <img id="ec-photo" class="emp-avatar" src="" alt="" onerror="this.style.display='none'">
+          <div id="ec-initials" class="emp-avatar" style="display:none"></div>
+          <div id="ec-name" class="emp-name"></div>
+          <div id="ec-dept" class="emp-dept"></div>
+          <div id="ec-id" style="font-size:11px;color:var(--gray);margin-top:2px"></div>
+          <div id="ec-balance" class="emp-balance"></div>
+          <div id="ec-status-chip"></div>
+          <div id="ec-gps" class="gps-indicator gps-off" style="margin-top:8px;display:none">
+            📍 <span id="ec-gps-text">Getting location…</span>
+          </div>
+        </div>
+
+        <!-- Action buttons grid -->
+        <div class="action-btns" id="ec-actions"></div>
+
+        <!-- Milestone card -->
+        <div class="mini-card" id="ec-milestone-card" style="display:none">
+          <h4>🏆 <span class="en">Next Milestone</span><span class="hi"> अगली उपलब्धि</span></h4>
+          <div id="ec-ms-text"></div>
+          <div class="progress-bar"><div class="progress-fill" id="ec-ms-bar"></div></div>
+          <div id="ec-ms-sub" class="mini-sub"></div>
+          <button class="btn btn-dark btn-sm" style="margin-top:6px" onclick="showMilestoneDetail()">
+            <span class="en">Know More</span><span class="hi">और जानें</span>
+          </button>
+        </div>
+
+        <!-- Points card (L8-L10 only) -->
+        <div class="mini-card" id="ec-points-card" style="display:none">
+          <h4>⭐ <span class="en">My Points This Month</span><span class="hi"> इस महीने मेरे अंक</span></h4>
+          <div id="ec-pts-content"></div>
+        </div>
+
+        <!-- Points ineligible notice -->
+        <div class="mini-card" id="ec-points-ineligible" style="display:none">
+          <div style="font-size:12px;color:var(--gray-light)">
+            <span class="en">⚬ Points competition is for L8–L10 workforce. Your level is not in this programme.</span>
+            <span class="hi">⚬ पॉइंट्स प्रतियोगिता L8–L10 के लिए है। आपका स्तर इसमें नहीं है।</span>
+          </div>
+        </div>
+
+        <!-- Leave request & earnings row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button class="action-btn secondary" onclick="showLeaveRequest()">
+            📅 <span class="en">Request Leave</span><span class="hi">छुट्टी अनुरोध</span>
+          </button>
+          <button class="action-btn secondary" onclick="showEarnings()">
+            💰 <span class="en">My Earnings</span><span class="hi">मेरी कमाई</span>
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /kiosk-main -->
+  </div><!-- /kiosk-body -->
+
+  <div id="kiosk-footer">
+    <div style="font-size:11px;color:var(--gray)">
+      <span class="en">Vishnu Image Folio Pvt Ltd</span>
+    </div>
+    <button id="admin-link-btn" onclick="openAdminLogin()" title="Admin Panel">⚙</button>
+  </div>
+</div><!-- /screen-kiosk -->
+
+<!-- ══════════════════════════════════════════
+     ADMIN LOGIN SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="screen-admin-login">
+  <div class="login-box">
+    <div class="login-logo">🔐 Admin Access</div>
+    <div class="login-sub">ArtzFolio HRMS — Secure Login</div>
+    <div class="login-role-tabs">
+      <button class="role-tab active" id="rtab-owner" onclick="selectRole('owner')">
+        <span class="en">Owner</span><span class="hi">मालिक</span>
+      </button>
+      <button class="role-tab" id="rtab-manager" onclick="selectRole('manager')">
+        <span class="en">Manager</span><span class="hi">प्रबंधक</span>
+      </button>
+      <button class="role-tab" id="rtab-supervisor" onclick="selectRole('supervisor')">
+        <span class="en">Supervisor</span><span class="hi">पर्यवेक्षक</span>
+      </button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input id="admin-pw-input" class="form-input" type="password" placeholder="Enter password"
+             onkeydown="if(event.key==='Enter')doAdminLogin()">
+    </div>
+    <div id="admin-login-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
+    <button class="btn btn-gold" style="width:100%" onclick="doAdminLogin()">Login</button>
+    <button class="btn btn-dark btn-sm" style="width:100%;margin-top:10px" onclick="showScreen('kiosk')">
+      ← Back to Kiosk
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ADMIN PANEL SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="screen-admin">
+
+  <!-- Sidebar -->
+  <div id="admin-sidebar">
+    <div id="admin-brand">
+      <div id="admin-brand-name">ArtzFolio HRMS</div>
+      <div id="admin-brand-role"></div>
+    </div>
+    <div class="nav-section">Operations</div>
+    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
+    <div class="nav-item" data-tab="attendance" onclick="switchTab('attendance')"><span class="nav-icon">📅</span>Attendance</div>
+    <div class="nav-item" data-tab="leaves" onclick="switchTab('leaves')"><span class="nav-icon">🏖</span>Leaves<span class="nav-badge" id="badge-leaves" style="display:none">0</span></div>
+    <div class="nav-item" data-tab="roster" onclick="switchTab('roster')"><span class="nav-icon">📋</span>Roster</div>
+    <div class="nav-section">Employees</div>
+    <div class="nav-item" data-tab="employees" onclick="switchTab('employees')"><span class="nav-icon">👥</span>Employees</div>
+    <div class="nav-item" data-tab="transactions" onclick="switchTab('transactions')"><span class="nav-icon">💳</span>Transactions</div>
+    <div class="nav-section">Performance</div>
+    <div class="nav-item" data-tab="points" onclick="switchTab('points')"><span class="nav-icon">⭐</span>Points</div>
+    <div class="nav-section">Payroll & Reports</div>
+    <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')"><span class="nav-icon">💰</span>Payroll</div>
+    <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')"><span class="nav-icon">🤝</span>FnF / Exit</div>
+    <div class="nav-item" data-tab="reports" onclick="switchTab('reports')"><span class="nav-icon">📈</span>Reports</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" data-tab="settings" onclick="switchTab('settings')"><span class="nav-icon">⚙</span>Settings</div>
+    <div id="admin-sidebar-footer">
+      <button class="btn btn-dark btn-sm" style="width:100%;margin-bottom:6px" id="btn-back-kiosk" onclick="goBackToKiosk()">← Kiosk Mode</button>
+      <button class="btn btn-dark btn-sm" style="width:100%" onclick="adminLogout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div id="admin-content">
+    <div id="admin-topbar">
+      <button id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <div id="admin-page-title">Dashboard</div>
+      <input id="admin-search-global" class="form-input" type="search" placeholder="🔍 Search employees…" oninput="globalSearch(this.value)">
+      <div id="admin-user-info" style="font-size:11px;color:var(--gray-light)"></div>
+    </div>
+    <div id="admin-tab-content"><!-- tab content rendered here --></div>
+  </div>
+
+</div><!-- /screen-admin -->
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+// CONFIG & CONSTANTS
+// ═══════════════════════════════════════════
+const CFG = {
+  gasUrl: '',
+  token: 'AZ_TOKEN_2026',
+  modelPath: 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
+  faceThreshold: 0.55,
+  pinMaxLen: 6,
+  kioskTimeout: 10000,
+  version: '2.0',
+};
+const LS = {
+  g: k => { try { return JSON.parse(localStorage.getItem('az3_'+k)); } catch { return null; } },
+  s: (k,v) => localStorage.setItem('az3_'+k, JSON.stringify(v)),
+  d: k => localStorage.removeItem('az3_'+k),
+};
+
+// ═══════════════════════════════════════════
+// TRANSLATIONS — All bilingual text
+// ═══════════════════════════════════════════
+const TR = {
+  en: {
+    clockIn:'Clock In', clockOut:'Clock Out', breakIn:'Break Start', breakOut:'Break End',
+    enterPin:'Enter your PIN', scanFace:'Scan your face', welcome:'Welcome',
+    todayEarning:"Today's Earning", monthEarning:"Month's Earning So Far",
+    requestLeave:'Request Leave', viewSlip:'Salary Slip', balance:'Current Balance',
+    present:'Present', absent:'Absent', late:'Late', leave:'Leave', holiday:'Holiday',
+    weeklyOff:'Weekly Off', extraWork:'Extra Work', uninformedLeave:'Uninformed Leave',
+    informedLeave:'Informed Leave', halfDay:'Half Day', sickLeave:'Sick Leave',
+    paidLeave:'Paid Leave', approved:'Approved', pending:'Pending', rejected:'Rejected',
+    clockedIn:'Clocked In', clockedOut:'Clocked Out', onBreak:'On Break',
+    noRecord:'Not clocked in yet', advance:'Advance', penalty:'Penalty', bonus:'Bonus',
+    notice:'Notice Period', fnf:'Full & Final', milestone:'Milestone', points:'Points',
+    salary:'Salary', department:'Department', level:'Level', joining:'Joining Date',
+    employee:'Employee', employees:'Employees', notEligible:'Not eligible for points programme',
+    leadingBy:'Leading by', trailingBy:'Trailing by', pointsLeader:'You are the LEADER! 🏆',
+    workerOfMonth:'Worker of the Month Candidate!', keepGoing:'Keep going! You can reach #1!',
+    daysToMilestone:'days to milestone', yearsCompleted:'years completed',
+    blockedPin:'PIN blocked! Pay ₹500 to reactivate.',
+    wrongPin:'Wrong PIN.', attemptsLeft:'attempts left',
+    gpsOk:'Inside factory', gpsWarn:'Outside factory area',
+    autoClockoutLocked:'Clock-out locked — manager approval needed (past shift + 1hr)',
+    exit:'Exit / Resign', exitNow:'Apply for Exit',
+  },
+  hi: {
+    clockIn:'प्रवेश दर्ज करें', clockOut:'प्रस्थान दर्ज करें', breakIn:'विराम शुरू', breakOut:'विराम खत्म',
+    enterPin:'अपना पिन दर्ज करें', scanFace:'चेहरा स्कैन करें', welcome:'स्वागत है',
+    todayEarning:'आज की कमाई', monthEarning:'इस महीने की कमाई',
+    requestLeave:'छुट्टी का अनुरोध', viewSlip:'वेतन पर्ची', balance:'वर्तमान बैलेंस',
+    present:'उपस्थित', absent:'अनुपस्थित', late:'देर से आना', leave:'छुट्टी', holiday:'अवकाश',
+    weeklyOff:'साप्ताहिक अवकाश', extraWork:'अतिरिक्त कार्य', uninformedLeave:'बिना सूचना छुट्टी',
+    informedLeave:'सूचित छुट्टी', halfDay:'आधा दिन', sickLeave:'बीमारी की छुट्टी',
+    paidLeave:'भुगतान छुट्टी', approved:'स्वीकृत', pending:'लंबित', rejected:'अस्वीकृत',
+    clockedIn:'प्रवेश किया', clockedOut:'प्रस्थान किया', onBreak:'विराम पर',
+    noRecord:'अभी तक प्रवेश नहीं', advance:'अग्रिम', penalty:'जुर्माना', bonus:'बोनस',
+    notice:'नोटिस अवधि', fnf:'पूर्ण एवं अंतिम', milestone:'उपलब्धि', points:'अंक',
+    salary:'वेतन', department:'विभाग', level:'स्तर', joining:'जॉइनिंग तारीख',
+    employee:'कर्मचारी', employees:'कर्मचारी', notEligible:'पॉइंट्स कार्यक्रम के लिए पात्र नहीं',
+    leadingBy:'आगे हैं', trailingBy:'पीछे हैं', pointsLeader:'आप लीडर हैं! 🏆',
+    workerOfMonth:'इस महीने के कर्मचारी उम्मीदवार!', keepGoing:'चलते रहो! आप #1 तक पहुंच सकते हो!',
+    daysToMilestone:'दिन बाकी', yearsCompleted:'वर्ष पूरे',
+    blockedPin:'पिन ब्लॉक है! ₹500 दें और फिर से चालू करें।',
+    wrongPin:'गलत पिन।', attemptsLeft:'प्रयास बाकी',
+    gpsOk:'फैक्टरी के अंदर', gpsWarn:'फैक्टरी क्षेत्र के बाहर',
+    autoClockoutLocked:'क्लॉक-आउट लॉक — मैनेजर की मंजूरी जरूरी',
+    exit:'निकास / इस्तीफा', exitNow:'निकास आवेदन',
+  }
+};
+function t(key) {
+  const lang = document.body.className.replace('lang-','');
+  const e = TR.en[key]||key, h = TR.hi[key]||'';
+  if (lang==='en') return `<span class="en">${e}</span>`;
+  if (lang==='hi') return `<span class="hi">${h}</span>`;
+  return `<span class="en">${e}</span><span class="hi">${h}</span>`;
+}
+function tt(key) { return TR.en[key]||key; } // plain text, no html
+
+// ═══════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════
+const State = {
+  currentEmp: null,
+  currentEmpRecord: null,
+  adminRole: null,
+  adminUser: null,
+  currentTab: 'dashboard',
+  pin: '',
+  authMode: 'pin',
+  faceModelsLoaded: false,
+  faceActive: false,
+  faceStream: null,
+  faceLoop: null,
+  kioskTimer: null,
+  settings: {},
+  employees: [],
+  empsFetched: 0,
+  gpsPos: null,
+  sidebarOpen: false,
+};
+
+// ═══════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════
+function toast(msg, type='info', dur=3500) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), dur);
+}
+function fmtMoney(n) { return '₹' + (parseFloat(n)||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function buildBalanceHtml(bal, rec) {
+  const todayIsPresent = rec && rec.status==='P';
+  const todayAmt = todayIsPresent ? (bal.dailyRate||0) : 0;
+  return `<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:4px">
+    <div style="text-align:center">
+      <div style="font-size:1.25rem;font-weight:900;color:var(--gold)">${fmtMoney(todayAmt)}</div>
+      <div style="font-size:10px;color:var(--gray-light)">${t('todayEarning')}</div>
+    </div>
+    <div style="width:1px;background:var(--dark3)"></div>
+    <div style="text-align:center">
+      <div style="font-size:1.25rem;font-weight:900;color:var(--gold)">${fmtMoney(bal.earned||0)}</div>
+      <div style="font-size:10px;color:var(--gray-light)">${t('monthEarning')}</div>
+    </div>
+  </div>`;
+}
+function fmtDate(ds) {
+  if (!ds) return '—';
+  try { const d=new Date(ds); return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); } catch { return ds; }
+}
+function fmtTime(ts) {
+  if (!ts) return '—';
+  try { const d=new Date(ts); return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); } catch { return ts; }
+}
+function fmtDT(ts) { return ts ? fmtDate(ts.split(' ')[0]) + ' ' + fmtTime(ts) : '—'; }
+function todayStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function nowStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function statusBadge(s) {
+  const map = {P:'green',IL:'blue',IHL:'blue',UL:'red',UHL:'red',H:'gold',WO:'gray',EW:'orange',SL:'blue',PL:'blue',A:'red',Active:'green',Exited:'gray',Archived:'gray',Approved:'green',Pending:'orange',Rejected:'red',Auto:'red'};
+  return `<span class="badge badge-${map[s]||'gray'}">${escHtml(s)}</span>`;
+}
+function confirm2(msg) { return new Promise(res => { showModal('Confirm / पुष्टि करें', `<p style="font-size:14px">${msg}</p>`, [{label:'Yes / हाँ', cls:'btn-gold', cb:()=>{closeModal();res(true);}},{label:'No / नहीं', cls:'btn-dark', cb:()=>{closeModal();res(false);}}]); }); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el = document.getElementById('screen-'+id);
+  if (el) el.classList.add('active');
+}
+function showModal(title, bodyHtml, btns=[]) {
+  document.getElementById('modal-title').innerHTML = escHtml(title);
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  const footer = document.getElementById('modal-footer');
+  footer.innerHTML = '';
+  btns.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = `btn ${b.cls||'btn-dark'}`;
+    btn.innerHTML = b.label;
+    btn.onclick = b.cb;
+    footer.appendChild(btn);
+  });
+  if (!btns.length) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-dark';
+    btn.textContent = 'Close / बंद करें';
+    btn.onclick = closeModal;
+    footer.appendChild(btn);
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+document.getElementById('modal-overlay').addEventListener('click', e => { if(e.target===document.getElementById('modal-overlay')) closeModal(); });
+
+// ═══════════════════════════════════════════
+// API CLIENT
+// ═══════════════════════════════════════════
+const API = {
+  async call(action, params={}, retries=2) {
+    for (let i=0; i<=retries; i++) {
+      try {
+        const res = await fetch(CFG.gasUrl, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({...params, action, token:CFG.token, userId: State.adminUser||'kiosk'}),
+        });
+        const data = await res.json();
+        return data;
+      } catch(e) {
+        if (i===retries) throw new Error('Network error: ' + e.message);
+        await new Promise(r=>setTimeout(r,800));
+      }
+    }
+  },
+  async ping() { try { const r=await this.call('getSettings',{}); return r.ok; } catch { return false; } }
+};
+
+// ═══════════════════════════════════════════
+// GPS MODULE
+// ═══════════════════════════════════════════
+const GPS = {
+  async get() {
+    return new Promise(res => {
+      if (!navigator.geolocation) { res(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        p => res({lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy}),
+        () => res(null),
+        {timeout:6000, maximumAge:60000}
+      );
+    });
+  }
+};
+
+// ═══════════════════════════════════════════
+// FACE RECOGNITION MODULE
+// ═══════════════════════════════════════════
+const Face = {
+  async loadModels() {
+    if (State.faceModelsLoaded) return true;
+    try {
+      const MODEL_URL = CFG.modelPath;
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      ]);
+      State.faceModelsLoaded = true;
+      return true;
+    } catch(e) {
+      console.error('Face models failed to load:', e);
+      toast('Face models failed to load. Using PIN mode only.', 'warning', 5000);
+      return false;
+    }
+  },
+  async startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:320,height:240}});
+      const video = document.getElementById('face-video');
+      video.srcObject = stream;
+      State.faceStream = stream;
+      await new Promise(res => video.onloadedmetadata = res);
+      return true;
+    } catch(e) {
+      toast('Camera access denied. Please allow camera and try again.', 'error');
+      return false;
+    }
+  },
+  stopCamera() {
+    if (State.faceStream) { State.faceStream.getTracks().forEach(t=>t.stop()); State.faceStream=null; }
+    if (State.faceLoop) { clearInterval(State.faceLoop); State.faceLoop=null; }
+    document.getElementById('face-container').style.display='none';
+  },
+  async detectAndIdentify() {
+    const video = document.getElementById('face-video');
+    const opts = new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.4});
+    const result = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true).withFaceDescriptor();
+    if (!result) return null;
+    const desc = Array.from(result.descriptor);
+    // Send to GAS for identification
+    const r = await API.call('faceCheck', {descriptor:desc});
+    return r.ok ? r : null;
+  },
+  async getDescriptor() {
+    const video = document.getElementById('face-video');
+    const opts = new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.4});
+    const result = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true).withFaceDescriptor();
+    return result ? Array.from(result.descriptor) : null;
+  }
+};
+
+// ═══════════════════════════════════════════
+// SETUP & INITIALIZATION
+// ═══════════════════════════════════════════
+async function finishSetup() {
+  const url = document.getElementById('setup-gas-url').value.trim();
+  const token = document.getElementById('setup-token').value.trim();
+  const status = document.getElementById('setup-status');
+  if (!url) { status.textContent='Please enter the GAS URL.'; status.style.color='var(--red)'; return; }
+  status.textContent='Testing connection…'; status.style.color='var(--gold-light)';
+  CFG.gasUrl = url; CFG.token = token;
+  const ok = await API.ping();
+  if (ok) {
+    LS.s('gasUrl', url); LS.s('token', token);
+    status.textContent='✓ Connected! Loading…'; status.style.color='var(--green)';
+    setTimeout(() => init(), 800);
+  } else {
+    status.textContent='✗ Connection failed. Check URL and token.'; status.style.color='var(--red)';
+  }
+}
+
+async function init() {
+  // Load saved config
+  const savedUrl = LS.g('gasUrl'), savedToken = LS.g('token');
+  if (savedUrl) { CFG.gasUrl = savedUrl; CFG.token = savedToken||CFG.token; }
+  else { showScreen('setup'); return; }
+  // Load settings and employees in background
+  try {
+    const [settingsRes, empsRes] = await Promise.all([
+      API.call('getSettings'),
+      API.call('getEmployees', {status:'Active'})
+    ]);
+    if (settingsRes.ok) {
+      State.settings = {};
+      (settingsRes.settings||[]).forEach(s => { State.settings[s.key]=s.value; });
+      document.getElementById('kiosk-company').textContent = State.settings.companyName||'Vishnu Image Folio Pvt Ltd';
+      document.getElementById('kiosk-brand').textContent = State.settings.brandName||'ArtzFolio';
+      if (State.settings.kioskTimeout) CFG.kioskTimeout = parseInt(State.settings.kioskTimeout)*1000;
+    }
+    if (empsRes.ok) {
+      State.employees = empsRes.employees||[];
+      State.empsFetched = Date.now();
+    }
+  } catch(e) { toast('Could not load app data. Check internet.', 'error'); }
+  // Start clock
+  setInterval(updateClock, 1000); updateClock();
+  showScreen('kiosk');
+  buildPinDots();
+  // Pre-load face models in background
+  setTimeout(() => Face.loadModels(), 2000);
+}
+
+function updateClock() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const dateStr = now.toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const el = document.getElementById('clock-time');
+  const de = document.getElementById('clock-date');
+  if (el) el.textContent = timeStr;
+  if (de) de.textContent = dateStr;
+}
+
+// ═══════════════════════════════════════════
+// LANGUAGE TOGGLE
+// ═══════════════════════════════════════════
+const langs = ['both','en','hi'];
+function cycleLang() {
+  const cur = document.body.className.replace('lang-','');
+  const idx = langs.indexOf(cur);
+  const next = langs[(idx+1)%langs.length];
+  document.body.className = 'lang-' + next;
+  LS.s('lang', next);
+}
+
+// ═══════════════════════════════════════════
+// KIOSK — PIN ENTRY
+// ═══════════════════════════════════════════
+function buildPinDots() {
+  const container = document.getElementById('pin-dots');
+  container.innerHTML = '';
+  for (let i=0; i<CFG.pinMaxLen; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'pin-dot';
+    dot.id = `dot-${i}`;
+    container.appendChild(dot);
+  }
+}
+function updatePinDots() {
+  for (let i=0; i<CFG.pinMaxLen; i++) {
+    const dot = document.getElementById('dot-'+i);
+    if (dot) dot.className = 'pin-dot' + (i<State.pin.length?' filled':'');
+  }
+}
+function keyPress(key) {
+  if (key==='del') { State.pin = State.pin.slice(0,-1); updatePinDots(); return; }
+  if (key==='enter') { submitPin(); return; }
+  if (State.pin.length < CFG.pinMaxLen) {
+    State.pin += key;
+    updatePinDots();
+    if (State.pin.length >= 4) setTimeout(()=>submitPin(), 100);
+  }
+}
+document.addEventListener('keydown', e => {
+  if (document.getElementById('screen-kiosk').classList.contains('active') && State.authMode==='pin' && !document.getElementById('emp-card').classList.contains('visible')) {
+    if (e.key>='0'&&e.key<='9') keyPress(e.key);
+    else if (e.key==='Backspace') keyPress('del');
+    else if (e.key==='Enter') keyPress('enter');
+  }
+});
+
+async function submitPin() {
+  if (State.pin.length < 4) { toast('Enter at least 4 digits / कम से कम 4 अंक डालें','warning'); return; }
+  const pin = State.pin;
+  State.pin = ''; updatePinDots();
+  try {
+    const res = await API.call('auth', {pin, empId:null});
+    handleAuthResult(res);
+  } catch(e) { toast('Connection error. Try again.','error'); }
+}
+
+async function setMode(mode) {
+  State.authMode = mode;
+  document.getElementById('btn-mode-pin').className = 'mode-btn' + (mode==='pin'?' active':'');
+  document.getElementById('btn-mode-face').className = 'mode-btn' + (mode==='face'?' active':'');
+  const faceContainer = document.getElementById('face-container');
+  const keypad = document.getElementById('keypad');
+  const pinDots = document.getElementById('pin-dots');
+  if (mode==='face') {
+    keypad.style.display='none';
+    pinDots.style.display='none';
+    faceContainer.style.display='block';
+    const loaded = await Face.loadModels();
+    if (!loaded) { setMode('pin'); return; }
+    const started = await Face.startCamera();
+    if (!started) { setMode('pin'); return; }
+    State.faceActive = true;
+    document.getElementById('face-status').innerHTML = '<span class="en">Position your face…</span><span class="hi">अपना चेहरा रखें…</span>';
+    State.faceLoop = setInterval(faceDetectLoop, 1500);
+  } else {
+    Face.stopCamera();
+    State.faceActive = false;
+    keypad.style.display='';
+    pinDots.style.display='';
+    faceContainer.style.display='none';
+  }
+}
+
+let faceDetecting = false;
+async function faceDetectLoop() {
+  if (faceDetecting || !State.faceActive) return;
+  faceDetecting = true;
+  try {
+    document.getElementById('face-status').innerHTML = '<span class="en">Scanning…</span><span class="hi">स्कैन हो रहा है…</span>';
+    const result = await Face.detectAndIdentify();
+    if (result && result.ok) {
+      document.getElementById('face-status').innerHTML = `<span style="color:var(--green)">✓ ${escHtml(result.employee.name)}</span>`;
+      if (State.faceLoop) { clearInterval(State.faceLoop); State.faceLoop=null; }
+      State.faceActive = false;
+      handleAuthResult(result);
+    } else {
+      document.getElementById('face-status').innerHTML = '<span class="en">No match. Try again.</span><span class="hi">मिला नहीं, फिर कोशिश करें</span>';
+    }
+  } catch(e) {}
+  faceDetecting = false;
+}
+
+// ═══════════════════════════════════════════
+// AUTH RESULT HANDLER (PIN or Face)
+// ═══════════════════════════════════════════
+async function handleAuthResult(res) {
+  const warn = document.getElementById('pin-warning');
+  if (!res.ok) {
+    if (res.blocked) {
+      warn.style.display='block';
+      warn.innerHTML = `🚫 ${t('blockedPin')} — Pay ₹${escHtml(res.reactivationFee||500)} to reactivate.`;
+      setTimeout(()=>warn.style.display='none', 8000);
+    } else {
+      const left = res.attemptsLeft;
+      warn.style.display='block';
+      warn.innerHTML = `⚠ ${t('wrongPin')} ${left!==undefined ? `<br>${left} ${t('attemptsLeft')}` : ''}`;
+      setTimeout(()=>warn.style.display='none', 4000);
+    }
+    return;
+  }
+  warn.style.display='none';
+  State.currentEmp = res.employee;
+  State.currentEmpRecord = res;
+  // Get GPS
+  const pos = await GPS.get();
+  State.gpsPos = pos;
+  showEmployeeCard(res, pos);
+}
+
+async function showEmployeeCard(res, pos) {
+  const emp = res.employee;
+  const rec = res.todayRecord;
+  const bal = res.balance||{};
+  // Fill avatar
+  const photo = document.getElementById('ec-photo');
+  const initials = document.getElementById('ec-initials');
+  photo.style.display='none'; initials.style.display='none';
+  if (emp.photo) { photo.src=emp.photo; photo.style.display='block'; }
+  else {
+    initials.textContent = emp.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    initials.style.display='flex';
+  }
+  document.getElementById('ec-name').innerHTML = `${t('welcome')}, ${escHtml(emp.name.split(' ')[0])}`;
+  document.getElementById('ec-dept').textContent = `${emp.dept} | ${emp.level}`;
+  document.getElementById('ec-id').textContent = emp.id;
+  document.getElementById('ec-balance').innerHTML = buildBalanceHtml(bal, rec||State.currentEmpRecord?.todayRecord);
+  // Status chip
+  const statusEl = document.getElementById('ec-status-chip');
+  let statusText='', statusCls='status-out';
+  if (rec) {
+    if (rec.clockIn && !rec.clockOut) { statusText=tt('clockedIn')+' '+fmtTime(rec.clockIn); statusCls='status-in'; }
+    else if (rec.clockOut) { statusText=tt('clockedOut')+' '+fmtTime(rec.clockOut); statusCls='status-out'; }
+    try {
+      const breaks = JSON.parse(rec.breaks||'[]');
+      if (breaks.length && !breaks[breaks.length-1].in) { statusText=tt('onBreak'); statusCls='status-break'; }
+    } catch {}
+  } else { statusText=tt('noRecord'); }
+  statusEl.innerHTML = `<span class="${statusCls}">${statusText}</span>`;
+  // GPS indicator
+  const gpsEl = document.getElementById('ec-gps');
+  const gpsTxt = document.getElementById('ec-gps-text');
+  if (pos) {
+    gpsEl.style.display='inline-flex';
+    const factLat = parseFloat(State.settings.factoryLat||28.6243);
+    const factLng = parseFloat(State.settings.factoryLng||77.3709);
+    const dist = gpsDistance(pos.lat,pos.lng,factLat,factLng);
+    const radius = parseInt(State.settings.factoryRadius||500);
+    if (dist<=radius) { gpsEl.className='gps-indicator gps-ok'; gpsTxt.textContent=`✓ ${Math.round(dist)}m — ${tt('gpsOk')}`; }
+    else { gpsEl.className='gps-indicator gps-warn'; gpsTxt.textContent=`⚠ ${Math.round(dist)}m — ${tt('gpsWarn')}`; }
+  }
+  // Action buttons
+  buildActionButtons(rec, emp);
+  // Milestone
+  showMilestoneCard(res.milestoneInfo);
+  // Points
+  showPointsCard(res.pointsInfo, emp);
+  // Show card, hide keypad
+  document.getElementById('emp-card').classList.add('visible');
+  document.getElementById('keypad').style.display='none';
+  document.getElementById('pin-dots').style.display='none';
+  document.getElementById('mode-toggle').style.display='none';
+  document.getElementById('kiosk-hint').style.display='none';
+  // Auto return timer
+  resetKioskTimer();
+}
+
+function buildActionButtons(rec, emp) {
+  const actions = document.getElementById('ec-actions');
+  let clkIn=false, clkOut=false, brkIn=false, brkOut=false, locked=false;
+  let onBreak=false;
+  if (rec) {
+    clkIn = !rec.clockIn;
+    if (rec.clockIn && !rec.clockOut) {
+      try { const br=JSON.parse(rec.breaks||'[]'); onBreak=br.length&&!br[br.length-1].in; } catch {}
+      brkIn = !onBreak;
+      brkOut = onBreak;
+      // Check clock-out lock
+      const [eh,em] = (emp.shiftEnd||'19:00').split(':').map(Number);
+      const now=new Date(), se=new Date(now.getFullYear(),now.getMonth(),now.getDate(),eh,em,0);
+      const buf=(parseInt(State.settings.shiftAutoClockoutBuffer||60))*60000;
+      locked = now.getTime() > se.getTime()+buf;
+      clkOut = true;
+    }
+  } else { clkIn=true; }
+  actions.innerHTML = `
+    <button class="action-btn primary" onclick="doClockIn()" ${!clkIn?'disabled':''} id="btn-clock-in">
+      ⏱ ${t('clockIn')}
+    </button>
+    <button class="action-btn ${locked?'danger':'secondary'}" onclick="doClockOut(${locked})" ${!clkOut?'disabled':''} id="btn-clock-out">
+      ⏹ ${t('clockOut')}${locked?'<br><small style="font-size:9px">Mgr approval</small>':''}
+    </button>
+    <button class="action-btn secondary" onclick="doBreakIn()" ${!brkIn?'disabled':''}>
+      ☕ ${t('breakIn')}
+    </button>
+    <button class="action-btn secondary" onclick="doBreakOut()" ${!brkOut?'disabled':''}>
+      ▶ ${t('breakOut')}
+    </button>
+    <button class="action-btn secondary" onclick="doApplyExit()">
+      🚪 ${t('exitNow')}
+    </button>
+    <button class="action-btn secondary" onclick="hideEmpCard()">
+      ← Back / वापस
+    </button>
+  `;
+}
+
+function showMilestoneCard(info) {
+  const card = document.getElementById('ec-milestone-card');
+  if (!info || !info.nextMilestone) { card.style.display='none'; return; }
+  card.style.display='block';
+  const ms = info.nextMilestone;
+  document.getElementById('ec-ms-text').innerHTML = `<strong class="text-gold">${ms.years} ${tt('yearsCompleted')}</strong> — ${escHtml(ms.reward)}`;
+  document.getElementById('ec-ms-bar').style.width = `${info.progressPct||0}%`;
+  document.getElementById('ec-ms-sub').innerHTML = info.daysToNext ? `<span class="text-gold">${info.daysToNext}</span> ${tt('daysToMilestone')} • ${info.progressPct||0}% done` : '';
+}
+
+function showPointsCard(info, emp) {
+  const eligible = document.getElementById('ec-points-card');
+  const ineligible = document.getElementById('ec-points-ineligible');
+  if (!info) { eligible.style.display='none'; ineligible.style.display='none'; return; }
+  if (!info.eligible) { eligible.style.display='none'; ineligible.style.display='block'; return; }
+  eligible.style.display='block'; ineligible.style.display='none';
+  const content = document.getElementById('ec-pts-content');
+  let html='';
+  if (info.myRank===1) {
+    html=`<div class="points-rank">#1 🏆</div><div class="points-lead">${tt('pointsLeader')}</div><div class="mini-sub">${info.myTotal} points • Leading by ${info.myTotal-(info.leader?.total||info.myTotal)} pts from #2</div>`;
+  } else if (info.myRank) {
+    html=`<div class="points-rank">#${info.myRank}</div>
+          <div class="points-trail">Rank #1: ${escHtml(info.leader?.name||'—')} with ${info.leader?.total||0} pts</div>
+          <div class="mini-stat">${info.myTotal} pts</div>
+          <div class="mini-sub text-orange">Need ${info.trailing||0} more pts to reach #1 — ${tt('keepGoing')}</div>`;
+  } else {
+    html=`<div class="mini-sub">No points this month yet.</div>`;
+  }
+  content.innerHTML = html;
+}
+
+function showMilestoneDetail() {
+  const info = State.currentEmpRecord?.milestoneInfo;
+  if (!info) return;
+  let html = '<div style="font-size:14px">';
+  if (info.completedMilestones?.length) {
+    html += '<div style="margin-bottom:12px"><strong style="color:var(--green)">✓ Completed Milestones:</strong><br>';
+    info.completedMilestones.forEach(m => { html+=`• <strong>${m.years} Years</strong>: ${escHtml(m.reward)}<br>`; });
+    html += '</div>';
+  }
+  if (info.nextMilestone) {
+    const ms=info.nextMilestone;
+    html+=`<div style="padding:12px;background:var(--dark3);border-radius:8px;border-left:4px solid var(--gold);margin-bottom:12px">
+      <strong style="color:var(--gold)">⭐ Next: ${ms.years} Year Milestone</strong><br>
+      <span style="font-size:16px;font-weight:700">${escHtml(ms.reward)}</span><br>
+      <span style="font-size:12px;color:var(--gray-light)">${escHtml(ms.description||'')}</span><br>
+      <div style="margin-top:8px"><span style="color:var(--gold);font-size:1.2rem">${info.daysToNext}</span> days remaining • ${info.progressPct}% complete</div>
+      <div style="height:6px;background:var(--dark2);border-radius:4px;margin-top:8px;overflow:hidden">
+        <div style="height:100%;width:${info.progressPct}%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));border-radius:4px"></div>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  showModal('🏆 Your Milestone Journey / आपकी यात्रा', html);
+}
+
+// ═══════════════════════════════════════════
+// KIOSK ACTIONS
+// ═══════════════════════════════════════════
+async function doClockIn() {
+  if (!State.currentEmp) return;
+  resetKioskTimer();
+  const pos = State.gpsPos || await GPS.get();
+  const btn = document.getElementById('btn-clock-in');
+  if (btn) btn.disabled=true;
+  try {
+    const res = await API.call('clockIn', {
+      empId:State.currentEmp.id,
+      lat:pos?.lat||'', lng:pos?.lng||'',
+      locationNote: pos?`${pos.lat},${pos.lng}`:'',
+      faceScanUsed: State.authMode==='face' ? 'true':'false'
+    });
+    if (res.ok) {
+      toast(`✓ ${tt('clockedIn')} ${fmtTime(res.record?.clockIn)} — ${res.lateMinutes?`${res.lateMinutes} min late`:'On time'}`, 'success');
+      await refreshEmpCard();
+    } else {
+      toast(res.error||'Clock-in failed','error');
+      if (btn) btn.disabled=false;
+    }
+  } catch(e) { toast('Network error','error'); if(btn)btn.disabled=false; }
+}
+
+async function doClockOut(locked=false) {
+  if (!State.currentEmp) return;
+  if (locked) {
+    showManagerApprovalModal(async (approvedBy) => {
+      await performClockOut(approvedBy, true);
+    });
+    return;
+  }
+  await performClockOut('self', false);
+}
+
+async function performClockOut(approvedBy, managerApproved) {
+  resetKioskTimer();
+  try {
+    const res = await API.call('clockOut', {empId:State.currentEmp.id, managerApproved, approvedBy});
+    if (res.ok) {
+      const hrs = Math.floor((res.workMinutes||0)/60), mins=(res.workMinutes||0)%60;
+      toast(`✓ ${tt('clockedOut')} — ${hrs}h ${mins}m worked${res.otMinutes?` • ${res.otMinutes}min OT`:''}`, 'success', 5000);
+      await refreshEmpCard();
+    } else {
+      toast(res.error==='CLOCK_OUT_LOCKED'?tt('autoClockoutLocked'):(res.error||'Clock-out failed'),'error');
+    }
+  } catch(e) { toast('Network error','error'); }
+}
+
+function showManagerApprovalModal(onApprove) {
+  let mgrPin='';
+  const bodyHtml = `
+    <p style="margin-bottom:12px;color:var(--orange)">⚠ Shift + 1 hour exceeded. Manager approval required.</p>
+    <div class="form-group">
+      <label class="form-label">Manager PIN or Password</label>
+      <input id="mgr-pin-input" class="form-input" type="password" placeholder="Manager PIN…">
+    </div>
+  `;
+  showModal('Manager Approval Required / प्रबंधक की मंजूरी', bodyHtml, [
+    {label:'Approve / मंजूर', cls:'btn-gold', cb: async()=>{
+      const pin = document.getElementById('mgr-pin-input')?.value;
+      if (!pin) { toast('Enter manager PIN','warning'); return; }
+      // Verify against manager/supervisor passwords
+      const mgrPw = State.settings.managerPassword||'Manager@2026';
+      const supPw = State.settings.supervisorPassword||'Supervisor@2026';
+      const admPw = State.settings.adminPassword||'ArtzFolio@2026';
+      if ([mgrPw,supPw,admPw].includes(pin)) { closeModal(); onApprove('manager'); }
+      else { toast('Invalid manager credentials','error'); }
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+async function doBreakIn() {
+  if (!State.currentEmp) return;
+  resetKioskTimer();
+  try {
+    const res = await API.call('breakIn',{empId:State.currentEmp.id});
+    if (res.ok) { toast(`☕ Break started at ${fmtTime(res.breakStart)}`,'success'); await refreshEmpCard(); }
+    else toast(res.error||'Error','error');
+  } catch(e) { toast('Network error','error'); }
+}
+async function doBreakOut() {
+  if (!State.currentEmp) return;
+  resetKioskTimer();
+  try {
+    const res = await API.call('breakOut',{empId:State.currentEmp.id});
+    if (res.ok) { toast(`▶ Break ended at ${fmtTime(res.breakEnd)}`,'success'); await refreshEmpCard(); }
+    else toast(res.error||'Error','error');
+  } catch(e) { toast('Network error','error'); }
+}
+
+async function refreshEmpCard() {
+  if (!State.currentEmp) return;
+  try {
+    const res = await API.call('auth',{pin:null, empId:State.currentEmp.id, skipPinCheck:true});
+    // Re-auth by ID directly from employees list as a workaround
+    const bal = await API.call('getBalance',{empId:State.currentEmp.id});
+    const today = await API.call('getAttendanceEmployee',{empId:State.currentEmp.id, year:new Date().getFullYear(), month:new Date().getMonth()+1});
+    const todayRec = (today.records||[]).find(r=>r.date===todayStr())||null;
+    State.currentEmpRecord.todayRecord = todayRec;
+    State.currentEmpRecord.balance = bal;
+    buildActionButtons(todayRec, State.currentEmp);
+    document.getElementById('ec-balance').innerHTML = buildBalanceHtml(bal, todayRec);
+  } catch {}
+}
+
+async function showEarnings() {
+  resetKioskTimer();
+  const empId = State.currentEmp?.id;
+  if (!empId) return;
+  const now = new Date();
+  const [balRes, salRes] = await Promise.all([
+    API.call('getBalance',{empId}),
+    API.call('calcSalary',{empId, year:now.getFullYear(), month:now.getMonth()+1, extended:false}),
+  ]);
+  const bal = balRes;
+  const sal = salRes;
+  const html = `
+  <div style="font-size:13px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--dark3);padding:12px;border-radius:8px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:900;color:var(--gold)">${fmtMoney(bal.balance||0)}</div>
+        <div style="font-size:11px;color:var(--gray-light)">${t('balance')}</div>
+      </div>
+      <div style="background:var(--dark3);padding:12px;border-radius:8px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:900;color:var(--green)">${fmtMoney(bal.earned||0)}</div>
+        <div style="font-size:11px;color:var(--gray-light)">Earned / अर्जित</div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <tr><td style="padding:5px 0;color:var(--gray-light)">Base Salary / आधार वेतन</td><td style="text-align:right;font-weight:700">${fmtMoney(State.currentEmp?.salary||0)}</td></tr>
+      <tr><td style="padding:5px 0;color:var(--gray-light)">Days Present / उपस्थित दिन</td><td style="text-align:right">${sal.presentDays||0}</td></tr>
+      <tr><td style="padding:5px 0;color:var(--gray-light)">Daily Rate / दैनिक दर</td><td style="text-align:right">${fmtMoney(sal.dailyRate||0)}</td></tr>
+      <tr><td style="padding:5px 0;color:var(--gray-light)">Advances Deducted / अग्रिम</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(bal.debits||0)}</td></tr>
+      <tr><td style="padding:5px 0;color:var(--gray-light)">Bonuses / बोनस</td><td style="text-align:right;color:var(--green)">+ ${fmtMoney(bal.credits||0)}</td></tr>
+      <tr style="border-top:1px solid var(--dark3)"><td style="padding:8px 0;font-weight:700;color:var(--gold)">Net Balance / बैलेंस</td><td style="text-align:right;font-weight:900;font-size:1.1rem;color:var(--gold)">${fmtMoney(bal.balance||0)}</td></tr>
+    </table>
+    <div style="margin-top:12px;padding:10px;background:rgba(201,168,76,0.05);border-radius:8px;font-size:11px;color:var(--gray-light)">
+      * Balance as of today. Final payable calculated on salary day.
+    </div>
+  </div>`;
+  showModal(`💰 ${tt('monthEarning')} — ${State.currentEmp?.name}`, html);
+}
+
+async function showLeaveRequest() {
+  resetKioskTimer();
+  const empId = State.currentEmp?.id;
+  const today = todayStr();
+  const html = `
+  <div style="font-size:13px">
+    <p style="margin-bottom:14px;color:var(--gray-light)">Submit a leave request to your supervisor.<br>सुपरवाइज़र को छुट्टी का अनुरोध भेजें।</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">From Date / शुरू</label>
+        <input id="lv-from" class="form-input" type="date" value="${today}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">To Date / अंत</label>
+        <input id="lv-to" class="form-input" type="date" value="${today}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Leave Type / प्रकार</label>
+      <select id="lv-type" class="form-input">
+        <option value="IL">Informed Leave / सूचित छुट्टी</option>
+        <option value="IHL">Informed Half Day / सूचित आधा दिन</option>
+        <option value="SL">Sick Leave / बीमारी</option>
+        <option value="PL">Paid Leave / भुगतान छुट्टी</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reason (optional) / कारण (वैकल्पिक)</label>
+      <input id="lv-note" class="form-input" type="text" placeholder="Brief reason…">
+    </div>
+    <div id="lv-msg" style="font-size:12px;color:var(--gray-light)"></div>
+  </div>`;
+  showModal('📅 Request Leave / छुट्टी अनुरोध', html, [
+    {label:'Submit Request / भेजें', cls:'btn-gold', cb: async()=>{
+      const from=document.getElementById('lv-from')?.value;
+      const to=document.getElementById('lv-to')?.value;
+      const type=document.getElementById('lv-type')?.value;
+      const note=document.getElementById('lv-note')?.value;
+      if (!from||!to) { toast('Select dates / तारीख चुनें','warning'); return; }
+      const res = await API.call('requestLeave',{empId, type, startDate:from, endDate:to, note});
+      if (res.ok) {
+        closeModal();
+        const msg = res.needsSeniorApproval ? 'Leave sent! Requires L5+ approval for 3+ days.' : 'Leave request sent to supervisor!';
+        toast(`✓ ${msg}`,'success',5000);
+      } else toast(res.error||'Failed','error');
+    }},
+    {label:'Cancel / रद्द', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+async function doApplyExit() {
+  resetKioskTimer();
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const ok = await confirm2(`Are you sure you want to apply for exit/resignation?\nक्या आप इस्तीफा देना चाहते हैं?\n\nNotice period: ${emp.noticeperiodDays||90} days`);
+  if (!ok) return;
+  const html = `
+  <div style="font-size:13px">
+    <div style="padding:12px;background:rgba(229,57,53,0.1);border-radius:8px;margin-bottom:14px;border-left:4px solid var(--red)">
+      <strong>Notice Period:</strong> ${emp.noticeperiodDays||90} days<br>
+      <strong>Last Working Date:</strong> ${fmtDate(addDays(todayStr(), parseInt(emp.noticeperiodDays||90)))}
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reason for Leaving</label>
+      <input id="exit-reason" class="form-input" placeholder="Reason (optional)">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Early Buyout? (leave blank if serving full notice)</label>
+      <select id="exit-type" class="form-input">
+        <option value="full">Serve full notice period</option>
+        <option value="buyout">Early buyout (salary deducted for remaining notice)</option>
+        <option value="immediate">Immediate exit (if special circumstances)</option>
+      </select>
+    </div>
+  </div>`;
+  showModal('🚪 Apply for Exit / इस्तीफा', html, [
+    {label:'Submit / जमा करें', cls:'btn-red', cb:async()=>{
+      const reason=document.getElementById('exit-reason')?.value;
+      const exitType=document.getElementById('exit-type')?.value;
+      const res=await API.call('updateEmployee',{empId:emp.id, status:'Notice', notes:`Exit applied ${todayStr()} - ${exitType} - ${reason}`});
+      if(res.ok){closeModal();toast('Exit application submitted. Salary put on hold until notice completion.','success',6000);}
+      else toast('Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+function addDays(dateStr, days) {
+  const d=new Date(dateStr); d.setDate(d.getDate()+days); return d.toISOString().split('T')[0];
+}
+function gpsDistance(lat1,lon1,lat2,lon2){const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+
+function hideEmpCard() {
+  State.currentEmp=null; State.currentEmpRecord=null;
+  document.getElementById('emp-card').classList.remove('visible');
+  document.getElementById('keypad').style.display='';
+  document.getElementById('pin-dots').style.display='';
+  document.getElementById('mode-toggle').style.display='';
+  document.getElementById('kiosk-hint').style.display='';
+  State.pin=''; updatePinDots();
+  clearTimeout(State.kioskTimer);
+  if (State.authMode==='face') setMode('pin'); // reset to pin mode
+}
+
+function resetKioskTimer() {
+  clearTimeout(State.kioskTimer);
+  State.kioskTimer = setTimeout(hideEmpCard, CFG.kioskTimeout);
+}
+
+// ═══════════════════════════════════════════
+// ADMIN LOGIN
+// ═══════════════════════════════════════════
+let selectedRole='owner';
+function selectRole(r) {
+  selectedRole=r;
+  ['owner','manager','supervisor'].forEach(id=>{
+    document.getElementById(`rtab-${id}`).className = 'role-tab' + (id===r?' active':'');
+  });
+}
+async function openAdminLogin() { showScreen('admin-login'); document.getElementById('admin-pw-input').value=''; document.getElementById('admin-login-err').style.display='none'; }
+async function doAdminLogin() {
+  const pw = document.getElementById('admin-pw-input').value;
+  const errEl = document.getElementById('admin-login-err');
+  const settings = State.settings;
+  const pwMap = {
+    owner: settings.adminPassword||'ArtzFolio@2026',
+    manager: settings.managerPassword||'Manager@2026',
+    supervisor: settings.supervisorPassword||'Supervisor@2026',
+  };
+  if (pw === pwMap[selectedRole]) {
+    State.adminRole = selectedRole;
+    State.adminUser = selectedRole;
+    document.getElementById('admin-brand-role').textContent = `Role: ${selectedRole.charAt(0).toUpperCase()+selectedRole.slice(1)}`;
+    document.getElementById('admin-user-info').textContent = selectedRole.toUpperCase();
+    showScreen('admin');
+    await switchTab('dashboard');
+    checkPendingLeaves();
+  } else {
+    errEl.textContent='Incorrect password. Try again.';
+    errEl.style.display='block';
+  }
+}
+function adminLogout() { State.adminRole=null; State.adminUser=null; showScreen('kiosk'); }
+function goBackToKiosk() { showScreen('kiosk'); }
+function toggleSidebar() {
+  const sb=document.getElementById('admin-sidebar');
+  State.sidebarOpen=!State.sidebarOpen;
+  sb.className = State.sidebarOpen ? 'open' : '';
+}
+async function checkPendingLeaves() {
+  try {
+    const res=await API.call('getPendingLeaves');
+    const cnt=(res.leaves||[]).length;
+    const badge=document.getElementById('badge-leaves');
+    if(badge){badge.textContent=cnt;badge.style.display=cnt?'inline-block':'none';}
+  } catch {}
+}
+
+// ═══════════════════════════════════════════
+// ADMIN TAB SWITCHING
+// ═══════════════════════════════════════════
+async function switchTab(tab) {
+  State.currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach(n=>{n.className='nav-item'+(n.dataset.tab===tab?' active':'');});
+  document.getElementById('admin-page-title').textContent = tab.charAt(0).toUpperCase()+tab.slice(1);
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  try {
+    switch(tab) {
+      case 'dashboard':   await renderDashboard(); break;
+      case 'employees':   await renderEmployees(); break;
+      case 'attendance':  await renderAttendance(); break;
+      case 'leaves':      await renderLeaves(); break;
+      case 'transactions':await renderTransactions(); break;
+      case 'points':      await renderPoints(); break;
+      case 'roster':      await renderRoster(); break;
+      case 'payroll':     await renderPayroll(); break;
+      case 'fnf':         await renderFnF(); break;
+      case 'reports':     await renderReports(); break;
+      case 'settings':    await renderSettings(); break;
+    }
+  } catch(e) {
+    document.getElementById('admin-tab-content').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>Error loading tab: ${escHtml(e.message)}</p></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD TAB
+// ═══════════════════════════════════════════
+async function renderDashboard() {
+  const [todayRes, leaveRes] = await Promise.all([
+    API.call('getTodayAttendance'),
+    API.call('getPendingLeaves'),
+  ]);
+  const records = todayRes.records||[];
+  const present = records.filter(r=>r.record&&r.record.clockIn&&!r.record.clockOut).length;
+  const completed = records.filter(r=>r.record&&r.record.clockOut).length;
+  const absent = records.filter(r=>!r.record&&r.status==='Absent').length;
+  const onLeave = records.filter(r=>r.record&&['IL','IHL','SL','PL','UL'].includes(r.record.status)).length;
+  const pendingLeaves = (leaveRes.leaves||[]).length;
+  let html = `
+  <div class="stat-cards">
+    <div class="stat-card green"><div class="stat-card-val">${present}</div><div class="stat-card-lbl">🟢 Clocked In<br><span class="hi">उपस्थित</span></div></div>
+    <div class="stat-card"><div class="stat-card-val">${completed}</div><div class="stat-card-lbl">✓ Shift Complete<br><span class="hi">शिफ्ट पूरी</span></div></div>
+    <div class="stat-card red"><div class="stat-card-val">${absent}</div><div class="stat-card-lbl">🔴 Absent<br><span class="hi">अनुपस्थित</span></div></div>
+    <div class="stat-card orange"><div class="stat-card-val">${onLeave}</div><div class="stat-card-lbl">📅 On Leave<br><span class="hi">छुट्टी पर</span></div></div>
+    <div class="stat-card blue"><div class="stat-card-val">${pendingLeaves}</div><div class="stat-card-lbl">⏳ Pending Leaves<br><span class="hi">लंबित</span></div><div class="stat-card-sub">${pendingLeaves?'<a onclick="switchTab(\'leaves\')" style="color:var(--gold);cursor:pointer">Review →</a>':''}</div></div>
+    <div class="stat-card"><div class="stat-card-val">${records.length}</div><div class="stat-card-lbl">👥 Total Active<br><span class="hi">कुल</span></div></div>
+  </div>
+  <div class="section-hdr">
+    <div class="section-title">Today's Attendance <small style="color:var(--gray)">${todayStr()}</small></div>
+    <div class="section-actions">
+      <button class="btn btn-dark btn-sm" onclick="API.call('autoMarkUL',{}).then(()=>toast('UL check done','success'))">Auto-Mark UL</button>
+      <button class="btn btn-dark btn-sm" onclick="switchTab('attendance')">Full View →</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="az-table">
+      <thead><tr><th>Employee</th><th>Dept/Level</th><th>Shift</th><th>Clock In</th><th>Clock Out</th><th>Status</th><th>GPS</th></tr></thead>
+      <tbody>`;
+  records.forEach(r => {
+    const rec=r.record;
+    html+=`<tr>
+      <td><strong>${escHtml(r.name)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(r.empId)}</span></td>
+      <td>${escHtml(r.dept)}</td>
+      <td>${escHtml(r.shiftStart)}–${escHtml(r.shiftEnd)}</td>
+      <td>${rec&&rec.clockIn?fmtTime(rec.clockIn):'—'}</td>
+      <td>${rec&&rec.clockOut?fmtTime(rec.clockOut):'—'}</td>
+      <td>${statusBadge(rec?rec.status:r.status)}</td>
+      <td style="font-size:10px;color:var(--gray-light)">${rec&&rec.locationNote?escHtml(rec.locationNote):'—'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// EMPLOYEES TAB
+// ═══════════════════════════════════════════
+async function renderEmployees(filter='') {
+  const res = await API.call('getEmployees');
+  let emps = (res.employees||[]);
+  if (filter) {
+    const f=filter.toLowerCase();
+    emps = emps.filter(e=>e.name.toLowerCase().includes(f)||e.id.toLowerCase().includes(f)||e.dept.toLowerCase().includes(f)||e.level.toLowerCase().includes(f)||e.mobile?.toLowerCase().includes(f)||e.aadhaar?.includes(f));
+  }
+  State.employees = emps;
+  const canEdit = ['owner','manager'].includes(State.adminRole);
+  let html = `
+  <div class="section-hdr">
+    <div class="section-title">Employees <small>${emps.length} shown</small></div>
+    <div class="section-actions">
+      ${canEdit?`<button class="btn btn-gold btn-sm" onclick="showAddEmpModal()">+ Add Employee</button>`:''}
+      <button class="btn btn-dark btn-sm" onclick="exportCSV(State.employees,'employees')">Export CSV</button>
+    </div>
+  </div>
+  <div class="filters-bar">
+    <input class="filter-input" placeholder="Search name/ID/dept…" oninput="renderEmployees(this.value)" value="${escHtml(filter)}">
+    <select class="filter-input" onchange="renderEmpsByStatus(this.value)">
+      <option value="">All Status</option><option value="Active">Active</option><option value="Exited">Exited</option><option value="Archived">Archived</option>
+    </select>
+    <select class="filter-input" onchange="renderEmpsByLevel(this.value)">
+      <option value="">All Levels</option>
+      ${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}">${l}</option>`).join('')}
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table class="az-table">
+      <thead><tr>
+        <th onclick="sortTable('name')">Name ▲</th>
+        <th>ID</th><th>Dept/Level</th><th>Salary</th><th>Shift</th>
+        <th>Weekly Off</th><th>Joining</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody>`;
+  emps.forEach(e => {
+    html+=`<tr>
+      <td><strong>${escHtml(e.name)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(e.mobile||'')}</span></td>
+      <td style="font-size:11px">${escHtml(e.id)}</td>
+      <td><span class="badge badge-${e.category==='Workforce'?'orange':'blue'}">${escHtml(e.level)}</span><br><span style="font-size:10px;color:var(--gray-light)">${escHtml(e.dept)}</span></td>
+      <td>${fmtMoney(e.salary)}</td>
+      <td style="font-size:11px">${escHtml(e.shiftStart)}–${escHtml(e.shiftEnd)}<br>${escHtml(e.dailyHours||'—')}h/day</td>
+      <td style="font-size:11px">${escHtml(e.weeklyOff1)}${e.weeklyOff2?'+'+e.weeklyOff2:''}</td>
+      <td style="font-size:11px">${fmtDate(e.doj)}</td>
+      <td>${statusBadge(e.status)}</td>
+      <td>
+        <button class="btn btn-dark btn-sm" onclick="showEmpDetail('${escHtml(e.id)}')">View</button>
+        ${canEdit?`<button class="btn btn-dark btn-sm" onclick="showEditEmpModal('${escHtml(e.id)}')">Edit</button>`:''}
+        ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="archiveEmp('${escHtml(e.id)}')">Archive</button>`:''}
+        ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="registerFace('${escHtml(e.id)}','${escHtml(e.name)}')">📷 Face</button>`:''}
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+
+function renderEmpsByStatus(s) { renderEmployees(); setTimeout(()=>{if(s)State.employees=(State.employees||[]).filter(e=>e.status===s);renderEmployeesInPlace();},0); }
+function renderEmpsByLevel(l) { renderEmployees(); }
+
+async function showEmpDetail(empId) {
+  const res = await API.call('getEmployee',{empId});
+  if (!res.ok) { toast('Not found','error'); return; }
+  const e=res.employee;
+  const bands = await API.call('getSalaryBands');
+  const myBand = (bands.bands||[]).find(b=>b.level===e.level)||{};
+  const html=`
+  <div style="font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div><strong>ID:</strong> ${escHtml(e.id)}</div>
+    <div><strong>Level:</strong> ${escHtml(e.level)}</div>
+    <div><strong>Department:</strong> ${escHtml(e.dept)}</div>
+    <div><strong>Salary:</strong> ${fmtMoney(e.salary)}</div>
+    <div><strong>Shift:</strong> ${escHtml(e.shiftStart)}–${escHtml(e.shiftEnd)}</div>
+    <div><strong>Daily Hours:</strong> ${escHtml(e.dailyHours)} h</div>
+    <div><strong>Weekly Off 1:</strong> ${escHtml(e.weeklyOff1)}</div>
+    <div><strong>Weekly Off 2:</strong> ${escHtml(e.weeklyOff2||'—')}</div>
+    <div><strong>Work Days/Week:</strong> ${escHtml(e.workDaysPerWeek)}</div>
+    <div><strong>Mobile:</strong> ${escHtml(e.mobile||'—')}</div>
+    <div><strong>DOB:</strong> ${fmtDate(e.dob)}</div>
+    <div><strong>Gender:</strong> ${escHtml(e.gender||'—')}</div>
+    <div><strong>Aadhaar:</strong> ${escHtml(e.aadhaar||'—')}</div>
+    <div><strong>Address:</strong> ${escHtml(e.address||'—')}</div>
+    <div><strong>Joining:</strong> ${fmtDate(e.doj)}</div>
+    <div><strong>Notice Period:</strong> ${escHtml(e.noticeperiodDays||'90')} days</div>
+    <div><strong>Supervisor ID:</strong> ${escHtml(e.supervisorId||'—')}</div>
+    <div><strong>Project:</strong> ${escHtml(e.project||'—')}</div>
+    <div><strong>Org:</strong> ${escHtml(e.org||'—')}</div>
+    <div><strong>Zone:</strong> ${escHtml(e.zone||'—')}</div>
+    <div><strong>Status:</strong> ${statusBadge(e.status)}</div>
+    <div><strong>Face Registered:</strong> ${e.faceDescriptor?'✓ Yes':'✗ No'}</div>
+  </div>
+  <div style="margin-top:14px;padding:12px;background:var(--dark3);border-radius:8px">
+    <strong style="color:var(--gold);font-size:11px">SALARY BAND FOR ${escHtml(e.level)}:</strong><br>
+    <span style="font-size:11px;color:var(--gray-light)">Male: ${fmtMoney(myBand.maleMin||0)}–${fmtMoney(myBand.maleMax||0)} | Female: ${fmtMoney(myBand.femaleMin||0)}–${fmtMoney(myBand.femaleMax||0)}</span>
+  </div>`;
+  showModal(`👤 ${e.name} — Employee Profile`, html);
+}
+
+async function showAddEmpModal() {
+  const orgsRes = await API.call('getOrgs');
+  const orgs = orgsRes.orgs||[];
+  const factoryOpts = orgs.filter(o=>o.type==='factory').map(o=>`<option>${escHtml(o.name)}</option>`).join('');
+  const zoneOpts = orgs.filter(o=>o.type==='zone').map(o=>`<option>${escHtml(o.name)}</option>`).join('');
+  const deptOpts = orgs.filter(o=>o.type==='department').map(o=>`<option>${escHtml(o.name)}</option>`).join('');
+  const projOpts = orgs.filter(o=>o.type==='project').map(o=>`<option>${escHtml(o.name)}</option>`).join('');
+  const html = `<div style="font-size:13px;max-height:60vh;overflow-y:auto;padding-right:4px">
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Full Name *</label><input id="e-name" class="form-input" placeholder="Name…"></div>
+    <div class="form-group"><label class="form-label">Level *</label>
+      <select id="e-level" class="form-input" onchange="autoFillLevelDefaults(this.value)">
+        ${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}">${l}</option>`).join('')}
+      </select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Department</label><input id="e-dept" class="form-input" placeholder="e.g. Packing L10"></div>
+    <div class="form-group"><label class="form-label">Category</label>
+      <select id="e-cat" class="form-input"><option>Workforce</option><option>Management</option><option>Supervisor</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Monthly Salary (₹) *</label><input id="e-sal" class="form-input" type="number" placeholder="13000"></div>
+    <div class="form-group"><label class="form-label">PIN (4–6 digits) *</label><input id="e-pin" class="form-input" type="text" maxlength="6" placeholder="e.g. 4821"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Shift Start</label><input id="e-ss" class="form-input" type="time" value="09:00"></div>
+    <div class="form-group"><label class="form-label">Shift End</label><input id="e-se" class="form-input" type="time" value="19:00"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Daily Work Hours</label><input id="e-dh" class="form-input" type="number" value="10"></div>
+    <div class="form-group"><label class="form-label">Work Days/Week</label><input id="e-wd" class="form-input" type="number" value="6" min="1" max="7"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Weekly Off 1</label>
+      <select id="e-wo1" class="form-input"><option>Sunday</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option></select></div>
+    <div class="form-group"><label class="form-label">Weekly Off 2 (optional)</label>
+      <select id="e-wo2" class="form-input"><option value="">None</option><option>Sunday</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Mobile</label><input id="e-mob" class="form-input" type="tel" placeholder="9999900000"></div>
+    <div class="form-group"><label class="form-label">Date of Joining</label><input id="e-doj" class="form-input" type="date" value="${todayStr()}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Date of Birth</label><input id="e-dob" class="form-input" type="date"></div>
+    <div class="form-group"><label class="form-label">Gender</label>
+      <select id="e-gen" class="form-input"><option>Male</option><option>Female</option><option>Other</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Aadhaar Number</label><input id="e-aadh" class="form-input" placeholder="XXXX XXXX XXXX"></div>
+    <div class="form-group"><label class="form-label">Notice Period (days)</label><input id="e-np" class="form-input" type="number" value="90"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Address</label><input id="e-addr" class="form-input" placeholder="Permanent address…"></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Factory</label><select id="e-fact" class="form-input"><option value="">— Select —</option>${factoryOpts}</select></div>
+    <div class="form-group"><label class="form-label">Zone</label><select id="e-zone" class="form-input"><option value="">— Select —</option>${zoneOpts}</select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Department</label><select id="e-depar" class="form-input"><option value="">— Select —</option>${deptOpts}</select></div>
+    <div class="form-group"><label class="form-label">Project</label><select id="e-proj" class="form-input"><option value="">— Select —</option>${projOpts}</select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Supervisor ID (optional)</label><input id="e-sup" class="form-input" placeholder="AZ_EMP_XXXX or leave blank"></div>
+    <div class="form-group"><label class="form-label">Night Shift Allowance (₹/night)</label><input id="e-nsa" class="form-input" type="number" value="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Travel Allowance (₹/day present)</label><input id="e-travel" class="form-input" type="number" value="0" placeholder="0 if not applicable"></div>
+    <div class="form-group"><label class="form-label">OT Base Hours (per extra day)</label><input id="e-otbase" class="form-input" type="number" value="9" placeholder="9"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Notes</label><input id="e-notes" class="form-input" placeholder="Any notes…"></div>
+  </div>`;
+  showModal('➕ Add New Employee / नया कर्मचारी', html, [
+    {label:'Add Employee / जोड़ें', cls:'btn-gold', cb:async()=>{
+      const payload={
+        name:document.getElementById('e-name').value, level:document.getElementById('e-level').value,
+        dept:document.getElementById('e-dept').value||document.getElementById('e-level').value,
+        category:document.getElementById('e-cat').value, salary:document.getElementById('e-sal').value,
+        pin:document.getElementById('e-pin').value, shiftStart:document.getElementById('e-ss').value,
+        shiftEnd:document.getElementById('e-se').value, dailyHours:document.getElementById('e-dh').value,
+        workDaysPerWeek:document.getElementById('e-wd').value,
+        weeklyOff1:document.getElementById('e-wo1').value, weeklyOff2:document.getElementById('e-wo2').value,
+        mobile:document.getElementById('e-mob').value, doj:document.getElementById('e-doj').value,
+        dob:document.getElementById('e-dob').value, gender:document.getElementById('e-gen').value,
+        aadhaar:document.getElementById('e-aadh').value, noticeperiodDays:document.getElementById('e-np').value,
+        address:document.getElementById('e-addr').value, factory:document.getElementById('e-fact').value,
+        zone:document.getElementById('e-zone').value, department:document.getElementById('e-depar').value,
+        project:document.getElementById('e-proj').value, supervisorId:document.getElementById('e-sup').value,
+        nightShiftAllowance:document.getElementById('e-nsa').value,
+        travelAllowance:document.getElementById('e-travel').value,
+        otBaseHours:document.getElementById('e-otbase').value,
+        notes:document.getElementById('e-notes').value,
+      };
+      if(!payload.name||!payload.pin||!payload.salary){toast('Name, PIN and Salary are required','warning');return;}
+      const res=await API.call('addEmployee',payload);
+      if(res.ok){closeModal();toast(`✓ Employee added: ${res.empId}`,'success');await renderEmployees();}
+      else toast(res.error||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+async function showEditEmpModal(empId) {
+  const res = await API.call('getEmployee',{empId});
+  if (!res.ok) { toast('Not found','error'); return; }
+  const e=res.employee;
+  const html=`<div style="font-size:13px;max-height:60vh;overflow-y:auto;padding-right:4px">
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Full Name</label><input id="ee-name" class="form-input" value="${escHtml(e.name)}"></div>
+    <div class="form-group"><label class="form-label">Monthly Salary (₹)</label><input id="ee-sal" class="form-input" type="number" value="${e.salary}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Level</label>
+      <select id="ee-level" class="form-input">${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}" ${e.level===l?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Dept</label><input id="ee-dept" class="form-input" value="${escHtml(e.dept)}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Shift Start</label><input id="ee-ss" class="form-input" type="time" value="${e.shiftStart}"></div>
+    <div class="form-group"><label class="form-label">Shift End</label><input id="ee-se" class="form-input" type="time" value="${e.shiftEnd}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Weekly Off 1</label>
+      <select id="ee-wo1" class="form-input">${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(d=>`<option value="${d}" ${e.weeklyOff1===d?'selected':''}>${d}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Weekly Off 2</label>
+      <select id="ee-wo2" class="form-input"><option value="">None</option>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(d=>`<option value="${d}" ${e.weeklyOff2===d?'selected':''}>${d}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Mobile</label><input id="ee-mob" class="form-input" value="${escHtml(e.mobile||'')}"></div>
+    <div class="form-group"><label class="form-label">Notice Period (days)</label><input id="ee-np" class="form-input" type="number" value="${e.noticeperiodDays||90}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Aadhaar</label><input id="ee-aadh" class="form-input" value="${escHtml(e.aadhaar||'')}"></div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select id="ee-status" class="form-input"><option value="Active" ${e.status==='Active'?'selected':''}>Active</option><option value="Exited">Exited</option><option value="Archived">Archived</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">New PIN (leave blank to keep)</label><input id="ee-pin" class="form-input" type="text" maxlength="6" placeholder="New PIN…"></div>
+    <div class="form-group"><label class="form-label">Supervisor ID</label><input id="ee-sup" class="form-input" value="${escHtml(e.supervisorId||'')}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Night Shift Allowance (₹/night)</label><input id="ee-nsa" class="form-input" type="number" value="${e.nightShiftAllowance||0}"></div>
+    <div class="form-group"><label class="form-label">Travel Allowance (₹/day present)</label><input id="ee-travel" class="form-input" type="number" value="${e.travelAllowance||0}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">OT Base Hours (per extra day)</label><input id="ee-otbase" class="form-input" type="number" value="${e.otBaseHours||9}"></div>
+    <div class="form-group"><label class="form-label">Daily Work Hours</label><input id="ee-dh" class="form-input" type="number" value="${e.dailyHours||10}"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Address</label><input id="ee-addr" class="form-input" value="${escHtml(e.address||'')}"></div>
+  <div class="form-group"><label class="form-label">Notes</label><input id="ee-notes" class="form-input" value="${escHtml(e.notes||'')}"></div>
+  </div>`;
+  showModal(`✏ Edit: ${e.name}`, html, [
+    {label:'Save Changes / सहेजें', cls:'btn-gold', cb:async()=>{
+      const payload={empId, name:document.getElementById('ee-name').value, salary:document.getElementById('ee-sal').value,
+        level:document.getElementById('ee-level').value, dept:document.getElementById('ee-dept').value,
+        shiftStart:document.getElementById('ee-ss').value, shiftEnd:document.getElementById('ee-se').value,
+        weeklyOff1:document.getElementById('ee-wo1').value, weeklyOff2:document.getElementById('ee-wo2').value,
+        mobile:document.getElementById('ee-mob').value, noticeperiodDays:document.getElementById('ee-np').value,
+        aadhaar:document.getElementById('ee-aadh').value, status:document.getElementById('ee-status').value,
+        address:document.getElementById('ee-addr').value, notes:document.getElementById('ee-notes').value,
+        supervisorId:document.getElementById('ee-sup').value,
+        nightShiftAllowance:document.getElementById('ee-nsa').value,
+        travelAllowance:document.getElementById('ee-travel').value,
+        otBaseHours:document.getElementById('ee-otbase').value,
+        dailyHours:document.getElementById('ee-dh').value,
+      };
+      const newPin=document.getElementById('ee-pin').value;
+      if(newPin){payload.pin=newPin;}
+      const res=await API.call('updateEmployee',payload);
+      if(res.ok){closeModal();toast('✓ Employee updated','success');await renderEmployees();}
+      else toast(res.error||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+async function archiveEmp(empId) {
+  const ok = await confirm2('⚠ Archive this employee? They will be marked as Archived and removed from active attendance.\nक्या आप इस कर्मचारी को संग्रहीत करना चाहते हैं?');
+  if (!ok) return;
+  const res=await API.call('archiveEmployee',{empId,hard:false,lwd:todayStr()});
+  if(res.ok){toast('Employee archived','success');await renderEmployees();}
+  else toast(res.error||'Error','error');
+}
+
+async function registerFace(empId, empName) {
+  if (!State.faceModelsLoaded) {
+    toast('Loading face models…','info');
+    const ok=await Face.loadModels();
+    if (!ok){toast('Face models not available','error');return;}
+  }
+  const html=`
+  <p style="font-size:13px;margin-bottom:12px">Position employee's face in the camera. We'll capture 3 samples for accuracy.<br>कर्मचारी का चेहरा कैमरे के सामने रखें।</p>
+  <div style="width:280px;height:210px;border:2px solid var(--gold-dim);border-radius:8px;overflow:hidden;margin:0 auto">
+    <video id="reg-video" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>
+  </div>
+  <div id="reg-status" style="text-align:center;margin-top:8px;font-size:12px;color:var(--gold-light)">Click Capture to register face</div>`;
+  showModal(`📷 Register Face: ${empName}`, html, [
+    {label:'📷 Capture Face', cls:'btn-gold', cb: async()=>{
+      document.getElementById('reg-status').textContent='Scanning…';
+      const video=document.getElementById('reg-video');
+      const descriptors=[];
+      for(let i=0;i<3;i++){
+        await new Promise(r=>setTimeout(r,600));
+        const desc=await Face.getDescriptor();
+        if(desc) descriptors.push(desc);
+        document.getElementById('reg-status').textContent=`Sample ${descriptors.length}/3 captured…`;
+      }
+      if(descriptors.length<2){document.getElementById('reg-status').textContent='Could not detect face. Try again.';return;}
+      // Average descriptors
+      const avg=descriptors[0].map((_,i)=>descriptors.reduce((s,d)=>s+d[i],0)/descriptors.length);
+      const res=await API.call('updateFaceDescriptor',{empId,descriptor:avg});
+      if(res.ok){closeModal();toast('✓ Face registered successfully!','success');}
+      else toast(res.error||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:()=>{closeModal();}},
+  ]);
+  // Start camera inside modal after render
+  setTimeout(async()=>{
+    const video=document.getElementById('reg-video');
+    if(video){
+      try{const stream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'}});video.srcObject=stream;}catch(e){}
+    }
+  },200);
+}
+
+// ═══════════════════════════════════════════
+// ATTENDANCE TAB
+// ═══════════════════════════════════════════
+async function renderAttendance() {
+  const now=new Date();
+  let selYear=now.getFullYear(), selMonth=now.getMonth()+1, selEmp='';
+  const empsRes=await API.call('getEmployees',{status:'Active'});
+  const emps=empsRes.employees||[];
+  function getAttGrid() {
+    const empSel=document.getElementById('att-emp-sel')?.value||'';
+    const yrSel=parseInt(document.getElementById('att-yr-sel')?.value||now.getFullYear());
+    const moSel=parseInt(document.getElementById('att-mo-sel')?.value||now.getMonth()+1);
+    renderAttendanceGrid(empSel, yrSel, moSel, emps);
+  }
+  const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const yearOpts=[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('');
+  const monthOpts=months.map((m,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${m}</option>`).join('');
+  let html=`
+  <div class="section-hdr">
+    <div class="section-title">Attendance Management</div>
+    <div class="section-actions">
+      <button class="btn btn-dark btn-sm" onclick="API.call('autoClockOut',{}).then(r=>toast('Auto clock-out done: '+r.affected?.length+' employees','success'))">Auto Clock-Out</button>
+    </div>
+  </div>
+  <div class="filters-bar">
+    <select id="att-emp-sel" class="filter-input" onchange="getAttGrid()"><option value="">-- All Employees --</option>${empOpts}</select>
+    <select id="att-mo-sel" class="filter-input" onchange="getAttGrid()">${monthOpts}</select>
+    <select id="att-yr-sel" class="filter-input" onchange="getAttGrid()">${yearOpts}</select>
+  </div>
+  <div id="att-grid-container"><div class="empty-state"><div class="empty-icon">📅</div><p>Select an employee to view attendance grid</p></div></div>`;
+  document.getElementById('admin-tab-content').innerHTML = html;
+  document.getElementById('att-emp-sel').onchange = getAttGrid;
+}
+
+async function renderAttendanceGrid(empId, year, month, emps) {
+  const container=document.getElementById('att-grid-container');
+  if (!empId) { container.innerHTML=`<div class="empty-state"><div class="empty-icon">📅</div><p>Select an employee above</p></div>`; return; }
+  container.innerHTML='<div class="loading-spinner"></div>';
+  const res=await API.call('getAttendanceEmployee',{empId,year,month});
+  const records=res.records||[];
+  const emp=emps.find(e=>e.id===empId)||{};
+  const daysInMonth=new Date(year,month,0).getDate();
+  const recMap={};
+  records.forEach(r=>recMap[r.date]=r);
+  let P=0,UL=0,IL=0,Late=0,OT=0;
+  let html=`
+  <div class="section-hdr" style="margin-top:4px">
+    <div class="section-title">${escHtml(emp.name||empId)} — ${new Date(year,month-1).toLocaleString('en-IN',{month:'long',year:'numeric'})}</div>
+    <div class="section-actions">
+      <button class="btn btn-dark btn-sm" onclick="showManualAttModal('${escHtml(empId)}')">+ Manual Entry</button>
+    </div>
+  </div>
+  <div class="table-wrap att-grid-wrap"><table class="az-table att-grid"><thead><tr>
+    <th>Date</th><th>Day</th><th>Clock In</th><th>Clock Out</th><th>Status</th><th>Late</th><th>Hours</th><th>GPS</th><th>Edit</th>
+  </tr></thead><tbody>`;
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rec=recMap[ds];
+    const dayName=days[new Date(ds).getDay()];
+    const status=rec?rec.status:(new Date(ds)<=new Date()?'—':'');
+    if(rec){if(rec.status==='P')P++;if(rec.status==='UL')UL++;if(rec.status==='IL')IL++;if(parseInt(rec.lateMinutes)>0)Late++;if(parseInt(rec.otMinutes)>0)OT++;}
+    const isWO=(emp.weeklyOff1===days[new Date(ds).getDay()]);
+    html+=`<tr class="${isWO?'text-gray':''}">
+      <td>${d}</td><td>${dayName}</td>
+      <td>${rec&&rec.clockIn?fmtTime(rec.clockIn):'—'}</td>
+      <td>${rec&&rec.clockOut?fmtTime(rec.clockOut):'—'}</td>
+      <td class="att-${status}">${statusBadge(status||'—')}</td>
+      <td style="font-size:11px">${rec&&parseInt(rec.lateMinutes)>0?`<span style="color:var(--orange)">${rec.lateMinutes}m</span>`:'—'}</td>
+      <td style="font-size:11px">${rec&&rec.workMinutes?`${Math.floor(rec.workMinutes/60)}h${rec.workMinutes%60}m`:'—'}</td>
+      <td style="font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis">${rec&&rec.locationNote?escHtml(rec.locationNote):'—'}</td>
+      <td><button class="btn btn-dark btn-sm" onclick="showManualAttModal('${escHtml(empId)}','${escHtml(ds)}','${escHtml(status)}')">✏</button></td>
+    </tr>`;
+  }
+  html+=`</tbody></table></div>
+  <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
+    <span>✅ Present: <strong>${P}</strong></span>
+    <span>🔴 UL: <strong>${UL}</strong></span>
+    <span>📅 IL: <strong>${IL}</strong></span>
+    <span>⏰ Late: <strong>${Late}</strong></span>
+    <span>⭐ OT days: <strong>${Math.floor(OT)}</strong></span>
+  </div>`;
+  container.innerHTML=html;
+}
+
+function showManualAttModal(empId, date='', currentStatus='') {
+  const html=`<div style="font-size:13px">
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Date</label><input id="ma-date" class="form-input" type="date" value="${date||todayStr()}"></div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select id="ma-status" class="form-input">
+        <option value="P" ${currentStatus==='P'?'selected':''}>P — Present</option>
+        <option value="IL" ${currentStatus==='IL'?'selected':''}>IL — Informed Leave</option>
+        <option value="IHL" ${currentStatus==='IHL'?'selected':''}>IHL — Informed Half Leave</option>
+        <option value="UL" ${currentStatus==='UL'?'selected':''}>UL — Uninformed Leave</option>
+        <option value="H" ${currentStatus==='H'?'selected':''}>H — Holiday</option>
+        <option value="WO" ${currentStatus==='WO'?'selected':''}>WO — Weekly Off</option>
+        <option value="EW" ${currentStatus==='EW'?'selected':''}>EW — Extra Work</option>
+        <option value="SL" ${currentStatus==='SL'?'selected':''}>SL — Sick Leave</option>
+        <option value="PL" ${currentStatus==='PL'?'selected':''}>PL — Paid Leave</option>
+      </select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Clock In (override)</label><input id="ma-ci" class="form-input" type="time"></div>
+    <div class="form-group"><label class="form-label">Clock Out (override)</label><input id="ma-co" class="form-input" type="time"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Reason / Remark *</label><input id="ma-note" class="form-input" placeholder="Reason for manual entry…" required></div>
+  </div>`;
+  showModal('✏ Manual Attendance Entry', html, [
+    {label:'Save / सहेजें', cls:'btn-gold', cb:async()=>{
+      const d=document.getElementById('ma-date').value;
+      const s=document.getElementById('ma-status').value;
+      const ci=document.getElementById('ma-ci').value;
+      const co=document.getElementById('ma-co').value;
+      const note=document.getElementById('ma-note').value;
+      if(!note){toast('Reason required / कारण जरूरी है','warning');return;}
+      const dateStr=d;
+      const ciStr=ci?`${dateStr} ${ci}:00`:'';
+      const coStr=co?`${dateStr} ${co}:00`:'';
+      const res=await API.call('manualSetAttendance',{empId,date:dateStr,status:s,clockIn:ciStr,clockOut:coStr,note,editBy:State.adminUser});
+      if(res.ok){closeModal();toast('✓ Attendance updated','success');const yr=parseInt(document.getElementById('att-yr-sel')?.value||new Date().getFullYear());const mo=parseInt(document.getElementById('att-mo-sel')?.value||new Date().getMonth()+1);renderAttendanceGrid(empId,yr,mo,State.employees);}
+      else toast(res.error||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+// ═══════════════════════════════════════════
+// LEAVES TAB
+// ═══════════════════════════════════════════
+async function renderLeaves() {
+  const [pendingRes, allRes] = await Promise.all([
+    API.call('getPendingLeaves'),
+    API.call('getLeaves',{fromDate: `${new Date().getFullYear()}-01-01`})
+  ]);
+  const pending=pendingRes.leaves||[];
+  const all=allRes.leaves||[];
+  const badge=document.getElementById('badge-leaves');
+  if(badge){badge.textContent=pending.length;badge.style.display=pending.length?'inline-block':'none';}
+  let html=`
+  <div class="section-hdr"><div class="section-title">Leave Management</div></div>`;
+  if (pending.length) {
+    html+=`<div style="margin-bottom:20px"><div class="section-title" style="color:var(--orange);margin-bottom:10px">⏳ Pending Approvals (${pending.length})</div>`;
+    pending.forEach(l=>{
+      html+=`<div style="background:var(--dark2);border:1px solid var(--orange);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+        <div style="flex:1;min-width:200px">
+          <strong>${escHtml(l.empName||l.empId)}</strong>
+          <span style="margin-left:8px" class="badge badge-gold">${escHtml(l.empLevel)}</span>
+          <div style="font-size:12px;color:var(--gray-light)">${escHtml(l.empDept)} | ${statusBadge(l.type)}</div>
+          <div style="font-size:12px;margin-top:4px">${fmtDate(l.startDate)} → ${fmtDate(l.endDate)} <strong>(${l.totalDays} days)</strong></div>
+          ${l.note?`<div style="font-size:11px;color:var(--gray-light)">"${escHtml(l.note)}"</div>`:''}
+          ${parseInt(l.totalDays)>3?`<div style="font-size:11px;color:var(--orange)">⚠ >3 days — requires L5+ approval</div>`:''}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-green btn-sm" onclick="approveLeave('${escHtml(l.id)}',true)">✓ Approve</button>
+          <button class="btn btn-red btn-sm" onclick="approveLeave('${escHtml(l.id)}',false)">✗ Reject</button>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  html+=`<div class="section-hdr" style="margin-top:16px"><div class="section-title">All Leaves (${all.length})</div>
+    <div class="section-actions"><button class="btn btn-gold btn-sm" onclick="showAdminLeaveModal()">+ Add Leave</button></div></div>
+  <div class="filters-bar">
+    <select class="filter-input" id="lf-status" onchange="filterLeaves()"><option value="">All Status</option><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option><option value="Auto">Auto-UL</option></select>
+    <input class="filter-input" id="lf-emp" type="text" placeholder="Filter by employee…" oninput="filterLeaves()">
+  </div>
+  <div class="table-wrap">
+    <table class="az-table" id="leaves-table">
+      <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Requested</th><th>Approved By</th></tr></thead>
+      <tbody id="leaves-tbody">`;
+  all.forEach(l=>{
+    html+=`<tr>
+      <td>${escHtml(l.empId)}</td>
+      <td>${statusBadge(l.type)}</td>
+      <td>${fmtDate(l.startDate)}</td>
+      <td>${fmtDate(l.endDate)}</td>
+      <td>${l.totalDays}</td>
+      <td>${statusBadge(l.status)}</td>
+      <td style="font-size:11px">${fmtDT(l.requestDate)}</td>
+      <td style="font-size:11px">${escHtml(l.approvedBy||'—')}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById('admin-tab-content').innerHTML=html;
+}
+
+async function approveLeave(leaveId, approved) {
+  const note=approved?'Approved by admin':'Rejected by admin';
+  const res=await API.call('approveLeave',{leaveId,approved,approvedBy:State.adminUser,note});
+  if(res.ok){toast(approved?'✓ Leave approved':'Leave rejected',approved?'success':'info');await renderLeaves();}
+  else toast(res.error||'Error','error');
+}
+
+function showAdminLeaveModal() {
+  const empOpts=(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('');
+  const html=`<div style="font-size:13px">
+  <div class="form-group"><label class="form-label">Employee</label><select id="al-emp" class="form-input">${empOpts}</select></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">From</label><input id="al-from" class="form-input" type="date" value="${todayStr()}"></div>
+    <div class="form-group"><label class="form-label">To</label><input id="al-to" class="form-input" type="date" value="${todayStr()}"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Type</label>
+    <select id="al-type" class="form-input"><option value="IL">IL - Informed Leave</option><option value="IHL">IHL - Half Day</option><option value="SL">SL - Sick Leave</option><option value="PL">PL - Paid Leave</option><option value="UL">UL - Uninformed Leave</option></select></div>
+  <div class="form-group"><label class="form-label">Note</label><input id="al-note" class="form-input" placeholder="Reason…"></div>
+  <div class="form-group"><label class="form-label">Auto-approve?</label>
+    <select id="al-auto" class="form-input"><option value="yes">Yes — pre-approve</option><option value="no">No — send for approval</option></select></div>
+  </div>`;
+  showModal('+ Admin: Add Leave', html, [
+    {label:'Add Leave', cls:'btn-gold', cb:async()=>{
+      const empId=document.getElementById('al-emp').value;
+      const from=document.getElementById('al-from').value;
+      const to=document.getElementById('al-to').value;
+      const type=document.getElementById('al-type').value;
+      const note=document.getElementById('al-note').value;
+      const autoApprove=document.getElementById('al-auto').value==='yes';
+      const res=await API.call('requestLeave',{empId,type,startDate:from,endDate:to,note});
+      if(res.ok&&autoApprove){await API.call('approveLeave',{leaveId:res.leaveId,approved:true,approvedBy:State.adminUser});}
+      if(res.ok){closeModal();toast('✓ Leave added','success');await renderLeaves();}
+      else toast(res.error||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+// ═══════════════════════════════════════════
+// TRANSACTIONS TAB
+// ═══════════════════════════════════════════
+async function renderTransactions() {
+  const now=new Date();
+  const empsRes=await API.call('getEmployees',{status:'Active'});
+  const emps=empsRes.employees||[];
+  const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('');
+  const html=`
+  <div class="section-hdr">
+    <div class="section-title">Transactions / लेनदेन</div>
+    <div class="section-actions"><button class="btn btn-gold btn-sm" onclick="showAddTransModal()">+ Add Transaction</button></div>
+  </div>
+  <div class="filters-bar">
+    <select id="tr-emp" class="filter-input" onchange="loadTransactions()"><option value="">All Employees</option>${empOpts}</select>
+    <select id="tr-month" class="filter-input" onchange="loadTransactions()">
+      ${['All Months','2026-04','2026-03','2026-02','2026-01','2025-12'].map((m,i)=>`<option value="${i===0?'':m}">${m}</option>`).join('')}
+    </select>
+  </div>
+  <div id="trans-balance-card" style="display:none;margin-bottom:16px"></div>
+  <div class="table-wrap"><table class="az-table">
+    <thead><tr><th>Date</th><th>Employee</th><th>Type</th><th>Amount</th><th>Note</th><th>Approved By</th><th>Status</th></tr></thead>
+    <tbody id="trans-tbody"><tr><td colspan="7" class="empty-state"><div>Select filters above</div></td></tr></tbody>
+  </table></div>`;
+  document.getElementById('admin-tab-content').innerHTML=html;
+  loadTransactions();
+}
+
+async function loadTransactions() {
+  const empId=document.getElementById('tr-emp')?.value||'';
+  const month=document.getElementById('tr-month')?.value||'';
+  const res=await API.call('getTransactions',{empId,month});
+  const tbody=document.getElementById('trans-tbody');
+  if(!tbody) return;
+  const trans=res.transactions||[];
+  // Show balance if employee selected
+  if(empId){
+    const bal=await API.call('getBalance',{empId});
+    const emp=State.employees.find(e=>e.id===empId)||{};
+    const balCard=document.getElementById('trans-balance-card');
+    if(balCard){
+      balCard.style.display='block';
+      balCard.innerHTML=`<div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:14px;display:flex;gap:20px;flex-wrap:wrap">
+        <div><div style="font-size:1.4rem;font-weight:900;color:var(--gold)">${fmtMoney(bal.balance||0)}</div><div style="font-size:11px;color:var(--gray-light)">Current Balance</div></div>
+        <div><div style="font-size:1.2rem;font-weight:700;color:var(--green)">${fmtMoney(bal.earned||0)}</div><div style="font-size:11px;color:var(--gray-light)">Earned</div></div>
+        <div><div style="font-size:1.2rem;font-weight:700;color:var(--red)">${fmtMoney(bal.debits||0)}</div><div style="font-size:11px;color:var(--gray-light)">Deducted</div></div>
+        <div><div style="font-size:1.2rem;font-weight:700;color:var(--blue)">${fmtMoney(bal.credits||0)}</div><div style="font-size:11px;color:var(--gray-light)">Added</div></div>
+      </div>`;
+    }
+  }
+  if(!trans.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:24px">No transactions</td></tr>';return;}
+  const empMap={};
+  (State.employees||[]).forEach(e=>empMap[e.id]=e.name);
+  tbody.innerHTML=trans.map(t=>{
+    const isDebit=['Advance','Loan','Penalty','DamageRecovery','LateFine','KYCFee','PINReactivationFee','Deduction','LoanRepayment'].includes(t.type);
+    return `<tr>
+      <td>${fmtDate(t.date)}</td>
+      <td>${escHtml(empMap[t.empId]||t.empId)}</td>
+      <td>${escHtml(t.type)}</td>
+      <td style="color:${isDebit?'var(--red)':'var(--green)'};font-weight:700">${isDebit?'-':'+'} ${fmtMoney(t.amount)}</td>
+      <td>${escHtml(t.note||'—')}</td>
+      <td style="font-size:11px">${escHtml(t.approvedBy||'—')}</td>
+      <td>${statusBadge(t.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function showAddTransModal() {
+  const empOpts=(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('');
+  const html=`<div style="font-size:13px">
+  <div class="form-group"><label class="form-label">Employee *</label><select id="at-emp" class="form-input">${empOpts}</select></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Type *</label>
+      <select id="at-type" class="form-input">
+        <option value="Advance">Advance (अग्रिम)</option><option value="Loan">Loan (ऋण)</option>
+        <option value="LoanRepayment">Loan Repayment</option><option value="Bonus">Bonus (बोनस)</option>
+        <option value="Penalty">Penalty (जुर्माना)</option><option value="DamageRecovery">Damage Recovery</option>
+        <option value="LateFine">Late Fine / Mobile Fine</option><option value="KYCFee">KYC Fee</option>
+        <option value="PINReactivationFee">PIN Reactivation Fee</option><option value="Increment">Increment</option>
+        <option value="Deduction">Deduction</option><option value="Adjustment">Adjustment</option>
+      </select></div>
+    <div class="form-group"><label class="form-label">Amount (₹) *</label><input id="at-amt" class="form-input" type="number" placeholder="Amount…"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Date</label><input id="at-date" class="form-input" type="date" value="${todayStr()}"></div>
+    <div class="form-group"><label class="form-label">Note</label><input id="at-note" class="form-input" placeholder="Reason / reference…"></div>
+  </div>
+  </div>`;
+  showModal('+ Add Transaction / लेनदेन जोड़ें', html, [
+    {label:'Add / जोड़ें', cls:'btn-gold', cb:async()=>{
+      const empId=document.getElementById('at-emp').value;
+      const type=document.getElementById('at-type').value;
+      const amount=document.getElementById('at-amt').value;
+      const date=document.getElementById('at-date').value;
+      const note=document.getElementById('at-note').value;
+      if(!empId||!amount){toast('Employee and amount required','warning');return;}
+      const res=await API.call('addTransaction',{empId,type,amount,date,note,approvedBy:State.adminUser});
+      if(res.ok){closeModal();toast('✓ Transaction added','success');loadTransactions();}
+      else toast(res.error||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+// ═══════════════════════════════════════════
+// POINTS TAB
+// ═══════════════════════════════════════════
+async function renderPoints() {
+  const now=new Date();
+  const year=now.getFullYear(), month=now.getMonth()+1;
+  const lbRes=await API.call('getLeaderboard',{year,month});
+  const lb=lbRes.leaderboard||[];
+  const weeks=getWeeksOfMonth(year,month);
+  const weekOpts=weeks.map(w=>`<option value="${w}">${w}</option>`).join('');
+  let html=`
+  <div class="section-hdr">
+    <div class="section-title">Points Tracker ⭐ <small>L8-L10 only | Posted every Saturday</small></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div class="section-title" style="margin-bottom:12px">Monthly Leaderboard — ${new Date(year,month-1).toLocaleString('en-IN',{month:'long',year:'numeric'})}</div>
+      <div class="leaderboard" id="lb-container">`;
+  lb.forEach((item,i) => {
+    const rankCls=i===0?'rank1':i===1?'rank2':i===2?'rank3':'';
+    const rankIcon=i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
+    html+=`<div class="lb-row ${rankCls}">
+      <div class="lb-rank r${i+1}">${rankIcon}</div>
+      <div class="flex-1"><div class="lb-name">${escHtml(item.name)}</div><div class="lb-dept">${escHtml(item.dept)}</div></div>
+      <div><div class="lb-points">${item.total}</div><div class="lb-weekly">pts this month</div></div>
+    </div>`;
+  });
+  html+=`</div></div>
+    <div>
+      <div class="section-title" style="margin-bottom:12px">Add Weekly Points</div>
+      <div style="margin-bottom:12px">
+        <label class="form-label">Week of</label>
+        <select id="pts-week" class="form-input" style="margin-bottom:10px">${weekOpts}</select>
+      </div>
+      <div id="pts-entry-grid">
+        <table class="az-table" style="font-size:11px">
+          <thead><tr><th>Employee</th><th>On Time (2)</th><th>Quota (4)</th><th>0 Errors (2)</th><th>Clean (2)</th><th>Fastest (+1)</th><th>Idea (+1)</th><th>Note</th><th>Save</th></tr></thead>
+          <tbody>`;
+  lb.forEach(item=>{
+    html+=`<tr id="prow-${escHtml(item.empId)}">
+      <td><strong>${escHtml(item.name.split(' ')[0])}</strong></td>
+      <td><select class="form-input" id="p-ot-${escHtml(item.empId)}" style="width:55px"><option value="0">0</option><option value="2" selected>2</option></select></td>
+      <td><select class="form-input" id="p-qt-${escHtml(item.empId)}" style="width:55px"><option value="0">0</option><option value="2">2</option><option value="4" selected>4</option></select></td>
+      <td><select class="form-input" id="p-ze-${escHtml(item.empId)}" style="width:55px"><option value="0">0</option><option value="2" selected>2</option></select></td>
+      <td><select class="form-input" id="p-cl-${escHtml(item.empId)}" style="width:55px"><option value="0">0</option><option value="2" selected>2</option></select></td>
+      <td><select class="form-input" id="p-fn-${escHtml(item.empId)}" style="width:55px"><option value="0" selected>0</option><option value="1">+1</option></select></td>
+      <td><select class="form-input" id="p-id-${escHtml(item.empId)}" style="width:55px"><option value="0" selected>0</option><option value="1">+1</option></select></td>
+      <td><input class="form-input" id="p-nt-${escHtml(item.empId)}" style="width:80px" placeholder="note…"></td>
+      <td><button class="btn btn-gold btn-sm" onclick="savePoints('${escHtml(item.empId)}')">✓</button></td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>
+      <div style="margin-top:10px;font-size:11px;color:var(--gray-light)">
+        <strong>Scoring Guide:</strong> On time ≤ shift start = 2pts | Quota done = 4pts | Zero errors = 2pts | Clean workspace = 2pts<br>
+        <strong>Bonus:</strong> Fastest = +1 | Improvement idea = +1
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('admin-tab-content').innerHTML=html;
+}
+
+async function savePoints(empId) {
+  const week=document.getElementById('pts-week')?.value;
+  const payload={
+    empId, weekOf:week, addedBy:State.adminUser,
+    onTime:parseInt(document.getElementById(`p-ot-${empId}`)?.value||0),
+    quotaDone:parseInt(document.getElementById(`p-qt-${empId}`)?.value||0),
+    zeroErrors:parseInt(document.getElementById(`p-ze-${empId}`)?.value||0),
+    cleanWorkspace:parseInt(document.getElementById(`p-cl-${empId}`)?.value||0),
+    bonusFastest:parseInt(document.getElementById(`p-fn-${empId}`)?.value||0),
+    bonusIdea:parseInt(document.getElementById(`p-id-${empId}`)?.value||0),
+    note:document.getElementById(`p-nt-${empId}`)?.value||'',
+  };
+  const res=await API.call('addPoints',payload);
+  if(res.ok){toast(`✓ ${res.total} pts saved for employee`,'success');}
+  else toast(res.error||'Error','error');
+}
+
+function getWeeksOfMonth(year, month) {
+  const weeks=[]; const d=new Date(year,month-1,1);
+  while(d.getMonth()===month-1){
+    const dayOfWeek=d.getDay();
+    if(dayOfWeek===6){weeks.push(d.toISOString().split('T')[0]);}
+    d.setDate(d.getDate()+1);
+  }
+  if(!weeks.length) weeks.push(new Date(year,month-1,1).toISOString().split('T')[0]);
+  return weeks;
+}
+
+// ═══════════════════════════════════════════
+// ROSTER TAB
+// ═══════════════════════════════════════════
+async function renderRoster() {
+  const now=new Date();
+  const weekStart=getWeekStart(now);
+  const empsRes=await API.call('getEmployees',{status:'Active'});
+  const emps=empsRes.employees||[];
+  const rosterRes=await API.call('getRoster',{weekStart});
+  const roster=rosterRes.roster||[];
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dayNames=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const codes=['','P','IL','IHL','WO','H','HO','EW','SL','PL','UL'];
+  const html=`
+  <div class="section-hdr">
+    <div class="section-title">Weekly Roster 📋</div>
+    <div class="section-actions">
+      <input id="roster-week" type="date" class="filter-input" value="${weekStart}" onchange="loadRosterForWeek(this.value)">
+      <button class="btn btn-gold btn-sm" onclick="publishRoster()">📤 Publish Roster</button>
+      <button class="btn btn-dark btn-sm" onclick="exportRosterCSV()">Export CSV</button>
+    </div>
+  </div>
+  <div class="roster-grid">
+    <table class="roster-table">
+      <thead><tr><th>#</th><th>Employee</th><th>Dept</th>${days.map(d=>`<th>${d}</th>`).join('')}<th>Notes</th></tr></thead>
+      <tbody id="roster-tbody">
+        ${emps.map((emp,i)=>{
+          const row=roster.find(r=>r.empId===emp.id)||{};
+          return `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escHtml(emp.name.split(' ')[0])}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(emp.id)}</span></td>
+            <td style="font-size:11px">${escHtml(emp.dept)}</td>
+            ${['mon','tue','wed','thu','fri','sat','sun'].map(d=>`
+              <td class="roster-cell">
+                <select class="form-input" id="r-${escHtml(emp.id)}-${d}" style="background:${getRosterCellColor(row[d]||'')};color:var(--white);width:55px;padding:3px 2px;font-size:10px">
+                  ${codes.map(c=>`<option value="${c}" style="background:var(--dark2)" ${(row[d]||'')===(c||'')?'selected':''}>${c||'—'}</option>`).join('')}
+                </select>
+              </td>`).join('')}
+            <td><input class="form-input" id="rn-${escHtml(emp.id)}" style="width:100px;font-size:10px" value="${escHtml(row.notes||'')}" placeholder="notes…"></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:12px;font-size:11px;color:var(--gray-light)">
+    <strong>Codes:</strong> P=Present | IL=Informed Leave | IHL=Half Leave | WO=Weekly Off | H=Holiday | HO=Half Day Off | EW=Extra Work | SL=Sick Leave | PL=Paid Leave | UL=Uninformed Leave
+  </div>
+  <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn btn-gold" onclick="saveAllRoster('${escHtml(weekStart)}')">💾 Save All Roster Changes</button>
+  </div>`;
+  document.getElementById('admin-tab-content').innerHTML=html;
+}
+
+function getRosterCellColor(code){const m={P:'rgba(67,160,71,0.3)',IL:'rgba(30,136,229,0.3)',UL:'rgba(229,57,53,0.3)',WO:'rgba(136,136,136,0.2)',H:'rgba(201,168,76,0.3)',EW:'rgba(251,140,0,0.3)'};return m[code]||'transparent';}
+
+function getWeekStart(d) {
+  const day=d.getDay(), diff=d.getDate()-day+(day===0?-6:1);
+  const mon=new Date(d); mon.setDate(diff);
+  return mon.toISOString().split('T')[0];
+}
+
+async function saveAllRoster(weekStart) {
+  const emps=State.employees.filter(e=>e.status==='Active');
+  const promises=emps.map(emp=>{
+    const update={weekStart, empId:emp.id, preparedBy:State.adminUser,
+      notes:document.getElementById(`rn-${emp.id}`)?.value||''};
+    ['mon','tue','wed','thu','fri','sat','sun'].forEach(d=>{
+      update[d]=document.getElementById(`r-${emp.id}-${d}`)?.value||'';
+    });
+    return API.call('updateRoster',update);
+  });
+  await Promise.all(promises);
+  toast('✓ Roster saved for week '+weekStart,'success');
+}
+
+async function publishRoster() {
+  await saveAllRoster(document.getElementById('roster-week')?.value||getWeekStart(new Date()));
+  toast('✓ Roster published! Share with team.','success',5000);
+}
+
+// ═══════════════════════════════════════════
+// PAYROLL TAB
+// ═══════════════════════════════════════════
+async function renderPayroll() {
+  const now=new Date();
+  const html=`
+  <div class="section-hdr"><div class="section-title">Payroll / वेतन</div></div>
+  <div class="filters-bar">
+    <select id="pay-month" class="filter-input">
+      ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('')}
+    </select>
+    <select id="pay-year" class="filter-input">
+      ${[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('')}
+    </select>
+    <label style="font-size:12px;color:var(--gray-light);display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="pay-extended" checked> Include 1st–7th extended period
+    </label>
+    <button class="btn btn-gold btn-sm" onclick="generateAllSalaries()">▶ Generate All Salaries</button>
+  </div>
+  <div id="payroll-result"></div>`;
+  document.getElementById('admin-tab-content').innerHTML=html;
+}
+
+async function generateAllSalaries() {
+  const year=parseInt(document.getElementById('pay-year').value);
+  const month=parseInt(document.getElementById('pay-month').value);
+  const extended=document.getElementById('pay-extended').checked;
+  const container=document.getElementById('payroll-result');
+  container.innerHTML='<div class="loading-spinner"></div>';
+  const res=await API.call('calcAllSalaries',{year,month,extended});
+  const salaries=res.salaries||[];
+  const totalNet=salaries.reduce((s,e)=>s+(parseFloat(e.netSalary)||0),0);
+  let html=`
+  <div style="margin-bottom:16px;padding:14px;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;display:flex;gap:20px;flex-wrap:wrap">
+    <div><div style="font-size:1.5rem;font-weight:900;color:var(--gold)">${fmtMoney(totalNet)}</div><div style="font-size:11px;color:var(--gray-light)">Total Net Payroll</div></div>
+    <div><div style="font-size:1.2rem;font-weight:700">${salaries.length}</div><div style="font-size:11px;color:var(--gray-light)">Employees</div></div>
+  </div>
+  <div class="section-actions" style="margin-bottom:12px;display:flex;gap:8px">
+    <button class="btn btn-dark btn-sm" onclick="exportPayrollCSV()">📥 Export CSV</button>
+    <button class="btn btn-dark btn-sm" onclick="printAllSlips()">🖨 Print All Slips</button>
+  </div>
+  <div class="table-wrap"><table class="az-table">
+    <thead><tr><th>Employee</th><th>Dept/Level</th><th>Base</th><th>Present</th><th>UL Ded.</th><th>Late Ded.</th><th>OT Earn.</th><th>Advances</th><th>Bonus</th><th>Net Salary</th><th>Slip</th></tr></thead>
+    <tbody>`;
+  salaries.forEach(s=>{
+    html+=`<tr>
+      <td><strong>${escHtml(s.name)}</strong></td>
+      <td>${escHtml(s.dept)}<br><span class="badge badge-${s.level&&s.level.startsWith('L')&&parseInt(s.level.slice(1))<=5?'blue':'orange'}">${escHtml(s.level)}</span></td>
+      <td>${fmtMoney(s.baseSalary)}</td>
+      <td>${s.presentDays}/${s.workingDays}</td>
+      <td style="color:var(--red)">${s.ulDeduction?'- '+fmtMoney(s.ulDeduction):''}</td>
+      <td style="color:var(--orange)">${s.lateDeduction?'- '+fmtMoney(s.lateDeduction):''}</td>
+      <td style="color:var(--green)">${s.otEarnings?'+ '+fmtMoney(s.otEarnings):''}</td>
+      <td style="color:var(--red)">${s.advances?'- '+fmtMoney(s.advances):''}</td>
+      <td style="color:var(--green)">${s.bonuses?'+ '+fmtMoney(s.bonuses):''}</td>
+      <td style="font-weight:900;font-size:1rem;color:var(--gold)">${fmtMoney(s.netSalary)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-dark btn-sm" title="Print Slip" onclick="printSlip(${JSON.stringify(s).replace(/"/g,'&quot;')})">🖨</button>
+        <button class="btn btn-dark btn-sm" title="Share via WhatsApp" onclick="shareSlipWhatsApp(${JSON.stringify(s).replace(/"/g,'&quot;')})">📱</button>
+        <button class="btn btn-dark btn-sm" title="Share via Email" onclick="shareSlipEmail(${JSON.stringify(s).replace(/"/g,'&quot;')})">📧</button>
+      </td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  container.innerHTML=html;
+  window._lastPayroll=salaries;
+  window._lastPayrollMeta={year,month};
+}
+
+function printSlip(data) {
+  const area=document.getElementById('slip-print-area');
+  const monthName=new Date(data.year,data.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+  area.innerHTML=`
+  <div class="slip-header">
+    <div class="slip-company">${escHtml(State.settings.companyName||'Vishnu Image Folio Pvt Ltd')}</div>
+    <div style="font-size:11pt;color:#888">${escHtml(State.settings.factoryAddress||'Noida, UP')}</div>
+    <div class="slip-month">SALARY SLIP — ${monthName}</div>
+  </div>
+  <div class="slip-emp-info">
+    <div><strong>Employee Name:</strong> ${escHtml(data.empName||data.name)}</div>
+    <div><strong>Employee ID:</strong> ${escHtml(data.empId||'—')}</div>
+    <div><strong>Department:</strong> ${escHtml(data.dept)}</div>
+    <div><strong>Level:</strong> ${escHtml(data.level)}</div>
+    <div><strong>Month:</strong> ${monthName}</div>
+    <div><strong>Days in Month:</strong> ${data.daysInMonth}</div>
+    <div><strong>Working Days:</strong> ${data.workingDays}</div>
+    <div><strong>Days Present:</strong> ${data.presentDays}</div>
+    <div><strong>Days Absent/UL:</strong> ${data.absentDays}</div>
+    <div><strong>Late Count:</strong> ${data.lateCount}</div>
+    <div><strong>OT Days Earned:</strong> ${data.otDays||0}${data.otDays&&data.otMultiplier&&data.otMultiplier!=1?` @ ${data.otMultiplier}×`:''}</div>
+    ${data.mobile?`<div><strong>Mobile:</strong> ${escHtml(data.mobile)}</div>`:''}
+  </div>
+  <table class="slip-table">
+    <thead><tr><th>Earnings</th><th>Amount (₹)</th><th>Deductions</th><th>Amount (₹)</th></tr></thead>
+    <tbody>
+      <tr><td>Base / Earned Salary</td><td>₹${Math.round(data.earnedSalary||0).toLocaleString('en-IN')}</td><td>UL Penalty</td><td>₹${Math.round(data.ulDeduction||0).toLocaleString('en-IN')}</td></tr>
+      <tr><td>OT Earnings${data.otMultiplier&&data.otMultiplier!=1?` (${data.otMultiplier}×)`:''}</td><td>₹${Math.round(data.otEarnings||0).toLocaleString('en-IN')}</td><td>Late Deduction</td><td>₹${Math.round(data.lateDeduction||0).toLocaleString('en-IN')}</td></tr>
+      <tr><td>Extra Work (EW)</td><td>₹${Math.round(data.ewEarnings||0).toLocaleString('en-IN')}</td><td>Sandwich Penalty</td><td>₹${Math.round(data.sandwichDeduction||0).toLocaleString('en-IN')}</td></tr>
+      <tr><td>Night Allowance${data.nightShiftMultiplier&&data.nightShiftMultiplier!=1?` (${data.nightShiftMultiplier}×)`:''}</td><td>₹${Math.round(data.nightAllowance||0).toLocaleString('en-IN')}</td><td>Advances</td><td>₹${Math.round(data.advances||0).toLocaleString('en-IN')}</td></tr>
+      <tr><td>Travel Allowance${data.travelRatePerDay?` (₹${Math.round(data.travelRatePerDay)}/day × ${(data.presentDays||0)}d)`:''}</td><td>₹${Math.round(data.travelEarnings||0).toLocaleString('en-IN')}</td><td>Loans / Other</td><td>₹${Math.round((data.loans||0)+(data.penalties||0)).toLocaleString('en-IN')}</td></tr>
+      <tr><td>Bonus / Incentive</td><td>₹${Math.round(data.bonuses||0).toLocaleString('en-IN')}</td><td></td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="slip-net">NET SALARY PAYABLE: ₹${Math.round(data.netSalary||0).toLocaleString('en-IN')}</div>
+  <div class="slip-sign">
+    <div>Employee Signature: _____________</div>
+    <div>HR / Manager: _____________</div>
+    <div>Date: _____________</div>
+  </div>`;
+  window.print();
+}
+
+function buildSlipText(data) {
+  const co = State.settings.companyName||'Vishnu Image Folio Pvt Ltd';
+  const monthName = new Date(data.year,data.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+  const fmt = v => '₹'+Math.round(v||0).toLocaleString('en-IN');
+  return [
+    `*${co}*`,
+    `SALARY SLIP — ${monthName}`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `Employee : ${data.empName||data.name}`,
+    `Dept/Level: ${data.dept} / ${data.level}`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `Days in Month : ${data.daysInMonth}`,
+    `Present Days  : ${data.presentDays}`,
+    `Absent / UL   : ${data.absentDays||0}`,
+    `Late Count    : ${data.lateCount||0}`,
+    data.otDays ? `OT Days Earned: ${data.otDays} (${data.otMultiplier||1}×)` : null,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `Base Earned   : ${fmt(data.earnedSalary)}`,
+    data.otEarnings  ? `OT Earnings   : +${fmt(data.otEarnings)}` : null,
+    data.ewEarnings  ? `Extra Work    : +${fmt(data.ewEarnings)}` : null,
+    data.nightAllowance ? `Night Allow   : +${fmt(data.nightAllowance)}` : null,
+    data.travelEarnings ? `Travel Allow  : +${fmt(data.travelEarnings)} (₹${Math.round(data.travelRatePerDay||0)}/day × ${data.presentDays||0}d)` : null,
+    data.bonuses     ? `Bonus         : +${fmt(data.bonuses)}` : null,
+    data.ulDeduction ? `UL Penalty    : -${fmt(data.ulDeduction)}` : null,
+    data.lateDeduction ? `Late Ded.     : -${fmt(data.lateDeduction)}` : null,
+    data.sandwichDeduction ? `Sandwich Ded. : -${fmt(data.sandwichDeduction)}` : null,
+    data.advances    ? `Advance       : -${fmt(data.advances)}` : null,
+    data.loans       ? `Loan          : -${fmt(data.loans)}` : null,
+    data.penalties   ? `Penalty       : -${fmt(data.penalties)}` : null,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `*NET SALARY  : ${fmt(data.netSalary)}*`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `This is a computer-generated salary statement.`,
+  ].filter(Boolean).join('\n');
+}
+
+function shareSlipWhatsApp(data) {
+  const mobile = (data.mobile||'').replace(/\D/g,'');
+  const text = encodeURIComponent(buildSlipText(data));
+  const url = mobile
+    ? `https://wa.me/91${mobile}?text=${text}`
+    : `https://wa.me/?text=${text}`;
+  window.open(url, '_blank');
+}
+
+function shareSlipEmail(data) {
+  const co = State.settings.companyName||'Vishnu Image Folio Pvt Ltd';
+  const monthName = new Date(data.year,data.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+  const subject = encodeURIComponent(`Salary Slip — ${data.empName||data.name} — ${monthName}`);
+  const body = encodeURIComponent(buildSlipText(data));
+  const mailto = data.email
+    ? `mailto:${data.email}?subject=${subject}&body=${body}`
+    : `mailto:?subject=${subject}&body=${body}`;
+  window.open(mailto, '_blank');
+}
+
+function exportPayrollCSV() {
+  const data=window._lastPayroll||[];
+  const meta=window._lastPayrollMeta||{year:2026,month:4};
+  const headers=['Name','Dept','Level','Base Salary','Days in Month','Present Days','Working Days','UL Days','Late Count','OT Days','Daily Rate','Earned Salary','UL Deduction','Late Deduction','Sandwich Ded','OT Earnings','EW Earnings','Travel Rate/Day','Travel Earnings','Advances','Loans','Bonuses','Penalties','Night Allow','Gross Salary','Net Salary'];
+  const rows=data.map(s=>[s.name,s.dept,s.level,s.baseSalary,s.daysInMonth,s.presentDays,s.workingDays,s.UL,s.lateCount,s.otDays||0,Math.round(s.dailyRate||0),Math.round(s.earnedSalary||0),Math.round(s.ulDeduction||0),Math.round(s.lateDeduction||0),Math.round(s.sandwichDeduction||0),Math.round(s.otEarnings||0),Math.round(s.ewEarnings||0),Math.round(s.travelRatePerDay||0),Math.round(s.travelEarnings||0),Math.round(s.advances||0),Math.round(s.loans||0),Math.round(s.bonuses||0),Math.round(s.penalties||0),Math.round(s.nightAllowance||0),Math.round(s.grossSalary||0),Math.round(s.netSalary||0)]);
+  downloadCSV(`ArtzFolio_Salary_${meta.year}_${String(meta.month).padStart(2,'0')}.csv`, [headers,...rows]);
+}
+
+// ═══════════════════════════════════════════
+// FNF TAB
+// ═══════════════════════════════════════════
+async function renderFnF() {
+  const empsRes=await API.call('getEmployees',{status:'Active'});
+  const emps=(empsRes.employees||[]).filter(e=>e.status==='Active'||e.status==='Notice');
+  const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)} — ${escHtml(e.level)}</option>`).join('');
+  const html=`
+  <div class="section-hdr"><div class="section-title">Full & Final Settlement / पूर्ण एवं अंतिम भुगतान</div></div>
+  <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:20px;max-width:600px">
+    <div class="form-group"><label class="form-label">Employee</label>
+      <select id="fnf-emp" class="form-input" onchange="loadFnFEmployee(this.value)">${empOpts}</select></div>
+    <div id="fnf-emp-info"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Last Working Date</label><input id="fnf-lwd" class="form-input" type="date" value="${todayStr()}"></div>
+      <div class="form-group"><label class="form-label">Actual Notice Days Served</label><input id="fnf-nd" class="form-input" type="number" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Any Damage Recovery (₹)</label><input id="fnf-dmg" class="form-input" type="number" value="0"></div>
+      <div class="form-group"><label class="form-label">Clearance Status</label>
+        <select id="fnf-clr" class="form-input"><option value="complete">All Clearances Done</option><option value="partial">Partial Clearance</option></select></div>
+    </div>
+    <button class="btn btn-gold" onclick="calculateFnF()">▶ Calculate F&F</button>
+  </div>
+  <div id="fnf-result" style="margin-top:20px"></div>`;
+  document.getElementById('admin-tab-content').innerHTML=html;
+  if(emps.length) loadFnFEmployee(emps[0].id);
+}
+
+async function loadFnFEmployee(empId) {
+  const emp=State.employees.find(e=>e.id===empId)||{};
+  const infoEl=document.getElementById('fnf-emp-info');
+  if(!infoEl) return;
+  const doj=emp.doj||'';
+  const tenure=doj?Math.round((new Date()-new Date(doj))/(365.25*24*3600*1000)*10)/10:0;
+  infoEl.innerHTML=`<div style="background:var(--dark3);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px">
+    <strong>${escHtml(emp.name)}</strong> | ${escHtml(emp.level)} | ${escHtml(emp.dept)}<br>
+    Salary: <strong>${fmtMoney(emp.salary)}</strong> | Notice: <strong>${emp.noticeperiodDays||90} days</strong> | Tenure: <strong>${tenure} years</strong><br>
+    DOJ: ${fmtDate(doj)} | Early exit rate: <strong>${fmtMoney(emp.minDayRate||300)}/day</strong>
+  </div>`;
+  if(document.getElementById('fnf-nd')) document.getElementById('fnf-nd').value=emp.noticeperiodDays||90;
+}
+
+async function calculateFnF() {
+  const empId=document.getElementById('fnf-emp')?.value;
+  const lwd=document.getElementById('fnf-lwd')?.value;
+  const noticeDaysServed=parseInt(document.getElementById('fnf-nd')?.value||0);
+  const damageRecovery=parseFloat(document.getElementById('fnf-dmg')?.value||0);
+  const emp=State.employees.find(e=>e.id===empId)||{};
+  if(!empId) return;
+  const doj=emp.doj;
+  const tenureYears=doj?(new Date(lwd)-new Date(doj))/(365.25*24*3600*1000):0;
+  const tenureDays=doj?Math.round((new Date(lwd)-new Date(doj))/(24*3600*1000)):0;
+  const noticePeriod=parseInt(emp.noticeperiodDays||90);
+  const daysInFinalMonth=new Date(new Date(lwd).getFullYear(),new Date(lwd).getMonth()+1,0).getDate();
+  const dailyRate=parseFloat(emp.salary)/daysInFinalMonth;
+  const daysWorkedFinalMonth=new Date(lwd).getDate();
+  const earlyExit=tenureDays<=7;
+  const kycDeduct=tenureDays<=30;
+  const effectiveDailyRate=earlyExit?(parseFloat(emp.minDayRate||300)):dailyRate;
+  const proRataSalary=earlyExit?(daysWorkedFinalMonth*effectiveDailyRate):(dailyRate*daysWorkedFinalMonth);
+  const noticeShortfall=Math.max(0,noticePeriod-noticeDaysServed);
+  const noticeDeduction=noticeShortfall*dailyRate;
+  const kycFeeAmount=kycDeduct?parseFloat(emp.kycFee||750):0;
+  // Pending advances
+  const balRes=await API.call('getBalance',{empId});
+  const pendingAdvance=Math.max(0,-(balRes.balance||0));
+  const grossFnF=proRataSalary;
+  const totalDeductions=noticeDeduction+kycFeeAmount+damageRecovery+pendingAdvance;
+  const netFnF=grossFnF-totalDeductions;
+  const result=document.getElementById('fnf-result');
+  result.innerHTML=`
+  <div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:var(--radius);padding:20px;max-width:600px">
+    <div style="font-size:1.1rem;font-weight:700;color:var(--gold);margin-bottom:14px">F&F Settlement Summary — ${escHtml(emp.name)}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px">
+      <tr><th style="text-align:left;padding:6px 0;color:var(--gray-light);font-size:11px;border-bottom:1px solid var(--dark3)">Component</th><th style="text-align:right;color:var(--gray-light);font-size:11px;border-bottom:1px solid var(--dark3)">Amount</th></tr>
+      <tr><td style="padding:6px 0">Pro-rata Salary (${daysWorkedFinalMonth} days${earlyExit?' @ ₹'+Math.round(effectiveDailyRate)+'/day':''})${earlyExit?'<br><span style="font-size:10px;color:var(--orange)">Early exit — ₹300/day rate applied</span>':''}</td><td style="text-align:right;color:var(--green)">+ ${fmtMoney(proRataSalary)}</td></tr>
+      ${noticeDeduction?`<tr><td style="padding:6px 0">Notice shortfall (${noticeShortfall} days)</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(noticeDeduction)}</td></tr>`:''}
+      ${kycFeeAmount?`<tr><td style="padding:6px 0">KYC Fee (exit within 30 days)</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(kycFeeAmount)}</td></tr>`:''}
+      ${damageRecovery?`<tr><td style="padding:6px 0">Damage Recovery</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(damageRecovery)}</td></tr>`:''}
+      ${pendingAdvance?`<tr><td style="padding:6px 0">Pending Advance Recovery</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(pendingAdvance)}</td></tr>`:''}
+      <tr style="border-top:2px solid var(--gold-dim)">
+        <td style="padding:10px 0;font-size:1rem;font-weight:700;color:${netFnF>=0?'var(--green)':'var(--red)'}">NET F&F PAYABLE</td>
+        <td style="text-align:right;font-size:1.2rem;font-weight:900;color:${netFnF>=0?'var(--gold)':'var(--red)'}">${netFnF>=0?'+':'-'} ${fmtMoney(Math.abs(netFnF))}</td>
+      </tr>
+    </table>
+    <div style="font-size:11px;color:var(--gray-light);background:var(--dark3);padding:10px;border-radius:6px">
+      Tenure: ${Math.round(tenureYears*10)/10} years | Last Working Date: ${fmtDate(lwd)}<br>
+      F&F Payment within 7 working days after last working date (as per policy).
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-gold btn-sm" onclick="printFnFStatement()">🖨 Print F&F Statement</button>
+      <button class="btn btn-dark btn-sm" onclick="API.call('updateEmployee',{empId:'${escHtml(empId)}',status:'Exited',lwd:'${lwd}'}).then(()=>toast('Employee marked Exited','success'))">Mark as Exited</button>
+    </div>
+  </div>`;
+}
+
+function printFnFStatement() { window.print(); }
+
+// ═══════════════════════════════════════════
+// REPORTS TAB
+// ═══════════════════════════════════════════
+async function renderReports() {
+  const now=new Date();
+  let html=`
+  <div class="section-hdr"><div class="section-title">Reports & Analytics 📈</div></div>
+  <div class="report-controls">
+    <div class="report-type-tabs">
+      <button class="report-type-btn active" id="rtype-btn-attendance" onclick="selectReportType('attendance')">Attendance</button>
+      <button class="report-type-btn" id="rtype-btn-leaves" onclick="selectReportType('leaves')">Leaves</button>
+      <button class="report-type-btn" id="rtype-btn-transactions" onclick="selectReportType('transactions')">Transactions</button>
+      <button class="report-type-btn" id="rtype-btn-points" onclick="selectReportType('points')">Points</button>
+      <button class="report-type-btn" id="rtype-btn-employees" onclick="selectReportType('employees')">Employees</button>
+    </div>
+    <div class="report-filters">
+      <div><div class="filter-label">From Date</div><input id="rpt-from" class="filter-input" type="date" value="${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01"></div>
+      <div><div class="filter-label">To Date</div><input id="rpt-to" class="filter-input" type="date" value="${todayStr()}"></div>
+      <div><div class="filter-label">Employee</div>
+        <select id="rpt-emp" class="filter-input"><option value="">All Employees</option>
+          ${(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('')}
+        </select></div>
+      <div><div class="filter-label">Department</div><input id="rpt-dept" class="filter-input" placeholder="Filter by dept…"></div>
+      <div><div class="filter-label">Level</div>
+        <select id="rpt-level" class="filter-input"><option value="">All Levels</option>${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}">${l}</option>`).join('')}</select></div>
+      <div><div class="filter-label">Status/Type</div><input id="rpt-status" class="filter-input" placeholder="e.g. UL, P, Approved…"></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-gold btn-sm" onclick="runReport()">▶ Run Report</button>
+      <button class="btn btn-dark btn-sm" onclick="exportReportCSV()">📥 Export CSV</button>
+    </div>
+  </div>
+  <div id="report-results"></div>`;
+  document.getElementById('admin-tab-content').innerHTML=html;
+  window._reportType='attendance';
+}
+
+function selectReportType(t) {
+  window._reportType=t;
+  document.querySelectorAll('.report-type-btn').forEach(b=>b.className='report-type-btn');
+  const btn=document.getElementById(`rtype-btn-${t}`);
+  if(btn) btn.className='report-type-btn active';
+}
+
+async function runReport() {
+  const type=window._reportType||'attendance';
+  const fromDate=document.getElementById('rpt-from')?.value;
+  const toDate=document.getElementById('rpt-to')?.value;
+  const empId=document.getElementById('rpt-emp')?.value;
+  const dept=document.getElementById('rpt-dept')?.value;
+  const level=document.getElementById('rpt-level')?.value;
+  const status=document.getElementById('rpt-status')?.value;
+  document.getElementById('report-results').innerHTML='<div class="loading-spinner"></div>';
+  const now=new Date();
+  const params=type==='points'?{year:now.getFullYear(),month:now.getMonth()+1}:{type,fromDate,toDate,empId,dept,level,status};
+  const res=await API.call('getReport',params);
+  window._lastReport=res.data||res.leaderboard||[];
+  renderReportTable(type,res);
+}
+
+function renderReportTable(type, res) {
+  const container=document.getElementById('report-results');
+  if(type==='points'){
+    const lb=res.leaderboard||[];
+    container.innerHTML=`<div class="section-hdr"><div class="section-title">Points Leaderboard — ${lb.length} participants</div></div>
+    <div class="leaderboard">
+      ${lb.map((item,i)=>`<div class="lb-row ${i===0?'rank1':i===1?'rank2':i===2?'rank3':''}">
+        <div class="lb-rank r${i+1}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div>
+        <div class="flex-1"><div class="lb-name">${escHtml(item.name)}</div><div class="lb-dept">${escHtml(item.dept)}</div></div>
+        <div class="lb-points">${item.total} pts</div>
+      </div>`).join('')}
+    </div>`;
+    return;
+  }
+  const data=res.data||[];
+  if(!data.length){container.innerHTML='<div class="empty-state"><div class="empty-icon">📊</div><p>No data for selected filters</p></div>';return;}
+  const cols=Object.keys(data[0]);
+  const displayCols=cols.filter(c=>!['id','empId'].includes(c)).slice(0,10);
+  container.innerHTML=`<div class="section-hdr"><div class="section-title">Results <small>${data.length} records</small></div></div>
+  <div class="table-wrap"><table class="az-table">
+    <thead><tr>${displayCols.map(c=>`<th onclick="sortReportBy('${escHtml(c)}')">${escHtml(c)} ↕</th>`).join('')}</tr></thead>
+    <tbody>${data.map(row=>`<tr>${displayCols.map(c=>{
+      const v=row[c]||'—';
+      if(c==='status'||c==='type') return `<td>${statusBadge(v)}</td>`;
+      if(c.toLowerCase().includes('amount')) return `<td>${fmtMoney(v)}</td>`;
+      if(c.toLowerCase().includes('date')||c.toLowerCase().includes('time')) return `<td style="font-size:11px">${fmtDate(v)}</td>`;
+      return `<td>${escHtml(String(v).substring(0,50))}</td>`;
+    }).join('')}</tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function exportReportCSV() {
+  const data=window._lastReport||[];
+  if(!data.length){toast('No data to export','warning');return;}
+  const headers=Object.keys(data[0]);
+  const rows=data.map(r=>headers.map(h=>r[h]||''));
+  downloadCSV(`ArtzFolio_Report_${todayStr()}.csv`,[headers,...rows]);
+}
+
+function sortReportBy(col) {
+  if(!window._lastReport) return;
+  window._lastReport.sort((a,b)=>String(a[col]||'').localeCompare(String(b[col]||'')));
+  renderReportTable(window._reportType||'attendance',{data:window._lastReport});
+}
+
+// ═══════════════════════════════════════════
+// SETTINGS TAB
+// ═══════════════════════════════════════════
+async function renderSettings() {
+  const [settingsRes,msRes,bandsRes,orgsRes,holRes]=await Promise.all([
+    API.call('getSettings'),API.call('getMilestones'),API.call('getSalaryBands'),API.call('getOrgs'),API.call('getHolidays')
+  ]);
+  const cfg={};
+  (settingsRes.settings||[]).forEach(s=>cfg[s.key]=s.value);
+  const ms=msRes.milestones||[];
+  const bands=bandsRes.bands||[];
+  const orgs=orgsRes.orgs||[];
+  const hols=holRes.holidays||[];
+  function cfgField(key,label,type='text',extra=''){
+    return `<div class="form-group"><label class="form-label">${escHtml(label)}</label>
+    <input id="cfg-${escHtml(key)}" class="form-input" type="${type}" value="${escHtml(cfg[key]||'')}" ${extra}></div>`;
+  }
+  let html=`
+  <!-- Policy Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">⚙ Policy Configuration</div>
+    <div class="settings-grid">
+      ${cfgField('adminPassword','Admin (Owner) Password','password')}
+      ${cfgField('managerPassword','Manager Password','password')}
+      ${cfgField('supervisorPassword','Supervisor Password','password')}
+      ${cfgField('gracePeriod','Grace Period (minutes)')}
+      ${cfgField('payDay','Salary Pay Day (date of month)')}
+      ${cfgField('extendedCutoff','Extended Period (1st–Nth of next month)')}
+      ${cfgField('kioskTimeout','Kiosk Auto-Return (seconds)')}
+      ${cfgField('late1Max','Late Tier 1 Max (verbal warning)')}
+      ${cfgField('late2Max','Late Tier 2 Max (half-day deduction)')}
+      ${cfgField('late3Max','Late Tier 3 Max (full-day deduction)')}
+      ${cfgField('otBaseHours','OT Base Hours (hours = 1 day)')}
+      ${cfgField('ulPenaltyDays','UL Penalty Multiplier (1 UL = X days)')}
+      ${cfgField('maxLeaveDaysAutoApprove','Max Leave Days for Supervisor Approval')}
+      ${cfgField('pinBlockAfter','PIN Block After N Wrong Attempts')}
+      ${cfgField('pinReactivationFee','PIN Reactivation Fee (₹)')}
+      ${cfgField('shiftAutoClockoutBuffer','Auto Clock-out Buffer (minutes)')}
+    </div>
+    <div class="settings-section-title" style="margin-top:18px">⏱ Overtime & Night Shift Pay Settings</div>
+    <div class="settings-grid">
+      ${cfgField('otMinHoursThreshold','Min OT Hours Per Day (session must be ≥ this to count)')}
+      ${cfgField('otEligibleLevels','OT Pay Eligible Levels (comma-separated, e.g. L6,L7,L8,L9,L10)')}
+      ${cfgField('nightShiftEligibleLevels','Night Shift Pay Eligible Levels (comma-separated)')}
+      ${cfgField('otMultiplier','OT Pay Multiplier (e.g. 1.5 = 1.5× daily rate per OT day)')}
+      ${cfgField('nightShiftMultiplier','Night Shift Allowance Multiplier (e.g. 1.5 = 1.5× base allowance)')}
+    </div>
+    <div style="margin-top:14px">
+      <button class="btn btn-gold" onclick="savePolicySettings()">💾 Save Policy Settings</button>
+    </div>
+  </div>
+
+  <!-- Company Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">🏭 Company Info</div>
+    <div class="settings-grid">
+      ${cfgField('companyName','Company Name')}
+      ${cfgField('brandName','Brand Name')}
+      ${cfgField('factoryAddress','Factory Address')}
+      ${cfgField('factoryLat','Factory GPS Latitude')}
+      ${cfgField('factoryLng','Factory GPS Longitude')}
+      ${cfgField('factoryRadius','Attendance Radius (metres)')}
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveCompanySettings()">💾 Save Company Info</button>
+  </div>
+
+  <!-- Points & Bonuses -->
+  <div class="settings-section">
+    <div class="settings-section-title">⭐ Points & Bonus Settings</div>
+    <div class="settings-grid">
+      ${cfgField('pointsEligibleLevels','Points Eligible Levels (comma-separated, e.g. L8,L9,L10)')}
+      ${cfgField('points1stPrize','1st Prize (₹)')}
+      ${cfgField('points2ndPrize','2nd Prize (₹)')}
+      ${cfgField('points3rdPrize','3rd Prize (₹)')}
+      ${cfgField('perfectAttendanceBonus','Perfect Attendance Bonus (₹)')}
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="savePointsSettings()">💾 Save Points Settings</button>
+  </div>
+
+  <!-- Milestones Editor -->
+  <div class="settings-section">
+    <div class="settings-section-title">🏆 Loyalty Milestones</div>
+    <div id="milestones-list">
+      ${ms.map(m=>`
+      <div class="milestone-row" id="ms-row-${m.years}">
+        <div class="ms-yr">${escHtml(m.years)}yr</div>
+        <div class="ms-detail flex-1">
+          <input class="form-input" id="ms-rw-${m.years}" value="${escHtml(m.reward)}" placeholder="Reward description">
+          <input class="form-input" id="ms-ds-${m.years}" value="${escHtml(m.description||'')}" placeholder="Details…" style="margin-top:6px">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:100px">
+          <input class="form-input" id="ms-cb-${m.years}" type="number" value="${m.cashBonus||0}" placeholder="Cash ₹">
+          <input class="form-input" id="ms-lb-${m.years}" type="number" value="${m.leaveBonus||0}" placeholder="Leave days">
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="saveMilestone(${m.years})">Save</button>
+      </div>`).join('')}
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <input id="ms-new-yr" class="form-input" type="number" placeholder="Years (e.g. 3)" style="width:120px">
+        <button class="btn btn-dark btn-sm" onclick="addMilestone()">+ Add Milestone Year</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Salary Bands -->
+  <div class="settings-section">
+    <div class="settings-section-title">💰 Salary Bands by Level</div>
+    <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">These are reference ranges. Employees can have any salary within or outside these bands.</div>
+    ${bands.map(b=>`
+    <div class="band-row">
+      <div class="band-level">${escHtml(b.level)}</div>
+      <div><label class="form-label" style="font-size:10px">Male Min</label><input class="form-input" id="b-mm-${b.level}" type="number" value="${b.maleMin||0}"></div>
+      <div><label class="form-label" style="font-size:10px">Male Max</label><input class="form-input" id="b-mx-${b.level}" type="number" value="${b.maleMax||0}"></div>
+      <div><label class="form-label" style="font-size:10px">Female Min</label><input class="form-input" id="b-fm-${b.level}" type="number" value="${b.femaleMin||0}"></div>
+      <div><label class="form-label" style="font-size:10px">Female Max</label><input class="form-input" id="b-fx-${b.level}" type="number" value="${b.femaleMax||0}"></div>
+      <button class="btn btn-dark btn-sm" onclick="saveBand('${escHtml(b.level)}')">Save</button>
+    </div>`).join('')}
+  </div>
+
+  <!-- Holidays -->
+  <div class="settings-section">
+    <div class="settings-section-title">📅 Holidays Calendar</div>
+    <div id="holidays-list">
+    ${hols.map(h=>`<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+      <span style="font-size:12px;min-width:120px">${fmtDate(h.date)}</span>
+      <span style="flex:1;font-size:12px">${escHtml(h.name)}</span>
+      <span class="badge badge-gold">${escHtml(h.type)}</span>
+      <button class="btn btn-dark btn-sm" onclick="removeHoliday('${escHtml(h.date)}')">✕</button>
+    </div>`).join('')}
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <input id="hol-date" class="form-input" type="date" value="${todayStr()}" style="width:160px">
+      <input id="hol-name" class="form-input" placeholder="Holiday name…" style="flex:1;min-width:160px">
+      <select id="hol-type" class="form-input" style="width:130px"><option value="National">National</option><option value="Regional">Regional</option><option value="Company">Company</option></select>
+      <button class="btn btn-gold btn-sm" onclick="addHoliday()">+ Add Holiday</button>
+    </div>
+  </div>
+
+  <!-- Orgs / Groups -->
+  <div class="settings-section">
+    <div class="settings-section-title">🏢 Org Structure (Companies, Zones, Departments)</div>
+    <div id="orgs-list">
+      ${['company','factory','zone','department','project'].map(type=>{
+        const items=orgs.filter(o=>o.type===type);
+        return `<div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--gold-light);margin-bottom:4px">${type.toUpperCase()}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${items.map(o=>`<span class="badge badge-gray">${escHtml(o.name)}</span>`).join('')}
+          <button class="btn btn-dark btn-sm" onclick="addOrgPrompt('${type}')">+ Add ${type}</button></div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <!-- Backup -->
+  <div class="settings-section">
+    <div class="settings-section-title">💾 Backup & Data Management</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      All data is saved in your <strong style="color:var(--gold)">Google Sheet</strong> — it is always backed up.<br>
+      The Export below downloads a complete JSON snapshot you can keep as an extra backup or move to another account.
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gold btn-sm" onclick="exportFullBackup()">📤 Export Full Backup (JSON)</button>
+      <button class="btn btn-dark btn-sm" onclick="document.getElementById('import-file').click()">📥 Import Backup</button>
+      <input id="import-file" type="file" accept=".json" style="display:none" onchange="importBackup(this)">
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:var(--gray-light)">
+      <strong>What is JSON backup?</strong> It is a complete copy of all your data (employees, attendance, salary records, transactions, points) saved as a file on your computer. If your Google account is ever inaccessible or your data needs to move to a new Google Sheet, you import this file to restore everything. Think of it like a photocopy of all your records.
+    </div>
+  </div>`;
+  document.getElementById('admin-tab-content').innerHTML=html;
+}
+
+async function savePolicySettings() {
+  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','shiftAutoClockoutBuffer','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword'];
+  const updates={};
+  keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  const res=await API.call('updateSettings',{updates});
+  if(res.ok){toast('✓ Policy settings saved','success');}else toast('Error','error');
+}
+
+async function saveCompanySettings() {
+  const keys=['companyName','brandName','factoryAddress','factoryLat','factoryLng','factoryRadius'];
+  const updates={};
+  keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  const res=await API.call('updateSettings',{updates});
+  if(res.ok){toast('✓ Company info saved','success');}else toast('Error','error');
+}
+
+async function savePointsSettings() {
+  const keys=['pointsEligibleLevels','points1stPrize','points2ndPrize','points3rdPrize','perfectAttendanceBonus'];
+  const updates={};
+  keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  const res=await API.call('updateSettings',{updates});
+  if(res.ok){toast('✓ Points settings saved','success');}else toast('Error','error');
+}
+
+async function saveMilestone(years) {
+  const res=await API.call('updateMilestone',{
+    years, reward:document.getElementById(`ms-rw-${years}`)?.value,
+    description:document.getElementById(`ms-ds-${years}`)?.value,
+    cashBonus:document.getElementById(`ms-cb-${years}`)?.value,
+    leaveBonus:document.getElementById(`ms-lb-${years}`)?.value, active:true,
+  });
+  if(res.ok)toast('✓ Milestone saved','success');else toast('Error','error');
+}
+
+async function addMilestone() {
+  const yr=document.getElementById('ms-new-yr')?.value;
+  if(!yr||isNaN(parseInt(yr))){toast('Enter valid years','warning');return;}
+  const res=await API.call('updateMilestone',{years:parseInt(yr),reward:'',description:'',cashBonus:0,leaveBonus:0,active:true});
+  if(res.ok){toast('✓ Milestone added','success');await renderSettings();}
+}
+
+async function saveBand(level) {
+  const res=await API.call('updateSalaryBand',{level,maleMin:document.getElementById(`b-mm-${level}`)?.value||0,maleMax:document.getElementById(`b-mx-${level}`)?.value||0,femaleMin:document.getElementById(`b-fm-${level}`)?.value||0,femaleMax:document.getElementById(`b-fx-${level}`)?.value||0});
+  if(res.ok)toast('✓ Salary band saved','success');else toast('Error','error');
+}
+
+async function addHoliday() {
+  const date=document.getElementById('hol-date')?.value;
+  const name=document.getElementById('hol-name')?.value;
+  const type=document.getElementById('hol-type')?.value;
+  if(!date||!name){toast('Date and name required','warning');return;}
+  const res=await API.call('addHoliday',{date,name,type,applicableTo:'All'});
+  if(res.ok){toast('✓ Holiday added','success');await renderSettings();}
+}
+
+async function removeHoliday(date) {
+  const res=await API.call('removeHoliday',{date});
+  if(res.ok){toast('Holiday removed','success');await renderSettings();}
+}
+
+async function addOrgPrompt(type) {
+  const name=prompt(`Add new ${type} name:`);
+  if(!name) return;
+  const res=await API.call('addOrg',{type,name,parentName:''});
+  if(res.ok){toast('✓ Added','success');await renderSettings();}
+}
+
+async function exportFullBackup() {
+  toast('Generating full backup…','info');
+  const res=await API.call('exportAll');
+  if(res.ok){
+    const blob=new Blob([JSON.stringify(res.export,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`ArtzFolio_FullBackup_${todayStr()}.json`; a.click();
+    toast('✓ Backup downloaded','success');
+  } else toast('Export failed','error');
+}
+
+async function importBackup(input) {
+  const file=input.files[0]; if(!file) return;
+  const ok=await confirm2('⚠ This will overwrite existing data with the backup file. Are you sure?');
+  if(!ok) return;
+  const text=await file.text();
+  try { JSON.parse(text); } catch { toast('Invalid JSON file','error'); return; }
+  toast('Import feature: please contact admin to import via Google Sheet directly.','info',6000);
+}
+
+// ═══════════════════════════════════════════
+// GLOBAL SEARCH
+// ═══════════════════════════════════════════
+async function globalSearch(query) {
+  if (!query || query.length < 2) return;
+  const results=(State.employees||[]).filter(e=>e.name.toLowerCase().includes(query.toLowerCase())||e.id.toLowerCase().includes(query.toLowerCase())||e.mobile?.includes(query));
+  if (results.length===1) { switchTab('employees'); setTimeout(()=>renderEmployees(query),200); }
+}
+
+// ═══════════════════════════════════════════
+// UTILITY EXPORTS
+// ═══════════════════════════════════════════
+function downloadCSV(filename, rows) {
+  const csvContent='data:text/csv;charset=utf-8,'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=encodeURI(csvContent); a.download=filename; a.click();
+}
+
+function exportCSV(data, name) {
+  if(!data||!data.length){toast('No data','warning');return;}
+  const headers=Object.keys(data[0]).filter(k=>!['pin','faceDescriptor'].includes(k));
+  const rows=data.map(r=>headers.map(h=>r[h]||''));
+  downloadCSV(`ArtzFolio_${name}_${todayStr()}.csv`,[headers,...rows]);
+}
+
+function sortTable(col) { if(State.employees) State.employees.sort((a,b)=>String(a[col]||'').localeCompare(String(b[col]||''))); }
+
+// ═══════════════════════════════════════════
+// APP START
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', ()=>{
+  const savedLang=LS.g('lang');
+  if(savedLang) document.body.className='lang-'+savedLang;
+  init();
+});
+</script>
+</body>
+</html>
