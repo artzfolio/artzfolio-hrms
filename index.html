@@ -667,6 +667,16 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
     </div><!-- /kiosk-main -->
   </div><!-- /kiosk-body -->
 
+  <!-- Connection Error Recovery Banner — shown automatically when GAS unreachable -->
+  <div id="kiosk-conn-error" style="display:none;padding:14px 16px;margin:0 16px 12px;background:rgba(229,57,53,0.12);border:1px solid var(--red);border-radius:10px;text-align:center">
+    <div style="font-size:13px;color:var(--red);font-weight:700;margin-bottom:6px">⚠ Cannot connect to server</div>
+    <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">The Google Apps Script URL may have changed after re-deployment. Update it below.</div>
+    <input id="conn-err-url" class="form-input" type="url" placeholder="Paste new GAS Web App URL here…" style="font-size:11px;margin-bottom:6px">
+    <input id="conn-err-token" class="form-input" type="text" placeholder="API Token (default: AZ_TOKEN_2026)" style="font-size:11px;margin-bottom:8px">
+    <button class="btn btn-gold" style="width:100%;font-size:12px" onclick="reconnectFromBanner()">🔄 Save & Reconnect</button>
+    <div id="conn-err-status" style="font-size:11px;margin-top:6px;color:var(--gray-light)"></div>
+  </div>
+
   <div id="kiosk-footer">
     <div style="font-size:11px;color:var(--gray)">
       <span class="en">Vishnu Image Folio Pvt Ltd</span>
@@ -687,31 +697,51 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
   <div class="login-box">
     <div class="login-logo">🔐 Admin Access</div>
     <div class="login-sub">ArtzFolio HRMS — Secure Login</div>
-    <div class="login-role-tabs">
-      <button class="role-tab active" id="rtab-owner" onclick="selectRole('owner')">
-        <span class="en">Owner</span><span class="hi">मालिक</span>
-      </button>
-      <button class="role-tab" id="rtab-manager" onclick="selectRole('manager')">
-        <span class="en">Manager</span><span class="hi">प्रबंधक</span>
-      </button>
-      <button class="role-tab" id="rtab-supervisor" onclick="selectRole('supervisor')">
-        <span class="en">Supervisor</span><span class="hi">पर्यवेक्षक</span>
-      </button>
+
+    <!-- Step 1: Role + Password -->
+    <div id="login-step-1">
+      <div class="login-role-tabs">
+        <button class="role-tab active" id="rtab-owner" onclick="selectRole('owner')">
+          <span class="en">Owner</span><span class="hi">मालिक</span>
+        </button>
+        <button class="role-tab" id="rtab-manager" onclick="selectRole('manager')">
+          <span class="en">Manager</span><span class="hi">प्रबंधक</span>
+        </button>
+        <button class="role-tab" id="rtab-supervisor" onclick="selectRole('supervisor')">
+          <span class="en">Supervisor</span><span class="hi">पर्यवेक्षक</span>
+        </button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="admin-pw-input" class="form-input" type="password" placeholder="Enter password"
+               onkeydown="if(event.key==='Enter')doAdminLogin()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:var(--gray-light)">
+        <input type="checkbox" id="admin-remember-me" style="accent-color:var(--gold)">
+        <label for="admin-remember-me" style="cursor:pointer">Remember my role &amp; password</label>
+      </div>
+      <div id="admin-login-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
+      <button class="btn btn-gold" style="width:100%" onclick="doAdminLogin()">Next →</button>
+      <button class="btn btn-dark btn-sm" style="width:100%;margin-top:10px" onclick="showScreen('kiosk')">← Back to Kiosk</button>
     </div>
-    <div class="form-group">
-      <label class="form-label">Password</label>
-      <input id="admin-pw-input" class="form-input" type="password" placeholder="Enter password"
-             onkeydown="if(event.key==='Enter')doAdminLogin()">
+
+    <!-- Step 2: 2FA code (shown only if 2FA is enabled) -->
+    <div id="login-step-2" style="display:none">
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:28px;margin-bottom:6px">🔒</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold)">Two-Factor Verification</div>
+        <div style="font-size:12px;color:var(--gray-light);margin-top:4px">Enter your 2FA PIN to complete login</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">2FA Security PIN</label>
+        <input id="admin-2fa-input" class="form-input" type="password" maxlength="8" placeholder="Enter 2FA PIN"
+               style="text-align:center;font-size:20px;letter-spacing:4px"
+               onkeydown="if(event.key==='Enter')verify2FA()">
+      </div>
+      <div id="admin-2fa-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
+      <button class="btn btn-gold" style="width:100%" onclick="verify2FA()">✓ Verify &amp; Login</button>
+      <button class="btn btn-dark btn-sm" style="width:100%;margin-top:10px" onclick="back2FAToStep1()">← Back</button>
     </div>
-    <div id="admin-login-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:var(--gray-light)">
-      <input type="checkbox" id="admin-remember-me" style="accent-color:var(--gold)">
-      <label for="admin-remember-me" style="cursor:pointer">Remember my role</label>
-    </div>
-    <button class="btn btn-gold" style="width:100%" onclick="doAdminLogin()">Login</button>
-    <button class="btn btn-dark btn-sm" style="width:100%;margin-top:10px" onclick="showScreen('kiosk')">
-      ← Back to Kiosk
-    </button>
   </div>
 </div>
 
@@ -1131,7 +1161,15 @@ async function init() {
       State.employees = empsRes.employees||[];
       State.empsFetched = Date.now();
     }
-  } catch(e) { toast('Could not load app data. Check internet.', 'error'); }
+  } catch(e) {
+    // Show connection recovery UI directly on kiosk — visible BEFORE login
+    setInterval(updateClock, 1000); updateClock();
+    showScreen('kiosk');
+    buildPinDots();
+    const connBanner = document.getElementById('kiosk-conn-error');
+    if (connBanner) connBanner.style.display = 'block';
+    return;
+  }
   // Start clock
   setInterval(updateClock, 1000); updateClock();
   showScreen('kiosk');
@@ -1702,42 +1740,97 @@ function selectRole(r) {
 }
 async function openAdminLogin() {
   showScreen('admin-login');
-  document.getElementById('admin-pw-input').value='';
+  // Reset to step 1
+  document.getElementById('login-step-1').style.display='block';
+  document.getElementById('login-step-2').style.display='none';
   document.getElementById('admin-login-err').style.display='none';
-  // Restore remembered role
+  // Restore remembered role + password
   const rememberedRole = LS.g('adminRememberRole');
+  const rememberedPw = LS.g('adminRememberPw');
   if (rememberedRole) {
     selectRole(rememberedRole);
     const cb = document.getElementById('admin-remember-me');
     if (cb) cb.checked = true;
   }
+  if (rememberedPw) {
+    document.getElementById('admin-pw-input').value = rememberedPw;
+  } else {
+    document.getElementById('admin-pw-input').value = '';
+  }
 }
 async function doAdminLogin() {
   const pw = document.getElementById('admin-pw-input').value;
   const errEl = document.getElementById('admin-login-err');
-  const settings = State.settings;
+  errEl.style.display='none';
+  const settings = State.settings||{};
   const pwMap = {
     owner: settings.adminPassword||'ArtzFolio@2026',
     manager: settings.managerPassword||'Manager@2026',
     supervisor: settings.supervisorPassword||'Supervisor@2026',
   };
   if (pw === pwMap[selectedRole]) {
-    State.adminRole = selectedRole;
-    State.adminUser = selectedRole;
-    // Save remembered role if checkbox checked
+    // Save remember-me
     const rememberCb = document.getElementById('admin-remember-me');
-    if (rememberCb?.checked) { LS.s('adminRememberRole', selectedRole); } else { LS.d('adminRememberRole'); }
-    document.getElementById('admin-brand-role').textContent = `Role: ${selectedRole.charAt(0).toUpperCase()+selectedRole.slice(1)}`;
-    document.getElementById('admin-user-info').textContent = selectedRole.toUpperCase();
-    showScreen('admin');
-    applyRolePermissions();
-    await switchTab('dashboard');
-    checkPendingLeaves();
+    if (rememberCb?.checked) {
+      LS.s('adminRememberRole', selectedRole);
+      LS.s('adminRememberPw', pw);
+    } else {
+      LS.d('adminRememberRole'); LS.d('adminRememberPw');
+    }
+    // Check if 2FA is enabled
+    const twoFAEnabled = LS.g('twoFAEnabled') === true;
+    const twoFASecret = LS.g('twoFASecret')||'';
+    if (twoFAEnabled && twoFASecret) {
+      // Show step 2
+      window._pendingLoginRole = selectedRole;
+      document.getElementById('login-step-1').style.display='none';
+      document.getElementById('login-step-2').style.display='block';
+      document.getElementById('admin-2fa-input').value='';
+      document.getElementById('admin-2fa-err').style.display='none';
+      setTimeout(()=>document.getElementById('admin-2fa-input').focus(), 100);
+    } else {
+      await completeAdminLogin(selectedRole);
+    }
   } else {
     errEl.textContent='Incorrect password. Try again.';
     errEl.style.display='block';
+    // Clear remembered password if wrong
+    LS.d('adminRememberPw');
   }
 }
+
+function verify2FA() {
+  const code = (document.getElementById('admin-2fa-input')?.value||'').trim();
+  const secret = LS.g('twoFASecret')||'';
+  const errEl = document.getElementById('admin-2fa-err');
+  if (!code) { errEl.textContent='Enter your 2FA PIN.'; errEl.style.display='block'; return; }
+  if (code === secret) {
+    errEl.style.display='none';
+    completeAdminLogin(window._pendingLoginRole || selectedRole);
+  } else {
+    errEl.textContent='Wrong 2FA PIN. Try again.';
+    errEl.style.display='block';
+    document.getElementById('admin-2fa-input').value='';
+  }
+}
+
+function back2FAToStep1() {
+  document.getElementById('login-step-1').style.display='block';
+  document.getElementById('login-step-2').style.display='none';
+  window._pendingLoginRole = null;
+}
+
+async function completeAdminLogin(role) {
+  State.adminRole = role;
+  State.adminUser = role;
+  document.getElementById('admin-brand-role').textContent = `Role: ${role.charAt(0).toUpperCase()+role.slice(1)}`;
+  document.getElementById('admin-user-info').textContent = role.toUpperCase();
+  showScreen('admin');
+  applyRolePermissions();
+  await switchTab('dashboard');
+  checkPendingLeaves();
+}
+
 function adminLogout() { State.adminRole=null; State.adminUser=null; showScreen('kiosk'); }
 function goBackToKiosk() { showScreen('kiosk'); }
 function toggleSidebar() {
@@ -3657,9 +3750,38 @@ function sortReportBy(col) {
 // SETTINGS TAB
 // ═══════════════════════════════════════════
 async function renderSettings() {
-  const [settingsRes,msRes,bandsRes,orgsRes,holRes]=await Promise.all([
-    API.call('getSettings'),API.call('getMilestones'),API.call('getSalaryBands'),API.call('getOrgs'),API.call('getHolidays')
-  ]);
+  let settingsRes={settings:[]}, msRes={milestones:[]}, bandsRes={bands:[]}, orgsRes={orgs:[]}, holRes={holidays:[]};
+  let gasConnected = true;
+  try {
+    [settingsRes,msRes,bandsRes,orgsRes,holRes]=await Promise.all([
+      API.call('getSettings'),API.call('getMilestones'),API.call('getSalaryBands'),API.call('getOrgs'),API.call('getHolidays')
+    ]);
+  } catch(e) {
+    gasConnected = false;
+    // Render just the connection fix section so admin can update the URL without needing a working connection
+    document.getElementById('admin-tab-content').innerHTML = `
+    <div style="max-width:520px;margin:32px auto;background:var(--dark2);border:1px solid var(--red);border-radius:12px;padding:24px">
+      <div style="font-size:16px;font-weight:700;color:var(--red);margin-bottom:6px">⚠ Cannot reach Google Apps Script</div>
+      <div style="font-size:12px;color:var(--gray-light);margin-bottom:18px">
+        This usually happens when you created a <strong>new deployment</strong> in GAS (which gives a new URL), but the app still has the old URL saved.<br><br>
+        Paste your new GAS Web App URL below and click Reconnect.
+      </div>
+      <div class="form-group">
+        <label class="form-label">GAS Web App URL</label>
+        <input id="cfg-gasUrl" class="form-input" type="url" value="${escHtml(LS.g('gasUrl')||CFG.gasUrl||'')}" placeholder="https://script.google.com/macros/s/…/exec">
+      </div>
+      <div class="form-group">
+        <label class="form-label">API Token</label>
+        <input id="cfg-gasToken" class="form-input" type="text" value="${escHtml(LS.g('token')||CFG.token||'AZ_TOKEN_2026')}" placeholder="AZ_TOKEN_2026">
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn btn-gold" onclick="saveConnectionSettings()">🔄 Save & Reconnect</button>
+        <button class="btn btn-dark btn-sm" onclick="if(confirm('Clear saved URL and restart setup?')){LS.d('gasUrl');LS.d('token');location.reload();}">Reset Setup</button>
+      </div>
+      <div id="conn-test-status" style="margin-top:10px;font-size:12px;min-height:16px"></div>
+    </div>`;
+    return;
+  }
   const cfg={};
   (settingsRes.settings||[]).forEach(s=>cfg[s.key]=s.value);
   const ms=msRes.milestones||[];
@@ -3757,6 +3879,43 @@ async function renderSettings() {
       ${cfgField('factoryRadius','Attendance Radius (metres)')}
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveCompanySettings()">💾 Save Company Info</button>
+  </div>
+
+  <!-- 2FA Security Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">🔒 Two-Factor Authentication (2FA)</div>
+    <p style="font-size:12px;color:var(--gray-light);margin-bottom:14px">
+      When enabled, every admin login requires both the password AND a secret PIN. This prevents unauthorized access even if someone knows the password.
+    </p>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="cfg-2fa-enabled" ${LS.g('twoFAEnabled')===true?'checked':''} style="accent-color:var(--gold);width:16px;height:16px">
+        <span>Enable Two-Factor Authentication</span>
+      </label>
+    </div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">2FA Secret PIN (4–8 digits)</label>
+        <input id="cfg-2fa-secret" class="form-input" type="password" maxlength="8"
+          value="${escHtml(LS.g('twoFASecret')||'')}"
+          placeholder="Set a new secret PIN…" autocomplete="new-password">
+        <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
+          This PIN is required after entering the password. Keep it different from your login password.
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm 2FA PIN</label>
+        <input id="cfg-2fa-secret-confirm" class="form-input" type="password" maxlength="8"
+          placeholder="Re-enter to confirm…" autocomplete="new-password">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+      <button class="btn btn-gold" onclick="save2FASettings()">💾 Save 2FA Settings</button>
+      <button class="btn btn-dark btn-sm" onclick="if(confirm('Disable 2FA and clear the PIN?')){LS.s('twoFAEnabled',false);LS.d('twoFASecret');toast('2FA disabled','success');}">Disable 2FA</button>
+    </div>
+    <div id="twofa-status" style="margin-top:8px;font-size:12px;min-height:14px;color:${LS.g('twoFAEnabled')===true?'var(--green)':'var(--gray-light)'}">
+      ${LS.g('twoFAEnabled')===true?'✓ 2FA is currently ENABLED':'2FA is currently disabled'}
+    </div>
   </div>
 
   <!-- Automation Settings -->
@@ -4052,6 +4211,49 @@ async function saveConnectionSettings() {
   } catch(e) {
     CFG.gasUrl = oldUrl; CFG.token = oldToken;
     statusEl.textContent = '✗ Error: '+e.message; statusEl.style.color='var(--red)';
+  }
+}
+
+function save2FASettings() {
+  const enabled = document.getElementById('cfg-2fa-enabled')?.checked;
+  const secret = (document.getElementById('cfg-2fa-secret')?.value||'').trim();
+  const confirm = (document.getElementById('cfg-2fa-secret-confirm')?.value||'').trim();
+  const statusEl = document.getElementById('twofa-status');
+  if (enabled && (!secret || secret.length < 4)) {
+    statusEl.textContent='✗ PIN must be at least 4 digits.'; statusEl.style.color='var(--red)'; return;
+  }
+  if (enabled && secret !== confirm) {
+    statusEl.textContent='✗ PINs do not match. Try again.'; statusEl.style.color='var(--red)'; return;
+  }
+  LS.s('twoFAEnabled', enabled === true);
+  if (enabled && secret) { LS.s('twoFASecret', secret); }
+  else if (!enabled) { LS.d('twoFASecret'); }
+  statusEl.textContent = enabled ? '✓ 2FA ENABLED — login will now require PIN after password' : '2FA disabled.';
+  statusEl.style.color = enabled ? 'var(--green)' : 'var(--gray-light)';
+  toast(enabled ? '✓ 2FA enabled successfully!' : '2FA disabled', enabled ? 'success' : 'info');
+}
+
+async function reconnectFromBanner() {
+  const url = (document.getElementById('conn-err-url')?.value||'').trim();
+  const token = (document.getElementById('conn-err-token')?.value||'').trim() || 'AZ_TOKEN_2026';
+  const statusEl = document.getElementById('conn-err-status');
+  if (!url) { statusEl.textContent='Please paste the GAS URL above.'; statusEl.style.color='var(--red)'; return; }
+  statusEl.textContent='Testing connection…'; statusEl.style.color='var(--gold-light)';
+  const oldUrl=CFG.gasUrl, oldToken=CFG.token;
+  CFG.gasUrl=url; CFG.token=token;
+  try {
+    const ok = await API.ping();
+    if (ok) {
+      LS.s('gasUrl',url); LS.s('token',token);
+      statusEl.textContent='✓ Connected! Reloading app…'; statusEl.style.color='var(--green)';
+      setTimeout(()=>location.reload(), 1200);
+    } else {
+      CFG.gasUrl=oldUrl; CFG.token=oldToken;
+      statusEl.textContent='✗ Connection failed. Check URL / token.'; statusEl.style.color='var(--red)';
+    }
+  } catch(e) {
+    CFG.gasUrl=oldUrl; CFG.token=oldToken;
+    statusEl.textContent='✗ Error: '+e.message; statusEl.style.color='var(--red)';
   }
 }
 
