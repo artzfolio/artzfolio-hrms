@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#111111">
 <title>ArtzFolio HRMS v2</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ───────────────────────────────────────────
    BASE & VARIABLES
@@ -192,8 +193,8 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 .gps-off{background:rgba(136,136,136,0.15);color:var(--gray);border:1px solid var(--gray)}
 
 #kiosk-footer{padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-#admin-link-btn{background:none;color:var(--dark3);font-size:11px;padding:4px 8px;border-radius:4px;transition:var(--trans)}
-#admin-link-btn:hover{color:var(--gold-dim)}
+#admin-link-btn{background:var(--dark2);color:var(--gold-dim);font-size:12px;font-weight:700;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--gold-dim);transition:var(--trans);letter-spacing:0.5px}
+#admin-link-btn:hover{background:var(--gold);color:var(--black);border-color:var(--gold)}
 
 /* ───────────────────────────────────────────
    ADMIN LOGIN SCREEN
@@ -241,12 +242,61 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 
 /* Sidebar mobile toggle */
 #sidebar-toggle{display:none;background:none;color:var(--gold);font-size:1.4rem;padding:4px 8px}
+/* Mobile overlay when sidebar is open */
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999}
+#sidebar-overlay.show{display:block}
+
 @media(max-width:768px){
+  /* Sidebar slides in */
   #admin-sidebar{position:fixed;left:-220px;top:0;bottom:0;z-index:1000;transition:left 0.3s ease}
   #admin-sidebar.open{left:0}
   #sidebar-toggle{display:block}
   #admin-topbar{padding:10px 14px}
-  #admin-search-global{width:140px}
+  #admin-search-global{width:120px}
+
+  /* Kiosk — stack PIN pad nicely */
+  #kiosk-footer{flex-direction:row;gap:6px}
+  #admin-link-btn{font-size:11px;padding:5px 10px}
+  #ec-header{flex-direction:column;gap:8px}
+  #ec-actions{grid-template-columns:repeat(2,1fr)}
+
+  /* Tables scroll horizontally */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* Section header stacks */
+  .section-hdr{flex-direction:column;align-items:flex-start;gap:8px}
+  .section-actions{flex-wrap:wrap;gap:6px}
+
+  /* Settings grid single column */
+  .settings-grid{grid-template-columns:1fr}
+
+  /* Form rows stack */
+  .form-row{flex-direction:column}
+
+  /* Filters bar wraps */
+  .filters-bar{flex-wrap:wrap;gap:6px}
+
+  /* Modals */
+  .modal-box{max-width:95vw;max-height:90vh;margin:16px}
+
+  /* Payroll summary stats */
+  .payroll-summary{flex-direction:column;gap:8px}
+
+  /* Admin content full padding on mobile */
+  #admin-tab-content{padding:12px 10px}
+
+  /* Cards in employee view */
+  .emp-card-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:480px){
+  /* Very small phones */
+  .az-table th, .az-table td{padding:6px 8px;font-size:11px}
+  .btn-sm{padding:5px 8px;font-size:11px}
+  #kiosk-pin-display{font-size:2rem;letter-spacing:8px}
+  .kiosk-num-btn{width:70px;height:70px;font-size:1.3rem}
+  #admin-brand-name{font-size:0.9rem}
+  .milestone-row{flex-wrap:wrap}
 }
 
 /* ───────────────────────────────────────────
@@ -400,6 +450,18 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 .ms-detail{flex:1}
 .ms-reward{font-weight:700;font-size:13px}
 .ms-desc{font-size:12px;color:var(--gray-light);margin-top:4px}
+
+/* level picker checkboxes */
+.level-picker{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.level-chip{display:inline-flex;align-items:center;gap:4px;background:var(--dark3);border:1px solid var(--dark3);border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer;transition:var(--trans);user-select:none}
+.level-chip input[type=checkbox]{display:none}
+.level-chip.selected{background:var(--gold);color:var(--black);border-color:var(--gold);font-weight:700}
+.level-chip:hover{border-color:var(--gold-dim)}
+
+/* bulk import styles */
+.bulk-btn{background:var(--dark3);color:var(--gold-dim);border:1px dashed var(--gold-dim);border-radius:var(--radius-sm);padding:6px 14px;font-size:12px;cursor:pointer;transition:var(--trans)}
+.bulk-btn:hover{background:var(--gold);color:var(--black);border-color:var(--gold)}
+.bulk-import-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;padding:10px;background:var(--dark3);border-radius:var(--radius-sm)}
 
 /* salary bands */
 .band-row{background:var(--dark3);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:grid;grid-template-columns:80px repeat(4,1fr);gap:10px;align-items:center}
@@ -605,7 +667,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
     <div style="font-size:11px;color:var(--gray)">
       <span class="en">Vishnu Image Folio Pvt Ltd</span>
     </div>
-    <button id="admin-link-btn" onclick="openAdminLogin()" title="Admin Panel">⚙</button>
+    <button id="admin-link-btn" onclick="openAdminLogin()" title="Admin / Manager Login">⚙ ADMIN</button>
   </div>
 </div><!-- /screen-kiosk -->
 
@@ -644,6 +706,9 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
      ADMIN PANEL SCREEN
 ═══════════════════════════════════════════ -->
 <div class="screen" id="screen-admin">
+
+  <!-- Sidebar overlay (mobile tap-to-close) -->
+  <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
   <!-- Sidebar -->
   <div id="admin-sidebar">
@@ -1599,8 +1664,15 @@ function adminLogout() { State.adminRole=null; State.adminUser=null; showScreen(
 function goBackToKiosk() { showScreen('kiosk'); }
 function toggleSidebar() {
   const sb=document.getElementById('admin-sidebar');
+  const ov=document.getElementById('sidebar-overlay');
   State.sidebarOpen=!State.sidebarOpen;
   sb.className = State.sidebarOpen ? 'open' : '';
+  if(ov){ ov.className = State.sidebarOpen ? 'show' : ''; }
+}
+function closeSidebar() {
+  const sb=document.getElementById('admin-sidebar');
+  const ov=document.getElementById('sidebar-overlay');
+  State.sidebarOpen=false; sb.className=''; if(ov)ov.className='';
 }
 async function checkPendingLeaves() {
   try {
@@ -1616,6 +1688,7 @@ async function checkPendingLeaves() {
 // ═══════════════════════════════════════════
 async function switchTab(tab) {
   State.currentTab = tab;
+  closeSidebar(); // auto-close sidebar on mobile when navigating
   document.querySelectorAll('.nav-item').forEach(n=>{n.className='nav-item'+(n.dataset.tab===tab?' active':'');});
   document.getElementById('admin-page-title').textContent = tab.charAt(0).toUpperCase()+tab.slice(1);
   document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
@@ -1705,7 +1778,9 @@ async function renderEmployees(filter='') {
     <div class="section-title">Employees <small>${emps.length} shown</small></div>
     <div class="section-actions">
       ${canEdit?`<button class="btn btn-gold btn-sm" onclick="showAddEmpModal()">+ Add Employee</button>`:''}
-      <button class="btn btn-dark btn-sm" onclick="exportCSV(State.employees,'employees')">Export CSV</button>
+      ${canEdit?`<button class="btn btn-dark btn-sm" onclick="bulkImportEmployees()">📥 Bulk Import</button>`:''}
+      <button class="btn btn-dark btn-sm" onclick="exportCSV(State.employees,'employees')">📤 Export CSV</button>
+      <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Employees.xlsx','Employees',['id','name','dept','level','salary','mobile','shiftStart','shiftEnd','weeklyOff1','weeklyOff2','doj','status'],State.employees.map(e=>[e.id,e.name,e.dept,e.level,e.salary,e.mobile,e.shiftStart,e.shiftEnd,e.weeklyOff1,e.weeklyOff2,e.doj,e.status]))">📊 Export Excel</button>
     </div>
   </div>
   <div class="filters-bar">
@@ -2174,7 +2249,10 @@ async function renderLeaves() {
     html+='</div>';
   }
   html+=`<div class="section-hdr" style="margin-top:16px"><div class="section-title">All Leaves (${all.length})</div>
-    <div class="section-actions"><button class="btn btn-gold btn-sm" onclick="showAdminLeaveModal()">+ Add Leave</button></div></div>
+    <div class="section-actions">
+      <button class="btn btn-gold btn-sm" onclick="showAdminLeaveModal()">+ Add Leave</button>
+      <button class="btn btn-dark btn-sm" onclick="bulkImportLeaves()">📥 Bulk Import</button>
+    </div></div>
   <div class="filters-bar">
     <select class="filter-input" id="lf-status" onchange="filterLeaves()"><option value="">All Status</option><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option><option value="Auto">Auto-UL</option></select>
     <input class="filter-input" id="lf-emp" type="text" placeholder="Filter by employee…" oninput="filterLeaves()">
@@ -2248,7 +2326,10 @@ async function renderTransactions() {
   const html=`
   <div class="section-hdr">
     <div class="section-title">Transactions / लेनदेन</div>
-    <div class="section-actions"><button class="btn btn-gold btn-sm" onclick="showAddTransModal()">+ Add Transaction</button></div>
+    <div class="section-actions">
+      <button class="btn btn-gold btn-sm" onclick="showAddTransModal()">+ Add Transaction</button>
+      <button class="btn btn-dark btn-sm" onclick="bulkImportTransactions()">📥 Bulk Import</button>
+    </div>
   </div>
   <div class="filters-bar">
     <select id="tr-emp" class="filter-input" onchange="loadTransactions()"><option value="">All Employees</option>${empOpts}</select>
@@ -2548,7 +2629,8 @@ async function generateAllSalaries() {
     <div><div style="font-size:1.2rem;font-weight:700">${salaries.length}</div><div style="font-size:11px;color:var(--gray-light)">Employees</div></div>
   </div>
   <div class="section-actions" style="margin-bottom:12px;display:flex;gap:8px">
-    <button class="btn btn-dark btn-sm" onclick="exportPayrollCSV()">📥 Export CSV</button>
+    <button class="btn btn-dark btn-sm" onclick="exportPayrollCSV()">📤 Export CSV</button>
+    <button class="btn btn-dark btn-sm" onclick="exportPayrollXLSX()">📊 Export Excel</button>
     <button class="btn btn-dark btn-sm" onclick="printAllSlips()">🖨 Print All Slips</button>
   </div>
   <div class="table-wrap"><table class="az-table">
@@ -2684,6 +2766,14 @@ function exportPayrollCSV() {
   const headers=['Name','Dept','Level','Base Salary','Days in Month','Present Days','Working Days','UL Days','Late Count','OT Days','Daily Rate','Earned Salary','UL Deduction','Late Deduction','Sandwich Ded','OT Earnings','EW Earnings','Travel Rate/Day','Travel Earnings','Advances','Loans','Bonuses','Penalties','Night Allow','Gross Salary','Net Salary'];
   const rows=data.map(s=>[s.name,s.dept,s.level,s.baseSalary,s.daysInMonth,s.presentDays,s.workingDays,s.UL,s.lateCount,s.otDays||0,Math.round(s.dailyRate||0),Math.round(s.earnedSalary||0),Math.round(s.ulDeduction||0),Math.round(s.lateDeduction||0),Math.round(s.sandwichDeduction||0),Math.round(s.otEarnings||0),Math.round(s.ewEarnings||0),Math.round(s.travelRatePerDay||0),Math.round(s.travelEarnings||0),Math.round(s.advances||0),Math.round(s.loans||0),Math.round(s.bonuses||0),Math.round(s.penalties||0),Math.round(s.nightAllowance||0),Math.round(s.grossSalary||0),Math.round(s.netSalary||0)]);
   downloadCSV(`ArtzFolio_Salary_${meta.year}_${String(meta.month).padStart(2,'0')}.csv`, [headers,...rows]);
+}
+
+function exportPayrollXLSX() {
+  const data=window._lastPayroll||[];
+  const meta=window._lastPayrollMeta||{year:2026,month:4};
+  const headers=['Name','Dept','Level','Base Salary','Days in Month','Present Days','Working Days','UL Days','Late Count','OT Days','Daily Rate','Earned Salary','UL Deduction','Late Deduction','Sandwich Ded','OT Earnings','EW Earnings','Travel Rate/Day','Travel Earnings','Advances','Loans','Bonuses','Penalties','Night Allow','Gross Salary','Net Salary'];
+  const rows=data.map(s=>[s.name||s.empName,s.dept,s.level,s.baseSalary,s.daysInMonth,s.presentDays,s.workingDays,s.UL,s.lateCount,s.otDays||0,Math.round(s.dailyRate||0),Math.round(s.earnedSalary||0),Math.round(s.ulDeduction||0),Math.round(s.lateDeduction||0),Math.round(s.sandwichDeduction||0),Math.round(s.otEarnings||0),Math.round(s.ewEarnings||0),Math.round(s.travelRatePerDay||0),Math.round(s.travelEarnings||0),Math.round(s.advances||0),Math.round(s.loans||0),Math.round(s.bonuses||0),Math.round(s.penalties||0),Math.round(s.nightAllowance||0),Math.round(s.grossSalary||0),Math.round(s.netSalary||0)]);
+  downloadXLSX(`ArtzFolio_Salary_${meta.year}_${String(meta.month).padStart(2,'0')}.xlsx`,'Payroll',headers,rows);
 }
 
 // ═══════════════════════════════════════════
@@ -2907,6 +2997,21 @@ async function renderSettings() {
     return `<div class="form-group"><label class="form-label">${escHtml(label)}</label>
     <input id="cfg-${escHtml(key)}" class="form-input" type="${type}" value="${escHtml(cfg[key]||'')}" ${extra}></div>`;
   }
+  // Level multi-select checkbox picker — renders L1-L10 chips; value stored in hidden input
+  function levelPickerField(key, label, selectedCsv) {
+    const selected = (selectedCsv||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const ALL_LEVELS = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
+    const chips = ALL_LEVELS.map(l => {
+      const isSel = selected.includes(l);
+      return `<label class="level-chip ${isSel?'selected':''}" onclick="toggleLevelChip(this,'cfg-${escHtml(key)}')">
+        <input type="checkbox" value="${l}" ${isSel?'checked':''}/>${l}
+      </label>`;
+    }).join('');
+    return `<div class="form-group" style="grid-column:span 2"><label class="form-label">${escHtml(label)}</label>
+      <input type="hidden" id="cfg-${escHtml(key)}" value="${escHtml(selectedCsv||'')}">
+      <div class="level-picker" id="lp-${escHtml(key)}">${chips}</div>
+    </div>`;
+  }
   let html=`
   <!-- Policy Settings -->
   <div class="settings-section">
@@ -2932,8 +3037,8 @@ async function renderSettings() {
     <div class="settings-section-title" style="margin-top:18px">⏱ Overtime & Night Shift Pay Settings</div>
     <div class="settings-grid">
       ${cfgField('otMinHoursThreshold','Min OT Hours Per Day (session must be ≥ this to count)')}
-      ${cfgField('otEligibleLevels','OT Pay Eligible Levels (comma-separated, e.g. L6,L7,L8,L9,L10)')}
-      ${cfgField('nightShiftEligibleLevels','Night Shift Pay Eligible Levels (comma-separated)')}
+      ${levelPickerField('otEligibleLevels','OT Pay Eligible Levels',cfg['otEligibleLevels']||'L6,L7,L8,L9,L10')}
+      ${levelPickerField('nightShiftEligibleLevels','Night Shift Pay Eligible Levels',cfg['nightShiftEligibleLevels']||'L6,L7,L8,L9,L10')}
       ${cfgField('otMultiplier','OT Pay Multiplier (e.g. 1.5 = 1.5× daily rate per OT day)')}
       ${cfgField('nightShiftMultiplier','Night Shift Allowance Multiplier (e.g. 1.5 = 1.5× base allowance)')}
     </div>
@@ -2960,7 +3065,7 @@ async function renderSettings() {
   <div class="settings-section">
     <div class="settings-section-title">⭐ Points & Bonus Settings</div>
     <div class="settings-grid">
-      ${cfgField('pointsEligibleLevels','Points Eligible Levels (comma-separated, e.g. L8,L9,L10)')}
+      ${levelPickerField('pointsEligibleLevels','Points Competition Eligible Levels',cfg['pointsEligibleLevels']||'L8,L9,L10')}
       ${cfgField('points1stPrize','1st Prize (₹)')}
       ${cfgField('points2ndPrize','2nd Prize (₹)')}
       ${cfgField('points3rdPrize','3rd Prize (₹)')}
@@ -2980,9 +3085,15 @@ async function renderSettings() {
           <input class="form-input" id="ms-rw-${m.years}" value="${escHtml(m.reward)}" placeholder="Reward description">
           <input class="form-input" id="ms-ds-${m.years}" value="${escHtml(m.description||'')}" placeholder="Details…" style="margin-top:6px">
         </div>
-        <div style="display:flex;flex-direction:column;gap:6px;min-width:100px">
-          <input class="form-input" id="ms-cb-${m.years}" type="number" value="${m.cashBonus||0}" placeholder="Cash ₹">
-          <input class="form-input" id="ms-lb-${m.years}" type="number" value="${m.leaveBonus||0}" placeholder="Leave days">
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:130px">
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">💰 Cash Bonus (₹)</div>
+            <input class="form-input" id="ms-cb-${m.years}" type="number" value="${m.cashBonus||0}" placeholder="0">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">🌴 Extra Leaves (days)</div>
+            <input class="form-input" id="ms-lb-${m.years}" type="number" value="${m.leaveBonus||0}" placeholder="0">
+          </div>
         </div>
         <button class="btn btn-gold btn-sm" onclick="saveMilestone(${m.years})">Save</button>
       </div>`).join('')}
@@ -3010,7 +3121,13 @@ async function renderSettings() {
 
   <!-- Holidays -->
   <div class="settings-section">
-    <div class="settings-section-title">📅 Holidays Calendar</div>
+    <div class="settings-section-title">📅 Holidays Calendar
+      <span style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-dark btn-sm" onclick="loadDefaultHolidays()" title="Load all major Indian 2026 holidays">🇮🇳 Load Indian Defaults</button>
+        <button class="btn btn-dark btn-sm" onclick="bulkImportHolidays()">📥 Bulk Import</button>
+        <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Holidays.xlsx','Holidays',['date','name','type','applicableTo'],${JSON.stringify(hols.map(h=>[h.date,h.name,h.type,h.applicableTo]))})">📤 Export</button>
+      </span>
+    </div>
     <div id="holidays-list">
     ${hols.map(h=>`<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
       <span style="font-size:12px;min-width:120px">${fmtDate(h.date)}</span>
@@ -3083,6 +3200,232 @@ async function savePointsSettings() {
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   const res=await API.call('updateSettings',{updates});
   if(res.ok){toast('✓ Points settings saved','success');}else toast('Error','error');
+}
+
+// Toggle level chip selection and sync hidden input
+function toggleLevelChip(chip, hiddenId) {
+  chip.classList.toggle('selected');
+  const checked = chip.classList.contains('selected');
+  const cb = chip.querySelector('input[type=checkbox]');
+  if (cb) cb.checked = checked;
+  // Rebuild hidden input value from all chips in the same picker
+  const picker = chip.closest('.level-picker');
+  if (!picker) return;
+  const vals = Array.from(picker.querySelectorAll('label.selected input[type=checkbox]')).map(c=>c.value);
+  const hidden = document.getElementById(hiddenId);
+  if (hidden) hidden.value = vals.join(',');
+}
+
+// ─── Excel / bulk utilities ──────────────────────────────────────────────────
+const ALL_LEVELS = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
+
+// Generate and download an Excel workbook with one sheet (headers + optional data rows)
+function downloadXLSX(filename, sheetName, headers, rows=[]) {
+  const wb = XLSX.utils.book_new();
+  const wsData = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  // Style header row
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cellRef = XLSX.utils.encode_cell({r:0, c});
+    if (!ws[cellRef]) ws[cellRef] = {v: headers[c]};
+    ws[cellRef].s = {font:{bold:true}, fill:{fgColor:{rgb:'1A1A2E'}}};
+  }
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename);
+}
+
+// Parse an uploaded Excel/CSV file and return array of objects keyed by header row
+function parseXLSX(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'binary', cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        resolve(rows);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsBinaryString(file);
+  });
+}
+
+// Show a modal to bulk-import from Excel
+async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction) {
+  let parsedRows = [];
+  const html = `
+  <div style="font-size:13px">
+    <p style="color:var(--gray-light);margin-bottom:12px">
+      1. Download the template → fill in data → upload the completed file.<br>
+      Required columns are marked with <strong style="color:var(--gold)">*</strong>
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn btn-dark btn-sm" onclick="downloadXLSX('${templateFilename}','Sheet1',${JSON.stringify(templateHeaders)})">📥 Download Template (.xlsx)</button>
+      <label class="bulk-btn" style="margin:0">
+        📂 Upload Excel / CSV
+        <input type="file" id="bulk-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleBulkFileSelect(this,'bulk-preview','bulk-status')">
+      </label>
+    </div>
+    <div id="bulk-status" style="font-size:12px;color:var(--gold-light);min-height:20px"></div>
+    <div id="bulk-preview" style="max-height:180px;overflow-y:auto;font-size:12px;margin-top:8px"></div>
+  </div>`;
+  showModal(title, html, [
+    {label:'✅ Import All Rows', cls:'btn-gold', cb: async () => {
+      parsedRows = window._bulkRows || [];
+      if (!parsedRows.length) { toast('No rows to import','warning'); return; }
+      let ok=0, fail=0;
+      toast(`Importing ${parsedRows.length} rows…`, 'info', 3000);
+      for (const row of parsedRows) {
+        try {
+          const payload = rowProcessor(row);
+          if (!payload) { fail++; continue; }
+          const res = await API.call(confirmAction, payload);
+          if (res.ok) ok++; else fail++;
+        } catch(e) { fail++; }
+      }
+      closeModal();
+      toast(`✓ Imported ${ok} rows${fail?' | '+fail+' failed':''}`, ok>0?'success':'error', 5000);
+      window._bulkRows = [];
+      await refreshCurrentTab();
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:()=>{window._bulkRows=[];closeModal();}},
+  ]);
+  window._bulkRows = [];
+}
+
+async function handleBulkFileSelect(input, previewId, statusId) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById(statusId);
+  const preview = document.getElementById(previewId);
+  status.textContent = 'Parsing file…';
+  try {
+    const rows = await parseXLSX(file);
+    window._bulkRows = rows;
+    status.innerHTML = `<span style="color:var(--green)">✓ ${rows.length} rows found. Review below, then click Import.</span>`;
+    if (rows.length > 0) {
+      const keys = Object.keys(rows[0]);
+      preview.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr>${keys.map(k=>`<th style="padding:3px 6px;background:var(--dark3);color:var(--gold);text-align:left;white-space:nowrap">${escHtml(k)}</th>`).join('')}</tr>
+        ${rows.slice(0,8).map(r=>`<tr>${keys.map(k=>`<td style="padding:2px 6px;border-bottom:1px solid var(--dark3)">${escHtml(String(r[k]||''))}</td>`).join('')}</tr>`).join('')}
+        ${rows.length>8?`<tr><td colspan="${keys.length}" style="padding:4px 6px;color:var(--gray-light);text-align:center">…and ${rows.length-8} more rows</td></tr>`:''}
+      </table>`;
+    }
+  } catch(e) {
+    status.innerHTML = `<span style="color:var(--red)">✗ Error parsing file: ${escHtml(e.message)}</span>`;
+  }
+}
+
+// Refresh whatever tab is currently active after bulk import
+async function refreshCurrentTab() {
+  const active = document.querySelector('.nav-item.active');
+  if (!active) return;
+  const tab = active.getAttribute('data-tab');
+  if (tab === 'employees') await renderEmployees();
+  else if (tab === 'attendance') { /* no-op */ }
+  else if (tab === 'leaves') await renderLeaves();
+  else if (tab === 'settings') await renderSettings();
+  else if (tab === 'payroll') { /* no-op */ }
+}
+
+// ─── Bulk Import launchers ───────────────────────────────────────────────────
+function bulkImportEmployees() {
+  const headers = ['name *','level *','salary *','pin *','shiftStart','shiftEnd','dailyHours','weeklyOff1','weeklyOff2','mobile','email','dept','category','doj','dob','gender','aadhaar','noticeperiodDays','nightShiftAllowance','travelAllowance','otBaseHours','notes'];
+  openBulkImportModal('👥 Bulk Import Employees', headers, 'ArtzFolio_Employee_Template.xlsx', row => {
+    if (!row['name *'] || !row['level *'] || !row['salary *'] || !row['pin *']) return null;
+    return {
+      name: row['name *'], level: row['level *'], salary: row['salary *'], pin: String(row['pin *']),
+      shiftStart: row['shiftStart']||'09:00', shiftEnd: row['shiftEnd']||'19:00',
+      dailyHours: row['dailyHours']||10, workDaysPerWeek: row['workDaysPerWeek']||6,
+      weeklyOff1: row['weeklyOff1']||'Sunday', weeklyOff2: row['weeklyOff2']||'',
+      mobile: row['mobile']||'', email: row['email']||'', dept: row['dept']||row['level *'],
+      category: row['category']||'Workforce', doj: row['doj']||todayStr(),
+      dob: row['dob']||'', gender: row['gender']||'Male', aadhaar: row['aadhaar']||'',
+      noticeperiodDays: row['noticeperiodDays']||90,
+      nightShiftAllowance: row['nightShiftAllowance']||0,
+      travelAllowance: row['travelAllowance']||0,
+      otBaseHours: row['otBaseHours']||9,
+      notes: row['notes']||'',
+    };
+  }, 'addEmployee');
+}
+
+function bulkImportTransactions() {
+  const headers = ['empId *','date *','type *','amount *','note','approvedBy'];
+  const TYPES = 'Advance | Loan | Bonus | Penalty | DamageRecovery | LateFine | KYCFee | PINReactivationFee | Increment';
+  openBulkImportModal(
+    `💸 Bulk Import Transactions\n(Types: ${TYPES})`,
+    headers, 'ArtzFolio_Transaction_Template.xlsx',
+    row => {
+      if (!row['empId *'] || !row['date *'] || !row['type *'] || !row['amount *']) return null;
+      return {empId:row['empId *'], date:row['date *'], type:row['type *'],
+              amount:parseFloat(row['amount *'])||0, note:row['note']||'',
+              approvedBy:row['approvedBy']||State.adminUser||'Admin', status:'Applied'};
+    }, 'addTransaction');
+}
+
+function bulkImportLeaves() {
+  const headers = ['empId *','type *','startDate *','endDate *','note','urgency'];
+  const TYPES = 'IL | UL | SL | PL | IHL | UHL';
+  openBulkImportModal(
+    `📋 Bulk Import Leaves (Types: ${TYPES})`,
+    headers, 'ArtzFolio_Leave_Template.xlsx',
+    row => {
+      if (!row['empId *'] || !row['type *'] || !row['startDate *'] || !row['endDate *']) return null;
+      return {empId:row['empId *'], type:row['type *'],
+              startDate:row['startDate *'], endDate:row['endDate *'],
+              note:row['note']||'', urgency:row['urgency']||'normal'};
+    }, 'requestLeave');
+}
+
+async function bulkImportHolidays() {
+  const headers = ['date *','name *','type','applicableTo'];
+  openBulkImportModal('📅 Bulk Import Holidays', headers, 'ArtzFolio_Holiday_Template.xlsx', row => {
+    if (!row['date *'] || !row['name *']) return null;
+    return {date:row['date *'], name:row['name *'], type:row['type']||'National', applicableTo:row['applicableTo']||'All'};
+  }, 'addHoliday');
+}
+
+// ─── Indian Default Holidays ─────────────────────────────────────────────────
+const INDIA_HOLIDAYS_2026 = [
+  {date:'2026-01-01',name:'New Year\'s Day',type:'Company'},
+  {date:'2026-01-14',name:'Makar Sankranti / Lohri',type:'Regional'},
+  {date:'2026-01-26',name:'Republic Day',type:'National'},
+  {date:'2026-02-18',name:'Maha Shivratri',type:'National'},
+  {date:'2026-03-03',name:'Holi - 1st Day (Holika Dahan)',type:'Regional'},
+  {date:'2026-03-04',name:'Holi',type:'National'},
+  {date:'2026-03-30',name:'Ram Navami',type:'National'},
+  {date:'2026-04-02',name:'Mahavir Jayanti',type:'National'},
+  {date:'2026-04-03',name:'Good Friday',type:'National'},
+  {date:'2026-04-14',name:'Dr. Ambedkar Jayanti / Baisakhi',type:'National'},
+  {date:'2026-05-01',name:'Labour Day',type:'Company'},
+  {date:'2026-05-12',name:'Buddha Purnima',type:'National'},
+  {date:'2026-06-27',name:'Eid ul-Adha (Bakrid)',type:'National'},
+  {date:'2026-07-17',name:'Muharram',type:'National'},
+  {date:'2026-08-15',name:'Independence Day',type:'National'},
+  {date:'2026-08-17',name:'Janmashtami',type:'National'},
+  {date:'2026-09-17',name:'Milad-un-Nabi',type:'National'},
+  {date:'2026-10-02',name:'Gandhi Jayanti / Dussehra',type:'National'},
+  {date:'2026-10-20',name:'Diwali (Lakshmi Puja)',type:'National'},
+  {date:'2026-10-21',name:'Diwali 2nd Day / Govardhan Puja',type:'Regional'},
+  {date:'2026-10-22',name:'Bhai Dooj',type:'Regional'},
+  {date:'2026-11-15',name:'Guru Nanak Jayanti',type:'National'},
+  {date:'2026-12-25',name:'Christmas',type:'National'},
+];
+
+async function loadDefaultHolidays() {
+  const ok = await confirm2('This will add all major Indian 2026 holidays that are not already in the calendar.\nकैलेंडर में सभी प्रमुख भारतीय 2026 छुट्टियाँ जोड़ी जाएंगी।\n\nContinue?');
+  if (!ok) return;
+  let added=0, skip=0;
+  toast(`Adding ${INDIA_HOLIDAYS_2026.length} Indian holidays…`,'info',4000);
+  for (const h of INDIA_HOLIDAYS_2026) {
+    const res = await API.call('addHoliday',{date:h.date, name:h.name, type:h.type, applicableTo:'All'});
+    if (res.ok) added++; else skip++;
+  }
+  toast(`✓ Added ${added} holidays${skip?' ('+skip+' skipped)':''}`, 'success', 4000);
+  await renderSettings();
 }
 
 async function saveMilestone(years) {
