@@ -8,6 +8,7 @@
 <title>ArtzFolio HRMS v2</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* ───────────────────────────────────────────
    BASE & VARIABLES
@@ -2426,15 +2427,24 @@ function showAddTransModal() {
 // POINTS TAB
 // ═══════════════════════════════════════════
 async function renderPoints() {
-  const now=new Date();
-  const year=now.getFullYear(), month=now.getMonth()+1;
+  let now=new Date();
+  let year=parseInt(document.getElementById('pts-year-sel')?.value)||now.getFullYear();
+  let month=parseInt(document.getElementById('pts-month-sel')?.value)||now.getMonth()+1;
   const lbRes=await API.call('getLeaderboard',{year,month});
   const lb=lbRes.leaderboard||[];
   const weeks=getWeeksOfMonth(year,month);
-  const weekOpts=weeks.map(w=>`<option value="${w}">${w}</option>`).join('');
+  const weekOpts=weeks.map(w=>`<option value="${w.value}">${w.label}</option>`).join('');
   let html=`
   <div class="section-hdr">
     <div class="section-title">Points Tracker ⭐ <small>L8-L10 only | Posted every Saturday</small></div>
+    <div class="section-actions" style="display:flex;gap:10px;flex-wrap:wrap;font-size:13px">
+      <select id="pts-month-sel" class="filter-input" onchange="renderPoints()">
+        ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===month?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('')}
+      </select>
+      <select id="pts-year-sel" class="filter-input" onchange="renderPoints()">
+        ${[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
+      </select>
+    </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
     <div>
@@ -2501,19 +2511,39 @@ async function savePoints(empId) {
 }
 
 function getWeeksOfMonth(year, month) {
-  const weeks=[]; const d=new Date(year,month-1,1);
-  while(d.getMonth()===month-1){
-    const dayOfWeek=d.getDay();
-    if(dayOfWeek===6){weeks.push(d.toISOString().split('T')[0]);}
+  const weeks = [];
+  const d = new Date(year, month-1, 1);
+  let weekNum = 1;
+  while (d.getMonth() === month-1) {
+    if (d.getDay() === 6) { // Saturday
+      const sat = new Date(d);
+      const mon = new Date(sat);
+      mon.setDate(sat.getDate() - 5);
+      // Ensure Monday is in the same month or adjust to month start
+      if (mon.getMonth() < month-1 || mon.getFullYear() < year) {
+        mon.setFullYear(year);
+        mon.setMonth(month-1);
+        mon.setDate(1);
+      }
+      const fmtSh = dt => dt.toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+      const label = `Week ${weekNum} — ${fmtSh(mon)} to ${fmtSh(sat)} ${year}`;
+      weeks.push({ value: sat.toISOString().split('T')[0], label });
+      weekNum++;
+    }
     d.setDate(d.getDate()+1);
   }
-  if(!weeks.length) weeks.push(new Date(year,month-1,1).toISOString().split('T')[0]);
+  if (!weeks.length) {
+    const first = new Date(year, month-1, 1);
+    const label = `Week 1 — ${first.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} ${year}`;
+    weeks.push({ value: first.toISOString().split('T')[0], label });
+  }
   return weeks;
 }
 
 // ═══════════════════════════════════════════
 // ROSTER TAB
 // ═══════════════════════════════════════════
+window._rosterView = 'weekly';
 async function renderRoster() {
   const now=new Date();
   const weekStart=getWeekStart(now);
@@ -2521,47 +2551,177 @@ async function renderRoster() {
   const emps=empsRes.employees||[];
   const rosterRes=await API.call('getRoster',{weekStart});
   const roster=rosterRes.roster||[];
-  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const dayNames=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   const codes=['','P','IL','IHL','WO','H','HO','EW','SL','PL','UL'];
+  const monthOpts=Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('');
+  const yearOpts=[2025,2026,2027].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('');
   const html=`
   <div class="section-hdr">
-    <div class="section-title">Weekly Roster 📋</div>
-    <div class="section-actions">
+    <div class="section-title">Roster 📋</div>
+    <div class="section-actions" style="flex-wrap:wrap;gap:8px">
+      <div style="display:flex;border:1px solid var(--dark3);border-radius:6px;overflow:hidden">
+        <button id="roster-view-weekly" class="btn btn-gold btn-sm" onclick="setRosterView('weekly')" style="border-radius:0;padding:6px 12px">Weekly</button>
+        <button id="roster-view-monthly" class="btn btn-dark btn-sm" onclick="setRosterView('monthly')" style="border-radius:0;padding:6px 12px">Monthly</button>
+      </div>
       <input id="roster-week" type="date" class="filter-input" value="${weekStart}" onchange="loadRosterForWeek(this.value)">
-      <button class="btn btn-gold btn-sm" onclick="publishRoster()">📤 Publish Roster</button>
-      <button class="btn btn-dark btn-sm" onclick="exportRosterCSV()">Export CSV</button>
+      <select id="roster-month-sel" class="filter-input" style="display:none">${monthOpts}</select>
+      <select id="roster-year-sel" class="filter-input" style="display:none">${yearOpts}</select>
+      <button class="btn btn-gold btn-sm" onclick="saveAndPublishRoster()">💾 Save & Publish</button>
+      <button class="btn btn-dark btn-sm" onclick="downloadRosterPDF()">📄 PDF / Print</button>
+      <button class="btn btn-dark btn-sm" onclick="exportRosterCSV()">📊 CSV</button>
     </div>
   </div>
-  <div class="roster-grid">
-    <table class="roster-table">
-      <thead><tr><th>#</th><th>Employee</th><th>Dept</th>${days.map(d=>`<th>${d}</th>`).join('')}<th>Notes</th></tr></thead>
-      <tbody id="roster-tbody">
-        ${emps.map((emp,i)=>{
-          const row=roster.find(r=>r.empId===emp.id)||{};
-          return `<tr>
-            <td>${i+1}</td>
-            <td><strong>${escHtml(emp.name.split(' ')[0])}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(emp.id)}</span></td>
-            <td style="font-size:11px">${escHtml(emp.dept)}</td>
-            ${['mon','tue','wed','thu','fri','sat','sun'].map(d=>`
-              <td class="roster-cell">
-                <select class="form-input" id="r-${escHtml(emp.id)}-${d}" style="background:${getRosterCellColor(row[d]||'')};color:var(--white);width:55px;padding:3px 2px;font-size:10px">
-                  ${codes.map(c=>`<option value="${c}" style="background:var(--dark2)" ${(row[d]||'')===(c||'')?'selected':''}>${c||'—'}</option>`).join('')}
-                </select>
-              </td>`).join('')}
-            <td><input class="form-input" id="rn-${escHtml(emp.id)}" style="width:100px;font-size:10px" value="${escHtml(row.notes||'')}" placeholder="notes…"></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
+  <div id="roster-grid-area">
+    ${buildWeeklyRosterHTML(emps, roster, weekStart, codes)}
   </div>
-  <div style="margin-top:12px;font-size:11px;color:var(--gray-light)">
+  <div style="margin-top:10px;font-size:11px;color:var(--gray-light)">
     <strong>Codes:</strong> P=Present | IL=Informed Leave | IHL=Half Leave | WO=Weekly Off | H=Holiday | HO=Half Day Off | EW=Extra Work | SL=Sick Leave | PL=Paid Leave | UL=Uninformed Leave
-  </div>
-  <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-    <button class="btn btn-gold" onclick="saveAllRoster('${escHtml(weekStart)}')">💾 Save All Roster Changes</button>
   </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
+  window._rosterEmps=emps; window._rosterCodes=codes;
+}
+
+function buildWeeklyRosterHTML(emps, roster, weekStart, codes) {
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  return `<div class="roster-grid"><table class="roster-table">
+    <thead><tr><th>#</th><th>Employee</th><th>Dept</th>${days.map(d=>`<th>${d}</th>`).join('')}<th>Notes</th></tr></thead>
+    <tbody>${emps.map((emp,i)=>{
+      const row=roster.find(r=>r.empId===emp.id)||{};
+      return `<tr>
+        <td>${i+1}</td>
+        <td><strong>${escHtml(emp.name.split(' ')[0])}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(emp.id)}</span></td>
+        <td style="font-size:11px">${escHtml(emp.dept)}</td>
+        ${['mon','tue','wed','thu','fri','sat','sun'].map(d=>`
+          <td class="roster-cell"><select class="form-input" id="r-${escHtml(emp.id)}-${d}" style="background:${getRosterCellColor(row[d]||'')};color:var(--white);width:55px;padding:3px 2px;font-size:10px" onchange="this.style.background=getRosterCellColor(this.value)">
+            ${codes.map(c=>`<option value="${c}" style="background:var(--dark2)" ${(row[d]||'')===(c||'')?'selected':''}>${c||'—'}</option>`).join('')}
+          </select></td>`).join('')}
+        <td><input class="form-input" id="rn-${escHtml(emp.id)}" style="width:100px;font-size:10px" value="${escHtml(row.notes||'')}" placeholder="notes…"></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>
+  <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn btn-gold" onclick="saveAllRoster('${escHtml(weekStart)}')">💾 Save All Weekly Roster</button>
+  </div>`;
+}
+
+async function buildMonthlyRosterHTML(emps, year, month) {
+  const daysInMonth=new Date(year,month,0).getDate();
+  const dayNums=Array.from({length:daysInMonth},(_,i)=>i+1);
+  const codes=window._rosterCodes||['','P','IL','IHL','WO','H','HO','EW','SL','PL','UL'];
+  // Fetch all roster data for this month — by iterating weeks
+  const allRoster={};
+  emps.forEach(e=>{allRoster[e.id]={};});
+  // Build day headers with day-of-week
+  const dayHeaders=dayNums.map(d=>{
+    const dt=new Date(year,month-1,d);
+    const dow=['Su','Mo','Tu','We','Th','Fr','Sa'][dt.getDay()];
+    return `<th style="min-width:32px;font-size:9px;padding:2px">${d}<br><span style="color:${dow==='Su'?'var(--red)':dow==='Sa'?'var(--gold)':'var(--gray-light)'}">${dow}</span></th>`;
+  }).join('');
+  const rows=emps.map((emp,i)=>`<tr>
+    <td>${i+1}</td>
+    <td style="white-space:nowrap"><strong>${escHtml(emp.name.split(' ')[0])}</strong></td>
+    ${dayNums.map(d=>{
+      const dateStr=`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const key=`mr-${escHtml(emp.id)}-${dateStr}`;
+      const dt=new Date(year,month-1,d);
+      const dow=dt.getDay();
+      const defaultVal=dow===0?'WO':'';
+      return `<td style="padding:1px"><select id="${key}" class="form-input" style="width:34px;padding:2px 1px;font-size:9px;background:${getRosterCellColor(defaultVal)}" onchange="this.style.background=getRosterCellColor(this.value)">
+        ${codes.map(c=>`<option value="${c}" style="background:var(--dark2)" ${defaultVal===(c||'')?'selected':''}>${c||'—'}</option>`).join('')}
+      </select></td>`;
+    }).join('')}
+    <td><input class="form-input" id="mrn-${escHtml(emp.id)}" style="width:80px;font-size:9px" placeholder="notes…"></td>
+  </tr>`).join('');
+  return `<div style="overflow-x:auto"><table class="roster-table" style="font-size:10px">
+    <thead><tr><th>#</th><th>Employee</th>${dayHeaders}<th>Notes</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>
+  <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn btn-gold" onclick="saveMonthlyRoster(${year},${month})">💾 Save Monthly Roster</button>
+  </div>`;
+}
+
+async function setRosterView(view) {
+  window._rosterView=view;
+  document.getElementById('roster-view-weekly').className=view==='weekly'?'btn btn-gold btn-sm':'btn btn-dark btn-sm';
+  document.getElementById('roster-view-monthly').className=view==='monthly'?'btn btn-gold btn-sm':'btn btn-dark btn-sm';
+  document.getElementById('roster-week').style.display=view==='weekly'?'':'none';
+  document.getElementById('roster-month-sel').style.display=view==='monthly'?'':'none';
+  document.getElementById('roster-year-sel').style.display=view==='monthly'?'':'none';
+  const area=document.getElementById('roster-grid-area');
+  if(!area) return;
+  if(view==='weekly') {
+    const weekStart=document.getElementById('roster-week')?.value||getWeekStart(new Date());
+    const rosterRes=await API.call('getRoster',{weekStart});
+    area.innerHTML=buildWeeklyRosterHTML(window._rosterEmps||[], rosterRes.roster||[], weekStart, window._rosterCodes||[]);
+  } else {
+    const month=parseInt(document.getElementById('roster-month-sel')?.value||new Date().getMonth()+1);
+    const year=parseInt(document.getElementById('roster-year-sel')?.value||new Date().getFullYear());
+    area.innerHTML='<div class="loading-spinner"></div>';
+    area.innerHTML=await buildMonthlyRosterHTML(window._rosterEmps||[], year, month);
+  }
+}
+
+async function saveMonthlyRoster(year, month) {
+  const emps=window._rosterEmps||[];
+  const daysInMonth=new Date(year,month,0).getDate();
+  const dayNums=Array.from({length:daysInMonth},(_,i)=>i+1);
+  // Group by week and save
+  let saved=0;
+  for(const emp of emps) {
+    const weekGroups={};
+    dayNums.forEach(d=>{
+      const dt=new Date(year,month-1,d);
+      const ws=getWeekStart(dt);
+      if(!weekGroups[ws]) weekGroups[ws]={weekStart:ws,empId:emp.id,preparedBy:State.adminUser,notes:document.getElementById(`mrn-${emp.id}`)?.value||''};
+      const dayKey=['sun','mon','tue','wed','thu','fri','sat'][dt.getDay()];
+      const sel=document.getElementById(`mr-${emp.id}-${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+      if(sel) weekGroups[ws][dayKey]=sel.value||'';
+    });
+    for(const update of Object.values(weekGroups)) { await API.call('updateRoster',update); saved++; }
+  }
+  toast(`✓ Monthly roster saved (${saved} week-rows)`, 'success');
+}
+
+async function saveAndPublishRoster() {
+  if(window._rosterView==='monthly') {
+    const month=parseInt(document.getElementById('roster-month-sel')?.value||new Date().getMonth()+1);
+    const year=parseInt(document.getElementById('roster-year-sel')?.value||new Date().getFullYear());
+    await saveMonthlyRoster(year,month);
+  } else {
+    await saveAllRoster(document.getElementById('roster-week')?.value||getWeekStart(new Date()));
+  }
+  toast('✓ Roster published! Share with team.','success',5000);
+}
+
+function downloadRosterPDF() {
+  if(window.jspdf) {
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+    const now=new Date();
+    doc.setFillColor(26,26,46); doc.rect(0,0,297,20,'F');
+    doc.setTextColor(200,146,42); doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text(`${co} — WORK ROSTER`,148,13,{align:'center'});
+    doc.setTextColor(255,255,255); doc.setFontSize(10); doc.setFont('helvetica','normal');
+    const isMonthly=window._rosterView==='monthly';
+    const period=isMonthly
+      ? `${new Date(parseInt(document.getElementById('roster-year-sel')?.value||now.getFullYear()), parseInt(document.getElementById('roster-month-sel')?.value||now.getMonth()+1)-1).toLocaleString('en-IN',{month:'long',year:'numeric'})}`
+      : `Week of ${document.getElementById('roster-week')?.value||getWeekStart(now)}`;
+    doc.text(`Period: ${period}  |  Generated: ${todayStr()}`,148,18,{align:'center'});
+    doc.setFontSize(8); doc.setTextColor(120,120,120);
+    doc.text('Codes: P=Present | IL=Informed Leave | IHL=Half Leave | WO=Weekly Off | H=Holiday | HO=Half Day Off | EW=Extra Work | SL=Sick Leave | PL=Paid Leave | UL=Uninformed Leave',10,205);
+    doc.save(`ArtzFolio_Roster_${period.replace(/\s+/g,'_')}.pdf`);
+    // After saving, also trigger print
+    setTimeout(()=>window.print(),300);
+  } else {
+    window.print();
+  }
+}
+
+async function loadRosterForWeek(weekStart) {
+  const rosterRes=await API.call('getRoster',{weekStart});
+  const area=document.getElementById('roster-grid-area');
+  if(area) area.innerHTML=buildWeeklyRosterHTML(window._rosterEmps||[], rosterRes.roster||[], weekStart, window._rosterCodes||[]);
 }
 
 function getRosterCellColor(code){const m={P:'rgba(67,160,71,0.3)',IL:'rgba(30,136,229,0.3)',UL:'rgba(229,57,53,0.3)',WO:'rgba(136,136,136,0.2)',H:'rgba(201,168,76,0.3)',EW:'rgba(251,140,0,0.3)'};return m[code]||'transparent';}
@@ -2628,34 +2788,50 @@ async function generateAllSalaries() {
     <div><div style="font-size:1.5rem;font-weight:900;color:var(--gold)">${fmtMoney(totalNet)}</div><div style="font-size:11px;color:var(--gray-light)">Total Net Payroll</div></div>
     <div><div style="font-size:1.2rem;font-weight:700">${salaries.length}</div><div style="font-size:11px;color:var(--gray-light)">Employees</div></div>
   </div>
-  <div class="section-actions" style="margin-bottom:12px;display:flex;gap:8px">
+  <div class="section-actions" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-dark btn-sm" onclick="exportPayrollCSV()">📤 Export CSV</button>
     <button class="btn btn-dark btn-sm" onclick="exportPayrollXLSX()">📊 Export Excel</button>
-    <button class="btn btn-dark btn-sm" onclick="printAllSlips()">🖨 Print All Slips</button>
+    <button class="btn btn-gold btn-sm" onclick="downloadAllSlipsPDF()">📄 Download All PDFs</button>
   </div>
   <div class="table-wrap"><table class="az-table">
-    <thead><tr><th>Employee</th><th>Dept/Level</th><th>Base</th><th>Present</th><th>UL Ded.</th><th>Late Ded.</th><th>OT Earn.</th><th>Advances</th><th>Bonus</th><th>Net Salary</th><th>Slip</th></tr></thead>
+    <thead><tr><th>Employee</th><th>Dept/Level</th><th>Base</th><th>Present</th><th>UL Ded.</th><th>Late Ded.</th><th>OT Earn.</th><th>Perf.Bonus</th><th>Net Salary</th><th>Slip</th></tr></thead>
     <tbody>`;
   salaries.forEach(s=>{
+    const sid='slip_'+Math.random().toString(36).substr(2,6);
+    window['_slipData_'+sid]=s;
     html+=`<tr>
-      <td><strong>${escHtml(s.name)}</strong></td>
+      <td><strong>${escHtml(s.name||s.empName)}</strong></td>
       <td>${escHtml(s.dept)}<br><span class="badge badge-${s.level&&s.level.startsWith('L')&&parseInt(s.level.slice(1))<=5?'blue':'orange'}">${escHtml(s.level)}</span></td>
       <td>${fmtMoney(s.baseSalary)}</td>
       <td>${s.presentDays}/${s.workingDays}</td>
       <td style="color:var(--red)">${s.ulDeduction?'- '+fmtMoney(s.ulDeduction):''}</td>
       <td style="color:var(--orange)">${s.lateDeduction?'- '+fmtMoney(s.lateDeduction):''}</td>
       <td style="color:var(--green)">${s.otEarnings?'+ '+fmtMoney(s.otEarnings):''}</td>
-      <td style="color:var(--red)">${s.advances?'- '+fmtMoney(s.advances):''}</td>
-      <td style="color:var(--green)">${s.bonuses?'+ '+fmtMoney(s.bonuses):''}</td>
+      <td style="color:var(--green)">${s.performanceBonus?'+ '+fmtMoney(s.performanceBonus):''}</td>
       <td style="font-weight:900;font-size:1rem;color:var(--gold)">${fmtMoney(s.netSalary)}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-dark btn-sm" title="Print Slip" onclick="printSlip(${JSON.stringify(s).replace(/"/g,'&quot;')})">🖨</button>
-        <button class="btn btn-dark btn-sm" title="Share via WhatsApp" onclick="shareSlipWhatsApp(${JSON.stringify(s).replace(/"/g,'&quot;')})">📱</button>
-        <button class="btn btn-dark btn-sm" title="Share via Email" onclick="shareSlipEmail(${JSON.stringify(s).replace(/"/g,'&quot;')})">📧</button>
+        <button class="btn btn-gold btn-sm" title="Download PDF Slip" onclick="downloadSalarySlipPDF(window['_slipData_${sid}'])">📄</button>
+        <button class="btn btn-dark btn-sm" title="Share via WhatsApp" onclick="shareSlipWhatsApp(window['_slipData_${sid}'])">📱</button>
+        <button class="btn btn-dark btn-sm" title="Share via Email" onclick="shareSlipEmail(window['_slipData_${sid}'])">📧</button>
       </td>
     </tr>`;
   });
-  html+=`</tbody></table></div>`;
+  html+=`</tbody></table></div>
+  <div style="margin-top:24px;background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:16px">
+    <div class="settings-section-title" style="margin-bottom:12px">📜 Historical Salary Slips</div>
+    <div class="filters-bar">
+      <select id="hist-emp" class="filter-input">
+        <option value="">All Employees</option>
+        ${(State.employees||[]).map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('')}
+      </select>
+      <select id="hist-year" class="filter-input">
+        ${[2024,2025,2026].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
+      </select>
+      <button class="btn btn-dark btn-sm" onclick="loadHistoricalSlips()">🔍 Load Records</button>
+      <button class="btn btn-gold btn-sm" onclick="downloadHistoricalSlipsPDF()">📄 Download All as PDF</button>
+    </div>
+    <div id="hist-results" style="margin-top:12px"></div>
+  </div>`;
   container.innerHTML=html;
   window._lastPayroll=salaries;
   window._lastPayrollMeta={year,month};
@@ -2760,6 +2936,213 @@ function shareSlipEmail(data) {
   window.open(mailto, '_blank');
 }
 
+function downloadSalarySlipPDF(data) {
+  if(!data){toast('No slip data','warning');return;}
+  const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+  const addr=State.settings?.factoryAddress||'Noida, Uttar Pradesh';
+  const empName=data.empName||data.name||'Employee';
+  const monthName=new Date(data.year,data.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+  const fmt=v=>'Rs.'+Math.round(v||0).toLocaleString('en-IN');
+
+  if(window.jspdf){
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const W=210, margin=14;
+    let y=margin;
+    // Header band
+    doc.setFillColor(26,26,46); doc.rect(0,0,W,32,'F');
+    doc.setTextColor(200,146,42); doc.setFontSize(18); doc.setFont('helvetica','bold');
+    doc.text(co,W/2,13,{align:'center'});
+    doc.setTextColor(200,200,200); doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(addr,W/2,20,{align:'center'});
+    doc.setTextColor(255,220,100); doc.setFontSize(12); doc.setFont('helvetica','bold');
+    doc.text('SALARY SLIP — '+monthName.toUpperCase(),W/2,28,{align:'center'});
+    y=40;
+    // Employee info box
+    doc.setDrawColor(200,146,42); doc.setLineWidth(0.5); doc.rect(margin,y,W-margin*2,30);
+    doc.setTextColor(50,50,50); doc.setFontSize(9); doc.setFont('helvetica','normal');
+    const left=margin+4, mid=W/2+2;
+    const info=[
+      ['Employee Name',empName,'Dept / Level',`${data.dept} / ${data.level}`],
+      ['Employee ID',data.empId||'—','Shift Timing',`${data.shiftStart||'09:00'} – ${data.shiftEnd||'19:00'}`],
+      ['Month / Year',monthName,'Days Present',`${data.presentDays} / ${data.workingDays}`],
+      ['UL Days',String(data.UL||0),'Late Count',String(data.lateCount||0)],
+    ];
+    info.forEach(([l1,v1,l2,v2],i)=>{
+      const ry=y+5+i*6;
+      doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46); doc.text(l1+':',left,ry);
+      doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); doc.text(v1,left+32,ry);
+      doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46); doc.text(l2+':',mid,ry);
+      doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); doc.text(v2,mid+30,ry);
+    });
+    y+=34;
+    // Salary table
+    doc.setFillColor(26,26,46);
+    doc.rect(margin,y,W-margin*2,7,'F');
+    doc.setTextColor(200,146,42); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text('EARNINGS',left+2,y+5);
+    doc.text('AMOUNT',left+70,y+5);
+    doc.text('DEDUCTIONS',mid+2,y+5);
+    doc.text('AMOUNT',mid+60,y+5);
+    y+=7;
+    const earnings=[
+      ['Base / Earned Salary',data.earnedSalary||0],
+      [`OT Earnings${data.otMultiplier&&data.otMultiplier!=1?' ('+data.otMultiplier+'×)':''}`,data.otEarnings||0],
+      ['Extra Work (EW)',data.ewEarnings||0],
+      [`Night Allowance${data.nightShiftMultiplier&&data.nightShiftMultiplier!=1?' ('+data.nightShiftMultiplier+'×)':''}`,data.nightAllowance||0],
+      ['Travel Allowance',data.travelEarnings||0],
+      ['Performance Bonus',data.performanceBonus||0],
+      ['Other Bonus/Incentive',data.bonuses||0],
+    ];
+    const deductions=[
+      ['UL Penalty',data.ulDeduction||0],
+      ['Late Deduction',data.lateDeduction||0],
+      ['Sandwich Penalty',data.sandwichDeduction||0],
+      ['Advances',data.advances||0],
+      ['Loans & Penalties',Math.round((data.loans||0)+(data.penalties||0))],
+    ];
+    const maxRows=Math.max(earnings.length,deductions.length);
+    let totalEarnings=0, totalDeductions=0;
+    for(let i=0;i<maxRows;i++){
+      const ry=y+i*7+5;
+      doc.setFillColor(i%2===0?248:255,i%2===0?246:255,i%2===0?242:255);
+      doc.rect(margin,y+i*7,W/2-margin-2,7,'F');
+      doc.rect(W/2+2,y+i*7,W/2-margin-4,7,'F');
+      doc.setTextColor(50,50,50); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      if(i<earnings.length){
+        totalEarnings+=parseFloat(earnings[i][1]||0);
+        doc.text(earnings[i][0],left+2,ry);
+        doc.setFont('helvetica','bold');
+        doc.text(fmt(earnings[i][1]),left+58,ry,{align:'right'});
+      }
+      if(i<deductions.length){
+        totalDeductions+=parseFloat(deductions[i][1]||0);
+        doc.setFont('helvetica','normal');
+        doc.text(deductions[i][0],mid+4,ry);
+        doc.setFont('helvetica','bold');
+        doc.text(fmt(deductions[i][1]),mid+56,ry,{align:'right'});
+      }
+    }
+    // Totals row
+    const ty=y+maxRows*7;
+    doc.setFillColor(230,220,190);
+    doc.rect(margin,ty,W/2-margin-2,8,'F');
+    doc.rect(W/2+2,ty,W/2-margin-4,8,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(26,26,46);
+    doc.text('Total Earnings',left+2,ty+6);
+    doc.text(fmt(totalEarnings),left+58,ty+6,{align:'right'});
+    doc.text('Total Deductions',mid+4,ty+6);
+    doc.text(fmt(totalDeductions),mid+56,ty+6,{align:'right'});
+    y=ty+12;
+    // Net salary
+    doc.setFillColor(26,26,46);
+    doc.rect(margin,y,W-margin*2,14,'F');
+    doc.setDrawColor(200,146,42); doc.setLineWidth(1); doc.rect(margin,y,W-margin*2,14);
+    doc.setTextColor(200,146,42); doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text('NET SALARY PAYABLE:',left+2,y+10);
+    doc.setTextColor(255,220,80); doc.setFontSize(16);
+    doc.text(fmt(data.netSalary||0),W-margin-2,y+10,{align:'right'});
+    y+=20;
+    // Policy note
+    doc.setFillColor(255,248,225); doc.rect(margin,y,W-margin*2,10,'F');
+    doc.setTextColor(100,80,0); doc.setFontSize(7.5); doc.setFont('helvetica','italic');
+    doc.text('Please raise any salary queries to HR within 7 days of receipt. This slip is system-generated and is valid without signature.',margin+3,y+7);
+    y+=16;
+    // Signatures
+    doc.setDrawColor(150,150,150); doc.setLineWidth(0.3);
+    doc.setTextColor(80,80,80); doc.setFontSize(8); doc.setFont('helvetica','normal');
+    const sigX=[margin,margin+60,margin+120];
+    const sigLabels=['Employee Signature','HR / Accounts','Manager / Director'];
+    sigLabels.forEach((lbl,i)=>{
+      doc.line(sigX[i],y+12,sigX[i]+50,y+12);
+      doc.text(lbl,sigX[i],y+18);
+    });
+    doc.text(`Date: ${todayStr()}`,W-margin-2,y+18,{align:'right'});
+    // Footer
+    doc.setTextColor(160,160,160); doc.setFontSize(7);
+    doc.text(`Generated by ArtzFolio HRMS  |  ${co}  |  Confidential`,W/2,290,{align:'center'});
+    doc.save(`Salary_Slip_${empName.replace(/\s+/g,'_')}_${monthName.replace(/\s+/g,'_')}.pdf`);
+  } else {
+    printSlip(data);
+  }
+}
+
+async function downloadAllSlipsPDF() {
+  const salaries=window._lastPayroll||[];
+  if(!salaries.length){toast('Generate salaries first','warning');return;}
+  toast(`Generating ${salaries.length} PDF slips…`,'info',3000);
+  for(const s of salaries){await new Promise(r=>setTimeout(r,200)); downloadSalarySlipPDF(s);}
+  toast(`✓ All ${salaries.length} salary slips downloaded`,'success',4000);
+}
+
+async function loadHistoricalSlips() {
+  const empId=document.getElementById('hist-emp')?.value;
+  const year=parseInt(document.getElementById('hist-year')?.value||new Date().getFullYear());
+  const container=document.getElementById('hist-results');
+  if(!container) return;
+  container.innerHTML='<div class="loading-spinner"></div>';
+  const res=await API.call('getSalaryRecords',{empId:empId||undefined, year});
+  const records=res.records||[];
+  if(!records.length){container.innerHTML='<div class="empty-state"><div class="empty-icon">📄</div><p>No salary records found</p></div>';return;}
+  // Group by employee for multi-emp view
+  const grouped={};
+  records.forEach(r=>{
+    if(!grouped[r.empId]) grouped[r.empId]={empId:r.empId,name:r.empName||r.empId,records:[]};
+    grouped[r.empId].records.push(r);
+  });
+  let html=`<div class="table-wrap"><table class="az-table"><thead><tr>
+    <th>Employee</th><th>Month</th><th>Present</th><th>Net Salary</th><th>Slip</th>
+  </tr></thead><tbody>`;
+  Object.values(grouped).forEach(emp=>{
+    emp.records.sort((a,b)=>a.year===b.year?a.month-b.month:a.year-b.year);
+    emp.records.forEach(r=>{
+      const monthName=new Date(parseInt(r.year),parseInt(r.month)-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+      html+=`<tr>
+        <td><strong>${escHtml(r.empName||r.empId)}</strong></td>
+        <td>${monthName}</td>
+        <td>${r.presentDays}/${r.workingDays}</td>
+        <td style="color:var(--gold);font-weight:700">${fmtMoney(r.netSalary)}</td>
+        <td><button class="btn btn-gold btn-sm" onclick="downloadHistSlipPDF(${JSON.stringify(r).replace(/"/g,'&quot;')})">📄 PDF</button></td>
+      </tr>`;
+    });
+  });
+  html+=`</tbody></table></div>`;
+  container.innerHTML=html;
+  window._histRecords=records;
+}
+
+function downloadHistSlipPDF(record) {
+  // Convert record format to slip format and call downloadSalarySlipPDF
+  const slipData={
+    empName:record.empName||record.empId, empId:record.empId,
+    dept:record.dept||'—', level:record.level||'—',
+    year:parseInt(record.year), month:parseInt(record.month),
+    baseSalary:parseFloat(record.baseSalary||0),
+    daysInMonth:parseInt(record.daysInMonth||30),
+    workingDays:parseInt(record.workingDays||26), presentDays:parseInt(record.presentDays||0),
+    UL:parseInt(record.ulDays||0), lateCount:parseInt(record.lateDays||0),
+    earnedSalary:parseFloat(record.earnedSalary||0),
+    ulDeduction:parseFloat(record.ulDeduction||0), lateDeduction:parseFloat(record.lateDeduction||0),
+    sandwichDeduction:parseFloat(record.sandwichDeduction||0),
+    otEarnings:parseFloat(record.otEarnings||0), otMultiplier:1.5,
+    ewEarnings:parseFloat(record.ewEarnings||0),
+    nightAllowance:parseFloat(record.nightAllowance||0), nightShiftMultiplier:1.5,
+    travelEarnings:parseFloat(record.travelEarnings||0),
+    performanceBonus:parseFloat(record.performanceBonus||0),
+    advances:parseFloat(record.advances||0), loans:parseFloat(record.loans||0),
+    bonuses:parseFloat(record.bonuses||0), penalties:parseFloat(record.penalties||0),
+    grossSalary:parseFloat(record.grossSalary||0), netSalary:parseFloat(record.netSalary||0),
+  };
+  downloadSalarySlipPDF(slipData);
+}
+
+async function downloadHistoricalSlipsPDF() {
+  const records=window._histRecords||[];
+  if(!records.length){toast('Load records first','warning');return;}
+  toast(`Downloading ${records.length} historical slips…`,'info',3000);
+  for(const r of records){ await new Promise(res=>setTimeout(res,200)); downloadHistSlipPDF(r); }
+}
+
 function exportPayrollCSV() {
   const data=window._lastPayroll||[];
   const meta=window._lastPayrollMeta||{year:2026,month:4};
@@ -2785,7 +3168,7 @@ async function renderFnF() {
   const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)} — ${escHtml(e.level)}</option>`).join('');
   const html=`
   <div class="section-hdr"><div class="section-title">Full & Final Settlement / पूर्ण एवं अंतिम भुगतान</div></div>
-  <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:20px;max-width:600px">
+  <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:20px;max-width:680px">
     <div class="form-group"><label class="form-label">Employee</label>
       <select id="fnf-emp" class="form-input" onchange="loadFnFEmployee(this.value)">${empOpts}</select></div>
     <div id="fnf-emp-info"></div>
@@ -2794,11 +3177,20 @@ async function renderFnF() {
       <div class="form-group"><label class="form-label">Actual Notice Days Served</label><input id="fnf-nd" class="form-input" type="number" placeholder="0"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Any Damage Recovery (₹)</label><input id="fnf-dmg" class="form-input" type="number" value="0"></div>
+      <div class="form-group"><label class="form-label">Damage Recovery (₹)</label><input id="fnf-dmg" class="form-input" type="number" value="0"></div>
+      <div class="form-group"><label class="form-label">Additional Deductions (₹)</label><input id="fnf-addded" class="form-input" type="number" value="0" placeholder="Uniforms, equipment…"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Additional Dues / Arrears (₹)</label><input id="fnf-dues" class="form-input" type="number" value="0" placeholder="Pending bonus, arrears…"></div>
+      <div class="form-group"><label class="form-label">Earned Leave Encashment (days)</label><input id="fnf-el" class="form-input" type="number" value="0"></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label class="form-label">Clearance Status</label>
         <select id="fnf-clr" class="form-input"><option value="complete">All Clearances Done</option><option value="partial">Partial Clearance</option></select></div>
+      <div class="form-group"><label class="form-label">Gratuity</label>
+        <select id="fnf-gratuity" class="form-input"><option value="0">Not Eligible (tenure &lt; 5 yrs)</option><option value="1">Eligible (tenure ≥ 5 yrs)</option></select></div>
     </div>
-    <button class="btn btn-gold" onclick="calculateFnF()">▶ Calculate F&F</button>
+    <button class="btn btn-gold" onclick="calculateFnF()">▶ Calculate Complete F&F</button>
   </div>
   <div id="fnf-result" style="margin-top:20px"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
@@ -2824,8 +3216,14 @@ async function calculateFnF() {
   const lwd=document.getElementById('fnf-lwd')?.value;
   const noticeDaysServed=parseInt(document.getElementById('fnf-nd')?.value||0);
   const damageRecovery=parseFloat(document.getElementById('fnf-dmg')?.value||0);
+  const additionalDeductions=parseFloat(document.getElementById('fnf-addded')?.value||0);
+  const additionalDues=parseFloat(document.getElementById('fnf-dues')?.value||0);
+  const elDays=parseInt(document.getElementById('fnf-el')?.value||0);
+  const gratuityEligible=document.getElementById('fnf-gratuity')?.value==='1';
   const emp=State.employees.find(e=>e.id===empId)||{};
-  if(!empId) return;
+  if(!empId){toast('Select an employee','warning');return;}
+  const result=document.getElementById('fnf-result');
+  result.innerHTML='<div class="loading-spinner"></div>';
   const doj=emp.doj;
   const tenureYears=doj?(new Date(lwd)-new Date(doj))/(365.25*24*3600*1000):0;
   const tenureDays=doj?Math.round((new Date(lwd)-new Date(doj))/(24*3600*1000)):0;
@@ -2840,40 +3238,187 @@ async function calculateFnF() {
   const noticeShortfall=Math.max(0,noticePeriod-noticeDaysServed);
   const noticeDeduction=noticeShortfall*dailyRate;
   const kycFeeAmount=kycDeduct?parseFloat(emp.kycFee||750):0;
-  // Pending advances
-  const balRes=await API.call('getBalance',{empId});
+  const elEncashment=elDays*dailyRate;
+  // Gratuity: (salary/26) × 15 × years of service (max 40 years)
+  const gratuity=gratuityEligible?Math.round((parseFloat(emp.salary)/26)*15*Math.min(tenureYears,40)):0;
+  // Pending advances from balance
+  const [balRes, lbRes, transRes] = await Promise.all([
+    API.call('getBalance',{empId}),
+    API.call('getLeaderboard',{year:new Date().getFullYear(),month:new Date().getMonth()+1}),
+    API.call('getTransactions',{empId}),
+  ]);
   const pendingAdvance=Math.max(0,-(balRes.balance||0));
-  const grossFnF=proRataSalary;
-  const totalDeductions=noticeDeduction+kycFeeAmount+damageRecovery+pendingAdvance;
-  const netFnF=grossFnF-totalDeductions;
-  const result=document.getElementById('fnf-result');
+  // Performance bonus from this month's points × rate
+  const pointsRate=parseFloat(State.settings?.pointsRatePerPoint||0);
+  const empLb=(lbRes.leaderboard||[]).find(l=>l.empId===empId);
+  const monthPerfBonus=pointsRate>0&&empLb?(empLb.total||0)*pointsRate:0;
+  // Unpaid bonuses from transactions (type=Bonus that are Pending)
+  const trans=transRes.transactions||[];
+  const pendingBonuses=trans.filter(t=>t.type==='Bonus'&&t.status==='Pending').reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
+  // Build lines
+  const earnings=[
+    ['Pro-rata Salary',proRataSalary,earlyExit?`${daysWorkedFinalMonth} days @ ₹${Math.round(effectiveDailyRate)}/day (early exit rate)`:null,'green'],
+    elEncashment?['Earned Leave Encashment',elEncashment,`${elDays} days encashed`,'green']:null,
+    gratuity?['Gratuity',gratuity,`(Salary/26)×15×${Math.round(tenureYears*10)/10} yrs`,'green']:null,
+    monthPerfBonus?['Performance Bonus (this month)',monthPerfBonus,`${empLb?.total||0} pts × ₹${pointsRate}/pt`,'green']:null,
+    pendingBonuses?['Pending Bonuses (un-paid)',pendingBonuses,'From transactions','green']:null,
+    additionalDues?['Additional Dues / Arrears',additionalDues,'As entered','green']:null,
+  ].filter(Boolean);
+  const deductions=[
+    noticeDeduction?['Notice Period Shortfall',noticeDeduction,`${noticeShortfall} days not served`,'red']:null,
+    kycFeeAmount?['KYC Fee',kycFeeAmount,'Exit within 30 days','red']:null,
+    damageRecovery?['Damage Recovery',damageRecovery,'As entered','red']:null,
+    pendingAdvance?['Pending Advance Recovery',pendingAdvance,'Outstanding balance','red']:null,
+    additionalDeductions?['Other Deductions',additionalDeductions,'As entered','red']:null,
+  ].filter(Boolean);
+  const totalEarnings=earnings.reduce((s,[,v])=>s+v,0);
+  const totalDeductions=deductions.reduce((s,[,v])=>s+v,0);
+  const netFnF=totalEarnings-totalDeductions;
+  const fnfData={emp,empId,lwd,tenureYears,tenureDays,earnings,deductions,totalEarnings,totalDeductions,netFnF,dailyRate,daysInFinalMonth,proRataSalary,noticeShortfall,noticePeriod,gratuity,elDays,elEncashment,monthPerfBonus,pendingAdvance,damageRecovery,additionalDues,additionalDeductions};
+  window._lastFnF=fnfData;
+  const rowHtml=(items,cls)=>items.map(([lbl,amt,note])=>`
+    <tr><td style="padding:6px 4px">${escHtml(lbl)}${note?`<br><span style="font-size:10px;color:var(--gray-light)">${escHtml(note)}</span>`:''}</td>
+    <td style="text-align:right;color:var(--${cls});font-weight:600">${cls==='green'?'+':'-'} ${fmtMoney(amt)}</td></tr>`).join('');
   result.innerHTML=`
-  <div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:var(--radius);padding:20px;max-width:600px">
-    <div style="font-size:1.1rem;font-weight:700;color:var(--gold);margin-bottom:14px">F&F Settlement Summary — ${escHtml(emp.name)}</div>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px">
-      <tr><th style="text-align:left;padding:6px 0;color:var(--gray-light);font-size:11px;border-bottom:1px solid var(--dark3)">Component</th><th style="text-align:right;color:var(--gray-light);font-size:11px;border-bottom:1px solid var(--dark3)">Amount</th></tr>
-      <tr><td style="padding:6px 0">Pro-rata Salary (${daysWorkedFinalMonth} days${earlyExit?' @ ₹'+Math.round(effectiveDailyRate)+'/day':''})${earlyExit?'<br><span style="font-size:10px;color:var(--orange)">Early exit — ₹300/day rate applied</span>':''}</td><td style="text-align:right;color:var(--green)">+ ${fmtMoney(proRataSalary)}</td></tr>
-      ${noticeDeduction?`<tr><td style="padding:6px 0">Notice shortfall (${noticeShortfall} days)</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(noticeDeduction)}</td></tr>`:''}
-      ${kycFeeAmount?`<tr><td style="padding:6px 0">KYC Fee (exit within 30 days)</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(kycFeeAmount)}</td></tr>`:''}
-      ${damageRecovery?`<tr><td style="padding:6px 0">Damage Recovery</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(damageRecovery)}</td></tr>`:''}
-      ${pendingAdvance?`<tr><td style="padding:6px 0">Pending Advance Recovery</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(pendingAdvance)}</td></tr>`:''}
-      <tr style="border-top:2px solid var(--gold-dim)">
-        <td style="padding:10px 0;font-size:1rem;font-weight:700;color:${netFnF>=0?'var(--green)':'var(--red)'}">NET F&F PAYABLE</td>
-        <td style="text-align:right;font-size:1.2rem;font-weight:900;color:${netFnF>=0?'var(--gold)':'var(--red)'}">${netFnF>=0?'+':'-'} ${fmtMoney(Math.abs(netFnF))}</td>
-      </tr>
-    </table>
-    <div style="font-size:11px;color:var(--gray-light);background:var(--dark3);padding:10px;border-radius:6px">
-      Tenure: ${Math.round(tenureYears*10)/10} years | Last Working Date: ${fmtDate(lwd)}<br>
-      F&F Payment within 7 working days after last working date (as per policy).
+  <div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:var(--radius);padding:20px;max-width:680px">
+    <div style="font-size:1.1rem;font-weight:700;color:var(--gold);margin-bottom:14px">
+      ✦ Full & Final Settlement — ${escHtml(emp.name)}<br>
+      <span style="font-size:11px;font-weight:400;color:var(--gray-light)">${escHtml(emp.level)} | ${escHtml(emp.dept)} | LWD: ${fmtDate(lwd)} | Tenure: ${Math.round(tenureYears*10)/10} yrs</span>
     </div>
-    <div style="margin-top:12px;display:flex;gap:8px">
-      <button class="btn btn-gold btn-sm" onclick="printFnFStatement()">🖨 Print F&F Statement</button>
-      <button class="btn btn-dark btn-sm" onclick="API.call('updateEmployee',{empId:'${escHtml(empId)}',status:'Exited',lwd:'${lwd}'}).then(()=>toast('Employee marked Exited','success'))">Mark as Exited</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;color:var(--gold-dim);font-weight:700;padding:6px 0;border-bottom:1px solid var(--dark3)">EARNINGS / CREDITS</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">${rowHtml(earnings,'green')}</table>
+        <div style="padding:8px 4px;border-top:1px solid var(--gold-dim);font-weight:700;color:var(--green)">Total: + ${fmtMoney(totalEarnings)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--red);font-weight:700;padding:6px 0;border-bottom:1px solid var(--dark3)">DEDUCTIONS</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">${rowHtml(deductions,'red')}</table>
+        <div style="padding:8px 4px;border-top:1px solid var(--dark3);font-weight:700;color:var(--red)">Total: - ${fmtMoney(totalDeductions)}</div>
+      </div>
+    </div>
+    <div style="background:${netFnF>=0?'rgba(39,174,96,0.15)':'rgba(192,57,43,0.15)'};border:2px solid ${netFnF>=0?'var(--green)':'var(--red)'};border-radius:8px;padding:14px;text-align:center;margin-bottom:16px">
+      <div style="font-size:12px;color:var(--gray-light)">NET F&F PAYABLE TO EMPLOYEE</div>
+      <div style="font-size:2rem;font-weight:900;color:${netFnF>=0?'var(--gold)':'var(--red)'}">${netFnF>=0?'+':''} ${fmtMoney(Math.abs(netFnF))}</div>
+      <div style="font-size:11px;color:var(--gray-light);margin-top:4px">F&F payment within 7 working days from Last Working Date (as per policy)</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="downloadFnFPDF()">📄 Download PDF Settlement Letter</button>
+      <button class="btn btn-dark btn-sm" onclick="API.call('updateEmployee',{empId:'${escHtml(empId)}',status:'Exited',lwd:'${lwd}'}).then(r=>r.ok&&toast('Employee marked Exited','success'))">✓ Mark as Exited</button>
     </div>
   </div>`;
 }
 
-function printFnFStatement() { window.print(); }
+function downloadFnFPDF() {
+  const fd=window._lastFnF;
+  if(!fd){toast('Calculate F&F first','warning');return;}
+  const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+  const addr=State.settings?.factoryAddress||'Noida, Uttar Pradesh';
+  if(window.jspdf){
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const W=210, margin=15;
+    let y=margin;
+    // Header
+    doc.setFillColor(26,26,46); doc.rect(0,0,W,36,'F');
+    doc.setTextColor(200,146,42); doc.setFontSize(18); doc.setFont('helvetica','bold');
+    doc.text(co,W/2,13,{align:'center'});
+    doc.setTextColor(200,200,200); doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(addr,W/2,20,{align:'center'});
+    doc.setTextColor(255,220,80); doc.setFontSize(13); doc.setFont('helvetica','bold');
+    doc.text('FULL & FINAL SETTLEMENT LETTER',W/2,29,{align:'center'});
+    y=44;
+    // Employee details
+    doc.setFillColor(245,240,232); doc.rect(margin,y,W-margin*2,32,'F');
+    doc.setDrawColor(200,146,42); doc.setLineWidth(0.5); doc.rect(margin,y,W-margin*2,32);
+    const info=[
+      ['Employee Name',fd.emp.name,'Employee ID',fd.empId],
+      ['Department',fd.emp.dept,'Level / Grade',fd.emp.level],
+      ['Date of Joining',fmtDate(fd.emp.doj),'Last Working Date',fmtDate(fd.lwd)],
+      ['Total Tenure',`${Math.round(fd.tenureYears*10)/10} years (${fd.tenureDays} days)`,'Monthly Salary',`Rs.${Math.round(parseFloat(fd.emp.salary)).toLocaleString('en-IN')}`],
+    ];
+    doc.setFontSize(8.5);
+    info.forEach(([l1,v1,l2,v2],i)=>{
+      const ry=y+6+i*7;
+      doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46); doc.text(l1+':',margin+3,ry);
+      doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); doc.text(String(v1),margin+40,ry);
+      doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46); doc.text(l2+':',W/2+5,ry);
+      doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); doc.text(String(v2),W/2+42,ry);
+    });
+    y+=36;
+    // Earnings & Deductions tables
+    const colW=(W-margin*2-6)/2;
+    // Earnings header
+    doc.setFillColor(26,26,46); doc.rect(margin,y,colW,8,'F');
+    doc.setTextColor(200,146,42); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text('EARNINGS / CREDITS',margin+3,y+6);
+    // Deductions header
+    doc.setFillColor(150,30,30); doc.rect(margin+colW+6,y,colW,8,'F');
+    doc.setTextColor(255,200,200); doc.text('DEDUCTIONS',margin+colW+9,y+6);
+    y+=8;
+    const fmtRs=v=>'Rs.'+Math.round(v||0).toLocaleString('en-IN');
+    const maxRows=Math.max(fd.earnings.length,fd.deductions.length);
+    for(let i=0;i<maxRows;i++){
+      const ry=y+i*8;
+      doc.setFillColor(i%2===0?250:255,i%2===0?248:255,i%2===0?240:255);
+      doc.rect(margin,ry,colW,8,'F');
+      doc.rect(margin+colW+6,ry,colW,8,'F');
+      doc.setFontSize(8); doc.setTextColor(50,50,50);
+      if(i<fd.earnings.length){
+        doc.setFont('helvetica','normal'); doc.text(fd.earnings[i][0],margin+2,ry+5.5);
+        doc.setFont('helvetica','bold'); doc.setTextColor(0,120,60); doc.text(fmtRs(fd.earnings[i][1]),margin+colW-2,ry+5.5,{align:'right'});
+      }
+      if(i<fd.deductions.length){
+        doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); doc.text(fd.deductions[i][0],margin+colW+8,ry+5.5);
+        doc.setFont('helvetica','bold'); doc.setTextColor(180,30,30); doc.text(fmtRs(fd.deductions[i][1]),margin+W-margin*2-2,ry+5.5,{align:'right'});
+      }
+    }
+    // Totals
+    const totY=y+maxRows*8;
+    doc.setFillColor(200,220,200); doc.rect(margin,totY,colW,9,'F');
+    doc.setFont('helvetica','bold'); doc.setTextColor(0,80,30); doc.setFontSize(9);
+    doc.text('Total Earnings',margin+2,totY+6.5);
+    doc.text(fmtRs(fd.totalEarnings),margin+colW-2,totY+6.5,{align:'right'});
+    doc.setFillColor(220,200,200); doc.rect(margin+colW+6,totY,colW,9,'F');
+    doc.setTextColor(120,20,20);
+    doc.text('Total Deductions',margin+colW+8,totY+6.5);
+    doc.text(fmtRs(fd.totalDeductions),margin+W-margin*2-2,totY+6.5,{align:'right'});
+    y=totY+14;
+    // Net payable box
+    const netColor=fd.netFnF>=0?[39,174,96]:[192,57,43];
+    doc.setFillColor(...netColor); doc.setGState && doc.setGState(doc.GState({opacity:0.15}));
+    doc.rect(margin,y,W-margin*2,18,'F');
+    doc.setDrawColor(...netColor); doc.setLineWidth(1.5); doc.rect(margin,y,W-margin*2,18);
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46);
+    doc.text('NET AMOUNT PAYABLE TO EMPLOYEE:',margin+4,y+8);
+    doc.setFontSize(16); doc.setTextColor(...netColor);
+    doc.text((fd.netFnF>=0?'+ ':'')+fmtRs(Math.abs(fd.netFnF)),W-margin-2,y+13,{align:'right'});
+    y+=24;
+    // Declaration
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+    const declaration=[
+      'This Full & Final Settlement has been computed based on the company leave & salary policy.',
+      'The employee confirms receipt of all dues and has no further claims on the company.',
+      'Settlement amount will be disbursed within 7 working days from the Last Working Date.',
+    ];
+    declaration.forEach((line,i)=>{ doc.text(`${i+1}. ${line}`,margin,y+i*6); });
+    y+=declaration.length*6+10;
+    // Signature section
+    doc.setDrawColor(150,150,150); doc.setLineWidth(0.3);
+    const sigPositions=[margin, W/2-20, W-margin-50];
+    const sigLabels=['Employee Signature & Date','HR / Accounts Manager','Director / Owner'];
+    sigLabels.forEach((lbl,i)=>{
+      doc.line(sigPositions[i],y+15,sigPositions[i]+50,y+15);
+      doc.setFontSize(8); doc.text(lbl,sigPositions[i],y+21);
+    });
+    // Footer
+    doc.setTextColor(160,160,160); doc.setFontSize(7);
+    doc.text(`Generated by ArtzFolio HRMS  |  ${co}  |  Date: ${todayStr()}  |  Confidential`,W/2,290,{align:'center'});
+    doc.save(`FnF_Settlement_${(fd.emp.name||'Employee').replace(/\s+/g,'_')}_${fd.lwd}.pdf`);
+  } else {
+    window.print();
+  }
+}
 
 // ═══════════════════════════════════════════
 // REPORTS TAB
@@ -2887,10 +3432,23 @@ async function renderReports() {
       <button class="report-type-btn active" id="rtype-btn-attendance" onclick="selectReportType('attendance')">Attendance</button>
       <button class="report-type-btn" id="rtype-btn-leaves" onclick="selectReportType('leaves')">Leaves</button>
       <button class="report-type-btn" id="rtype-btn-transactions" onclick="selectReportType('transactions')">Transactions</button>
+      <button class="report-type-btn" id="rtype-btn-payroll" onclick="selectReportType('payroll')">Payroll</button>
+      <button class="report-type-btn" id="rtype-btn-fnf" onclick="selectReportType('fnf')">F&F</button>
       <button class="report-type-btn" id="rtype-btn-points" onclick="selectReportType('points')">Points</button>
       <button class="report-type-btn" id="rtype-btn-employees" onclick="selectReportType('employees')">Employees</button>
     </div>
     <div class="report-filters">
+      <div><div class="filter-label">Month</div>
+        <select id="rpt-month" class="filter-input">
+          <option value="">All Months</option>
+          ${Array.from({length:12},(_,i)=>`<option value="${i+1}">${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('')}
+        </select>
+      </div>
+      <div><div class="filter-label">Year</div>
+        <select id="rpt-year" class="filter-input">
+          ${[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('')}
+        </select>
+      </div>
       <div><div class="filter-label">From Date</div><input id="rpt-from" class="filter-input" type="date" value="${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01"></div>
       <div><div class="filter-label">To Date</div><input id="rpt-to" class="filter-input" type="date" value="${todayStr()}"></div>
       <div><div class="filter-label">Employee</div>
@@ -2900,13 +3458,33 @@ async function renderReports() {
       <div><div class="filter-label">Department</div><input id="rpt-dept" class="filter-input" placeholder="Filter by dept…"></div>
       <div><div class="filter-label">Level</div>
         <select id="rpt-level" class="filter-input"><option value="">All Levels</option>${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}">${l}</option>`).join('')}</select></div>
-      <div><div class="filter-label">Status/Type</div><input id="rpt-status" class="filter-input" placeholder="e.g. UL, P, Approved…"></div>
+      <div id="rpt-status-div"><div class="filter-label">Status</div>
+        <select id="rpt-status" class="filter-input">
+          <option value="">All</option>
+          <option>P</option><option>UL</option><option>IL</option><option>IHL</option>
+          <option>WO</option><option>H</option><option>EW</option><option>SL</option><option>PL</option>
+        </select>
+      </div>
+      <div id="rpt-type-div" style="display:none"><div class="filter-label">Type</div>
+        <select id="rpt-type" class="filter-input">
+          <option value="">All</option>
+          <option>Advance</option><option>Loan</option><option>Bonus</option><option>Penalty</option><option>DamageRecovery</option>
+        </select>
+      </div>
+      <div id="rpt-leavetype-div" style="display:none"><div class="filter-label">Leave Type</div>
+        <select id="rpt-leavetype" class="filter-input">
+          <option value="">All</option>
+          <option>IL</option><option>UL</option><option>SL</option><option>PL</option><option>IHL</option><option>UHL</option>
+        </select>
+      </div>
     </div>
-    <div style="margin-top:12px;display:flex;gap:8px">
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-gold btn-sm" onclick="runReport()">▶ Run Report</button>
       <button class="btn btn-dark btn-sm" onclick="exportReportCSV()">📥 Export CSV</button>
+      <button class="btn btn-dark btn-sm" onclick="exportReportExcel()">📊 Export Excel</button>
     </div>
   </div>
+  <div id="report-summary" style="margin-top:12px;font-size:12px;color:var(--gray-light)"></div>
   <div id="report-results"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
   window._reportType='attendance';
@@ -2917,19 +3495,28 @@ function selectReportType(t) {
   document.querySelectorAll('.report-type-btn').forEach(b=>b.className='report-type-btn');
   const btn=document.getElementById(`rtype-btn-${t}`);
   if(btn) btn.className='report-type-btn active';
+  // Show/hide filter divs based on report type
+  document.getElementById('rpt-status-div').style.display = ['attendance'].includes(t) ? 'block' : 'none';
+  document.getElementById('rpt-type-div').style.display = ['transactions'].includes(t) ? 'block' : 'none';
+  document.getElementById('rpt-leavetype-div').style.display = ['leaves'].includes(t) ? 'block' : 'none';
 }
 
 async function runReport() {
   const type=window._reportType||'attendance';
   const fromDate=document.getElementById('rpt-from')?.value;
   const toDate=document.getElementById('rpt-to')?.value;
+  const month=document.getElementById('rpt-month')?.value;
+  const year=document.getElementById('rpt-year')?.value;
   const empId=document.getElementById('rpt-emp')?.value;
   const dept=document.getElementById('rpt-dept')?.value;
   const level=document.getElementById('rpt-level')?.value;
   const status=document.getElementById('rpt-status')?.value;
+  const txnType=document.getElementById('rpt-type')?.value;
+  const leaveType=document.getElementById('rpt-leavetype')?.value;
   document.getElementById('report-results').innerHTML='<div class="loading-spinner"></div>';
+  document.getElementById('report-summary').innerHTML='';
   const now=new Date();
-  const params=type==='points'?{year:now.getFullYear(),month:now.getMonth()+1}:{type,fromDate,toDate,empId,dept,level,status};
+  const params={type,fromDate,toDate,month,year,empId,dept,level,status,txnType,leaveType};
   const res=await API.call('getReport',params);
   window._lastReport=res.data||res.leaderboard||[];
   renderReportTable(type,res);
@@ -2972,6 +3559,14 @@ function exportReportCSV() {
   const headers=Object.keys(data[0]);
   const rows=data.map(r=>headers.map(h=>r[h]||''));
   downloadCSV(`ArtzFolio_Report_${todayStr()}.csv`,[headers,...rows]);
+}
+
+function exportReportExcel() {
+  const data=window._lastReport||[];
+  if(!data.length){toast('No data to export','warning');return;}
+  const headers=Object.keys(data[0]);
+  const rows=data.map(r=>headers.map(h=>r[h]||''));
+  downloadXLSX(`ArtzFolio_Report_${window._reportType||'data'}_${todayStr()}.xlsx`, 'Report', headers, rows);
 }
 
 function sortReportBy(col) {
@@ -3061,6 +3656,42 @@ async function renderSettings() {
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveCompanySettings()">💾 Save Company Info</button>
   </div>
 
+  <!-- Automation Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">🕐 Automation Settings</div>
+    <div class="settings-grid">
+      <!-- Auto Clock-Out -->
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Auto Clock-Out</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px">
+            <input type="checkbox" id="cfg-autoClockOutEnabled" ${cfg['autoClockOutEnabled']==='true'?'checked':''}>
+            Enable Auto Clock-Out (at shift end + buffer minutes)
+          </label>
+        </div>
+      </div>
+      ${cfgField('shiftAutoClockoutBuffer','Auto Clock-Out Buffer (minutes after shift end)')}
+      <!-- Auto Mark Present -->
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Auto Mark Present</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px">
+          <input type="checkbox" id="cfg-autoMarkPresentEnabled" ${cfg['autoMarkPresentEnabled']==='true'?'checked':''}>
+          Enable Auto Mark Present (for employees clocked in past threshold)
+        </label>
+      </div>
+      ${cfgField('autoMarkPresentThreshold','Auto Mark Present Threshold (minutes into shift)')}
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="saveAutomationSettings()">💾 Save Automation Settings</button>
+      <button class="btn btn-dark" onclick="runAutoClockOut()">▶ Run Auto Clock-Out Now</button>
+      <button class="btn btn-dark" onclick="runAutoMarkPresent()">▶ Run Auto Mark Present Now</button>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--gray-light)">
+      <strong>Auto Clock-Out:</strong> Automatically clocks out employees who forgot to clock out, at their shift end time + buffer minutes.<br>
+      <strong>Auto Mark Present:</strong> Marks employees as 'P' if they clocked in and are ${cfg['autoMarkPresentThreshold']||30}+ minutes into their shift.
+    </div>
+  </div>
+
   <!-- Points & Bonuses -->
   <div class="settings-section">
     <div class="settings-section-title">⭐ Points & Bonus Settings</div>
@@ -3070,6 +3701,14 @@ async function renderSettings() {
       ${cfgField('points2ndPrize','2nd Prize (₹)')}
       ${cfgField('points3rdPrize','3rd Prize (₹)')}
       ${cfgField('perfectAttendanceBonus','Perfect Attendance Bonus (₹)')}
+      ${cfgField('pointsRatePerPoint','Points Bonus Rate (₹ per point earned monthly)')}
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Include Points Bonus in Salary</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px">
+          <input type="checkbox" id="cfg-pointsBonusInSalary" ${cfg['pointsBonusInSalary']==='true'?'checked':''}>
+          Include points bonus in monthly salary payout
+        </label>
+      </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="savePointsSettings()">💾 Save Points Settings</button>
   </div>
@@ -3179,7 +3818,7 @@ async function renderSettings() {
 }
 
 async function savePolicySettings() {
-  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','shiftAutoClockoutBuffer','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword'];
+  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','shiftAutoClockoutBuffer','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   const res=await API.call('updateSettings',{updates});
@@ -3195,11 +3834,38 @@ async function saveCompanySettings() {
 }
 
 async function savePointsSettings() {
-  const keys=['pointsEligibleLevels','points1stPrize','points2ndPrize','points3rdPrize','perfectAttendanceBonus'];
+  const keys=['pointsEligibleLevels','points1stPrize','points2ndPrize','points3rdPrize','perfectAttendanceBonus','pointsRatePerPoint'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  // Handle checkbox for pointsBonusInSalary
+  const pbsEl=document.getElementById('cfg-pointsBonusInSalary');
+  if(pbsEl) updates['pointsBonusInSalary'] = pbsEl.checked ? 'true' : 'false';
   const res=await API.call('updateSettings',{updates});
   if(res.ok){toast('✓ Points settings saved','success');}else toast('Error','error');
+}
+
+async function saveAutomationSettings() {
+  const keys=['shiftAutoClockoutBuffer','autoMarkPresentThreshold'];
+  const updates={};
+  keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  // Handle checkboxes
+  const acoEl=document.getElementById('cfg-autoClockOutEnabled');
+  if(acoEl) updates['autoClockOutEnabled'] = acoEl.checked ? 'true' : 'false';
+  const ampEl=document.getElementById('cfg-autoMarkPresentEnabled');
+  if(ampEl) updates['autoMarkPresentEnabled'] = ampEl.checked ? 'true' : 'false';
+  const res=await API.call('updateSettings',{updates});
+  if(res.ok) toast('✓ Automation settings saved','success');
+  else toast(res.error||'Error','error');
+}
+
+async function runAutoClockOut() {
+  const res=await API.call('autoClockOut',{});
+  toast(`Auto clock-out done: ${res.affected?.length||0} employees clocked out`,'success',4000);
+}
+
+async function runAutoMarkPresent() {
+  const res=await API.call('autoMarkPresent',{});
+  toast(`Auto mark present done: ${res.affected||0} employees marked`,'success',4000);
 }
 
 // Toggle level chip selection and sync hidden input
@@ -3252,9 +3918,18 @@ function parseXLSX(file) {
   });
 }
 
+// Download bulk import template
+function downloadBulkTemplate() {
+  if (window._currentBulkTemplate) {
+    downloadXLSX(window._currentBulkTemplate.filename, 'Template', window._currentBulkTemplate.headers);
+  }
+}
+
 // Show a modal to bulk-import from Excel
 async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction) {
   let parsedRows = [];
+  // Store template data in window global to avoid JSON.stringify issues with HTML attributes
+  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename };
   const html = `
   <div style="font-size:13px">
     <p style="color:var(--gray-light);margin-bottom:12px">
@@ -3262,7 +3937,7 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
       Required columns are marked with <strong style="color:var(--gold)">*</strong>
     </p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-      <button class="btn btn-dark btn-sm" onclick="downloadXLSX('${templateFilename}','Sheet1',${JSON.stringify(templateHeaders)})">📥 Download Template (.xlsx)</button>
+      <button class="btn btn-dark btn-sm" onclick="downloadBulkTemplate()">📥 Download Template (.xlsx)</button>
       <label class="bulk-btn" style="margin:0">
         📂 Upload Excel / CSV
         <input type="file" id="bulk-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleBulkFileSelect(this,'bulk-preview','bulk-status')">
