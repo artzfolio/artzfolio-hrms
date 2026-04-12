@@ -86,6 +86,8 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 ─────────────────────────────────────────── */
 .form-group{margin-bottom:16px}
 .form-label{display:block;font-size:12px;color:var(--gold-light);margin-bottom:6px;font-weight:600}
+.info-tooltip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--dark3);border:1px solid var(--dark3);color:var(--gray-light);font-size:10px;cursor:help;margin-left:4px;vertical-align:middle;position:relative}
+.info-tooltip:hover::after{content:attr(title);position:absolute;left:20px;top:-4px;width:220px;background:#1e1e2e;border:1px solid var(--gold-dim);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.5;color:var(--gray-light);z-index:999;white-space:normal;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 .form-input{width:100%;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);
             padding:10px 14px;border-radius:var(--radius-sm);font-size:14px;transition:var(--trans)}
 .form-input:focus{border-color:var(--gold)}
@@ -653,13 +655,41 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
           </div>
         </div>
 
-        <!-- Leave request & earnings row -->
+        <!-- Leave & Holidays Info Card -->
+        <div class="mini-card" id="ec-leave-info-card">
+          <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-leave-body')">
+            📅 <span class="en">Leaves & Holidays</span><span class="hi">छुट्टियाँ</span>
+            <span id="ec-leave-toggle" style="font-size:12px;color:var(--gray-light)">▼</span>
+          </h4>
+          <div id="ec-leave-body">
+            <div id="ec-leave-content" style="font-size:13px"></div>
+          </div>
+        </div>
+
+        <!-- My Info Card (personal rules) -->
+        <div class="mini-card" id="ec-myinfo-card">
+          <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-myinfo-body')">
+            👤 <span class="en">My Info & Rules</span><span class="hi">मेरी जानकारी</span>
+            <span id="ec-myinfo-toggle" style="font-size:12px;color:var(--gray-light)">▼</span>
+          </h4>
+          <div id="ec-myinfo-body" style="display:none">
+            <div id="ec-myinfo-content" style="font-size:13px"></div>
+          </div>
+        </div>
+
+        <!-- Quick action buttons row -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <button class="action-btn secondary" onclick="showLeaveRequest()">
             📅 <span class="en">Request Leave</span><span class="hi">छुट्टी अनुरोध</span>
           </button>
           <button class="action-btn secondary" onclick="showEarnings()">
             💰 <span class="en">My Earnings</span><span class="hi">मेरी कमाई</span>
+          </button>
+          <button class="action-btn secondary" onclick="showAdvanceRequest()">
+            🤝 <span class="en">Request Advance</span><span class="hi">अग्रिम अनुरोध</span>
+          </button>
+          <button class="action-btn secondary" onclick="showLeaveEncashRequest()">
+            💸 <span class="en">Leave Encashment</span><span class="hi">छुट्टी नकदीकरण</span>
           </button>
         </div>
       </div>
@@ -808,8 +838,8 @@ const CFG = {
   token: 'AZ_TOKEN_2026',
   modelPath: 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
   faceThreshold: 0.55,
-  pinMaxLen: 6,
-  kioskTimeout: 10000,
+  pinMaxLen: 4,
+  kioskTimeout: 60000,
   version: '2.0',
 };
 const LS = {
@@ -960,7 +990,7 @@ function toast(msg, type='info', dur=3500) {
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => el.remove(), dur);
 }
-function fmtMoney(n) { return '₹' + (parseFloat(n)||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtMoney(v){ const n=Math.round(parseFloat(v)||0); return '₹\u202f'+n.toLocaleString('en-IN'); }
 function buildBalanceHtml(bal, rec) {
   const todayIsPresent = rec && rec.status==='P';
   const todayAmt = todayIsPresent ? (bal.dailyRate||0) : 0;
@@ -985,6 +1015,50 @@ function fmtTime(ts) {
   try { const d=new Date(ts); return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); } catch { return ts; }
 }
 function fmtDT(ts) { return ts ? fmtDate(ts.split(' ')[0]) + ' ' + fmtTime(ts) : '—'; }
+function fmtShift(start, end) {
+  function to12h(t) {
+    if (!t || !t.includes(':')) return t||'—';
+    const [h,m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+  }
+  return `${to12h(start)} – ${to12h(end)}`;
+}
+function fmtSalary(v) {
+  const n = Math.round(parseFloat(v)||0);
+  return '₹ ' + n.toLocaleString('en-IN');
+}
+function buildEmpSearchSelect(fieldId, emps, placeholder='Type name or ID…') {
+  const listId = fieldId + '_list';
+  const opts = emps.map(e=>`<option value="${e.id}">${escHtml(e.name)} (${e.id})</option>`).join('');
+  return `<div style="position:relative">
+    <input id="${fieldId}_input" class="form-input" list="${listId}" placeholder="${placeholder}"
+      oninput="resolveEmpSearch('${fieldId}',this.value)"
+      style="background:var(--dark2)">
+    <datalist id="${listId}">${opts}</datalist>
+    <input type="hidden" id="${fieldId}" value="">
+    <div id="${fieldId}_resolved" style="font-size:11px;color:var(--gold);margin-top:3px;min-height:16px"></div>
+  </div>`;
+}
+function resolveEmpSearch(fieldId, inputVal) {
+  const emps = State.employees||[];
+  // Match by exact ID, or by name/ID partial
+  const v = inputVal.trim().toLowerCase();
+  const byId = emps.find(e=>e.id.toLowerCase()===v || inputVal.includes('('+e.id+')'));
+  const match = byId || emps.find(e=>e.name.toLowerCase()===v || e.id.toLowerCase()===v);
+  const hiddenEl = document.getElementById(fieldId);
+  const resolvedEl = document.getElementById(fieldId+'_resolved');
+  if (match) {
+    if(hiddenEl) hiddenEl.value = match.id;
+    if(resolvedEl) resolvedEl.innerHTML = `✓ <strong>${escHtml(match.name)}</strong> — ${escHtml(match.dept)} / ${escHtml(match.level)}`;
+    resolvedEl.style.color='var(--green)';
+  } else {
+    if(hiddenEl) hiddenEl.value = '';
+    if(resolvedEl) { resolvedEl.textContent = inputVal.length>1 ? 'No match — keep typing' : ''; resolvedEl.style.color='var(--gray-light)'; }
+  }
+}
+function getEmpSearchValue(fieldId) { return document.getElementById(fieldId)?.value||''; }
 function todayStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function nowStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1225,7 +1299,7 @@ function keyPress(key) {
   if (State.pin.length < CFG.pinMaxLen) {
     State.pin += key;
     updatePinDots();
-    if (State.pin.length >= 4) setTimeout(()=>submitPin(), 100);
+    if (State.pin.length >= CFG.pinMaxLen) setTimeout(()=>submitPin(), 50);
   }
 }
 document.addEventListener('keydown', e => {
@@ -1312,7 +1386,7 @@ async function handleAuthResult(res) {
   }
   warn.style.display='none';
   State.currentEmp = res.employee;
-  State.currentEmpRecord = res;
+  State.currentEmpRecord = res; // includes pendingLeaves, approvedLeaves, upcomingHolidays, leaveBalance, missedClockOutYesterday
   // Get GPS
   const pos = await GPS.get();
   State.gpsPos = pos;
@@ -1366,6 +1440,10 @@ async function showEmployeeCard(res, pos) {
   showMilestoneCard(res.milestoneInfo);
   // Points
   showPointsCard(res.pointsInfo, emp);
+  // Leave & Holiday info panel
+  buildLeaveInfoCard(res, emp);
+  // My Info & Rules panel
+  buildMyInfoCard(emp);
   // Show card, hide keypad
   document.getElementById('emp-card').classList.add('visible');
   document.getElementById('keypad').style.display='none';
@@ -1379,7 +1457,7 @@ async function showEmployeeCard(res, pos) {
 function buildActionButtons(rec, emp) {
   const actions = document.getElementById('ec-actions');
   let clkIn=false, clkOut=false, brkIn=false, brkOut=false, locked=false;
-  let onBreak=false;
+  let onBreak=false, lateClockIn=false, missedClockOut=false;
   if (rec) {
     clkIn = !rec.clockIn;
     if (rec.clockIn && !rec.clockOut) {
@@ -1394,10 +1472,34 @@ function buildActionButtons(rec, emp) {
       clkOut = true;
     }
   } else { clkIn=true; }
-  actions.innerHTML = `
-    <button class="action-btn primary" onclick="doClockIn()" ${!clkIn?'disabled':''} id="btn-clock-in">
+  // Check if late clock-in approval needed
+  if (clkIn) {
+    const [sh,sm] = (emp.shiftStart||'09:00').split(':').map(Number);
+    const now=new Date(), ss=new Date(now.getFullYear(),now.getMonth(),now.getDate(),sh,sm,0);
+    const lateMs = now.getTime() - ss.getTime() - (parseInt(State.settings.graceMinutes||5)*60000);
+    const threshold = parseInt(State.settings.lateClockInApprovalMinutes||60);
+    if (lateMs > threshold*60000) lateClockIn = true;
+  }
+  // Check missed clock-out (yesterday's data stored in currentEmpRecord)
+  const missedClockOutData = State.currentEmpRecord?.missedClockOutYesterday;
+  if (clkIn && missedClockOutData) missedClockOut = true;
+
+  let clockInBtnHtml;
+  if (missedClockOut) {
+    clockInBtnHtml = `<button class="action-btn danger" onclick="doRequestClockInAfterMissedOut('${missedClockOutData.date||''}')" id="btn-clock-in">
+      🚨 Request Clock-In<br><small style="font-size:9px">Yesterday's clock-out missing</small>
+    </button>`;
+  } else if (lateClockIn) {
+    clockInBtnHtml = `<button class="action-btn" style="background:rgba(255,152,0,0.2);border-color:var(--orange);color:var(--orange)" onclick="doRequestLateClockIn()" id="btn-clock-in">
+      🕐 Request Late Clock-In<br><small style="font-size:9px">Mgr approval needed</small>
+    </button>`;
+  } else {
+    clockInBtnHtml = `<button class="action-btn primary" onclick="doClockIn()" ${!clkIn?'disabled':''} id="btn-clock-in">
       ⏱ ${t('clockIn')}
-    </button>
+    </button>`;
+  }
+  actions.innerHTML = `
+    ${clockInBtnHtml}
     <button class="action-btn ${locked?'danger':'secondary'}" onclick="doClockOut(${locked})" ${!clkOut?'disabled':''} id="btn-clock-out">
       ⏹ ${t('clockOut')}${locked?'<br><small style="font-size:9px">Mgr approval</small>':''}
     </button>
@@ -1472,10 +1574,329 @@ function showMilestoneDetail() {
   showModal('🏆 Your Milestone Journey / आपकी यात्रा', html);
 }
 
+function toggleCard(bodyId) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  const toggleId = bodyId.replace('-body','-toggle');
+  const tog = document.getElementById(toggleId);
+  if (tog) tog.textContent = isHidden ? '▲' : '▼';
+}
+
+function buildLeaveInfoCard(res, emp) {
+  const el = document.getElementById('ec-leave-content');
+  if (!el) return;
+  const pendingLeaves = res.pendingLeaves || [];
+  const approvedLeaves = res.approvedLeaves || [];
+  const holidays = res.upcomingHolidays || [];
+  const lb = res.leaveBalance || {};
+  let html = '';
+
+  // Leave usage this month
+  html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
+    <div style="background:var(--dark3);border-radius:8px;padding:8px;text-align:center">
+      <div style="font-size:1.3rem;font-weight:700;color:var(--gold)">${lb.usedIL||0}</div>
+      <div style="font-size:10px;color:var(--gray-light)">IL Used<br>इस माह</div>
+    </div>
+    <div style="background:var(--dark3);border-radius:8px;padding:8px;text-align:center">
+      <div style="font-size:1.3rem;font-weight:700;color:var(--blue)">${lb.usedSL||0}</div>
+      <div style="font-size:10px;color:var(--gray-light)">SL Used<br>इस माह</div>
+    </div>
+    <div style="background:var(--dark3);border-radius:8px;padding:8px;text-align:center">
+      <div style="font-size:1.3rem;font-weight:700;color:var(--green)">${lb.usedPL||0}</div>
+      <div style="font-size:10px;color:var(--gray-light)">PL Used<br>इस माह</div>
+    </div>
+  </div>`;
+
+  // Pending leave requests
+  if (pendingLeaves.length > 0) {
+    html += `<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">⏳ Pending Approvals</div>`;
+    pendingLeaves.forEach(l => {
+      const dStr = l.startDate === l.endDate ? l.startDate : `${l.startDate} to ${l.endDate}`;
+      html += `<div style="background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:600">${l.type} — ${l.totalDays} day${l.totalDays>1?'s':''}</div>
+          <div style="font-size:11px;color:var(--gray-light)">${escHtml(dStr)}</div>
+          ${l.note?`<div style="font-size:11px;color:var(--gray-light);font-style:italic">"${escHtml(l.note)}"</div>`:''}
+        </div>
+        <button class="btn btn-sm" style="background:rgba(229,57,53,0.15);border:1px solid rgba(229,57,53,0.4);color:var(--red);font-size:11px;padding:4px 8px;min-height:auto" onclick="cancelLeaveFromKiosk('${l.id}',false)">Cancel</button>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // Approved upcoming leaves
+  if (approvedLeaves.length > 0) {
+    html += `<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">✓ Approved Leaves</div>`;
+    approvedLeaves.forEach(l => {
+      const dStr = l.startDate === l.endDate ? l.startDate : `${l.startDate} to ${l.endDate}`;
+      html += `<div style="background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.25);border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:600">${l.type} — ${l.totalDays} day${l.totalDays>1?'s':''}</div>
+          <div style="font-size:11px;color:var(--gray-light)">${escHtml(dStr)}</div>
+        </div>
+        <button class="btn btn-sm" style="background:rgba(229,57,53,0.1);border:1px solid rgba(229,57,53,0.3);color:var(--red);font-size:11px;padding:4px 8px;min-height:auto" onclick="cancelLeaveFromKiosk('${l.id}',true)">Cancel ↩</button>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (pendingLeaves.length === 0 && approvedLeaves.length === 0) {
+    html += `<div style="color:var(--gray-light);font-size:12px;text-align:center;padding:8px 0">No upcoming leave applications.</div>`;
+  }
+
+  // Upcoming holidays
+  if (holidays.length > 0) {
+    html += `<div style="margin-top:10px"><div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🎉 Upcoming Holidays (30 days)</div>`;
+    holidays.forEach(h => {
+      const hDate = new Date(h.date+'T00:00:00');
+      const dayLabel = hDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+      const daysUntil = Math.round((hDate - new Date())/86400000);
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--dark3)">
+        <div>
+          <div style="font-weight:600">${escHtml(h.name)}</div>
+          <div style="font-size:11px;color:var(--gray-light)">${dayLabel} • ${escHtml(h.type||'')}</div>
+        </div>
+        <div style="font-size:11px;color:var(--gold);font-weight:700">${daysUntil===0?'Today':daysUntil===1?'Tomorrow':`${daysUntil}d`}</div>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    html += `<div style="color:var(--gray-light);font-size:12px;text-align:center;padding:6px 0">No holidays in next 30 days.</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function buildMyInfoCard(emp) {
+  const el = document.getElementById('ec-myinfo-content');
+  if (!el || !emp) return;
+  const s = State.settings;
+  const otElig = (s.otEligibleLevels||'L6,L7,L8,L9,L10').split(',').map(x=>x.trim()).includes(emp.level);
+  const nsElig = (s.nightShiftEligibleLevels||'L6,L7,L8,L9,L10').split(',').map(x=>x.trim()).includes(emp.level);
+  // Tenure
+  let tenureStr = '—';
+  if (emp.doj) {
+    const doj = new Date(emp.doj);
+    const now = new Date();
+    const months = (now.getFullYear()-doj.getFullYear())*12 + (now.getMonth()-doj.getMonth());
+    const years = Math.floor(months/12), rem = months%12;
+    tenureStr = years > 0 ? `${years}yr ${rem}mo` : `${rem} month${rem!==1?'s':''}`;
+  }
+  // Late deduction tiers
+  let lateTiers = '';
+  const grace = parseInt(s.graceMinutes||5);
+  const t1l = parseInt(s.lateT1Limit||15), t1d = parseFloat(s.lateT1Deduction||0.5);
+  const t2l = parseInt(s.lateT2Limit||30), t2d = parseFloat(s.lateT2Deduction||1);
+  const t3d = parseFloat(s.lateT3Deduction||2);
+  lateTiers = `<0-${grace}min: Grace (no deduction)<br>${grace+1}-${t1l}min late: -${t1d} day<br>${t1l+1}-${t2l}min late: -${t2d} day<br>>${t2l}min late: -${t3d} days`;
+
+  const row = (icon, label, value, valueClass='') => `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--dark3)">
+      <span style="color:var(--gray-light);font-size:12px">${icon} ${label}</span>
+      <span style="font-weight:600;font-size:12px;text-align:right;max-width:55%;${valueClass?'color:var(--'+valueClass+')'':''}">${value}</span>
+    </div>`;
+
+  el.innerHTML = `
+    ${row('🕐','Shift',fmtShift(emp.shiftStart||'09:00',emp.shiftEnd||'19:00'))}
+    ${row('📅','Joining Date',emp.doj ? new Date(emp.doj+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—')}
+    ${row('⏳','Tenure',tenureStr)}
+    ${row('🏷','Level / Grade',emp.level||'—')}
+    ${row('💼','Department',emp.dept||'—')}
+    ${row('⏱','OT Eligible',otElig?'✓ Yes':'✗ No (level below L6)',otElig?'green':'gray-light')}
+    ${row('🌙','Night Shift Pay',nsElig && parseFloat(emp.nightShiftAllowance||0)>0 ? `₹${emp.nightShiftAllowance}/mo (${s.nightShiftMultiplier||1.5}×)` : nsElig ? '₹0 (not set)' : 'Not eligible')}
+    ${row('📋','Notice Period',`${emp.noticeperiodDays||30} days`)}
+    <div style="padding:8px 0;border-bottom:1px solid var(--dark3)">
+      <div style="color:var(--gray-light);font-size:12px;margin-bottom:4px">⚠ Late Arrival Deduction Tiers</div>
+      <div style="font-size:11px;line-height:1.7;color:var(--gray-light)">${lateTiers}</div>
+    </div>
+    ${row('🚫','UL Penalty',`${s.ulPenaltyDays||2} extra days deducted per UL`)}
+    ${row('🥪','Sandwich Rule',s.sandwichRule==='false'?'Not applied':'Applied (leave between 2 offs = deducted)')}
+    ${row('🔐','PIN Block','After '+(s.pinBlockAfter||3)+' wrong attempts → fee ₹'+(s.pinReactivationFee||100))}
+  `;
+}
+
+async function cancelLeaveFromKiosk(leaveId, needsManagerApproval) {
+  if (!State.currentEmp) return;
+  if (needsManagerApproval) {
+    // Show manager PIN field
+    const bodyHtml = `
+      <p style="font-size:13px;color:var(--gray-light);margin-bottom:14px">This approved leave requires manager approval to cancel.</p>
+      <div class="form-group">
+        <label class="form-label">Manager PIN or Password</label>
+        <input id="cancel-leave-pin" class="form-input" type="password" placeholder="Manager PIN…">
+      </div>`;
+    showModal('Cancel Approved Leave', bodyHtml, [
+      {label:'Confirm Cancellation', cls:'btn-gold', cb: async () => {
+        const pin = document.getElementById('cancel-leave-pin')?.value;
+        if (!pin) { toast('Enter manager PIN','warning'); return; }
+        const mgrPw=State.settings.managerPassword||'Manager@2026', supPw=State.settings.supervisorPassword||'Supervisor@2026', admPw=State.settings.adminPassword||'ArtzFolio@2026';
+        if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid PIN','error'); return; }
+        closeModal();
+        await doCancelLeave(leaveId, true);
+      }},
+      {label:'Back', cls:'btn-dark', cb: closeModal},
+    ]);
+  } else {
+    if (!confirm('Cancel this leave request?')) return;
+    await doCancelLeave(leaveId, false);
+  }
+}
+
+async function doCancelLeave(leaveId, managerApproved) {
+  try {
+    const res = await API.call('cancelLeave', {leaveId, managerApproved, empId: State.currentEmp.id});
+    if (res.ok) {
+      toast('Leave request cancelled','success');
+      // Refresh leave info
+      const authRes = await API.call('auth', {pin: null, empId: State.currentEmp.id, skipPinCheck: true});
+      if (authRes.ok) buildLeaveInfoCard(authRes, State.currentEmp);
+    } else {
+      toast(res.error||'Failed to cancel','error');
+    }
+  } catch(e) { toast('Network error','error'); }
+}
+
+async function showAdvanceRequest() {
+  resetKioskTimer();
+  if (!State.currentEmp) return;
+  const emp = State.currentEmp;
+  const bal = State.currentEmpRecord?.balance || {};
+  const approverName = emp.supervisorName || emp.managerName || 'Manager';
+  const bodyHtml = `
+    <div style="background:var(--dark3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--gray-light)">Estimated earned this month</span>
+        <strong class="text-gold">₹${Math.round(bal.earned||0)}</strong>
+      </div>
+      <div style="font-size:11px;color:var(--gray-light)">Advance will be deducted from your next salary. Approver: <strong>${escHtml(approverName)}</strong></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Advance Amount (₹) <span style="color:var(--red)">*</span></label>
+      <input id="adv-amount" class="form-input" type="number" min="100" max="50000" placeholder="e.g. 2000" step="100">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reason <span style="color:var(--red)">*</span></label>
+      <input id="adv-reason" class="form-input" type="text" placeholder="e.g. Medical emergency, home repair…" maxlength="120">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Urgency</label>
+      <select id="adv-urgency" class="form-input">
+        <option value="Normal">Normal (next 2-3 days)</option>
+        <option value="Urgent">Urgent (same day)</option>
+      </select>
+    </div>
+    <p style="font-size:11px;color:var(--gray-light);margin-top:8px">ℹ️ Request will be sent to ${escHtml(approverName)} for approval. You'll be notified once approved.</p>
+  `;
+  showModal('🤝 Salary Advance Request', bodyHtml, [
+    {label:'Submit Request', cls:'btn-gold', cb: async () => {
+      const amount = parseFloat(document.getElementById('adv-amount')?.value);
+      const reason = document.getElementById('adv-reason')?.value?.trim();
+      const urgency = document.getElementById('adv-urgency')?.value;
+      if (!amount || amount < 100) { toast('Enter a valid amount (min ₹100)','warning'); return; }
+      if (!reason) { toast('Please enter a reason','warning'); return; }
+      closeModal();
+      try {
+        const res = await API.call('addTransaction', {
+          empId: emp.id, type:'Advance', amount, status:'Pending',
+          note: `[${urgency}] ${reason}`, approvedBy: 'pending-approval', date: todayStr()
+        });
+        if (res.ok) {
+          showModal('✅ Advance Request Submitted', `
+            <div style="text-align:center;padding:16px">
+              <div style="font-size:2.5rem">✅</div>
+              <div style="font-size:16px;font-weight:700;margin:8px 0">Request Submitted!</div>
+              <div style="font-size:13px;color:var(--gray-light)">Your advance request of <strong class="text-gold">₹${amount}</strong> has been sent to the manager for approval.</div>
+              <div style="font-size:12px;color:var(--gray-light);margin-top:8px">Urgency: <strong>${urgency}</strong></div>
+            </div>`, [{label:'Done', cls:'btn-gold', cb:closeModal}]);
+        } else { toast(res.error||'Failed to submit','error'); }
+      } catch(e) { toast('Network error','error'); }
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+  ]);
+}
+
+async function showLeaveEncashRequest() {
+  resetKioskTimer();
+  if (!State.currentEmp) return;
+  const emp = State.currentEmp;
+  const lb = State.currentEmpRecord?.leaveBalance || {};
+  const bal = State.currentEmpRecord?.balance || {};
+  const approverName = emp.supervisorName || emp.managerName || 'Manager';
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
+  const dailyRate = parseFloat(emp.salary||0) / daysInMonth;
+  const availableIL = Math.max(0, (parseFloat(emp.monthlyILEntitlement||1)) - (lb.usedIL||0));
+
+  const bodyHtml = `
+    <div style="background:var(--dark3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="color:var(--gray-light)">IL used this month</span><strong>${lb.usedIL||0} day(s)</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--gray-light)">Daily rate</span><strong class="text-gold">₹${Math.round(dailyRate)}/day</strong>
+      </div>
+      <div style="font-size:11px;color:var(--gray-light);margin-top:6px">Leave encashment pays you the equivalent salary for unused leaves instead of using them as days off.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Number of Leave Days to Encash <span style="color:var(--red)">*</span></label>
+      <input id="enc-days" class="form-input" type="number" min="0.5" max="10" step="0.5" placeholder="e.g. 1 or 0.5">
+    </div>
+    <div id="enc-amount-preview" style="background:rgba(255,193,7,0.1);border:1px solid var(--gold-dim);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;display:none">
+      Estimated payout: <strong class="text-gold" id="enc-amt-val">₹0</strong>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note / Reason</label>
+      <input id="enc-reason" class="form-input" type="text" placeholder="Optional reason…" maxlength="100">
+    </div>
+    <p style="font-size:11px;color:var(--gray-light)">ℹ️ Request will be sent to ${escHtml(approverName)} for approval and paid with salary.</p>
+  `;
+  showModal('💸 Leave Encashment Request', bodyHtml, [
+    {label:'Submit Request', cls:'btn-gold', cb: async () => {
+      const days = parseFloat(document.getElementById('enc-days')?.value);
+      const reason = document.getElementById('enc-reason')?.value?.trim();
+      if (!days || days < 0.5) { toast('Enter valid number of days (min 0.5)','warning'); return; }
+      const amount = Math.round(days * dailyRate);
+      closeModal();
+      try {
+        const res = await API.call('addTransaction', {
+          empId: emp.id, type:'LeaveEncashment', amount, status:'Pending',
+          note: `Leave encashment: ${days} day(s) @ ₹${Math.round(dailyRate)}/day${reason?' | '+reason:''}`,
+          approvedBy: 'pending-approval', date: todayStr()
+        });
+        if (res.ok) {
+          showModal('✅ Encashment Request Submitted', `
+            <div style="text-align:center;padding:16px">
+              <div style="font-size:2.5rem">✅</div>
+              <div style="font-size:16px;font-weight:700;margin:8px 0">Request Submitted!</div>
+              <div style="font-size:13px;color:var(--gray-light)"><strong>${days} day(s)</strong> encashment of <strong class="text-gold">₹${amount}</strong> sent for approval.</div>
+            </div>`, [{label:'Done', cls:'btn-gold', cb:closeModal}]);
+        } else { toast(res.error||'Failed to submit','error'); }
+      } catch(e) { toast('Network error','error'); }
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+  ]);
+  // Live preview
+  setTimeout(() => {
+    const daysEl = document.getElementById('enc-days');
+    const preview = document.getElementById('enc-amount-preview');
+    const amtEl = document.getElementById('enc-amt-val');
+    if (daysEl && preview && amtEl) {
+      daysEl.addEventListener('input', () => {
+        const d = parseFloat(daysEl.value)||0;
+        if (d > 0) {
+          preview.style.display='block';
+          amtEl.textContent = '₹' + Math.round(d * dailyRate);
+        } else { preview.style.display='none'; }
+      });
+    }
+  }, 100);
+}
+
 // ═══════════════════════════════════════════
 // KIOSK ACTIONS
 // ═══════════════════════════════════════════
-async function doClockIn() {
+async function doClockIn(extraParams={}) {
   if (!State.currentEmp) return;
   resetKioskTimer();
   const pos = State.gpsPos || await GPS.get();
@@ -1486,16 +1907,102 @@ async function doClockIn() {
       empId:State.currentEmp.id,
       lat:pos?.lat||'', lng:pos?.lng||'',
       locationNote: pos?`${pos.lat},${pos.lng}`:'',
-      faceScanUsed: State.authMode==='face' ? 'true':'false'
+      faceScanUsed: State.authMode==='face' ? 'true':'false',
+      ...extraParams
     });
     if (res.ok) {
       toast(`✓ ${tt('clockedIn')} ${fmtTime(res.record?.clockIn)} — ${res.lateMinutes?`${res.lateMinutes} min late`:'On time'}`, 'success');
       await refreshEmpCard();
+    } else if (res.error==='LATE_CLOCKIN_NEEDS_APPROVAL') {
+      if (btn) btn.disabled=false;
+      doRequestLateClockIn(res.lateMinutes);
+    } else if (res.error==='MISSED_CLOCKOUT_NEEDS_APPROVAL') {
+      if (btn) btn.disabled=false;
+      doRequestClockInAfterMissedOut(res.yesterdayDate);
     } else {
       toast(res.error||'Clock-in failed','error');
       if (btn) btn.disabled=false;
     }
   } catch(e) { toast('Network error','error'); if(btn)btn.disabled=false; }
+}
+
+function doRequestLateClockIn(lateMinutes) {
+  const emp = State.currentEmp;
+  const [sh,sm] = (emp.shiftStart||'09:00').split(':').map(Number);
+  const now = new Date();
+  const ssToday = new Date(now.getFullYear(),now.getMonth(),now.getDate(),sh,sm,0);
+  const actualLateMin = lateMinutes || Math.round((now-ssToday)/60000);
+  const bodyHtml = `
+    <div style="background:rgba(255,152,0,0.1);border:1px solid var(--orange);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="color:var(--orange);font-weight:700;margin-bottom:4px">⚠ Late Clock-In: ${actualLateMin} minutes</div>
+      <div style="font-size:12px;color:var(--gray-light)">Shift started at ${fmtShift(emp.shiftStart||'09:00','')?.split('–')[0]?.trim()}. Manager approval is required.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reason for being late <span style="color:var(--red)">*</span></label>
+      <input id="late-reason" class="form-input" type="text" placeholder="e.g. Traffic, medical…" maxlength="100">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Manager PIN or Password <span style="color:var(--red)">*</span></label>
+      <input id="late-mgr-pin" class="form-input" type="password" placeholder="Manager PIN…">
+    </div>
+  `;
+  showModal('🕐 Late Clock-In Request', bodyHtml, [
+    {label:'Approve & Clock In', cls:'btn-gold', cb: async () => {
+      const reason = document.getElementById('late-reason')?.value?.trim();
+      const pin = document.getElementById('late-mgr-pin')?.value?.trim();
+      if (!reason) { toast('Reason is required','warning'); return; }
+      if (!pin) { toast('Manager PIN required','warning'); return; }
+      const mgrPw=State.settings.managerPassword||'Manager@2026', supPw=State.settings.supervisorPassword||'Supervisor@2026', admPw=State.settings.adminPassword||'ArtzFolio@2026';
+      if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
+      closeModal();
+      await doClockIn({lateApproved: true, note: `Late clock-in approved: ${reason}`});
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+  ]);
+}
+
+function doRequestClockInAfterMissedOut(yesterdayDate) {
+  const bodyHtml = `
+    <div style="background:rgba(229,57,53,0.1);border:1px solid var(--red);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="color:var(--red);font-weight:700;margin-bottom:4px">🚨 Missed Clock-Out on ${yesterdayDate||'Yesterday'}</div>
+      <div style="font-size:12px;color:var(--gray-light)">You clocked in yesterday but did not clock out. The manager needs to verify and approve your clock-in today.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">What time did you leave yesterday?</label>
+      <input id="missed-out-time" class="form-input" type="time" value="19:00">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reason / Note</label>
+      <input id="missed-out-note" class="form-input" type="text" placeholder="e.g. Forgot to clock out…" maxlength="100">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Manager PIN or Password <span style="color:var(--red)">*</span></label>
+      <input id="missed-mgr-pin" class="form-input" type="password" placeholder="Manager PIN…">
+    </div>
+  `;
+  showModal('🚨 Missed Clock-Out Approval', bodyHtml, [
+    {label:'Approve & Clock In', cls:'btn-gold', cb: async () => {
+      const time = document.getElementById('missed-out-time')?.value;
+      const note = document.getElementById('missed-out-note')?.value?.trim();
+      const pin = document.getElementById('missed-mgr-pin')?.value?.trim();
+      if (!pin) { toast('Manager PIN required','warning'); return; }
+      const mgrPw=State.settings.managerPassword||'Manager@2026', supPw=State.settings.supervisorPassword||'Supervisor@2026', admPw=State.settings.adminPassword||'ArtzFolio@2026';
+      if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
+      closeModal();
+      // First, record yesterday's missed clock-out
+      if (yesterdayDate && time) {
+        try {
+          await API.call('manualSetAttendance', {
+            empId: State.currentEmp.id, date: yesterdayDate,
+            clockOut: time, note: `Manager-approved missed clock-out: ${note||''}`,
+            editBy: 'manager', managerApproved: true
+          });
+        } catch(e) {}
+      }
+      await doClockIn({missedClockOutApproved: true, note: `Clock-in after missed clock-out approved by manager`});
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+  ]);
 }
 
 async function doClockOut(locked=false) {
@@ -1515,12 +2022,162 @@ async function performClockOut(approvedBy, managerApproved) {
     const res = await API.call('clockOut', {empId:State.currentEmp.id, managerApproved, approvedBy});
     if (res.ok) {
       const hrs = Math.floor((res.workMinutes||0)/60), mins=(res.workMinutes||0)%60;
-      toast(`✓ ${tt('clockedOut')} — ${hrs}h ${mins}m worked${res.otMinutes?` • ${res.otMinutes}min OT`:''}`, 'success', 5000);
       await refreshEmpCard();
+      // Check OT eligibility for instant payout prompt
+      const emp = State.currentEmp;
+      const otEligLevels = (State.settings.otEligibleLevels || 'L6,L7,L8,L9,L10').split(',').map(s=>s.trim());
+      const nsEligLevels = (State.settings.nightShiftEligibleLevels || 'L6,L7,L8,L9,L10').split(',').map(s=>s.trim());
+      const isOTElig = otEligLevels.includes(emp.level);
+      const isNSElig = nsEligLevels.includes(emp.level);
+      const hasOT = isOTElig && (res.otMinutes||0) > 0;
+      const hasNS = isNSElig && parseFloat(emp.nightShiftAllowance||0) > 0;
+      if (hasOT || hasNS) {
+        showOTPayoutModal(res.otMinutes||0, res.workMinutes||0, res.attendanceId||'', hasNS ? parseFloat(emp.nightShiftAllowance||0) : 0);
+      } else {
+        toast(`✓ ${tt('clockedOut')} — ${hrs}h ${mins}m worked`, 'success', 5000);
+      }
     } else {
       toast(res.error==='CLOCK_OUT_LOCKED'?tt('autoClockoutLocked'):(res.error||'Clock-out failed'),'error');
     }
   } catch(e) { toast('Network error','error'); }
+}
+
+function showOTPayoutModal(otMinutes, workMinutes, attendanceId, nightShiftAllowance) {
+  const emp = State.currentEmp;
+  const hrs = Math.floor(workMinutes/60), mins = workMinutes%60;
+  const otHrs = Math.floor(otMinutes/60), otMins = otMinutes%60;
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
+  const dailyRate = parseFloat(emp.salary||0) / daysInMonth;
+  const otBaseHours = parseFloat(State.settings.otBaseHours||9);
+  const otMult = parseFloat(State.settings.otMultiplier||1.5);
+  const nsMult = parseFloat(State.settings.nightShiftMultiplier||1.5);
+  const otAmount = otMinutes > 0 ? Math.round((otMinutes/60) / otBaseHours * dailyRate * otMult) : 0;
+  const nsAmount = nightShiftAllowance > 0 ? Math.round(nightShiftAllowance * nsMult) : 0;
+  const totalPayout = otAmount + nsAmount;
+
+  let breakdownHtml = '';
+  if (otMinutes > 0) breakdownHtml += `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dark3)">
+      <span>⏱ OT Worked</span><strong>${otHrs}h ${otMins}m</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dark3)">
+      <span>💰 OT Pay (${otMult}× daily rate)</span><strong class="text-gold">₹${otAmount}</strong>
+    </div>`;
+  if (nightShiftAllowance > 0) breakdownHtml += `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--dark3)">
+      <span>🌙 Night Shift Allowance (${nsMult}×)</span><strong class="text-gold">₹${nsAmount}</strong>
+    </div>`;
+
+  const bodyHtml = `
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:2rem">🎉</div>
+      <div style="font-size:16px;font-weight:700;margin:4px 0">${tt('shiftComplete')||'Shift Complete!'}</div>
+      <div style="color:var(--gray-light);font-size:13px">${hrs}h ${mins}m total • ${new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</div>
+    </div>
+    <div style="background:var(--dark3);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:14px">
+      ${breakdownHtml}
+      <div style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:16px">
+        <span style="font-weight:700">Total Eligible Payout</span>
+        <strong style="color:var(--green);font-size:18px">₹${totalPayout}</strong>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--gray-light);text-align:center;margin-bottom:16px">
+      How would you like to receive this amount?
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button class="btn btn-gold" style="flex-direction:column;height:auto;padding:14px 8px;text-align:center" onclick="initiateOTInstantPayout(${otMinutes},${totalPayout},'${escHtml(attendanceId)}',${otAmount},${nsAmount})">
+        <div style="font-size:1.3rem">💵</div>
+        <div style="font-weight:700;margin:4px 0;font-size:13px">Immediate Payout</div>
+        <div style="font-size:11px;opacity:0.8">Cash / Bank / UPI<br>(Manager approval)</div>
+      </button>
+      <button class="btn btn-dark" style="flex-direction:column;height:auto;padding:14px 8px;text-align:center;border:1px solid var(--dark3)" onclick="closeModal();toast('✓ Added to month-end salary','success',4000)">
+        <div style="font-size:1.3rem">📅</div>
+        <div style="font-weight:700;margin:4px 0;font-size:13px">Month-End Salary</div>
+        <div style="font-size:11px;opacity:0.8">Auto-added to<br>monthly payroll</div>
+      </button>
+    </div>
+    <p style="font-size:11px;color:var(--gray-light);text-align:center;margin-top:12px">
+      ℹ️ Immediate payout requires manager approval and will be recorded as a paid transaction. Your month-end payroll will not include this OT if paid out now.
+    </p>
+  `;
+  showModal('🕐 Shift Ended — Payout Choice', bodyHtml, [], {noDismissOnBackdrop: true});
+}
+
+async function initiateOTInstantPayout(otMinutes, totalAmount, attendanceId, otAmount, nsAmount) {
+  closeModal();
+  const bodyHtml = `
+    <p style="color:var(--gray-light);font-size:13px;margin-bottom:16px">
+      The manager/supervisor must enter their PIN to approve and authorize this payment of <strong class="text-gold">₹${totalAmount}</strong>.
+    </p>
+    <div class="form-group">
+      <label class="form-label">Manager/Supervisor PIN or Password</label>
+      <input id="ot-mgr-pin" class="form-input" type="password" placeholder="Enter PIN…" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Payment Mode</label>
+      <select id="ot-pay-mode" class="form-input">
+        <option value="Cash">Cash</option>
+        <option value="Bank Transfer">Bank Transfer</option>
+        <option value="UPI">UPI</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note (optional)</label>
+      <input id="ot-pay-note" class="form-input" type="text" placeholder="e.g. Paid via PhonePe…">
+    </div>
+  `;
+  showModal('🔐 Manager Approval — OT Payout', bodyHtml, [
+    {label:'✓ Approve & Record Payment', cls:'btn-gold', cb: async () => {
+      const pin = document.getElementById('ot-mgr-pin')?.value?.trim();
+      const mode = document.getElementById('ot-pay-mode')?.value || 'Cash';
+      const note = document.getElementById('ot-pay-note')?.value?.trim();
+      if (!pin) { toast('Enter manager PIN','warning'); return; }
+      const mgrPw = State.settings.managerPassword||'Manager@2026';
+      const supPw = State.settings.supervisorPassword||'Supervisor@2026';
+      const admPw = State.settings.adminPassword||'ArtzFolio@2026';
+      if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
+      closeModal();
+      try {
+        const res = await API.call('otInstantPayout', {
+          empId: State.currentEmp.id,
+          otMinutes, otAmount, nsAmount, totalAmount, attendanceId,
+          payMode: mode, note: note||`OT Instant Payout via ${mode}`,
+          approvedBy: 'manager'
+        });
+        if (res.ok) {
+          showOTPayoutReceipt(totalAmount, mode, res.transId);
+        } else {
+          toast(res.error||'Payout failed','error');
+        }
+      } catch(e) { toast('Network error','error'); }
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); toast('Payout cancelled — amount will be added to month-end salary','info',4000); }},
+  ]);
+}
+
+function showOTPayoutReceipt(amount, mode, transId) {
+  const bodyHtml = `
+    <div style="text-align:center;padding:16px 0">
+      <div style="font-size:3rem">✅</div>
+      <div style="font-size:18px;font-weight:700;margin:8px 0;color:var(--green)">Payment Recorded!</div>
+      <div style="font-size:13px;color:var(--gray-light);margin-bottom:20px">Transaction ID: <code style="font-size:11px">${escHtml(transId||'—')}</code></div>
+      <div style="background:var(--dark3);border-radius:10px;padding:16px;text-align:left;font-size:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span>Amount Paid</span><strong class="text-gold">₹${amount}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span>Mode</span><strong>${escHtml(mode)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span>Date</span><strong>${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</strong>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--gray-light);margin-top:16px">
+        This OT will not be included in your month-end payroll calculation.
+      </p>
+    </div>
+  `;
+  showModal('🧾 OT Payout Receipt', bodyHtml, [{label:'Done', cls:'btn-gold', cb: closeModal}]);
 }
 
 function showManagerApprovalModal(onApprove) {
@@ -1570,14 +2227,19 @@ async function refreshEmpCard() {
   if (!State.currentEmp) return;
   try {
     const res = await API.call('auth',{pin:null, empId:State.currentEmp.id, skipPinCheck:true});
-    // Re-auth by ID directly from employees list as a workaround
-    const bal = await API.call('getBalance',{empId:State.currentEmp.id});
-    const today = await API.call('getAttendanceEmployee',{empId:State.currentEmp.id, year:new Date().getFullYear(), month:new Date().getMonth()+1});
-    const todayRec = (today.records||[]).find(r=>r.date===todayStr())||null;
-    State.currentEmpRecord.todayRecord = todayRec;
-    State.currentEmpRecord.balance = bal;
-    buildActionButtons(todayRec, State.currentEmp);
-    document.getElementById('ec-balance').innerHTML = buildBalanceHtml(bal, todayRec);
+    if (res.ok) {
+      // Merge updated fields into state
+      State.currentEmpRecord.todayRecord = res.todayRecord;
+      State.currentEmpRecord.balance = res.balance;
+      State.currentEmpRecord.pendingLeaves = res.pendingLeaves || [];
+      State.currentEmpRecord.approvedLeaves = res.approvedLeaves || [];
+      State.currentEmpRecord.upcomingHolidays = res.upcomingHolidays || [];
+      State.currentEmpRecord.leaveBalance = res.leaveBalance || {};
+      State.currentEmpRecord.missedClockOutYesterday = res.missedClockOutYesterday || null;
+      buildActionButtons(res.todayRecord, State.currentEmp);
+      document.getElementById('ec-balance').innerHTML = buildBalanceHtml(res.balance, res.todayRecord);
+      buildLeaveInfoCard(res, State.currentEmp);
+    }
   } catch {}
 }
 
@@ -1646,19 +2308,25 @@ async function showLeaveRequest() {
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Reason (optional) / कारण (वैकल्पिक)</label>
+      <label class="form-label">Reason * (mandatory) / कारण (अनिवार्य)</label>
       <input id="lv-note" class="form-input" type="text" placeholder="Brief reason…">
     </div>
     <div id="lv-msg" style="font-size:12px;color:var(--gray-light)"></div>
+    ${(()=>{
+      const supervisor = (State.employees||[]).find(e=>e.id===State.currentEmp?.supervisorId);
+      const approverText = supervisor ? `Will be sent to: <strong>${escHtml(supervisor.name)}</strong> (${escHtml(supervisor.id)}) for approval` : 'Will be sent to manager for approval';
+      return `<div style="font-size:11px;color:var(--gold-light);margin-top:6px">📋 ${approverText}</div>`;
+    })()}
   </div>`;
   showModal('📅 Request Leave / छुट्टी अनुरोध', html, [
     {label:'Submit Request / भेजें', cls:'btn-gold', cb: async()=>{
       const from=document.getElementById('lv-from')?.value;
       const to=document.getElementById('lv-to')?.value;
       const type=document.getElementById('lv-type')?.value;
-      const note=document.getElementById('lv-note')?.value;
+      const reason=document.getElementById('lv-note')?.value;
       if (!from||!to) { toast('Select dates / तारीख चुनें','warning'); return; }
-      const res = await API.call('requestLeave',{empId, type, startDate:from, endDate:to, note});
+      if(!reason || reason.trim().length < 3) { toast('Please enter a reason for leave','warning'); return; }
+      const res = await API.call('requestLeave',{empId, type, startDate:from, endDate:to, note:reason});
       if (res.ok) {
         closeModal();
         const msg = res.needsSeniorApproval ? 'Leave sent! Requires L5+ approval for 3+ days.' : 'Leave request sent to supervisor!';
@@ -1922,7 +2590,7 @@ async function renderDashboard() {
     html+=`<tr>
       <td><strong>${escHtml(r.name)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(r.empId)}</span></td>
       <td>${escHtml(r.dept)}</td>
-      <td>${escHtml(r.shiftStart)}–${escHtml(r.shiftEnd)}</td>
+      <td style="font-size:11px">${fmtShift(r.shiftStart,r.shiftEnd)}</td>
       <td>${rec&&rec.clockIn?fmtTime(rec.clockIn):'—'}</td>
       <td>${rec&&rec.clockOut?fmtTime(rec.clockOut):'—'}</td>
       <td>${statusBadge(rec?rec.status:r.status)}</td>
@@ -1955,6 +2623,12 @@ async function renderEmployees(filter='') {
       <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Employees.xlsx','Employees',['id','name','dept','level','salary','mobile','shiftStart','shiftEnd','weeklyOff1','weeklyOff2','doj','status'],State.employees.map(e=>[e.id,e.name,e.dept,e.level,e.salary,e.mobile,e.shiftStart,e.shiftEnd,e.weeklyOff1,e.weeklyOff2,e.doj,e.status]))">📊 Export Excel</button>
     </div>
   </div>
+  <div id="emp-bulk-bar" style="display:none;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;gap:12px;flex-wrap:wrap">
+    <span id="emp-bulk-count" style="font-size:13px;color:var(--gold);font-weight:700">0 selected</span>
+    <button class="btn btn-dark btn-sm" onclick="bulkArchiveEmps()">Archive Selected</button>
+    <button class="btn btn-green btn-sm" onclick="bulkUnarchiveEmps()">Unarchive Selected</button>
+    <button class="btn btn-dark btn-sm" style="color:var(--gray-light)" onclick="clearEmpCbs()">✕ Clear</button>
+  </div>
   <div class="filters-bar">
     <input class="filter-input" placeholder="Search name/ID/dept…" oninput="renderEmployees(this.value)" value="${escHtml(filter)}">
     <select class="filter-input" onchange="renderEmpsByStatus(this.value)">
@@ -1968,6 +2642,7 @@ async function renderEmployees(filter='') {
   <div class="table-wrap">
     <table class="az-table">
       <thead><tr>
+        <th style="width:30px"><input type="checkbox" id="emp-cb-all" style="accent-color:var(--gold)" onchange="toggleAllEmpCb(this.checked)"></th>
         <th onclick="sortTable('name')">Name ▲</th>
         <th>ID</th><th>Dept/Level</th><th>Salary</th><th>Shift</th>
         <th>Weekly Off</th><th>Joining</th><th>Status</th><th>Actions</th>
@@ -1975,11 +2650,12 @@ async function renderEmployees(filter='') {
       <tbody>`;
   emps.forEach(e => {
     html+=`<tr>
+      <td style="width:30px"><input type="checkbox" class="emp-cb" value="${escHtml(e.id)}" style="accent-color:var(--gold)" onchange="updateBulkBar()"></td>
       <td><strong>${escHtml(e.name)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(e.mobile||'')}</span></td>
       <td style="font-size:11px">${escHtml(e.id)}</td>
       <td><span class="badge badge-${e.category==='Workforce'?'orange':'blue'}">${escHtml(e.level)}</span><br><span style="font-size:10px;color:var(--gray-light)">${escHtml(e.dept)}</span></td>
       <td>${fmtMoney(e.salary)}</td>
-      <td style="font-size:11px">${escHtml(e.shiftStart)}–${escHtml(e.shiftEnd)}<br>${escHtml(e.dailyHours||'—')}h/day</td>
+      <td style="font-size:11px">${fmtShift(e.shiftStart,e.shiftEnd)}<br><span style="color:var(--gray-light)">${escHtml(e.dailyHours||'—')}h/day</span></td>
       <td style="font-size:11px">${escHtml(e.weeklyOff1)}${e.weeklyOff2?'+'+e.weeklyOff2:''}</td>
       <td style="font-size:11px">${fmtDate(e.doj)}</td>
       <td>${statusBadge(e.status)}</td>
@@ -1987,6 +2663,7 @@ async function renderEmployees(filter='') {
         <button class="btn btn-dark btn-sm" onclick="showEmpDetail('${escHtml(e.id)}')">View</button>
         ${canEdit?`<button class="btn btn-dark btn-sm" onclick="showEditEmpModal('${escHtml(e.id)}')">Edit</button>`:''}
         ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="archiveEmp('${escHtml(e.id)}')">Archive</button>`:''}
+        ${canEdit&&e.status==='Archived'?`<button class="btn btn-green btn-sm" onclick="unarchiveEmp('${escHtml(e.id)}')">Unarchive</button>`:''}
         ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="registerFace('${escHtml(e.id)}','${escHtml(e.name)}')">📷 Face</button>`:''}
       </td>
     </tr>`;
@@ -2010,7 +2687,7 @@ async function showEmpDetail(empId) {
     <div><strong>Level:</strong> ${escHtml(e.level)}</div>
     <div><strong>Department:</strong> ${escHtml(e.dept)}</div>
     <div><strong>Salary:</strong> ${fmtMoney(e.salary)}</div>
-    <div><strong>Shift:</strong> ${escHtml(e.shiftStart)}–${escHtml(e.shiftEnd)}</div>
+    <div><strong>Shift:</strong> ${fmtShift(e.shiftStart,e.shiftEnd)}</div>
     <div><strong>Daily Hours:</strong> ${escHtml(e.dailyHours)} h</div>
     <div><strong>Weekly Off 1:</strong> ${escHtml(e.weeklyOff1)}</div>
     <div><strong>Weekly Off 2:</strong> ${escHtml(e.weeklyOff2||'—')}</div>
@@ -2045,6 +2722,10 @@ async function showAddEmpModal() {
   const projOpts = orgs.filter(o=>o.type==='project').map(o=>`<option>${escHtml(o.name)}</option>`).join('');
   const html = `<div style="font-size:13px;max-height:60vh;overflow-y:auto;padding-right:4px">
   <div class="form-row">
+    <div class="form-group"><label class="form-label">Employee ID <span style="color:var(--gray-light);font-weight:400">(optional — auto-assigned if blank)</span></label><input id="e-customid" class="form-input" placeholder="e.g. AZ_EMP_0001 or leave blank"></div>
+    <div class="form-group"><label class="form-label" style="color:var(--gold)">PIN (exactly 4 digits) *</label><input id="e-pin" class="form-input" type="text" maxlength="4" placeholder="e.g. 4821" style="letter-spacing:4px;font-size:16px"></div>
+  </div>
+  <div class="form-row">
     <div class="form-group"><label class="form-label">Full Name *</label><input id="e-name" class="form-input" placeholder="Name…"></div>
     <div class="form-group"><label class="form-label">Level *</label>
       <select id="e-level" class="form-input" onchange="autoFillLevelDefaults(this.value)">
@@ -2058,7 +2739,6 @@ async function showAddEmpModal() {
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Monthly Salary (₹) *</label><input id="e-sal" class="form-input" type="number" placeholder="13000"></div>
-    <div class="form-group"><label class="form-label">PIN (4–6 digits) *</label><input id="e-pin" class="form-input" type="text" maxlength="6" placeholder="e.g. 4821"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Shift Start</label><input id="e-ss" class="form-input" type="time" value="09:00"></div>
@@ -2098,7 +2778,7 @@ async function showAddEmpModal() {
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Supervisor ID (optional)</label><input id="e-sup" class="form-input" placeholder="AZ_EMP_XXXX or leave blank"></div>
-    <div class="form-group"><label class="form-label">Night Shift Allowance (₹/night)</label><input id="e-nsa" class="form-input" type="number" value="0"></div>
+    <div class="form-group"><label class="form-label">Night Shift Allowance (₹/night worked)<small style="display:block;color:var(--gray-light);font-weight:400;margin-top:2px">Extra amount paid per night shift completed (on top of regular salary). E.g. ₹100/night.</small></label><input id="e-nsa" class="form-input" type="number" value="0"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Travel Allowance (₹/day present)</label><input id="e-travel" class="form-input" type="number" value="0" placeholder="0 if not applicable"></div>
@@ -2112,6 +2792,7 @@ async function showAddEmpModal() {
         name:document.getElementById('e-name').value, level:document.getElementById('e-level').value,
         dept:document.getElementById('e-dept').value||document.getElementById('e-level').value,
         category:document.getElementById('e-cat').value, salary:document.getElementById('e-sal').value,
+        customId:document.getElementById('e-customid').value,
         pin:document.getElementById('e-pin').value, shiftStart:document.getElementById('e-ss').value,
         shiftEnd:document.getElementById('e-se').value, dailyHours:document.getElementById('e-dh').value,
         workDaysPerWeek:document.getElementById('e-wd').value,
@@ -2170,7 +2851,7 @@ async function showEditEmpModal(empId) {
       <select id="ee-status" class="form-input"><option value="Active" ${e.status==='Active'?'selected':''}>Active</option><option value="Exited">Exited</option><option value="Archived">Archived</option></select></div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">New PIN (leave blank to keep)</label><input id="ee-pin" class="form-input" type="text" maxlength="6" placeholder="New PIN…"></div>
+    <div class="form-group"><label class="form-label">New PIN (leave blank to keep)</label><input id="ee-pin" class="form-input" type="text" maxlength="4" placeholder="New 4-digit PIN…"></div>
     <div class="form-group"><label class="form-label">Supervisor ID</label><input id="ee-sup" class="form-input" value="${escHtml(e.supervisorId||'')}"></div>
   </div>
   <div class="form-row">
@@ -2215,6 +2896,40 @@ async function archiveEmp(empId) {
   const res=await API.call('archiveEmployee',{empId,hard:false,lwd:todayStr()});
   if(res.ok){toast('Employee archived','success');await renderEmployees();}
   else toast(res.error||'Error','error');
+}
+async function unarchiveEmp(empId) {
+  const res = await API.call('updateEmployee', {empId, status:'Active'});
+  if(res.ok){toast('✓ Employee reactivated','success'); await renderEmployees();}
+  else toast(res.error||'Error','error');
+}
+function toggleAllEmpCb(checked) {
+  document.querySelectorAll('.emp-cb').forEach(cb=>cb.checked=checked);
+  updateBulkBar();
+}
+function updateBulkBar() {
+  const selected = [...document.querySelectorAll('.emp-cb:checked')].map(cb=>cb.value);
+  const bar = document.getElementById('emp-bulk-bar');
+  const cnt = document.getElementById('emp-bulk-count');
+  if (bar) { bar.style.display = selected.length ? 'flex' : 'none'; }
+  if (cnt) cnt.textContent = `${selected.length} selected`;
+}
+function clearEmpCbs() {
+  document.querySelectorAll('.emp-cb').forEach(cb=>cb.checked=false);
+  const allCb = document.getElementById('emp-cb-all');
+  if(allCb) allCb.checked=false;
+  updateBulkBar();
+}
+async function bulkArchiveEmps() {
+  const ids = [...document.querySelectorAll('.emp-cb:checked')].map(cb=>cb.value);
+  if(!ids.length || !confirm(`Archive ${ids.length} employee(s)?`)) return;
+  for(const id of ids) await API.call('updateEmployee',{empId:id,status:'Archived'});
+  toast(`✓ ${ids.length} employee(s) archived`,'success'); await renderEmployees();
+}
+async function bulkUnarchiveEmps() {
+  const ids = [...document.querySelectorAll('.emp-cb:checked')].map(cb=>cb.value);
+  if(!ids.length || !confirm(`Reactivate ${ids.length} employee(s)?`)) return;
+  for(const id of ids) await API.call('updateEmployee',{empId:id,status:'Active'});
+  toast(`✓ ${ids.length} employee(s) reactivated`,'success'); await renderEmployees();
 }
 
 async function registerFace(empId, empName) {
@@ -2457,26 +3172,27 @@ async function approveLeave(leaveId, approved) {
 }
 
 function showAdminLeaveModal() {
-  const empOpts=(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('');
   const html=`<div style="font-size:13px">
-  <div class="form-group"><label class="form-label">Employee</label><select id="al-emp" class="form-input">${empOpts}</select></div>
+  <div class="form-group"><label class="form-label">Employee *</label>${buildEmpSearchSelect('al-emp',(State.employees||[]).filter(e=>e.status==='Active'))}</div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">From</label><input id="al-from" class="form-input" type="date" value="${todayStr()}"></div>
     <div class="form-group"><label class="form-label">To</label><input id="al-to" class="form-input" type="date" value="${todayStr()}"></div>
   </div>
   <div class="form-group"><label class="form-label">Type</label>
     <select id="al-type" class="form-input"><option value="IL">IL - Informed Leave</option><option value="IHL">IHL - Half Day</option><option value="SL">SL - Sick Leave</option><option value="PL">PL - Paid Leave</option><option value="UL">UL - Uninformed Leave</option></select></div>
-  <div class="form-group"><label class="form-label">Note</label><input id="al-note" class="form-input" placeholder="Reason…"></div>
+  <div class="form-group"><label class="form-label">Reason / Note *</label><input id="al-note" class="form-input" placeholder="Reason for leave (mandatory)…"></div>
   <div class="form-group"><label class="form-label">Auto-approve?</label>
     <select id="al-auto" class="form-input"><option value="yes">Yes — pre-approve</option><option value="no">No — send for approval</option></select></div>
   </div>`;
   showModal('+ Admin: Add Leave', html, [
     {label:'Add Leave', cls:'btn-gold', cb:async()=>{
-      const empId=document.getElementById('al-emp').value;
+      const empId=getEmpSearchValue('al-emp');
       const from=document.getElementById('al-from').value;
       const to=document.getElementById('al-to').value;
       const type=document.getElementById('al-type').value;
       const note=document.getElementById('al-note').value;
+      if(!empId){toast('Please select an employee','warning');return;}
+      if(!note){toast('Reason is mandatory','warning');return;}
       const autoApprove=document.getElementById('al-auto').value==='yes';
       const res=await API.call('requestLeave',{empId,type,startDate:from,endDate:to,note});
       if(res.ok&&autoApprove){await API.call('approveLeave',{leaveId:res.leaveId,approved:true,approvedBy:State.adminUser});}
@@ -2558,9 +3274,8 @@ async function loadTransactions() {
 }
 
 function showAddTransModal() {
-  const empOpts=(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('');
   const html=`<div style="font-size:13px">
-  <div class="form-group"><label class="form-label">Employee *</label><select id="at-emp" class="form-input">${empOpts}</select></div>
+  <div class="form-group"><label class="form-label">Employee *</label>${buildEmpSearchSelect('at-emp',(State.employees||[]).filter(e=>e.status==='Active'))}</div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Type *</label>
       <select id="at-type" class="form-input">
@@ -2570,6 +3285,8 @@ function showAddTransModal() {
         <option value="LateFine">Late Fine / Mobile Fine</option><option value="KYCFee">KYC Fee</option>
         <option value="PINReactivationFee">PIN Reactivation Fee</option><option value="Increment">Increment</option>
         <option value="Deduction">Deduction</option><option value="Adjustment">Adjustment</option>
+        <option value="LeaveEncashment">Leave Encashment (छुट्टी नकदीकरण)</option>
+        <option value="OTInstantPayout">OT Instant Payout</option>
       </select></div>
     <div class="form-group"><label class="form-label">Amount (₹) *</label><input id="at-amt" class="form-input" type="number" placeholder="Amount…"></div>
   </div>
@@ -2580,7 +3297,7 @@ function showAddTransModal() {
   </div>`;
   showModal('+ Add Transaction / लेनदेन जोड़ें', html, [
     {label:'Add / जोड़ें', cls:'btn-gold', cb:async()=>{
-      const empId=document.getElementById('at-emp').value;
+      const empId=getEmpSearchValue('at-emp');
       const type=document.getElementById('at-type').value;
       const amount=document.getElementById('at-amt').value;
       const date=document.getElementById('at-date').value;
@@ -2682,31 +3399,26 @@ async function savePoints(empId) {
 }
 
 function getWeeksOfMonth(year, month) {
+  // Returns all Saturdays in the month, each labeled with Mon-Sat range (even if Mon is prior month)
   const weeks = [];
-  const d = new Date(year, month-1, 1);
+  const daysInMonth = new Date(year, month, 0).getDate();
   let weekNum = 1;
-  while (d.getMonth() === month-1) {
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(year, month-1, day);
     if (d.getDay() === 6) { // Saturday
       const sat = new Date(d);
       const mon = new Date(sat);
-      mon.setDate(sat.getDate() - 5);
-      // Ensure Monday is in the same month or adjust to month start
-      if (mon.getMonth() < month-1 || mon.getFullYear() < year) {
-        mon.setFullYear(year);
-        mon.setMonth(month-1);
-        mon.setDate(1);
-      }
-      const fmtSh = dt => dt.toLocaleDateString('en-IN', {day:'numeric', month:'short'});
-      const label = `Week ${weekNum} — ${fmtSh(mon)} to ${fmtSh(sat)} ${year}`;
+      mon.setDate(sat.getDate() - 5); // Monday of same week
+      const fmtSh = dt => dt.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'});
+      const label = `Week ${weekNum} — ${fmtSh(mon)} to ${fmtSh(sat)}`;
       weeks.push({ value: sat.toISOString().split('T')[0], label });
       weekNum++;
     }
-    d.setDate(d.getDate()+1);
   }
   if (!weeks.length) {
-    const first = new Date(year, month-1, 1);
-    const label = `Week 1 — ${first.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} ${year}`;
-    weeks.push({ value: first.toISOString().split('T')[0], label });
+    // Month has no Saturday yet (e.g., current month early) — use last day
+    const last = new Date(year, month-1, daysInMonth);
+    weeks.push({ value: last.toISOString().split('T')[0], label: `Week 1 — ${last.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}` });
   }
   return weeks;
 }
@@ -3336,12 +4048,11 @@ function exportPayrollXLSX() {
 async function renderFnF() {
   const empsRes=await API.call('getEmployees',{status:'Active'});
   const emps=(empsRes.employees||[]).filter(e=>e.status==='Active'||e.status==='Notice');
-  const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)} — ${escHtml(e.level)}</option>`).join('');
   const html=`
   <div class="section-hdr"><div class="section-title">Full & Final Settlement / पूर्ण एवं अंतिम भुगतान</div></div>
   <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:20px;max-width:680px">
     <div class="form-group"><label class="form-label">Employee</label>
-      <select id="fnf-emp" class="form-input" onchange="loadFnFEmployee(this.value)">${empOpts}</select></div>
+      <div style="position:relative">${buildEmpSearchSelect('fnf-emp-input', emps, 'Search employee name or ID…')}<div id="fnf-emp-load-btn" style="margin-top:8px"><button class="btn btn-gold btn-sm" onclick="loadFnFEmployee(getEmpSearchValue('fnf-emp-input'))">Load Employee →</button></div></div></div>
     <div id="fnf-emp-info"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Last Working Date</label><input id="fnf-lwd" class="form-input" type="date" value="${todayStr()}"></div>
@@ -3383,7 +4094,7 @@ async function loadFnFEmployee(empId) {
 }
 
 async function calculateFnF() {
-  const empId=document.getElementById('fnf-emp')?.value;
+  const empId=getEmpSearchValue('fnf-emp-input');
   const lwd=document.getElementById('fnf-lwd')?.value;
   const noticeDaysServed=parseInt(document.getElementById('fnf-nd')?.value||0);
   const damageRecovery=parseFloat(document.getElementById('fnf-dmg')?.value||0);
@@ -3792,6 +4503,11 @@ async function renderSettings() {
     return `<div class="form-group"><label class="form-label">${escHtml(label)}</label>
     <input id="cfg-${escHtml(key)}" class="form-input" type="${type}" value="${escHtml(cfg[key]||'')}" ${extra}></div>`;
   }
+  function cfgFieldTip(key,label,tip,type='text',extra=''){
+    const tipHtml = tip ? `<span class="info-tooltip" title="${escHtml(tip)}">ℹ</span>` : '';
+    return `<div class="form-group"><label class="form-label">${escHtml(label)}${tipHtml}</label>
+    <input id="cfg-${escHtml(key)}" class="form-input" type="${type}" value="${escHtml(cfg[key]||'')}" ${extra}></div>`;
+  }
   // Level multi-select checkbox picker — renders L1-L10 chips; value stored in hidden input
   function levelPickerField(key, label, selectedCsv) {
     const selected = (selectedCsv||'').split(',').map(s=>s.trim()).filter(Boolean);
@@ -3835,27 +4551,27 @@ async function renderSettings() {
       ${cfgField('adminPassword','Admin (Owner) Password','password')}
       ${cfgField('managerPassword','Manager Password','password')}
       ${cfgField('supervisorPassword','Supervisor Password','password')}
-      ${cfgField('gracePeriod','Grace Period (minutes)')}
+      ${cfgFieldTip('gracePeriod','Grace Period (minutes)','Minutes after shift start where late arrival is not penalised. Default: 5. E.g. shift at 9AM + 5 min grace = no penalty if clocked in by 9:05AM.')}
       ${cfgField('payDay','Salary Pay Day (date of month)')}
-      ${cfgField('extendedCutoff','Extended Period (1st–Nth of next month)')}
-      ${cfgField('kioskTimeout','Kiosk Auto-Return (seconds)')}
-      ${cfgField('late1Max','Late Tier 1 Max (verbal warning)')}
-      ${cfgField('late2Max','Late Tier 2 Max (half-day deduction)')}
-      ${cfgField('late3Max','Late Tier 3 Max (full-day deduction)')}
-      ${cfgField('otBaseHours','OT Base Hours (hours = 1 day)')}
-      ${cfgField('ulPenaltyDays','UL Penalty Multiplier (1 UL = X days)')}
-      ${cfgField('maxLeaveDaysAutoApprove','Max Leave Days for Supervisor Approval')}
-      ${cfgField('pinBlockAfter','PIN Block After N Wrong Attempts')}
-      ${cfgField('pinReactivationFee','PIN Reactivation Fee (₹)')}
-      ${cfgField('shiftAutoClockoutBuffer','Auto Clock-out Buffer (minutes)')}
+      ${cfgFieldTip('extendedCutoff','Extended Period (1st–Nth of next month)','Attendance from the 1st to this date of the following month is included in the previous month\'s salary calculation. E.g. value 7 means Aug salary includes attendance up to Sept 7.')}
+      ${cfgFieldTip('kioskTimeout','Kiosk Auto-Return (seconds)','Seconds of inactivity before the kiosk automatically returns to PIN entry screen and logs out the current employee. Default: 60.')}
+      ${cfgFieldTip('late1Max','Late Tier 1 Max (minutes — verbal warning only)','Employees arriving up to this many minutes late get a verbal warning only. No salary deduction. E.g. value 15 = 0–15 min late → warning only.')}
+      ${cfgFieldTip('late2Max','Late Tier 2 Max (minutes — half-day deduction)','Late arrival between Tier 1 limit and this value results in a 0.5 day salary deduction. E.g. value 30 = 16–30 min late → -0.5 day.')}
+      ${cfgFieldTip('late3Max','Late Tier 3 Max (minutes — full day deduction)','Late arrival beyond Tier 2 limit up to this value results in a 1-day deduction. Above this threshold = 2-day deduction.')}
+      ${cfgFieldTip('otBaseHours','OT Base Hours (hours of OT = 1 extra day pay)','Number of overtime hours that equals one additional paid day. E.g. 9 means every 9 hours of accumulated OT = 1 extra daily pay at the OT multiplier rate.')}
+      ${cfgFieldTip('ulPenaltyDays','UL Penalty Multiplier (1 UL = X days deducted)','Uninformed Leave (UL) penalty: for every 1 day of UL, this many days are deducted from salary. Default: 2. So 1 UL = 2 days salary deducted.')}
+      ${cfgFieldTip('maxLeaveDaysAutoApprove','Max Leave Days for Supervisor Auto-Approval','Leave requests up to this many days can be approved by a supervisor. Requests beyond this require Owner/Admin approval.')}
+      ${cfgFieldTip('pinBlockAfter','PIN Block After N Wrong Attempts','Number of consecutive wrong PIN attempts before the employee\'s PIN is blocked. Employee must pay the reactivation fee to unblock.')}
+      ${cfgFieldTip('pinReactivationFee','PIN Reactivation Fee (₹)','Amount deducted from salary when a blocked PIN is reactivated by admin. This is recorded as a PINReactivationFee transaction.')}
+      ${cfgFieldTip('shiftAutoClockoutBuffer','Auto Clock-Out Buffer (minutes — use negative to penalise early exit)','Minutes after shift end before auto clock-out fires. E.g. 60 = clocked out 1 hour after shift end. Use a negative value (e.g. -30) to clock out employees 30 minutes BEFORE shift end, penalising early leavers.')}
     </div>
     <div class="settings-section-title" style="margin-top:18px">⏱ Overtime & Night Shift Pay Settings</div>
     <div class="settings-grid">
-      ${cfgField('otMinHoursThreshold','Min OT Hours Per Day (session must be ≥ this to count)')}
+      ${cfgFieldTip('otMinHoursThreshold','Min OT Hours Per Day (minimum to count toward OT bank)','A daily shift must exceed this many hours of overtime before it contributes to the OT bank. E.g. value 2 means only days with ≥2 hours of OT are counted. Prevents tiny overruns from accumulating.')}
       ${levelPickerField('otEligibleLevels','OT Pay Eligible Levels',cfg['otEligibleLevels']||'L6,L7,L8,L9,L10')}
       ${levelPickerField('nightShiftEligibleLevels','Night Shift Pay Eligible Levels',cfg['nightShiftEligibleLevels']||'L6,L7,L8,L9,L10')}
-      ${cfgField('otMultiplier','OT Pay Multiplier (e.g. 1.5 = 1.5× daily rate per OT day)')}
-      ${cfgField('nightShiftMultiplier','Night Shift Allowance Multiplier (e.g. 1.5 = 1.5× base allowance)')}
+      ${cfgFieldTip('otMultiplier','OT Pay Multiplier (1.5 = 1.5× daily rate per OT day)','Every accumulated OT day (= otBaseHours hours) is paid at this multiple of the daily rate. E.g. 1.5 means 1 OT day = 1.5 × daily rate. Set to 1.0 for flat extra day pay.')}
+      ${cfgFieldTip('nightShiftMultiplier','Night Shift Allowance Multiplier (per-employee base × this rate)','Each eligible employee has a "Night Shift Allowance" set in their profile (₹/month). This multiplier is applied to that base amount at month-end. E.g. employee base ₹500, multiplier 1.5 → ₹750 added to salary.')}
     </div>
     <div style="margin-top:14px">
       <button class="btn btn-gold" onclick="savePolicySettings()">💾 Save Policy Settings</button>
@@ -3932,25 +4648,31 @@ async function renderSettings() {
           </label>
         </div>
       </div>
-      ${cfgField('shiftAutoClockoutBuffer','Auto Clock-Out Buffer (minutes after shift end)')}
+      ${cfgField('shiftAutoClockoutBuffer','Auto Clock-Out Buffer (minutes after shift end — use negative to penalize early clock-out)')}
       <!-- Auto Mark Present -->
       <div class="form-group" style="grid-column:span 2">
-        <label class="form-label">Auto Mark Present</label>
+        <label class="form-label">Auto Mark Present
+          <span class="info-tooltip" title="Auto Mark Present: When enabled, the system automatically updates attendance status to 'Present (P)' for employees who have already clocked in and have been working for the threshold duration. This is a background job — employees still need to physically clock in via the kiosk first.">ℹ</span>
+        </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px">
           <input type="checkbox" id="cfg-autoMarkPresentEnabled" ${cfg['autoMarkPresentEnabled']==='true'?'checked':''}>
-          Enable Auto Mark Present (for employees clocked in past threshold)
+          Enable Auto Mark Present (confirms attendance after employees have been working for threshold minutes)
         </label>
       </div>
-      ${cfgField('autoMarkPresentThreshold','Auto Mark Present Threshold (minutes into shift)')}
+      ${cfgField('autoMarkPresentThreshold','Auto Mark Present Threshold — minutes into shift before status is confirmed (default: 30)')}
+      <!-- Late Clock-In Approval Threshold -->
+      ${cfgField('lateClockInApprovalMinutes','Late Clock-In Approval Threshold — minutes after shift start before manager approval is required (default: 60)')}
     </div>
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-gold" onclick="saveAutomationSettings()">💾 Save Automation Settings</button>
       <button class="btn btn-dark" onclick="runAutoClockOut()">▶ Run Auto Clock-Out Now</button>
       <button class="btn btn-dark" onclick="runAutoMarkPresent()">▶ Run Auto Mark Present Now</button>
     </div>
-    <div style="margin-top:8px;font-size:11px;color:var(--gray-light)">
-      <strong>Auto Clock-Out:</strong> Automatically clocks out employees who forgot to clock out, at their shift end time + buffer minutes.<br>
-      <strong>Auto Mark Present:</strong> Marks employees as 'P' if they clocked in and are ${cfg['autoMarkPresentThreshold']||30}+ minutes into their shift.
+    <div style="margin-top:8px;font-size:12px;color:var(--gray-light);line-height:1.8">
+      <strong>Auto Clock-Out:</strong> Automatically clocks out employees who forgot to clock out, at shift end + buffer minutes. Buffer can be negative to apply early clock-out penalty.<br>
+      <strong>Auto Mark Present:</strong> Background job that confirms employees as 'P' if they have clocked in AND been working for the threshold duration. Does <em>not</em> bypass the kiosk — employees must clock in themselves first.<br>
+      <strong>Late Clock-In Approval:</strong> If an employee tries to clock in more than [threshold] minutes after shift start, the kiosk shows a "Request Late Clock-In" button that requires manager PIN approval before proceeding.<br>
+      <strong>Missed Clock-Out (next day):</strong> If auto clock-out is disabled and an employee forgets to clock out, the next morning's clock-in requires manager approval to verify yesterday's exit time.
     </div>
   </div>
 
@@ -4067,13 +4789,34 @@ async function renderSettings() {
         <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Holidays.xlsx','Holidays',['date','name','type','applicableTo'],${JSON.stringify(hols.map(h=>[h.date,h.name,h.type,h.applicableTo]))})">📤 Export</button>
       </span>
     </div>
-    <div id="holidays-list">
-    ${hols.map(h=>`<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
-      <span style="font-size:12px;min-width:120px">${fmtDate(h.date)}</span>
-      <span style="flex:1;font-size:12px">${escHtml(h.name)}</span>
-      <span class="badge badge-gold">${escHtml(h.type)}</span>
-      <button class="btn btn-dark btn-sm" onclick="removeHoliday('${escHtml(h.date)}')">✕</button>
-    </div>`).join('')}
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="btn btn-red btn-sm" onclick="deleteSelectedHolidays()">🗑 Delete Selected</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-light)">
+        <input type="checkbox" id="hol-cb-all" onchange="document.querySelectorAll('.hol-cb').forEach(cb=>cb.checked=this.checked)" style="accent-color:var(--gold)">
+        Select All
+      </label>
+    </div>
+    <div id="holidays-list" style="overflow-x:auto;margin-bottom:12px">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="border-bottom:1px solid var(--dark3)">
+          <th style="padding:6px;text-align:left;width:30px"><input type="checkbox" id="hol-cb-all" onchange="document.querySelectorAll('.hol-cb').forEach(cb=>cb.checked=this.checked)" style="accent-color:var(--gold)"></th>
+          <th style="padding:6px;text-align:left">Date</th>
+          <th style="padding:6px;text-align:left">Name</th>
+          <th style="padding:6px;text-align:left">Type</th>
+          <th style="padding:6px;text-align:left">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+    ${hols.map(h=>`<tr style="border-bottom:1px solid var(--dark3)">
+      <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
+      <td style="padding:6px">${escHtml(h.date)}</td>
+      <td style="padding:6px">${escHtml(h.name)}</td>
+      <td style="padding:6px">${escHtml(h.type||'Public')}</td>
+      <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
+    </tr>`).join('')}
+      </tbody>
+    </table>
     </div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
       <input id="hol-date" class="form-input" type="date" value="${todayStr()}" style="width:160px">
@@ -4154,7 +4897,7 @@ function applyBranding() {
 }
 
 async function savePolicySettings() {
-  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','shiftAutoClockoutBuffer','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold'];
+  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   const res=await API.call('updateSettings',{updates});
@@ -4258,7 +5001,7 @@ async function reconnectFromBanner() {
 }
 
 async function saveAutomationSettings() {
-  const keys=['shiftAutoClockoutBuffer','autoMarkPresentThreshold'];
+  const keys=['shiftAutoClockoutBuffer','autoMarkPresentThreshold','lateClockInApprovalMinutes'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   // Handle checkboxes
@@ -4550,6 +5293,18 @@ async function addHoliday() {
 async function removeHoliday(date) {
   const res=await API.call('removeHoliday',{date});
   if(res.ok){toast('Holiday removed','success');await renderSettings();}
+}
+async function deleteHoliday(id) {
+  const res = await API.call('removeHoliday',{date:id});
+  if(res.ok){toast('✓ Holiday deleted','success');await renderSettings();}
+  else toast(res.error||'Error','error');
+}
+async function deleteSelectedHolidays() {
+  const ids = [...document.querySelectorAll('.hol-cb:checked')].map(cb=>cb.value);
+  if(!ids.length || !confirm(`Delete ${ids.length} holiday(s)?`)) return;
+  for(const id of ids) await API.call('removeHoliday',{date:id});
+  toast(`✓ ${ids.length} holiday(s) deleted`,'success');
+  await renderSettings();
 }
 
 async function addOrgPrompt(type) {
