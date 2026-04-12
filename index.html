@@ -21,6 +21,22 @@
   --radius:12px;--radius-sm:8px;--shadow:0 4px 20px rgba(0,0,0,0.5);
   --trans:all 0.22s ease;
 }
+/* ── LIGHT THEME ── */
+[data-theme="light"]{
+  --black:#F5F5F5;--dark:#FFFFFF;--dark2:#F0F0F0;--dark3:#E5E5E5;
+  --white:#111111;--off-white:#333333;--gray:#666666;--gray-light:#444444;
+  --gold:#9A6A10;--gold-light:#7A5010;--gold-dim:#C9A84C;
+  --shadow:0 4px 20px rgba(0,0,0,0.15);
+}
+[data-theme="light"] html,[data-theme="light"] body,[data-theme="light"] #screen-admin{background:#F5F5F5;color:#111111}
+[data-theme="light"] .form-input{background:#FFFFFF;border-color:#DDDDDD;color:#111111}
+[data-theme="light"] .form-input option{background:#FFFFFF;color:#111111}
+[data-theme="light"] #modal-box{background:#FFFFFF;border-color:#DDDDDD}
+[data-theme="light"] .toast{background:#FFFFFF}
+[data-theme="light"] .btn-dark{background:#EEEEEE;color:#333333;border-color:#CCCCCC}
+[data-theme="light"] .badge-gray{background:#DDDDDD;color:#333333}
+[data-theme="light"] .az-table tr:hover{background:rgba(0,0,0,0.04)}
+[data-theme="light"] ::-webkit-scrollbar-track{background:#F0F0F0}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;background:var(--black);color:var(--white)}
 button{cursor:pointer;border:none;outline:none;font-family:inherit}
@@ -103,8 +119,8 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 ─────────────────────────────────────────── */
 .form-group{margin-bottom:16px}
 .form-label{display:block;font-size:12px;color:var(--gold-light);margin-bottom:6px;font-weight:600}
-.info-tooltip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--dark3);border:1px solid var(--dark3);color:var(--gray-light);font-size:10px;cursor:help;margin-left:4px;vertical-align:middle;position:relative}
-.info-tooltip:hover::after{content:attr(title);position:absolute;left:20px;top:-4px;width:220px;background:#1e1e2e;border:1px solid var(--gold-dim);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.5;color:var(--gray-light);z-index:999;white-space:normal;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.info-tooltip{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);color:var(--white);font-size:11px;font-weight:700;cursor:help;margin-left:6px;vertical-align:middle;position:relative;flex-shrink:0}
+.info-tooltip:hover::after{content:attr(title);position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);max-width:300px;width:90vw;background:#1e1e2e;border:1px solid var(--gold-dim);border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.6;color:var(--gray-light);z-index:9999;white-space:normal;pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.7)}
 .form-input{width:100%;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);
             padding:10px 14px;border-radius:var(--radius-sm);font-size:14px;transition:var(--trans)}
 .form-input:focus{border-color:var(--gold)}
@@ -858,6 +874,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       <div class="form-group">
         <label class="form-label">Password</label>
         <input id="admin-pw-input" class="form-input" type="password" placeholder="Enter password"
+               autocomplete="current-password"
                onkeydown="if(event.key==='Enter')doAdminLogin()">
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:var(--gray-light)">
@@ -933,8 +950,11 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
   <div id="admin-content">
     <div id="admin-topbar">
       <button id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <button id="back-btn" class="btn btn-dark btn-sm" onclick="goBack()" style="display:none" title="Go back">← Back</button>
       <div id="admin-page-title">Dashboard</div>
       <input id="admin-search-global" class="form-input" type="search" placeholder="🔍 Search employees…" oninput="globalSearch(this.value)">
+      <button class="btn btn-dark btn-sm" onclick="refreshCurrentPage()" title="Refresh this page" style="min-width:36px">↻</button>
+      <button class="btn btn-dark btn-sm" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Light/Dark theme">🌙</button>
       <div id="admin-user-info" style="font-size:11px;color:var(--gray-light)"></div>
     </div>
     <div id="admin-tab-content"><!-- tab content rendered here --></div>
@@ -1126,13 +1146,66 @@ function buildBalanceHtml(bal, rec) {
 }
 function fmtDate(ds) {
   if (!ds) return '—';
-  try { const d=new Date(ds); return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); } catch { return ds; }
+  try {
+    // Handle full JS date strings like "Thu Jan 01 2026 00:00:00 GMT+0530..."
+    const d = typeof ds === 'string' ? new Date(ds.includes('T') || ds.includes(' ') ? ds : ds + 'T00:00:00') : new Date(ds);
+    if (isNaN(d)) return ds;
+    return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  } catch { return ds; }
+}
+function fmtHolDate(ds) {
+  // For holiday display: "Thu, 1 Jan 2026"
+  if (!ds) return '—';
+  try {
+    const d = typeof ds === 'string' ? new Date(ds.includes('T') || (ds.includes(' ') && !ds.match(/^\d{4}-\d{2}-\d{2} /)) ? ds : ds.length === 10 ? ds + 'T00:00:00' : ds) : new Date(ds);
+    if (isNaN(d)) return ds;
+    return d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  } catch { return ds; }
 }
 function fmtTime(ts) {
   if (!ts) return '—';
-  try { const d=new Date(ts); return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); } catch { return ts; }
+  try {
+    // Accept "HH:MM", "HH:MM:SS", or full date-time strings
+    let d;
+    if (typeof ts === 'string' && ts.match(/^\d{1,2}:\d{2}/)) {
+      d = new Date('2000-01-01T' + ts);
+    } else {
+      d = new Date(typeof ts === 'string' ? ts.replace(' ','T') : ts);
+    }
+    if (isNaN(d)) return ts;
+    return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+  } catch { return ts; }
 }
-function fmtDT(ts) { return ts ? fmtDate(ts.split(' ')[0]) + ' ' + fmtTime(ts) : '—'; }
+function fmtTimeSS(ts) {
+  // Alias for fmtTime (same, includes seconds)
+  return fmtTime(ts);
+}
+function fmtDT(ts) {
+  if (!ts) return '—';
+  try {
+    const d = new Date(typeof ts === 'string' ? ts.replace(' ','T') : ts);
+    if (isNaN(d)) return ts;
+    const datePart = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    const timePart = d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+    return datePart + ' ' + timePart;
+  } catch { return ts; }
+}
+function fmtDuration(mins, fmt) {
+  // fmt: 'h:mm' | 'decimal' | 'h:mm:ss' | 'words' — reads from State.settings if not provided
+  const f = fmt || (State&&State.settings&&State.settings.durationFormat) || 'h:mm';
+  if (!mins && mins !== 0) return '—';
+  const m = parseInt(mins) || 0;
+  const h = Math.floor(m / 60), mm = m % 60;
+  if (f === 'decimal')  return (m / 60).toFixed(2) + ' h';
+  if (f === 'h:mm:ss')  return `${h}:${String(mm).padStart(2,'0')}:00`;
+  if (f === 'words') {
+    if (h === 0) return `${mm} minute${mm !== 1 ? 's' : ''}`;
+    if (mm === 0) return `${h} hour${h !== 1 ? 's' : ''}`;
+    return `${h} hour${h !== 1 ? 's' : ''} ${mm} minute${mm !== 1 ? 's' : ''}`;
+  }
+  // default h:mm
+  return `${h}:${String(mm).padStart(2,'0')}`;
+}
 function fmtShift(start, end) {
   function to12h(t) {
     if (!t || !t.includes(':')) return t||'—';
@@ -1504,6 +1577,7 @@ async function setMode(mode) {
     State.faceActive = true;
     document.getElementById('face-status').innerHTML = '<span class="en">Position your face…</span><span class="hi">अपना चेहरा रखें…</span>';
     State.faceLoop = setInterval(faceDetectLoop, 1500);
+    startFaceDirectionGuide();
   } else {
     Face.stopCamera();
     State.faceActive = false;
@@ -1514,23 +1588,48 @@ async function setMode(mode) {
 }
 
 let faceDetecting = false;
+let _faceDirectionStep = 0;
+const _faceDirections = ['Look straight 👁', 'Turn left ← slightly', 'Turn right → slightly', 'Tilt up ↑ slightly', 'Tilt down ↓ slightly'];
+let _faceDirectionTimer = null;
+function startFaceDirectionGuide() {
+  _faceDirectionStep = 0;
+  _faceDirectionTimer = setInterval(()=>{
+    if (!State.faceActive) { clearInterval(_faceDirectionTimer); return; }
+    const step = _faceDirectionStep % _faceDirections.length;
+    const pct = Math.round((_faceDirectionStep % _faceDirections.length / _faceDirections.length)*100);
+    const statusEl = document.getElementById('face-status');
+    if (statusEl) statusEl.innerHTML = `<div>${_faceDirections[step]}</div><div style="height:3px;background:var(--dark3);border-radius:2px;margin:3px 8px 0"><div style="width:${pct+20}%;height:100%;background:var(--gold);border-radius:2px;transition:width 0.5s"></div></div>`;
+    _faceDirectionStep++;
+  }, 900);
+}
 async function faceDetectLoop() {
   if (faceDetecting || !State.faceActive) return;
   faceDetecting = true;
   try {
-    document.getElementById('face-status').innerHTML = '<span class="en">Scanning…</span><span class="hi">स्कैन हो रहा है…</span>';
     const result = await Face.detectAndIdentify();
     if (result && result.ok) {
+      clearInterval(_faceDirectionTimer);
       document.getElementById('face-status').innerHTML = `<span style="color:var(--green)">✓ ${escHtml(result.employee.name)}</span>`;
       if (State.faceLoop) { clearInterval(State.faceLoop); State.faceLoop=null; }
       State.faceActive = false;
       handleAuthResult(result);
     } else {
-      document.getElementById('face-status').innerHTML = '<span class="en">No match. Try again.</span><span class="hi">मिला नहीं, फिर कोशिश करें</span>';
+      // Guide is already running; on failure, flash "No match"
+      const statusEl = document.getElementById('face-status');
+      if(statusEl){
+        const prev = statusEl.innerHTML;
+        statusEl.innerHTML = '<span style="color:var(--orange)">⚠ No match — keep still</span>';
+        setTimeout(()=>{ if(statusEl) statusEl.innerHTML=prev; }, 1200);
+      }
     }
   } catch(e) {}
   faceDetecting = false;
 }
+// Patch face start to also begin direction guide
+const _origFaceLoopStart = () => {
+  State.faceLoop = setInterval(faceDetectLoop, 1500);
+  startFaceDirectionGuide();
+};
 
 // ═══════════════════════════════════════════
 // AUTH RESULT HANDLER (PIN or Face)
@@ -1893,7 +1992,7 @@ async function cancelLeaveFromKiosk(leaveId, needsManagerApproval) {
       <p style="font-size:13px;color:var(--gray-light);margin-bottom:14px">This approved leave requires manager approval to cancel.</p>
       <div class="form-group">
         <label class="form-label">Manager PIN or Password</label>
-        <input id="cancel-leave-pin" class="form-input" type="password" placeholder="Manager PIN…">
+        <input id="cancel-leave-pin" class="form-input" type="password" placeholder="Manager PIN…" autocomplete="new-password">
       </div>`;
     showModal('Cancel Approved Leave', bodyHtml, [
       {label:'Confirm Cancellation', cls:'btn-gold', cb: async () => {
@@ -2180,6 +2279,9 @@ async function _execClockIn(extraParams={}) {
     } else if (res.error==='MISSED_CLOCKOUT_NEEDS_APPROVAL') {
       if (btn) btn.disabled=false;
       doRequestClockInAfterMissedOut(res.yesterdayDate);
+    } else if (res.error==='MONTHLY_LATE_BLOCK') {
+      if (btn) btn.disabled=false;
+      doRequestLateBlockOverride(res.monthLates, res.limit);
     } else {
       toast(res.error||'Clock-in failed','error');
       if (btn) btn.disabled=false;
@@ -2231,7 +2333,7 @@ function doRequestLateClockIn(lateMinutes) {
     </div>
     <div class="form-group">
       <label class="form-label">Manager PIN or Password <span style="color:var(--red)">*</span></label>
-      <input id="late-mgr-pin" class="form-input" type="password" placeholder="Manager PIN…">
+      <input id="late-mgr-pin" class="form-input" type="password" placeholder="Manager PIN…" autocomplete="new-password">
     </div>
   `;
   showModal('🕐 Late Clock-In Request', bodyHtml, [
@@ -2265,7 +2367,7 @@ function doRequestClockInAfterMissedOut(yesterdayDate) {
     </div>
     <div class="form-group">
       <label class="form-label">Manager PIN or Password <span style="color:var(--red)">*</span></label>
-      <input id="missed-mgr-pin" class="form-input" type="password" placeholder="Manager PIN…">
+      <input id="missed-mgr-pin" class="form-input" type="password" placeholder="Manager PIN…" autocomplete="new-password">
     </div>
   `;
   showModal('🚨 Missed Clock-Out Approval', bodyHtml, [
@@ -2290,6 +2392,37 @@ function doRequestClockInAfterMissedOut(yesterdayDate) {
       await doClockIn({missedClockOutApproved: true, note: `Clock-in after missed clock-out approved by manager`});
     }},
     {label:'Cancel', cls:'btn-dark', cb: closeModal},
+  ]);
+}
+
+function doRequestLateBlockOverride(monthLates, limit) {
+  const body=`<div style="font-size:13px">
+    <div style="background:rgba(229,57,53,0.12);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:14px">
+      <strong style="color:var(--red)">⛔ Clock-In Blocked</strong><br>
+      <span style="color:var(--gray-light)">${escHtml(State.currentEmp?.name||'')} has been late <strong>${monthLates}</strong> times this month (limit: ${limit}).</span><br>
+      <span style="font-size:11px;color:var(--orange)">Supervisor or Manager must approve before clock-in is allowed.</span>
+    </div>
+    <div class="form-group"><label class="form-label">Supervisor / Manager PIN</label>
+      <input id="latebk-pin" class="form-input" type="password" placeholder="Enter supervisor PIN…" autocomplete="new-password">
+    </div>
+    <div class="form-group"><label class="form-label">Approval Note</label>
+      <input id="latebk-note" class="form-input" placeholder="Reason for allowing clock-in…" autocomplete="off">
+    </div>
+  </div>`;
+  showModal('⛔ Monthly Late Limit Reached', body, [
+    {label:'Override & Allow Clock-In', cls:'btn-gold', cb: async () => {
+      const pin = document.getElementById('latebk-pin').value;
+      const note = document.getElementById('latebk-note').value;
+      const sv = State.settings?.supervisorPassword||'';
+      const mg = State.settings?.managerPassword||'';
+      const ow = State.settings?.adminPassword||'';
+      if(!pin || (pin!==sv && pin!==mg && pin!==ow)) {
+        toast('Invalid supervisor/manager PIN','error'); return;
+      }
+      closeModal();
+      await doClockIn({lateBlockOverridden:true, note:`Late-block override approved: ${note||'manager approved'}`});
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
   ]);
 }
 
@@ -2474,7 +2607,7 @@ function showManagerApprovalModal(onApprove) {
     <p style="margin-bottom:12px;color:var(--orange)">⚠ Shift + 1 hour exceeded. Manager approval required.</p>
     <div class="form-group">
       <label class="form-label">Manager PIN or Password</label>
-      <input id="mgr-pin-input" class="form-input" type="password" placeholder="Manager PIN…">
+      <input id="mgr-pin-input" class="form-input" type="password" placeholder="Manager PIN…" autocomplete="new-password">
     </div>
   `;
   showModal('Manager Approval Required / प्रबंधक की मंजूरी', bodyHtml, [
@@ -2790,6 +2923,42 @@ async function completeAdminLogin(role) {
 
 function adminLogout() { State.adminRole=null; State.adminUser=null; showScreen('kiosk'); }
 function goBackToKiosk() { showScreen('kiosk'); }
+// ─── Theme Toggle ──────────────────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const next = isLight ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next === 'dark' ? '' : 'light');
+  if (next === 'dark') document.documentElement.removeAttribute('data-theme');
+  localStorage.setItem('az_theme', next);
+  document.getElementById('theme-toggle-btn').textContent = next === 'light' ? '☀' : '🌙';
+}
+function applyStoredTheme() {
+  const t = localStorage.getItem('az_theme');
+  if (t === 'light') {
+    document.documentElement.setAttribute('data-theme','light');
+    const btn = document.getElementById('theme-toggle-btn');
+    if(btn) btn.textContent = '☀';
+  }
+}
+
+// ─── Navigation History (back/refresh) ────────────────────────────────────
+let _tabHistory = [];
+async function refreshCurrentPage() {
+  const tab = State.currentTab || 'dashboard';
+  await switchTab(tab);
+}
+function goBack() {
+  if (_tabHistory.length > 1) {
+    _tabHistory.pop(); // remove current
+    const prev = _tabHistory[_tabHistory.length-1];
+    switchTab(prev);
+  }
+}
+function updateBackBtn() {
+  const btn = document.getElementById('back-btn');
+  if(btn) btn.style.display = _tabHistory.length > 1 ? '' : 'none';
+}
+
 function toggleSidebar() {
   const sb=document.getElementById('admin-sidebar');
   const ov=document.getElementById('sidebar-overlay');
@@ -2816,6 +2985,12 @@ async function checkPendingLeaves() {
 // ═══════════════════════════════════════════
 async function switchTab(tab) {
   if (!checkTabPermission(tab)) { toast('Access denied for your role','error'); return; }
+  // Track history for back button
+  if (_tabHistory[_tabHistory.length-1] !== tab) {
+    _tabHistory.push(tab);
+    if(_tabHistory.length > 20) _tabHistory.shift();
+  }
+  updateBackBtn();
   State.currentTab = tab;
   closeSidebar(); // auto-close sidebar on mobile when navigating
   document.querySelectorAll('.nav-item').forEach(n=>{n.className='nav-item'+(n.dataset.tab===tab?' active':'');});
@@ -3077,10 +3252,16 @@ async function renderTimesheets(offset) {
 
   function cellContent(rec, emp, date) {
     if(!rec) {
-      const d=new Date(date); const dayOfWeek=d.getDay();
-      const wo1=emp.weeklyOff1||'Sunday'; const wo2=emp.weeklyOff2||'';
-      const dayName=dayNames[dayOfWeek];
-      if(dayName===wo1.substring(0,3)||dayName===wo2.substring(0,3)) return '<span class="ts-rest">Rest</span>';
+      // Use explicit date parsing to avoid timezone shift issues
+      const parts = date.split('-').map(Number);
+      const d = new Date(parts[0], parts[1]-1, parts[2]);
+      const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon,...
+      const wo1 = emp.weeklyOff1 || 'Sunday';
+      const wo2 = emp.weeklyOff2 || '';
+      const dayName = dayNames[dayOfWeek]; // 'Sun','Mon',...
+      const wo1Short = wo1.substring(0,3);
+      const wo2Short = wo2 ? wo2.substring(0,3) : '';
+      if(dayName===wo1Short||(wo2Short&&dayName===wo2Short)) return '<span class="ts-rest">Weekly Off</span>';
       if(date>todayStr2) return '<span style="color:var(--dark3)">-</span>';
       return '<span class="ts-hours absent">A</span>';
     }
@@ -3111,7 +3292,7 @@ async function renderTimesheets(offset) {
     <span style="color:var(--blue)">IL/SL/PL = Leave</span>
     <span style="color:var(--red)">A = Absent</span>
     <span style="color:var(--gold)">H = Holiday</span>
-    <span style="color:var(--gray)">Rest = Weekly off</span>
+    <span style="color:var(--gray)">Weekly Off = Employee's day off</span>
   </div>
   <div class="table-wrap">
   <table class="timesheet-grid">
@@ -3312,6 +3493,7 @@ async function renderEmployees(filter='') {
   }
   State.employees = emps;
   const canEdit = ['owner','manager'].includes(State.adminRole);
+  const isOwner = State.adminRole === 'owner';
   let html = `
   <div class="section-hdr">
     <div class="section-title">Employees <small>${emps.length} shown</small></div>
@@ -3342,9 +3524,15 @@ async function renderEmployees(filter='') {
     <table class="az-table">
       <thead><tr>
         <th style="width:30px"><input type="checkbox" id="emp-cb-all" style="accent-color:var(--gold)" onchange="toggleAllEmpCb(this.checked)"></th>
-        <th onclick="sortTable('name')">Name ▲</th>
-        <th>ID</th><th>Dept/Level</th><th>Salary</th><th>Shift</th>
-        <th>Weekly Off</th><th>Joining</th><th>Status</th><th>Actions</th>
+        <th style="cursor:pointer" onclick="sortTable('name')">Name ${_empSortKey==='name'?(_empSortDir>0?'▲':'▼'):''}</th>
+        <th style="cursor:pointer" onclick="sortTable('id')">ID ${_empSortKey==='id'?(_empSortDir>0?'▲':'▼'):''}</th>
+        <th style="cursor:pointer" onclick="sortTable('level')">Dept/Level ${_empSortKey==='level'?(_empSortDir>0?'▲':'▼'):''}</th>
+        <th style="cursor:pointer" onclick="sortTable('salary')">Salary ${_empSortKey==='salary'?(_empSortDir>0?'▲':'▼'):''}</th>
+        <th>Shift</th>
+        <th>Weekly Off</th>
+        <th style="cursor:pointer" onclick="sortTable('doj')">Joining ${_empSortKey==='doj'?(_empSortDir>0?'▲':'▼'):''}</th>
+        <th style="cursor:pointer" onclick="sortTable('status')">Status ${_empSortKey==='status'?(_empSortDir>0?'▲':'▼'):''}</th>
+        <th>Actions</th>
       </tr></thead>
       <tbody>`;
   emps.forEach(e => {
@@ -3364,6 +3552,7 @@ async function renderEmployees(filter='') {
         ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="archiveEmp('${escHtml(e.id)}')">Archive</button>`:''}
         ${canEdit&&e.status==='Archived'?`<button class="btn btn-green btn-sm" onclick="unarchiveEmp('${escHtml(e.id)}')">Unarchive</button>`:''}
         ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="registerFace('${escHtml(e.id)}','${escHtml(e.name)}')">📷 Face</button>`:''}
+        ${isOwner&&e.status==='Archived'?`<button class="btn btn-red btn-sm" onclick="permanentDeleteEmp('${escHtml(e.id)}','${escHtml(e.name)}')" title="Owner only: permanently delete">🗑 Delete</button>`:''}
       </td>
     </tr>`;
   });
@@ -3441,7 +3630,16 @@ async function showAddEmpModal() {
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Employment Type</label>
-      <select id="e-emptype" class="form-input"><option>Full-Time</option><option>Part-Time</option><option>Contract</option><option>Intern</option><option>Freelancer</option></select></div>
+      <select id="e-emptype" class="form-input">
+        <option value="Wage Shift Office">Wage Shift Office</option>
+        <option value="Full-Time Office">Full-Time Office</option>
+        <option value="Work From Home">Work From Home</option>
+        <option value="Hybrid">Hybrid</option>
+        <option value="Part-Time">Part-Time</option>
+        <option value="Contract">Contract</option>
+        <option value="Intern">Intern</option>
+        <option value="Freelancer">Freelancer</option>
+      </select></div>
     <div class="form-group"><label class="form-label">Group / Team <span style="color:var(--gray-light);font-weight:400">(optional)</span></label>
       <input id="e-group" class="form-input" placeholder="e.g. Night Shift, Packing A"></div>
   </div>
@@ -3643,6 +3841,16 @@ async function unarchiveEmp(empId) {
   if(res.ok){toast('✓ Employee reactivated','success'); await renderEmployees();}
   else toast(res.error||'Error','error');
 }
+async function permanentDeleteEmp(empId, name) {
+  if (State.adminRole !== 'owner') { toast('Only Owner can permanently delete employees','error'); return; }
+  const ok = await confirm2(`⛔ PERMANENTLY DELETE ${name} (${empId})?\n\nThis cannot be undone. All attendance and salary records for this employee will be preserved in history but the employee profile will be deleted.\n\nType "DELETE" to confirm.`);
+  if (!ok) return;
+  const conf = prompt(`Type DELETE to confirm permanent deletion of ${name}:`);
+  if (conf !== 'DELETE') { toast('Cancelled — type exactly DELETE to confirm','warning'); return; }
+  const res = await API.call('archiveEmployee',{empId, hard:true});
+  if(res.ok){toast(`✓ ${name} permanently deleted`,'success');await renderEmployees();}
+  else toast(res.error||'Error deleting employee','error');
+}
 function toggleAllEmpCb(checked) {
   document.querySelectorAll('.emp-cb').forEach(cb=>cb.checked=checked);
   updateBulkBar();
@@ -3805,7 +4013,7 @@ function showManualAttModal(empId, date='', currentStatus='') {
   <div class="form-row">
     <div class="form-group"><label class="form-label">Date</label><input id="ma-date" class="form-input" type="date" value="${date||todayStr()}"></div>
     <div class="form-group"><label class="form-label">Status</label>
-      <select id="ma-status" class="form-input">
+      <select id="ma-status" class="form-input" onchange="toggleManualTimeMode()">
         <option value="P" ${currentStatus==='P'?'selected':''}>P — Present</option>
         <option value="IL" ${currentStatus==='IL'?'selected':''}>IL — Informed Leave</option>
         <option value="IHL" ${currentStatus==='IHL'?'selected':''}>IHL — Informed Half Leave</option>
@@ -3817,29 +4025,86 @@ function showManualAttModal(empId, date='', currentStatus='') {
         <option value="PL" ${currentStatus==='PL'?'selected':''}>PL — Paid Leave</option>
       </select></div>
   </div>
-  <div class="form-row">
-    <div class="form-group"><label class="form-label">Clock In (override)</label><input id="ma-ci" class="form-input" type="time"></div>
-    <div class="form-group"><label class="form-label">Clock Out (override)</label><input id="ma-co" class="form-input" type="time"></div>
+  <div id="ma-time-section">
+    <div style="display:flex;gap:10px;margin-bottom:8px;font-size:12px">
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="radio" name="ma-time-mode" value="clockio" checked onchange="toggleManualTimeMode()" style="accent-color:var(--gold)"> Enter Clock-In / Clock-Out
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="radio" name="ma-time-mode" value="hours" onchange="toggleManualTimeMode()" style="accent-color:var(--gold)"> Enter Total Hours
+      </label>
+    </div>
+    <div id="ma-clockio-inputs" class="form-row">
+      <div class="form-group">
+        <label class="form-label">Clock In (12-hour)</label>
+        <div style="display:flex;gap:6px">
+          <select id="ma-ci-h" class="form-input" style="width:70px">${Array.from({length:12},(_,i)=>`<option value="${String(i+1).padStart(2,'0')}">${i+1}</option>`).join('')}</select>
+          <select id="ma-ci-m" class="form-input" style="width:70px">${['00','15','30','45'].map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+          <select id="ma-ci-ampm" class="form-input" style="width:70px"><option value="AM">AM</option><option value="PM" selected>PM</option></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Clock Out (12-hour)</label>
+        <div style="display:flex;gap:6px">
+          <select id="ma-co-h" class="form-input" style="width:70px">${Array.from({length:12},(_,i)=>`<option value="${String(i+1).padStart(2,'0')}">${i+1}</option>`).join('')}</select>
+          <select id="ma-co-m" class="form-input" style="width:70px">${['00','15','30','45'].map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+          <select id="ma-co-ampm" class="form-input" style="width:70px"><option value="AM">AM</option><option value="PM" selected>PM</option></select>
+        </div>
+      </div>
+    </div>
+    <div id="ma-hours-input" style="display:none" class="form-row">
+      <div class="form-group">
+        <label class="form-label">Total Hours Worked</label>
+        <input id="ma-total-hours" class="form-input" type="number" min="0" max="24" step="0.5" placeholder="e.g. 8.5">
+        <div style="font-size:11px;color:var(--gray-light);margin-top:3px">Shift start time will be used to compute clock-in/out</div>
+      </div>
+    </div>
   </div>
-  <div class="form-group"><label class="form-label">Reason / Remark *</label><input id="ma-note" class="form-input" placeholder="Reason for manual entry…" required></div>
+  <div class="form-group"><label class="form-label">Reason / Remark *</label><input id="ma-note" class="form-input" placeholder="Reason for manual entry…" autocomplete="off" required></div>
   </div>`;
   showModal('✏ Manual Attendance Entry', html, [
     {label:'Save / सहेजें', cls:'btn-gold', cb:async()=>{
-      const d=document.getElementById('ma-date').value;
+      const dateStr=document.getElementById('ma-date').value;
       const s=document.getElementById('ma-status').value;
-      const ci=document.getElementById('ma-ci').value;
-      const co=document.getElementById('ma-co').value;
       const note=document.getElementById('ma-note').value;
       if(!note){toast('Reason required / कारण जरूरी है','warning');return;}
-      const dateStr=d;
-      const ciStr=ci?`${dateStr} ${ci}:00`:'';
-      const coStr=co?`${dateStr} ${co}:00`:'';
-      const res=await API.call('manualSetAttendance',{empId,date:dateStr,status:s,clockIn:ciStr,clockOut:coStr,note,editBy:State.adminUser});
+      let ciStr='', coStr='';
+      const mode=document.querySelector('[name="ma-time-mode"]:checked')?.value||'clockio';
+      if(mode==='clockio' && ['P','EW'].includes(s)){
+        function to24(h,m,ampm){let hh=parseInt(h);if(ampm==='PM'&&hh!==12)hh+=12;if(ampm==='AM'&&hh===12)hh=0;return `${String(hh).padStart(2,'0')}:${m}:00`;}
+        const cih=document.getElementById('ma-ci-h').value, cim=document.getElementById('ma-ci-m').value, ciap=document.getElementById('ma-ci-ampm').value;
+        const coh=document.getElementById('ma-co-h').value, com=document.getElementById('ma-co-m').value, coap=document.getElementById('ma-co-ampm').value;
+        ciStr=`${dateStr} ${to24(cih,cim,ciap)}`;
+        coStr=`${dateStr} ${to24(coh,com,coap)}`;
+      } else if(mode==='hours' && ['P','EW'].includes(s)){
+        const hrs=parseFloat(document.getElementById('ma-total-hours').value)||0;
+        // Use employee's shift start from State
+        const emp=(State.employees||[]).find(e=>e.id===empId);
+        const shiftStart=emp?.shiftStart||'09:00';
+        const [sh,sm]=shiftStart.split(':').map(Number);
+        const startMins=sh*60+sm;
+        const endMins=startMins+Math.round(hrs*60);
+        function minsToTime(m){return `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}:00`;}
+        ciStr=`${dateStr} ${minsToTime(startMins)}`;
+        coStr=`${dateStr} ${minsToTime(endMins)}`;
+      }
+      const res=await API.call('manualSetAttendance',{empId,date:dateStr,status:s,clockIn:ciStr,clockOut:coStr,note,editBy:State.adminUser,manualEdit:true});
       if(res.ok){closeModal();toast('✓ Attendance updated','success');const yr=parseInt(document.getElementById('att-yr-sel')?.value||new Date().getFullYear());const mo=parseInt(document.getElementById('att-mo-sel')?.value||new Date().getMonth()+1);renderAttendanceGrid(empId,yr,mo,State.employees);}
       else toast(res.error||'Error','error');
     }},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
   ]);
+}
+function toggleManualTimeMode(){
+  const mode=document.querySelector('[name="ma-time-mode"]:checked')?.value||'clockio';
+  const status=document.getElementById('ma-status')?.value||'P';
+  const showTime=['P','EW'].includes(status);
+  const sec=document.getElementById('ma-time-section');
+  if(sec) sec.style.display=showTime?'':'none';
+  const clockio=document.getElementById('ma-clockio-inputs');
+  const hours=document.getElementById('ma-hours-input');
+  if(clockio) clockio.style.display=mode==='clockio'?'':'none';
+  if(hours) hours.style.display=mode==='hours'?'':'none';
 }
 
 // ═══════════════════════════════════════════
@@ -3887,11 +4152,18 @@ async function renderLeaves() {
   </div>
   <div class="table-wrap">
     <table class="az-table" id="leaves-table">
-      <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Requested</th><th>Approved By</th></tr></thead>
+      <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Requested</th><th>Approved By</th><th>Actions</th></tr></thead>
       <tbody id="leaves-tbody">`;
   all.forEach(l=>{
+    const lEmp=(State.employees||[]).find(e=>e.id===l.empId);
+    // Compute the ISO week for the leave start date (for roster link)
+    let rosterWeek='';
+    if(l.startDate) {
+      const sd=new Date(l.startDate+'T00:00:00');
+      rosterWeek=getWeekStart(sd);
+    }
     html+=`<tr>
-      <td>${escHtml(l.empId)}</td>
+      <td><strong>${escHtml(lEmp?.name||l.empId)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(l.empId)}</span></td>
       <td>${statusBadge(l.type)}</td>
       <td>${fmtDate(l.startDate)}</td>
       <td>${fmtDate(l.endDate)}</td>
@@ -3899,6 +4171,10 @@ async function renderLeaves() {
       <td>${statusBadge(l.status)}</td>
       <td style="font-size:11px">${fmtDT(l.requestDate)}</td>
       <td style="font-size:11px">${escHtml(l.approvedBy||'—')}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-dark btn-sm" title="View week in Roster" onclick="viewLeaveInRoster('${escHtml(rosterWeek)}')">📋</button>
+        <button class="btn btn-dark btn-sm" title="View employee payroll transactions" onclick="viewEmpTransactions('${escHtml(l.empId)}','','')" style="font-size:10px">💸</button>
+      </td>
     </tr>`;
   });
   html+=`</tbody></table></div>`;
@@ -3968,8 +4244,8 @@ async function renderTransactions() {
   </div>
   <div id="trans-balance-card" style="display:none;margin-bottom:16px"></div>
   <div class="table-wrap"><table class="az-table">
-    <thead><tr><th>Date</th><th>Employee</th><th>Type</th><th>Amount</th><th>Note</th><th>Approved By</th><th>Status</th></tr></thead>
-    <tbody id="trans-tbody"><tr><td colspan="7" class="empty-state"><div>Select filters above</div></td></tr></tbody>
+    <thead><tr><th>Date</th><th>Employee</th><th>Type</th><th>Amount</th><th>Note</th><th>Approved By</th><th>Status</th><th>Payroll</th></tr></thead>
+    <tbody id="trans-tbody"><tr><td colspan="8" class="empty-state"><div>Select filters above</div></td></tr></tbody>
   </table></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
   loadTransactions();
@@ -3997,19 +4273,33 @@ async function loadTransactions() {
       </div>`;
     }
   }
-  if(!trans.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:24px">No transactions</td></tr>';return;}
+  if(!trans.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:24px">No transactions</td></tr>';return;}
   const empMap={};
   (State.employees||[]).forEach(e=>empMap[e.id]=e.name);
+  const now2=new Date();
   tbody.innerHTML=trans.map(t=>{
     const isDebit=['Advance','Loan','Penalty','DamageRecovery','LateFine','KYCFee','PINReactivationFee','Deduction','LoanRepayment'].includes(t.type);
+    // Determine payroll month this will be deducted in
+    let payrollCell='';
+    if(isDebit&&t.status==='Applied'&&t.date) {
+      const txDate=new Date(t.date+'T00:00:00');
+      const payMon=txDate.toLocaleString('en-IN',{month:'short',year:'numeric'});
+      const isFuture=txDate>now2;
+      payrollCell=`<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${isFuture?'rgba(30,136,229,0.2)':'rgba(67,160,71,0.2)'};color:${isFuture?'var(--blue)':'var(--green)'}">
+        ${isFuture?'📅':'✓'} ${payMon}
+      </span>`;
+    } else if(!isDebit&&t.status==='Applied') {
+      payrollCell=`<span style="font-size:10px;color:var(--green)">+ Earning</span>`;
+    }
     return `<tr>
       <td>${fmtDate(t.date)}</td>
-      <td>${escHtml(empMap[t.empId]||t.empId)}</td>
+      <td><strong>${escHtml(empMap[t.empId]||t.empId)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(t.empId)}</span></td>
       <td>${escHtml(t.type)}</td>
       <td style="color:${isDebit?'var(--red)':'var(--green)'};font-weight:700">${isDebit?'-':'+'} ${fmtMoney(t.amount)}</td>
       <td>${escHtml(t.note||'—')}</td>
       <td style="font-size:11px">${escHtml(t.approvedBy||'—')}</td>
       <td>${statusBadge(t.status)}</td>
+      <td>${payrollCell}</td>
     </tr>`;
   }).join('');
 }
@@ -4190,6 +4480,7 @@ async function renderRoster() {
       <select id="roster-month-sel" class="filter-input" style="display:none">${monthOpts}</select>
       <select id="roster-year-sel" class="filter-input" style="display:none">${yearOpts}</select>
       <button class="btn btn-gold btn-sm" onclick="saveAndPublishRoster()">💾 Save & Publish</button>
+      <button class="btn btn-dark btn-sm" onclick="syncApprovedLeavesToRoster()" title="Pull approved leaves into roster cells">🔄 Sync Leaves</button>
       <button class="btn btn-dark btn-sm" onclick="downloadRosterPDF()">📄 PDF / Print</button>
       <button class="btn btn-dark btn-sm" onclick="exportRosterCSV()">📊 CSV</button>
     </div>
@@ -4318,28 +4609,121 @@ async function saveAndPublishRoster() {
 }
 
 function downloadRosterPDF() {
-  if(window.jspdf) {
-    const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-    const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
-    const now=new Date();
-    doc.setFillColor(26,26,46); doc.rect(0,0,297,20,'F');
-    doc.setTextColor(200,146,42); doc.setFontSize(16); doc.setFont('helvetica','bold');
-    doc.text(`${co} — WORK ROSTER`,148,13,{align:'center'});
-    doc.setTextColor(255,255,255); doc.setFontSize(10); doc.setFont('helvetica','normal');
-    const isMonthly=window._rosterView==='monthly';
-    const period=isMonthly
-      ? `${new Date(parseInt(document.getElementById('roster-year-sel')?.value||now.getFullYear()), parseInt(document.getElementById('roster-month-sel')?.value||now.getMonth()+1)-1).toLocaleString('en-IN',{month:'long',year:'numeric'})}`
-      : `Week of ${document.getElementById('roster-week')?.value||getWeekStart(now)}`;
-    doc.text(`Period: ${period}  |  Generated: ${todayStr()}`,148,18,{align:'center'});
-    doc.setFontSize(8); doc.setTextColor(120,120,120);
-    doc.text('Codes: P=Present | IL=Informed Leave | IHL=Half Leave | WO=Weekly Off | H=Holiday | HO=Half Day Off | EW=Extra Work | SL=Sick Leave | PL=Paid Leave | UL=Uninformed Leave',10,205);
-    doc.save(`ArtzFolio_Roster_${period.replace(/\s+/g,'_')}.pdf`);
-    // After saving, also trigger print
-    setTimeout(()=>window.print(),300);
+  const co = State.settings?.companyName||'ArtzFolio';
+  const now = new Date();
+  const isMonthly = window._rosterView==='monthly';
+  const period = isMonthly
+    ? new Date(parseInt(document.getElementById('roster-year-sel')?.value||now.getFullYear()),
+               parseInt(document.getElementById('roster-month-sel')?.value||now.getMonth()+1)-1)
+               .toLocaleString('en-IN',{month:'long',year:'numeric'})
+    : `Week of ${document.getElementById('roster-week')?.value||getWeekStart(now)}`;
+
+  // Clone the visible roster table and replace selects/inputs with their values
+  const tableEl = document.querySelector('.roster-table');
+  if (!tableEl) { toast('No roster loaded — please load a roster first','warning'); return; }
+  const clone = tableEl.cloneNode(true);
+  clone.querySelectorAll('select').forEach(sel => {
+    const orig = tableEl.querySelector(`#${sel.id}`);
+    const val = orig ? orig.value : sel.value;
+    const span = document.createElement('td');
+    const codeColors = {P:'#2e7d32',IL:'#1565c0',UL:'#c62828',WO:'#555',H:'#7b6200',EW:'#e65100',SL:'#4a148c',PL:'#006064',IHL:'#880e4f'};
+    span.style.cssText = `color:${codeColors[val]||'#333'};font-weight:${val?'bold':'normal'};text-align:center;padding:4px`;
+    span.textContent = val || '—';
+    sel.parentNode.replaceChild(span, sel);
+  });
+  clone.querySelectorAll('input').forEach(inp => {
+    const orig = tableEl.querySelector(`#${inp.id}`);
+    const val = orig ? orig.value : inp.value;
+    const span = document.createElement('span');
+    span.textContent = val || '';
+    inp.parentNode.replaceChild(span, inp);
+  });
+
+  const printWin = window.open('','_blank','width=1200,height=800');
+  if (!printWin) { toast('Pop-up blocked — allow pop-ups and try again','warning'); return; }
+  printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>${co} — Roster — ${period}</title>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:Arial,sans-serif;padding:16px 20px;color:#111;margin:0}
+    h1{font-size:16px;margin:0 0 2px 0;color:#1a1a2e}
+    h2{font-size:12px;color:#666;margin:0 0 12px 0;font-weight:normal}
+    table{border-collapse:collapse;width:100%;font-size:11px}
+    th{background:#1a1a2e;color:#c8922a;padding:5px 7px;border:1px solid #555;text-align:center;white-space:nowrap}
+    td{padding:4px 6px;border:1px solid #ccc;text-align:center;vertical-align:middle}
+    tr:nth-child(even){background:#f9f9f9}
+    .footer{margin-top:12px;font-size:9px;color:#888;border-top:1px solid #ddd;padding-top:8px}
+    @media print{@page{size:A4 landscape;margin:8mm} .no-print{display:none}}
+  </style></head><body>
+  <h1>📋 ${escHtml(co)} — WORK ROSTER</h1>
+  <h2>Period: ${escHtml(period)} &nbsp;|&nbsp; Generated: ${todayStr()} &nbsp;|&nbsp; Total Employees: ${(window._rosterEmps||[]).length}</h2>
+  ${clone.outerHTML}
+  <div class="footer">Codes: P=Present &nbsp;|&nbsp; IL=Informed Leave &nbsp;|&nbsp; IHL=Half Leave &nbsp;|&nbsp; WO=Weekly Off &nbsp;|&nbsp; H=Holiday &nbsp;|&nbsp; HO=Half Day Off &nbsp;|&nbsp; EW=Extra Work &nbsp;|&nbsp; SL=Sick Leave &nbsp;|&nbsp; PL=Paid Leave &nbsp;|&nbsp; UL=Uninformed Leave</div>
+  <script>setTimeout(()=>{window.print();},500);<\/script>
+  </body></html>`);
+  printWin.document.close();
+}
+
+function exportRosterCSV() {
+  const emps = (window._rosterEmps||[]).filter(e=>e.status==='Active');
+  if (!emps.length) { toast('No roster data — please load a roster first','warning'); return; }
+  const now = new Date();
+  const isMonthly = window._rosterView==='monthly';
+
+  let headers, rows, filename;
+  if (!isMonthly) {
+    // Weekly roster
+    const weekStart = document.getElementById('roster-week')?.value||getWeekStart(now);
+    const days = ['mon','tue','wed','thu','fri','sat','sun'];
+    // Build date-aware column labels (Mon 13 Apr etc.)
+    const ws = new Date(weekStart+'T00:00:00');
+    const dayLabels = days.map((_,i)=>{
+      const d = new Date(ws); d.setDate(ws.getDate()+i);
+      return d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    });
+    headers = ['Employee ID','Employee Name','Dept',...dayLabels,'Notes'];
+    rows = emps.map(emp=>{
+      const dayVals = days.map(d=>{
+        const el = document.getElementById(`r-${emp.id}-${d}`);
+        return el ? el.value : '';
+      });
+      const notes = document.getElementById(`rn-${emp.id}`)?.value||'';
+      return [emp.id, emp.name, emp.dept||'', ...dayVals, notes];
+    });
+    filename = `ArtzFolio_Roster_Week_${weekStart}.csv`;
   } else {
-    window.print();
+    // Monthly roster
+    const month = parseInt(document.getElementById('roster-month-sel')?.value||now.getMonth()+1);
+    const year  = parseInt(document.getElementById('roster-year-sel')?.value||now.getFullYear());
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const dayNums = Array.from({length:daysInMonth},(_,i)=>i+1);
+    const dayHeaders = dayNums.map(d=>{
+      const dt = new Date(year,month-1,d);
+      return `${d}-${['Su','Mo','Tu','We','Th','Fr','Sa'][dt.getDay()]}`;
+    });
+    headers = ['Employee ID','Employee Name','Dept',...dayHeaders];
+    rows = emps.map(emp=>{
+      const dayVals = dayNums.map(d=>{
+        const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const el = document.getElementById(`mr-${emp.id}-${dateStr}`);
+        return el ? el.value : '';
+      });
+      return [emp.id, emp.name, emp.dept||'', ...dayVals];
+    });
+    const mName = new Date(year,month-1).toLocaleString('en-IN',{month:'short',year:'numeric'}).replace(' ','_');
+    filename = `ArtzFolio_Roster_${mName}.csv`;
   }
+
+  // Build CSV with BOM for Excel
+  const csvContent = [headers, ...rows]
+    .map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','))
+    .join('\r\n');
+  const blob = new Blob(['\ufeff'+csvContent],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('✓ Roster CSV downloaded','success');
 }
 
 async function loadRosterForWeek(weekStart) {
@@ -4358,21 +4742,106 @@ function getWeekStart(d) {
 
 async function saveAllRoster(weekStart) {
   const emps=State.employees.filter(e=>e.status==='Active');
+  const days=['mon','tue','wed','thu','fri','sat','sun'];
+  // Compute date strings for each day of the week
+  const ws=new Date(weekStart+'T00:00:00');
+  const dayDates=days.map((_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return d.toISOString().split('T')[0];});
+
+  // Collect leave-coded cells to auto-create leave requests
+  const leaveCodes=['IL','UL','SL','PL','IHL','UHL'];
+  const leaveRequests=[];
+
   const promises=emps.map(emp=>{
     const update={weekStart, empId:emp.id, preparedBy:State.adminUser,
       notes:document.getElementById(`rn-${emp.id}`)?.value||''};
-    ['mon','tue','wed','thu','fri','sat','sun'].forEach(d=>{
-      update[d]=document.getElementById(`r-${emp.id}-${d}`)?.value||'';
+    days.forEach((d,i)=>{
+      const val=document.getElementById(`r-${emp.id}-${d}`)?.value||'';
+      update[d]=val;
+      if(leaveCodes.includes(val)) {
+        leaveRequests.push({empId:emp.id, type:val, startDate:dayDates[i], endDate:dayDates[i],
+          note:'Auto-created from roster', urgency:'normal', source:'roster'});
+      }
     });
     return API.call('updateRoster',update);
   });
   await Promise.all(promises);
-  toast('✓ Roster saved for week '+weekStart,'success');
+
+  // Auto-create leave requests for leave-coded cells (skip if already exists)
+  if(leaveRequests.length>0) {
+    let created=0, skipped=0;
+    for(const req of leaveRequests) {
+      const res=await API.call('requestLeave',req);
+      if(res.ok) created++; else skipped++;
+    }
+    toast(`✓ Roster saved | ${created} leave request${created!==1?'s':''} auto-created${skipped?' ('+skipped+' already existed)':''}`, 'success', 5000);
+  } else {
+    toast('✓ Roster saved for week '+weekStart,'success');
+  }
 }
 
 async function publishRoster() {
   await saveAllRoster(document.getElementById('roster-week')?.value||getWeekStart(new Date()));
   toast('✓ Roster published! Share with team.','success',5000);
+}
+
+// Pull approved leaves into the currently-visible roster grid
+async function syncApprovedLeavesToRoster() {
+  const emps=window._rosterEmps||[];
+  if(!emps.length){toast('Load a roster first','warning');return;}
+  const isMonthly=window._rosterView==='monthly';
+  const now=new Date();
+
+  // Determine date range for current view
+  let startDate, endDate;
+  if(!isMonthly) {
+    startDate=document.getElementById('roster-week')?.value||getWeekStart(now);
+    const ws=new Date(startDate+'T00:00:00');
+    const we=new Date(ws); we.setDate(ws.getDate()+6);
+    endDate=we.toISOString().split('T')[0];
+  } else {
+    const month=parseInt(document.getElementById('roster-month-sel')?.value||now.getMonth()+1);
+    const year=parseInt(document.getElementById('roster-year-sel')?.value||now.getFullYear());
+    startDate=`${year}-${String(month).padStart(2,'0')}-01`;
+    const lastDay=new Date(year,month,0).getDate();
+    endDate=`${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  }
+
+  toast('Fetching approved leaves…','info',2000);
+  const res=await API.call('getLeaves',{status:'Approved'});
+  const leaves=(res.leaves||[]).filter(l=>l.status==='Approved'&&l.startDate&&l.endDate);
+
+  // Code mapping
+  const typeToCode={IL:'IL',UL:'UL',SL:'SL',PL:'PL',IHL:'IHL',UHL:'IHL'};
+  const days=['mon','tue','wed','thu','fri','sat','sun'];
+  let filled=0;
+
+  leaves.forEach(lv=>{
+    const code=typeToCode[lv.type]||lv.type;
+    // Expand date range
+    const lvStart=new Date(lv.startDate+'T00:00:00');
+    const lvEnd=new Date(lv.endDate+'T00:00:00');
+    const rStart=new Date(startDate+'T00:00:00');
+    const rEnd=new Date(endDate+'T00:00:00');
+    // Iterate each day of the leave
+    for(let d=new Date(lvStart); d<=lvEnd; d.setDate(d.getDate()+1)) {
+      if(d<rStart||d>rEnd) continue;
+      const dateStr=d.toISOString().split('T')[0];
+      if(!isMonthly) {
+        // Weekly — find the day column
+        const ws2=new Date(startDate+'T00:00:00');
+        const diff=Math.round((d-ws2)/(86400000));
+        if(diff>=0&&diff<7) {
+          const dayKey=days[diff];
+          const el=document.getElementById(`r-${lv.empId}-${dayKey}`);
+          if(el&&!el.value){el.value=code;el.style.background=getRosterCellColor(code);filled++;}
+        }
+      } else {
+        const el=document.getElementById(`mr-${lv.empId}-${dateStr}`);
+        if(el&&!el.value){el.value=code;el.style.background=getRosterCellColor(code);filled++;}
+      }
+    }
+  });
+  toast(filled>0?`✓ Synced ${filled} leave cell${filled!==1?'s':''} from approved leaves`:'No new cells to fill — roster already up to date','success',4000);
 }
 
 // ═══════════════════════════════════════════
@@ -4418,25 +4887,28 @@ async function generateAllSalaries() {
     <button class="btn btn-gold btn-sm" onclick="downloadAllSlipsPDF()">📄 Download All PDFs</button>
   </div>
   <div class="table-wrap"><table class="az-table">
-    <thead><tr><th>Employee</th><th>Dept/Level</th><th>Base</th><th>Present</th><th>UL Ded.</th><th>Late Ded.</th><th>OT Earn.</th><th>Perf.Bonus</th><th>Net Salary</th><th>Slip</th></tr></thead>
+    <thead><tr><th>Employee</th><th>Dept/Level</th><th>Base</th><th>Present</th><th>UL Ded.</th><th>Late Ded.</th><th>Adv./Loans</th><th>OT Earn.</th><th>Bonus</th><th>Net Salary</th><th>Slip</th></tr></thead>
     <tbody>`;
   salaries.forEach(s=>{
     const sid='slip_'+Math.random().toString(36).substr(2,6);
     window['_slipData_'+sid]=s;
+    const advTotal=(parseFloat(s.advances||0)+parseFloat(s.loans||0)+parseFloat(s.penalties||0));
     html+=`<tr>
-      <td><strong>${escHtml(s.name||s.empName)}</strong></td>
+      <td><strong>${escHtml(s.name||s.empName)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(s.empId||'')}</span></td>
       <td>${escHtml(s.dept)}<br><span class="badge badge-${s.level&&s.level.startsWith('L')&&parseInt(s.level.slice(1))<=5?'blue':'orange'}">${escHtml(s.level)}</span></td>
       <td>${fmtMoney(s.baseSalary)}</td>
       <td>${s.presentDays}/${s.workingDays}</td>
       <td style="color:var(--red)">${s.ulDeduction?'- '+fmtMoney(s.ulDeduction):''}</td>
       <td style="color:var(--orange)">${s.lateDeduction?'- '+fmtMoney(s.lateDeduction):''}</td>
+      <td style="color:var(--red)">${advTotal?`<span title="Advance: ₹${Math.round(s.advances||0).toLocaleString('en-IN')}${s.loans?'\nLoans: ₹'+Math.round(s.loans||0).toLocaleString('en-IN'):''}${s.penalties?'\nPenalties: ₹'+Math.round(s.penalties||0).toLocaleString('en-IN'):''}">- ${fmtMoney(advTotal)}</span>`:''}</td>
       <td style="color:var(--green)">${s.otEarnings?'+ '+fmtMoney(s.otEarnings):''}</td>
-      <td style="color:var(--green)">${s.performanceBonus?'+ '+fmtMoney(s.performanceBonus):''}</td>
+      <td style="color:var(--green)">${(s.performanceBonus||s.bonuses)?'+ '+fmtMoney((parseFloat(s.performanceBonus||0)+parseFloat(s.bonuses||0))):''}</td>
       <td style="font-weight:900;font-size:1rem;color:var(--gold)">${fmtMoney(s.netSalary)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-gold btn-sm" title="Download PDF Slip" onclick="downloadSalarySlipPDF(window['_slipData_${sid}'])">📄</button>
         <button class="btn btn-dark btn-sm" title="Share via WhatsApp" onclick="shareSlipWhatsApp(window['_slipData_${sid}'])">📱</button>
         <button class="btn btn-dark btn-sm" title="Share via Email" onclick="shareSlipEmail(window['_slipData_${sid}'])">📧</button>
+        <button class="btn btn-dark btn-sm" title="View transactions" onclick="viewEmpTransactions('${escHtml(s.empId||'')}',${year},${month})">💸</button>
       </td>
     </tr>`;
   });
@@ -4459,6 +4931,38 @@ async function generateAllSalaries() {
   container.innerHTML=html;
   window._lastPayroll=salaries;
   window._lastPayrollMeta={year,month};
+}
+
+// Cross-link: jump to Transactions tab filtered to this employee+month
+async function viewEmpTransactions(empId, year, month) {
+  if(!empId) return;
+  const monthStr=(year&&month)?`${year}-${String(month).padStart(2,'0')}`:'';
+  await switchTab('transactions');
+  setTimeout(()=>{
+    const empSel=document.getElementById('tr-emp');
+    const monSel=document.getElementById('tr-month');
+    if(empSel) { empSel.value=empId; }
+    if(monSel&&monthStr) {
+      // Find matching option
+      for(let i=0;i<monSel.options.length;i++) {
+        if(monSel.options[i].value===monthStr) { monSel.selectedIndex=i; break; }
+      }
+    }
+    loadTransactions();
+  },300);
+}
+
+// Cross-link: jump to Roster tab and set the week for a leave's start date
+async function viewLeaveInRoster(weekStart) {
+  if(!weekStart) return;
+  await switchTab('roster');
+  setTimeout(()=>{
+    const ws=document.getElementById('roster-week');
+    if(ws) {
+      ws.value=weekStart;
+      loadRosterForWeek(weekStart);
+    }
+  },300);
 }
 
 function printSlip(data) {
@@ -5486,7 +5990,8 @@ async function renderSettings() {
       ${cfgFieldTip('maxLeaveDaysAutoApprove','Max Leave Days for Supervisor Auto-Approval','Leave requests up to this many days can be approved by a supervisor. Requests beyond this require Owner/Admin approval.')}
       ${cfgFieldTip('pinBlockAfter','PIN Block After N Wrong Attempts','Number of consecutive wrong PIN attempts before the employee\'s PIN is blocked. Employee must pay the reactivation fee to unblock.')}
       ${cfgFieldTip('pinReactivationFee','PIN Reactivation Fee (₹)','Amount deducted from salary when a blocked PIN is reactivated by admin. This is recorded as a PINReactivationFee transaction.')}
-      ${cfgFieldTip('shiftAutoClockoutBuffer','Auto Clock-Out Buffer (minutes — use negative to penalise early exit)','Minutes after shift end before auto clock-out fires. E.g. 60 = clocked out 1 hour after shift end. Use a negative value (e.g. -30) to clock out employees 30 minutes BEFORE shift end, penalising early leavers.')}
+      ${cfgFieldTip('lateMultiplier','Late-Coming Multiplier (1.0 = exact, 2.0 = double penalty)','Late minutes × this multiplier = minutes deducted from pay. E.g. employee is 12 min late with multiplier 2.0 → 24 min deducted. Set to 1.0 for no amplification.')}
+      ${cfgFieldTip('monthlyLateBlockThreshold','Monthly Late Block Threshold (default: 10)','If an employee exceeds this many late arrivals in a calendar month, their clock-in is blocked and the PIN/ID is locked until the supervisor manually approves. Default is 10.')}
     </div>
     <div class="settings-section-title" style="margin-top:18px">🤝 Salary Advance Policy</div>
     <div class="settings-grid">
@@ -5564,6 +6069,23 @@ async function renderSettings() {
           <option value="h:mm" ${(cfg['durationFormat']||'h:mm')==='h:mm'?'selected':''}>h:mm (e.g. 8:30)</option>
           <option value="decimal" ${cfg['durationFormat']==='decimal'?'selected':''}>Decimal (e.g. 8.5)</option>
           <option value="h:mm:ss" ${cfg['durationFormat']==='h:mm:ss'?'selected':''}>h:mm:ss (e.g. 8:30:00)</option>
+          <option value="words" ${cfg['durationFormat']==='words'?'selected':''}>Words (e.g. 8 hours 30 minutes)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Default Shift Start
+          <span class="info-tooltip" title="Default clock-in time for bulk-imported employees. Individual employees can override this.">ℹ</span>
+        </label>
+        <select id="cfg-defaultShiftStart" class="form-input">
+          ${['06:00','07:00','08:00','09:00','09:30','10:00','11:00','12:00'].map(t=>`<option value="${t}" ${(cfg['defaultShiftStart']||'09:00')===t?'selected':''}>${fmtShift(t,'').replace(' – ','')}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Default Shift End
+          <span class="info-tooltip" title="Default clock-out time for bulk-imported employees. Individual employees can override this.">ℹ</span>
+        </label>
+        <select id="cfg-defaultShiftEnd" class="form-input">
+          ${['14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'].map(t=>`<option value="${t}" ${(cfg['defaultShiftEnd']||'19:00')===t?'selected':''}>${fmtShift('',t).replace('— – ','')}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
@@ -5581,14 +6103,16 @@ async function renderSettings() {
     <div class="settings-section-title" style="margin-top:18px">🕐 Break & Auto Deduction</div>
     <div class="settings-grid">
       <div class="form-group">
-        <label class="form-label">Auto Break Deduction (minutes)</label>
+        <label class="form-label">Auto Break Deduction (minutes)
+          <span class="info-tooltip" title="Automatically deduct this many minutes from worked hours even if no break was recorded. You can restrict this to specific levels and/or employment types below.">ℹ</span>
+        </label>
         <select id="cfg-autoBreakDeduction" class="form-input">
           <option value="0" ${(cfg['autoBreakDeduction']||'0')==='0'?'selected':''}>Disabled</option>
+          <option value="15" ${cfg['autoBreakDeduction']==='15'?'selected':''}>15 minutes</option>
           <option value="30" ${cfg['autoBreakDeduction']==='30'?'selected':''}>30 minutes</option>
           <option value="45" ${cfg['autoBreakDeduction']==='45'?'selected':''}>45 minutes</option>
           <option value="60" ${cfg['autoBreakDeduction']==='60'?'selected':''}>60 minutes</option>
         </select>
-        <div style="font-size:11px;color:var(--gray-light);margin-top:4px">Automatically deduct this many minutes from worked hours even if no break was recorded.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Require Activity at Clock-In</label>
@@ -5596,6 +6120,30 @@ async function renderSettings() {
           <input type="checkbox" id="cfg-requireActivityOnClockIn" ${cfg['requireActivityOnClockIn']==='true'?'checked':''}>
           Show activity/project selector when employee clocks in
         </label>
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Apply Auto Break Deduction to: Employment Types
+          <span class="info-tooltip" title="Leave all unchecked to apply to ALL employment types. Check specific types to restrict deduction to only those types.">ℹ</span>
+        </label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+          ${['Wage Shift Office','Full-Time Office','Work From Home','Hybrid','Part-Time','Contract'].map(t=>{
+            const sel = cfg['autoBreakTypes']||'';
+            const checked = !sel || sel.includes(t) ? 'checked' : '';
+            return `<label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" class="abd-type-cb" value="${t}" ${checked} style="accent-color:var(--gold)"> ${t}</label>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Apply Auto Break Deduction to: Employee Levels
+          <span class="info-tooltip" title="Leave all unchecked to apply to ALL levels. Check specific levels to restrict deduction to only those levels.">ℹ</span>
+        </label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+          ${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>{
+            const sel = cfg['autoBreakLevels']||'';
+            const checked = !sel || sel.includes(l) ? 'checked' : '';
+            return `<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" class="abd-level-cb" value="${l}" ${checked} style="accent-color:var(--gold)"> ${l}</label>`;
+          }).join('')}
+        </div>
       </div>
     </div>
     <div class="settings-section-title" style="margin-top:18px">📍 Geofence & Location</div>
@@ -5754,11 +6302,11 @@ async function renderSettings() {
     <div class="settings-section-title">⭐ Points & Bonus Settings</div>
     <div class="settings-grid">
       ${levelPickerField('pointsEligibleLevels','Points Competition Eligible Levels',cfg['pointsEligibleLevels']||'L8,L9,L10')}
-      ${cfgField('points1stPrize','1st Prize (₹)')}
-      ${cfgField('points2ndPrize','2nd Prize (₹)')}
-      ${cfgField('points3rdPrize','3rd Prize (₹)')}
-      ${cfgField('perfectAttendanceBonus','Perfect Attendance Bonus (₹)')}
-      ${cfgField('pointsRatePerPoint','Points Bonus Rate (₹ per point earned monthly)')}
+      ${cfgFieldTip('points1stPrize','1st Prize (₹)','Monthly cash prize awarded to the employee with the highest performance points. Paid as a bonus in that month\'s salary.')}
+      ${cfgFieldTip('points2ndPrize','2nd Prize (₹)','Monthly cash prize for the second-highest points holder.')}
+      ${cfgFieldTip('points3rdPrize','3rd Prize (₹)','Monthly cash prize for the third-highest points holder.')}
+      ${cfgFieldTip('perfectAttendanceBonus','Perfect Attendance Bonus (₹)','Bonus paid to any employee who has zero absences, zero uninformed leaves, and zero late arrivals for the entire calendar month. Applied automatically at month-end payroll.')}
+      ${cfgFieldTip('pointsRatePerPoint','Points Bonus Rate (₹ per point)','Each performance point an employee earns is worth this amount in rupees. E.g. value 10 = every point = ₹10 added to salary bonus. Set to 0 to disable per-point monetary bonus.')}
       <div class="form-group" style="grid-column:span 2">
         <label class="form-label">Include Points Bonus in Salary</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px">
@@ -5845,7 +6393,7 @@ async function renderSettings() {
       <tbody>
     ${hols.map(h=>`<tr style="border-bottom:1px solid var(--dark3)">
       <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
-      <td style="padding:6px">${escHtml(h.date)}</td>
+      <td style="padding:6px">${fmtHolDate(h.date)}</td>
       <td style="padding:6px">${escHtml(h.name)}</td>
       <td style="padding:6px">${escHtml(h.type||'Public')}</td>
       <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
@@ -5932,7 +6480,7 @@ function applyBranding() {
 }
 
 async function savePolicySettings() {
-  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day'];
+  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','lateMultiplier','monthlyLateBlockThreshold','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   const res=await API.call('updateSettings',{updates});
@@ -5956,7 +6504,7 @@ async function saveCompanySettings() {
 }
 
 async function saveOrgSettings() {
-  const selectKeys=['currency','timezone','weekStart','durationFormat','timeRounding','autoBreakDeduction','reminderClockIn','reminderClockOut'];
+  const selectKeys=['currency','timezone','weekStart','durationFormat','timeRounding','autoBreakDeduction','reminderClockIn','reminderClockOut','defaultShiftStart','defaultShiftEnd'];
   const updates={};
   selectKeys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   // Numeric/text fields
@@ -5969,6 +6517,11 @@ async function saveOrgSettings() {
   if(remEl) updates['reminderEnabled']=remEl.checked?'true':'false';
   const actEl=document.getElementById('cfg-requireActivityOnClockIn');
   if(actEl) updates['requireActivityOnClockIn']=actEl.checked?'true':'false';
+  // Auto break deduction: levels and types
+  const abdTypes=[...document.querySelectorAll('.abd-type-cb:checked')].map(cb=>cb.value);
+  const abdLevels=[...document.querySelectorAll('.abd-level-cb:checked')].map(cb=>cb.value);
+  updates['autoBreakTypes']=abdTypes.join(',');
+  updates['autoBreakLevels']=abdLevels.join(',');
   const res=await API.call('updateSettings',{updates});
   if(res.ok){
     toast('✓ Organization settings saved','success');
@@ -6144,17 +6697,18 @@ function downloadBulkTemplate() {
 }
 
 // Show a modal to bulk-import from Excel
-async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction) {
+async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml) {
   let parsedRows = [];
   // Store template data in window global to avoid JSON.stringify issues with HTML attributes
   window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename };
   const html = `
   <div style="font-size:13px">
-    <p style="color:var(--gray-light);margin-bottom:12px">
+    <p style="color:var(--gray-light);margin-bottom:8px">
       1. Download the template → fill in data → upload the completed file.<br>
       Required columns are marked with <strong style="color:var(--gold)">*</strong>
     </p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    ${extraHtml||''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">
       <button class="btn btn-dark btn-sm" onclick="downloadBulkTemplate()">📥 Download Template (.xlsx)</button>
       <label class="bulk-btn" style="margin:0">
         📂 Upload Excel / CSV
@@ -6169,17 +6723,27 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
       parsedRows = window._bulkRows || [];
       if (!parsedRows.length) { toast('No rows to import','warning'); return; }
       let ok=0, fail=0;
-      toast(`Importing ${parsedRows.length} rows…`, 'info', 3000);
-      for (const row of parsedRows) {
-        try {
-          const payload = rowProcessor(row);
-          if (!payload) { fail++; continue; }
-          const res = await API.call(confirmAction, payload);
-          if (res.ok) ok++; else fail++;
-        } catch(e) { fail++; }
+      const total = parsedRows.length;
+      // Chunk imports to avoid hanging the browser (5 parallel calls per chunk)
+      const CHUNK = 5;
+      for (let i=0; i<total; i+=CHUNK) {
+        const chunk = parsedRows.slice(i, i+CHUNK);
+        toast(`Importing… ${Math.min(i+CHUNK, total)}/${total}`, 'info', 1500);
+        const results = await Promise.all(chunk.map(async row => {
+          try {
+            const payload = rowProcessor(row);
+            if (!payload) return false;
+            const res = await API.call(confirmAction, payload);
+            return !!res.ok;
+          } catch(e) { return false; }
+        }));
+        ok += results.filter(Boolean).length;
+        fail += results.filter(r=>!r).length;
+        // Small yield to keep UI responsive
+        await new Promise(r=>setTimeout(r,50));
       }
       closeModal();
-      toast(`✓ Imported ${ok} rows${fail?' | '+fail+' failed':''}`, ok>0?'success':'error', 5000);
+      toast(`✓ Imported ${ok} of ${total} rows${fail?' | '+fail+' failed':''}`, ok>0?'success':'error', 6000);
       window._bulkRows = [];
       await refreshCurrentTab();
     }},
@@ -6224,25 +6788,79 @@ async function refreshCurrentTab() {
 }
 
 // ─── Bulk Import launchers ───────────────────────────────────────────────────
+function _excelTimeToHHMM(v) {
+  // Excel stores time as fraction of day (0.375 = 9:00am)
+  if (!v && v !== 0) return null;
+  if (typeof v === 'string' && v.match(/^\d{1,2}:\d{2}/)) return v.slice(0,5);
+  if (typeof v === 'number' && v >= 0 && v < 1) {
+    const totalMins = Math.round(v * 24 * 60);
+    const h = Math.floor(totalMins / 60) % 24;
+    const m = totalMins % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+  if (typeof v === 'string') return v.slice(0,5);
+  return null;
+}
+
 function bulkImportEmployees() {
-  const headers = ['name *','level *','salary *','pin *','shiftStart','shiftEnd','dailyHours','weeklyOff1','weeklyOff2','mobile','email','dept','category','doj','dob','gender','aadhaar','noticeperiodDays','nightShiftAllowance','travelAllowance','otBaseHours','notes'];
+  const headers = [
+    'employeeCode (optional, e.g. AZ_EMP_0056)',
+    'name *','level *','salary *','pin *',
+    'shiftStart (e.g. 09:00)','shiftEnd (e.g. 19:00)',
+    'dailyHours','weeklyOff1','weeklyOff2',
+    'mobile','email','dept','category',
+    'doj (YYYY-MM-DD)','dob (YYYY-MM-DD)',
+    'gender','aadhaar',
+    'noticeperiodDays','nightShiftAllowance','travelAllowance',
+    'otBaseHours','employmentType','notes'
+  ];
+  // Build a field guide to show in the modal header
+  const fieldGuide = `<details style="margin-top:10px;font-size:12px">
+    <summary style="cursor:pointer;color:var(--gold);font-weight:600">📖 Column Guide (click to expand)</summary>
+    <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;color:var(--gray-light);line-height:1.7">
+      <span><strong style="color:var(--off-white)">employeeCode</strong> — Custom ID (auto-assigned if blank, e.g. AZ_EMP_0056)</span>
+      <span><strong style="color:var(--gold)">name *</strong> — Full name of employee</span>
+      <span><strong style="color:var(--gold)">level *</strong> — L1–L10 (determines OT eligibility, notice period)</span>
+      <span><strong style="color:var(--gold)">salary *</strong> — Monthly gross salary in ₹</span>
+      <span><strong style="color:var(--gold)">pin *</strong> — 4-digit PIN for kiosk clock-in</span>
+      <span><strong style="color:var(--off-white)">shiftStart / shiftEnd</strong> — HH:MM format (e.g. 09:00 / 19:00)</span>
+      <span><strong style="color:var(--off-white)">dailyHours</strong> — Expected work hours per day (default: 10)</span>
+      <span><strong style="color:var(--off-white)">weeklyOff1 / weeklyOff2</strong> — Sunday, Monday … Saturday</span>
+      <span><strong style="color:var(--off-white)">dept</strong> — Department name (defaults to level if blank)</span>
+      <span><strong style="color:var(--off-white)">category</strong> — Workforce / Staff / Management</span>
+      <span><strong style="color:var(--off-white)">doj / dob</strong> — Date of Joining / Birth in YYYY-MM-DD</span>
+      <span><strong style="color:var(--off-white)">gender</strong> — Male / Female / Other</span>
+      <span><strong style="color:var(--off-white)">aadhaar</strong> — 12-digit Aadhaar number</span>
+      <span><strong style="color:var(--off-white)">noticeperiodDays</strong> — Notice period in days (default: 90)</span>
+      <span><strong style="color:var(--off-white)">nightShiftAllowance</strong> — Monthly night shift allowance in ₹</span>
+      <span><strong style="color:var(--off-white)">travelAllowance</strong> — Monthly travel/conveyance allowance in ₹</span>
+      <span><strong style="color:var(--off-white)">otBaseHours</strong> — Hours after which OT is calculated (default: 9)</span>
+      <span><strong style="color:var(--off-white)">employmentType</strong> — Wage Shift Office / Full-Time Office / Work From Home / Hybrid</span>
+      <span><strong style="color:var(--off-white)">notes</strong> — Any additional notes</span>
+    </div>
+  </details>`;
   openBulkImportModal('👥 Bulk Import Employees', headers, 'ArtzFolio_Employee_Template.xlsx', row => {
     if (!row['name *'] || !row['level *'] || !row['salary *'] || !row['pin *']) return null;
+    const defaultShiftStart = (State.settings&&State.settings.defaultShiftStart)||'09:00';
+    const defaultShiftEnd   = (State.settings&&State.settings.defaultShiftEnd)||'19:00';
     return {
+      id: row['employeeCode (optional, e.g. AZ_EMP_0056)']||'',
       name: row['name *'], level: row['level *'], salary: row['salary *'], pin: String(row['pin *']),
-      shiftStart: row['shiftStart']||'09:00', shiftEnd: row['shiftEnd']||'19:00',
+      shiftStart: _excelTimeToHHMM(row['shiftStart (e.g. 09:00)'])||defaultShiftStart,
+      shiftEnd:   _excelTimeToHHMM(row['shiftEnd (e.g. 19:00)'])||defaultShiftEnd,
       dailyHours: row['dailyHours']||10, workDaysPerWeek: row['workDaysPerWeek']||6,
       weeklyOff1: row['weeklyOff1']||'Sunday', weeklyOff2: row['weeklyOff2']||'',
       mobile: row['mobile']||'', email: row['email']||'', dept: row['dept']||row['level *'],
-      category: row['category']||'Workforce', doj: row['doj']||todayStr(),
-      dob: row['dob']||'', gender: row['gender']||'Male', aadhaar: row['aadhaar']||'',
+      category: row['category']||'Workforce', doj: row['doj (YYYY-MM-DD)']||todayStr(),
+      dob: row['dob (YYYY-MM-DD)']||'', gender: row['gender']||'Male', aadhaar: row['aadhaar']||'',
       noticeperiodDays: row['noticeperiodDays']||90,
       nightShiftAllowance: row['nightShiftAllowance']||0,
       travelAllowance: row['travelAllowance']||0,
       otBaseHours: row['otBaseHours']||9,
+      employmentType: row['employmentType']||'Wage Shift Office',
       notes: row['notes']||'',
     };
-  }, 'addEmployee');
+  }, 'addEmployee', fieldGuide);
 }
 
 function bulkImportTransactions() {
@@ -6357,14 +6975,25 @@ async function removeHoliday(date) {
   if(res.ok){toast('Holiday removed','success');await renderSettings();}
 }
 async function deleteHoliday(id) {
+  if (State.adminRole !== 'owner') { toast('Only Owner can delete holidays permanently','error'); return; }
+  const ok = await confirm2('Remove this holiday from the calendar?');
+  if (!ok) return;
   const res = await API.call('removeHoliday',{date:id});
   if(res.ok){toast('✓ Holiday deleted','success');await renderSettings();}
   else toast(res.error||'Error','error');
 }
 async function deleteSelectedHolidays() {
+  if (State.adminRole !== 'owner') { toast('Only Owner can delete holidays permanently','error'); return; }
   const ids = [...document.querySelectorAll('.hol-cb:checked')].map(cb=>cb.value);
-  if(!ids.length || !confirm(`Delete ${ids.length} holiday(s)?`)) return;
-  for(const id of ids) await API.call('removeHoliday',{date:id});
+  if(!ids.length) { toast('No holidays selected','warning'); return; }
+  const ok = await confirm2(`Delete ${ids.length} holiday(s)? This cannot be undone.`);
+  if(!ok) return;
+  toast(`Deleting ${ids.length} holidays…`, 'info', 3000);
+  // Chunk in parallel batches of 5 for performance
+  const CHUNK = 5;
+  for(let i=0; i<ids.length; i+=CHUNK){
+    await Promise.all(ids.slice(i,i+CHUNK).map(id=>API.call('removeHoliday',{date:id})));
+  }
   toast(`✓ ${ids.length} holiday(s) deleted`,'success');
   await renderSettings();
 }
@@ -6420,7 +7049,19 @@ function exportCSV(data, name) {
   downloadCSV(`ArtzFolio_${name}_${todayStr()}.csv`,[headers,...rows]);
 }
 
-function sortTable(col) { if(State.employees) State.employees.sort((a,b)=>String(a[col]||'').localeCompare(String(b[col]||''))); }
+let _empSortKey = 'name', _empSortDir = 1;
+function sortTable(col) {
+  if (_empSortKey === col) { _empSortDir *= -1; } else { _empSortKey = col; _empSortDir = 1; }
+  if (State.employees) {
+    State.employees.sort((a,b) => {
+      const va = String(a[col]||''), vb = String(b[col]||'');
+      // Numeric sort for salary
+      if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(vb))) return (parseFloat(va)-parseFloat(vb)) * _empSortDir;
+      return va.localeCompare(vb) * _empSortDir;
+    });
+    renderEmployees();
+  }
+}
 
 // ═══════════════════════════════════════════
 // APP START
@@ -6428,6 +7069,7 @@ function sortTable(col) { if(State.employees) State.employees.sort((a,b)=>String
 document.addEventListener('DOMContentLoaded', ()=>{
   const savedLang=LS.g('lang');
   if(savedLang) document.body.className='lang-'+savedLang;
+  applyStoredTheme();
   init();
 });
 </script>
