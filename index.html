@@ -795,6 +795,12 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
           <button class="action-btn secondary" onclick="showLeaveEncashRequest()">
             💸 <span class="en">Leave Encashment</span><span class="hi">छुट्टी नकदीकरण</span>
           </button>
+          <button class="action-btn secondary" onclick="showESSPayslips()">
+            📄 <span class="en">My Payslips</span><span class="hi">मेरी सैलरी स्लिप</span>
+          </button>
+          <button class="action-btn secondary" onclick="showESSAttendance()">
+            🗓 <span class="en">My Attendance</span><span class="hi">मेरी हाज़िरी</span>
+          </button>
         </div>
       </div>
 
@@ -930,6 +936,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
     <div class="nav-section">Employees</div>
     <div class="nav-item" data-tab="employees" onclick="switchTab('employees')"><span class="nav-icon">👥</span>Employees</div>
     <div class="nav-item" data-tab="transactions" onclick="switchTab('transactions')"><span class="nav-icon">💳</span>Transactions</div>
+    <div class="nav-item" data-tab="pettycash" onclick="switchTab('pettycash')"><span class="nav-icon">💵</span>Petty Cash</div>
     <div class="nav-section">Performance</div>
     <div class="nav-item" data-tab="points" onclick="switchTab('points')"><span class="nav-icon">⭐</span>Points</div>
     <div class="nav-section">Payroll & Reports</div>
@@ -1242,7 +1249,7 @@ function resolveEmpSearch(fieldId, inputVal) {
   const resolvedEl = document.getElementById(fieldId+'_resolved');
   if (match) {
     if(hiddenEl) hiddenEl.value = match.id;
-    if(resolvedEl) resolvedEl.innerHTML = `✓ <strong>${escHtml(match.name)}</strong> — ${escHtml(match.dept)} / ${escHtml(match.level)}`;
+    if(resolvedEl) resolvedEl.innerHTML = `✓ <strong>${escHtml(match.name)}</strong> &nbsp;<span style="background:var(--dark3);padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;color:var(--gold)">${escHtml(match.id)}</span>&nbsp;${escHtml(match.dept)} / ${escHtml(match.level)}`;
     resolvedEl.style.color='var(--green)';
   } else {
     if(hiddenEl) hiddenEl.value = '';
@@ -2702,6 +2709,101 @@ async function showEarnings() {
   showModal(`💰 ${tt('monthEarning')} — ${State.currentEmp?.name}`, html);
 }
 
+// ─── ESS: My Payslips ────────────────────────────────────────
+async function showESSPayslips() {
+  resetKioskTimer();
+  const empId = State.currentEmp?.id;
+  if (!empId) return;
+  const now = new Date();
+  const res = await API.call('getESSData', {empId, year:now.getFullYear(), month:now.getMonth()+1});
+  if (!res.ok) { showModal('My Payslips', `<p style="color:var(--red)">${escHtml(res.error||'Failed to load')}</p>`); return; }
+  const { salary, salaryRecords=[] } = res;
+  let html = '';
+
+  // Current month estimate
+  if (salary) {
+    html += `<div style="background:var(--dark3);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--gray-light);margin-bottom:6px">This Month (Estimate)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        <div><div style="color:var(--gray-light)">Gross Salary</div><div style="font-weight:700">${fmtMoney(salary.grossSalary||0)}</div></div>
+        <div><div style="color:var(--gray-light)">Net Payable</div><div style="font-weight:900;font-size:1.1rem;color:var(--gold)">${fmtMoney(salary.netSalary||0)}</div></div>
+        <div><div style="color:var(--gray-light)">Days Present</div><div>${salary.presentDays||0} / ${salary.workingDays||0}</div></div>
+        <div><div style="color:var(--gray-light)">OT Earnings</div><div style="color:var(--green)">${fmtMoney(salary.otEarnings||0)}</div></div>
+      </div>
+      ${(salary.pfEmployee||salary.esiEmployee) ? `
+      <div style="margin-top:8px;padding:6px;background:rgba(0,0,0,0.2);border-radius:6px;font-size:11px;color:var(--gray-light)">
+        Statutory: PF ₹${Math.round(salary.pfEmployee||0).toLocaleString('en-IN')}
+        ${salary.esiEmployee ? ` | ESI ₹${Math.round(salary.esiEmployee||0).toLocaleString('en-IN')}` : ''}
+        ${salary.tds ? ` | TDS ₹${Math.round(salary.tds||0).toLocaleString('en-IN')}` : ''}
+      </div>` : ''}
+    </div>`;
+  }
+
+  // Historical records
+  if (salaryRecords.length) {
+    html += `<div style="font-size:12px;color:var(--gray-light);margin-bottom:8px">Previous Salary Records</div>`;
+    salaryRecords.forEach(r => {
+      const mName = new Date(parseInt(r.year), parseInt(r.month)-1).toLocaleString('en-IN',{month:'short',year:'numeric'});
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--dark3)">
+        <div><div style="font-size:13px;font-weight:600">${escHtml(mName)}</div>
+          <div style="font-size:11px;color:var(--gray-light)">${r.presentDays||0} days present</div></div>
+        <div style="text-align:right">
+          <div style="font-weight:700;color:var(--gold)">${fmtMoney(r.netSalary||0)}</div>
+          <div style="font-size:11px;color:var(--gray-light)">${escHtml(r.status||'')}</div>
+        </div>
+      </div>`;
+    });
+  } else if (!salary) {
+    html = `<div style="text-align:center;padding:24px;color:var(--gray-light)">No salary records yet.</div>`;
+  }
+  showModal(`📄 My Payslips — ${escHtml(State.currentEmp?.name||'')}`, html);
+}
+
+// ─── ESS: My Attendance ──────────────────────────────────────
+async function showESSAttendance() {
+  resetKioskTimer();
+  const empId = State.currentEmp?.id;
+  if (!empId) return;
+  const now = new Date();
+  const res = await API.call('getESSData', {empId, year:now.getFullYear(), month:now.getMonth()+1});
+  if (!res.ok) { showModal('My Attendance', `<p style="color:var(--red)">${escHtml(res.error)}</p>`); return; }
+  const { attendance=[], leaveBalance={} } = res;
+
+  // Leave balance summary
+  let lbHtml = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">`;
+  const lbLabels = {IL:'Info. Leave',SL:'Sick Leave',PL:'Privilege'};
+  Object.entries(lbLabels).forEach(([type,label])=>{
+    lbHtml += `<div style="background:var(--dark3);border-radius:6px;padding:8px;text-align:center">
+      <div style="font-size:1rem;font-weight:700;color:var(--gold)">${leaveBalance[type]||0}</div>
+      <div style="font-size:10px;color:var(--gray-light)">${label} Used</div>
+    </div>`;
+  });
+  lbHtml += `</div>`;
+
+  const statusColors = {P:'#27ae60',IL:'#3498db',UL:'#e74c3c',SL:'#9b59b6',PL:'#2ecc71',WO:'#7f8c8d',H:'#c0392b',EW:'#e67e22',Absent:'#e74c3c'};
+  let attHtml = '';
+  const recent = attendance.slice(0,30);
+  if (recent.length) {
+    attHtml = `<div style="font-size:12px;color:var(--gray-light);margin-bottom:6px">Last ${recent.length} days</div>
+    <div style="max-height:240px;overflow-y:auto">`;
+    recent.forEach(a => {
+      const color = statusColors[a.status||'Absent'] || '#888';
+      attHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--dark3);font-size:12px">
+        <div>${escHtml(a.date)}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${a.clockIn ? `<span style="color:var(--gray-light)">${escHtml(String(a.clockIn).substring(11,16))}</span>` : ''}
+          <span style="background:${color}22;color:${color};padding:2px 8px;border-radius:10px;font-weight:600">${escHtml(a.status||'Absent')}</span>
+        </div>
+      </div>`;
+    });
+    attHtml += `</div>`;
+  } else {
+    attHtml = `<div style="text-align:center;padding:16px;color:var(--gray-light)">No attendance records in last 30 days.</div>`;
+  }
+  showModal(`🗓 My Attendance — ${escHtml(State.currentEmp?.name||'')}`,
+    lbHtml + attHtml);
+}
+
 async function showLeaveRequest() {
   resetKioskTimer();
   const empId = State.currentEmp?.id;
@@ -3013,6 +3115,7 @@ async function switchTab(tab) {
       case 'trackedtime': await renderTrackedTime(); break;
       case 'activities':  await renderActivitiesSettings(); break;
       case 'settings':    await renderSettings(); break;
+      case 'pettycash':   await renderPettyCash(); break;
     }
   } catch(e) {
     document.getElementById('admin-tab-content').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>Error loading tab: ${escHtml(e.message)}</p></div>`;
@@ -3023,12 +3126,14 @@ async function switchTab(tab) {
 // APPROVALS INBOX TAB
 // ═══════════════════════════════════════════
 async function renderApprovals() {
-  const [leaveRes, transRes] = await Promise.all([
+  const [leaveRes, transRes, otRes] = await Promise.all([
     API.call('getPendingLeaves'),
     API.call('getTransactions', {status:'Pending'}),
+    API.call('getOTRequests', {status:'Pending'}),
   ]);
   const pendingLeaves = leaveRes.leaves||[];
   const pendingTrans  = transRes.transactions||[];
+  const pendingOT     = otRes.requests||[];
 
   // Separate transaction types
   const advances       = pendingTrans.filter(t=>t.type==='Advance');
@@ -3036,7 +3141,7 @@ async function renderApprovals() {
   const exitApps       = pendingTrans.filter(t=>t.type==='ExitApplication');
   const otherRequests  = pendingTrans.filter(t=>!['Advance','LeaveEncashment','ExitApplication'].includes(t.type));
 
-  const totalPending = pendingLeaves.length + advances.length + encashments.length + exitApps.length + otherRequests.length;
+  const totalPending = pendingLeaves.length + advances.length + encashments.length + exitApps.length + otherRequests.length + pendingOT.length;
 
   // Update sidebar badge
   const badge = document.getElementById('badge-approvals');
@@ -3102,6 +3207,25 @@ async function renderApprovals() {
     return;
   }
 
+  function otRow(r) {
+    return `<div style="background:var(--dark2);border:1px solid var(--blue-light);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+      <div style="flex:1;min-width:200px">
+        <strong>${escHtml(r.empName||r.empId)}</strong>
+        <span class="badge badge-gold" style="margin-left:6px">${escHtml(r.empId||'')}</span>
+        <div style="font-size:12px;color:var(--gray-light);margin-top:4px">
+          📅 OT Date: <strong>${fmtDate(r.otDate)}</strong> &nbsp;⏱ Requested Hours: <strong>${escHtml(r.expectedHours||'')}</strong>
+        </div>
+        ${r.reason?`<div style="font-size:11px;color:var(--gray-light);margin-top:2px">"${escHtml(r.reason)}"</div>`:''}
+        <div style="font-size:10px;color:var(--gray);margin-top:4px">Submitted by: ${escHtml(r.requestedBy||r.empId)} on ${fmtDT(r.requestDate)}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-green btn-sm" onclick="approvalsApproveOT('${escHtml(r.id)}',true)">✓ Approve OT</button>
+        <button class="btn btn-red btn-sm" onclick="approvalsApproveOT('${escHtml(r.id)}',false)">✗ Reject</button>
+      </div>
+    </div>`;
+  }
+
+  html += approvalCard('🕐 OT Pre-Approval Requests', pendingOT, otRow);
   html += approvalCard('🏖 Leave Requests', pendingLeaves, leaveRow);
   html += approvalCard('🤝 Advance Requests', advances, t => transRow(t,'Approve','btn-green','approvalsApproveTransaction'));
   html += approvalCard('💸 Leave Encashment', encashments, t => transRow(t,'Approve','btn-green','approvalsApproveTransaction'));
@@ -3128,14 +3252,31 @@ async function approvalsApproveTransaction(txId, approved) {
   else toast(res.error||'Error','error');
 }
 
+async function approvalsApproveOT(otId, approved) {
+  let res;
+  if (approved) {
+    res = await API.call('approveOT', {otId, approvedBy: State.adminUser});
+  } else {
+    const reason = prompt('Reason for rejecting OT request (optional):') || '';
+    res = await API.call('rejectOT', {otId, approvedBy: State.adminUser, rejectionReason: reason});
+  }
+  if (res && res.ok) {
+    toast(approved ? '✓ OT Request Approved — WhatsApp sent' : 'OT Request Rejected', approved ? 'success' : 'info', 4000);
+    await renderApprovals();
+  } else {
+    toast((res && res.error) || 'Error processing OT request', 'error');
+  }
+}
+
 // Also update the approvals badge count during dashboard load
 async function refreshApprovalsBadge() {
   try {
-    const [leaveRes, transRes] = await Promise.all([
+    const [leaveRes, transRes, otRes] = await Promise.all([
       API.call('getPendingLeaves'),
       API.call('getTransactions', {status:'Pending'}),
+      API.call('getOTRequests', {status:'Pending'}),
     ]);
-    const total = (leaveRes.leaves||[]).length + (transRes.transactions||[]).length;
+    const total = (leaveRes.leaves||[]).length + (transRes.transactions||[]).length + (otRes.requests||[]).length;
     const badge = document.getElementById('badge-approvals');
     if (badge) { badge.textContent = total; badge.style.display = total ? 'inline-block' : 'none'; }
   } catch {}
@@ -3548,6 +3689,7 @@ async function renderEmployees(filter='') {
       <td>${statusBadge(e.status)}</td>
       <td>
         <button class="btn btn-dark btn-sm" onclick="showEmpDetail('${escHtml(e.id)}')">View</button>
+        <button class="btn btn-dark btn-sm" onclick="showDocumentVault('${escHtml(e.id)}','${escHtml(e.name)}')" title="Document Vault">📎</button>
         ${canEdit?`<button class="btn btn-dark btn-sm" onclick="showEditEmpModal('${escHtml(e.id)}')">Edit</button>`:''}
         ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="archiveEmp('${escHtml(e.id)}')">Archive</button>`:''}
         ${canEdit&&e.status==='Archived'?`<button class="btn btn-green btn-sm" onclick="unarchiveEmp('${escHtml(e.id)}')">Unarchive</button>`:''}
@@ -3598,7 +3740,108 @@ async function showEmpDetail(empId) {
     <strong style="color:var(--gold);font-size:11px">SALARY BAND FOR ${escHtml(e.level)}:</strong><br>
     <span style="font-size:11px;color:var(--gray-light)">Male: ${fmtMoney(myBand.maleMin||0)}–${fmtMoney(myBand.maleMax||0)} | Female: ${fmtMoney(myBand.femaleMin||0)}–${fmtMoney(myBand.femaleMax||0)}</span>
   </div>`;
-  showModal(`👤 ${e.name} — Employee Profile`, html);
+  showModal(`👤 ${e.name} — Employee Profile`, html,
+    [{label:'📎 Documents', cls:'btn-dark', cb:()=>{closeModal();showDocumentVault(e.id,e.name);}},
+     {label:'Close', cls:'btn-dark', cb:closeModal}]);
+}
+
+// ─── Document Vault ──────────────────────────────────────────
+async function showDocumentVault(empId, empName) {
+  const res = await API.call('getDocuments', {empId});
+  if (!res.ok) { toast('Failed to load documents','error'); return; }
+  const docs = res.documents || [];
+  const isOwner = (State.adminRole === 'owner');
+  const canEdit = ['owner','manager'].includes(State.adminRole);
+
+  const DOC_TYPES = ['Aadhaar Card','PAN Card','Offer Letter','Bank Details','Police Verification',
+    'Photo','Driving Licence','Education Certificate','Experience Certificate',
+    'ESIC Card','PF UAN Card','Other KYC'];
+
+  let listHtml = '';
+  if (docs.length) {
+    docs.forEach(d => {
+      const expired = d.expiryDate && d.expiryDate < todayStr();
+      listHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--dark3)">
+        <div>
+          <div style="font-size:13px;font-weight:600">${escHtml(d.docType)} ${expired?'<span style="color:var(--red);font-size:10px">[EXPIRED]</span>':''}</div>
+          <div style="font-size:11px;color:var(--gray-light)">${escHtml(d.fileName||'')} — ${fmtDate(d.uploadDate)}</div>
+          ${d.expiryDate?`<div style="font-size:10px;color:${expired?'var(--red)':'var(--gray-light)'}">Expires: ${fmtDate(d.expiryDate)}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${d.fileUrl ? `<a href="${escHtml(d.fileUrl)}" target="_blank" class="btn btn-dark btn-sm">👁 View</a>` : ''}
+          ${isOwner ? `<button class="btn btn-dark btn-sm" style="color:var(--red)" onclick="deleteDocument('${escHtml(d.id)}','${escHtml(empId)}','${escHtml(empName)}')">🗑</button>` : ''}
+        </div>
+      </div>`;
+    });
+  } else {
+    listHtml = `<div style="text-align:center;padding:20px;color:var(--gray-light)">No documents uploaded yet.</div>`;
+  }
+
+  const uploadHtml = canEdit ? `
+  <div style="margin-top:16px;border-top:1px solid var(--dark3);padding-top:14px">
+    <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:10px">Upload New Document</div>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <label class="form-label">Document Type *</label>
+        <select class="form-input" id="doc-type">
+          ${DOC_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Expiry Date (optional)</label>
+        <input class="form-input" type="date" id="doc-expiry">
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <label class="form-label">File (image or PDF) *</label>
+      <input type="file" id="doc-file" accept="image/*,application/pdf" class="form-input" style="padding:4px">
+    </div>
+    <div style="margin-top:8px">
+      <label class="form-label">Notes</label>
+      <input class="form-input" type="text" id="doc-notes" placeholder="e.g. Original verified on 01/04/2026">
+    </div>
+    <button class="btn btn-gold" style="margin-top:12px;width:100%" onclick="uploadDocument('${escHtml(empId)}','${escHtml(empName)}')">⬆ Upload Document</button>
+  </div>` : '';
+
+  showModal(`📎 Documents — ${escHtml(empName)}`,
+    `<div style="font-size:13px">${listHtml}</div>${uploadHtml}`,
+    [{label:'Back to Profile', cls:'btn-dark', cb:()=>{closeModal();showEmpDetail(empId);}},
+     {label:'Close', cls:'btn-dark', cb:closeModal}]);
+}
+
+async function uploadDocument(empId, empName) {
+  const docType = document.getElementById('doc-type').value;
+  const expiryDate = document.getElementById('doc-expiry').value;
+  const notes = document.getElementById('doc-notes').value.trim();
+  const fileInput = document.getElementById('doc-file');
+  if (!fileInput.files[0]) { toast('Please select a file','error'); return; }
+  const file = fileInput.files[0];
+  if (file.size > 5*1024*1024) { toast('File too large. Max 5MB allowed.','error'); return; }
+  const fileBase64 = await new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result);
+    r.readAsDataURL(file);
+  });
+  toast('Uploading…','info');
+  const res = await API.call('addDocument', {
+    empId, docType, fileName:file.name, fileBase64,
+    fileMime:file.type||'application/octet-stream',
+    fileSize:file.size, expiryDate, notes,
+    uploadedBy: State.adminUser || State.adminRole
+  });
+  if (!res.ok) { toast(res.error||'Upload failed','error'); return; }
+  toast('✓ Document uploaded','success');
+  closeModal();
+  showDocumentVault(empId, empName);
+}
+
+async function deleteDocument(docId, empId, empName) {
+  if (!confirm('Delete this document? This cannot be undone.')) return;
+  const res = await API.call('deleteDocument', {id:docId});
+  if (!res.ok) { toast(res.error||'Delete failed','error'); return; }
+  toast('Document deleted','warning');
+  closeModal();
+  showDocumentVault(empId, empName);
 }
 
 async function showAddEmpModal() {
@@ -4227,7 +4470,7 @@ async function renderTransactions() {
   const now=new Date();
   const empsRes=await API.call('getEmployees',{status:'Active'});
   const emps=empsRes.employees||[];
-  const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('');
+  const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.id)} — ${escHtml(e.name)}</option>`).join('');
   const html=`
   <div class="section-hdr">
     <div class="section-title">Transactions / लेनदेन</div>
@@ -4851,6 +5094,11 @@ async function renderPayroll() {
   const now=new Date();
   const html=`
   <div class="section-hdr"><div class="section-title">Payroll / वेतन</div></div>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <button class="btn btn-gold btn-sm" id="pay-tab-salaries" onclick="switchPayrollView('salaries')" style="font-weight:700">💰 Salary Register</button>
+    <button class="btn btn-dark btn-sm" id="pay-tab-statutory" onclick="switchPayrollView('statutory')">📋 Statutory Compliance</button>
+  </div>
+  <div id="payroll-salary-view">
   <div class="filters-bar">
     <select id="pay-month" class="filter-input">
       ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('')}
@@ -4863,7 +5111,9 @@ async function renderPayroll() {
     </label>
     <button class="btn btn-gold btn-sm" onclick="generateAllSalaries()">▶ Generate All Salaries</button>
   </div>
-  <div id="payroll-result"></div>`;
+  <div id="payroll-result"></div>
+  </div>
+  <div id="payroll-statutory-view" style="display:none"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
 }
 
@@ -4918,7 +5168,7 @@ async function generateAllSalaries() {
     <div class="filters-bar">
       <select id="hist-emp" class="filter-input">
         <option value="">All Employees</option>
-        ${(State.employees||[]).map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('')}
+        ${(State.employees||[]).map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.id)} — ${escHtml(e.name)}</option>`).join('')}
       </select>
       <select id="hist-year" class="filter-input">
         ${[2024,2025,2026].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
@@ -4999,6 +5249,24 @@ function printSlip(data) {
       <tr><td>Bonus / Incentive</td><td>₹${Math.round(data.bonuses||0).toLocaleString('en-IN')}</td><td></td><td></td></tr>
     </tbody>
   </table>
+  ${(data.pfEmployee||data.esiEmployee||data.professionalTax||data.tds) ? `
+  <div style="margin-top:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;padding:8px 12px;font-size:11px">
+    <strong style="font-size:12px">Statutory Deductions (included in net):</strong>
+    <table style="width:100%;border-collapse:collapse;margin-top:6px">
+      <tr>
+        ${data.pfEmployee ? `<td>PF (Employee 12%)</td><td>₹${Math.round(data.pfEmployee).toLocaleString('en-IN')}</td>` : ''}
+        ${data.pfEmployer ? `<td>PF (Employer 12%)</td><td>₹${Math.round(data.pfEmployer).toLocaleString('en-IN')}</td>` : ''}
+      </tr>
+      <tr>
+        ${data.esiEmployee ? `<td>ESI (Employee 0.75%)</td><td>₹${Math.round(data.esiEmployee).toLocaleString('en-IN')}</td>` : ''}
+        ${data.esiEmployer ? `<td>ESI (Employer 3.25%)</td><td>₹${Math.round(data.esiEmployer).toLocaleString('en-IN')}</td>` : ''}
+      </tr>
+      <tr>
+        ${data.professionalTax ? `<td>Professional Tax</td><td>₹${Math.round(data.professionalTax).toLocaleString('en-IN')}</td>` : ''}
+        ${data.tds ? `<td>TDS (Sec 192)</td><td>₹${Math.round(data.tds).toLocaleString('en-IN')}</td>` : ''}
+      </tr>
+    </table>
+  </div>` : ''}
   <div class="slip-net">NET SALARY PAYABLE: ₹${Math.round(data.netSalary||0).toLocaleString('en-IN')}</div>
   <div class="slip-sign">
     <div>Employee Signature: _____________</div>
@@ -5062,6 +5330,189 @@ function shareSlipEmail(data) {
     ? `mailto:${data.email}?subject=${subject}&body=${body}`
     : `mailto:?subject=${subject}&body=${body}`;
   window.open(mailto, '_blank');
+}
+
+// ─── Payroll view switcher ────────────────────────────────────
+function switchPayrollView(view) {
+  document.getElementById('payroll-salary-view').style.display   = view==='salaries'  ? '' : 'none';
+  document.getElementById('payroll-statutory-view').style.display = view==='statutory' ? '' : 'none';
+  document.getElementById('pay-tab-salaries').className  = 'btn btn-sm ' + (view==='salaries'  ? 'btn-gold' : 'btn-dark');
+  document.getElementById('pay-tab-statutory').className = 'btn btn-sm ' + (view==='statutory' ? 'btn-gold' : 'btn-dark');
+  if (view==='statutory') renderStatutoryCompliance();
+}
+
+// ─── Statutory Compliance View ───────────────────────────────
+async function renderStatutoryCompliance() {
+  const el = document.getElementById('payroll-statutory-view');
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  const now = new Date();
+  const year  = parseInt(document.getElementById('pay-year')?.value  || now.getFullYear());
+  const month = parseInt(document.getElementById('pay-month')?.value || (now.getMonth()+1));
+  const res = await API.call('getStatutoryReport', {year, month});
+  if (!res.ok) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${escHtml(res.error||'Failed to load')}</p></div>`; return; }
+  const { employees=[], totals={}, config={} } = res;
+  const mName = new Date(year,month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+
+  // Flags
+  const anyEnabled = config.pfEnabled || config.esiEnabled || config.ptEnabled || config.tdsEnabled;
+
+  let html = `
+  <style>
+    .stat-notice{background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:13px}
+    .stat-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .stat-pill{padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600}
+    .stat-pill-on{background:#1a3a2a;color:#27ae60}
+    .stat-pill-off{background:var(--dark3);color:var(--gray-light)}
+    .stat-totals-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+    .stat-total-card{background:var(--dark2);border-radius:8px;padding:12px;text-align:center}
+    .stat-total-card .stv{font-size:1.3rem;font-weight:700;color:var(--gold)}
+    .stat-total-card .stl{font-size:11px;color:var(--gray-light);margin-top:2px}
+    .challan-btn{background:var(--dark2);border:1px solid var(--gold-dim);border-radius:6px;padding:8px 14px;cursor:pointer;font-size:12px;color:var(--gold)}
+    .challan-btn:hover{background:var(--dark3)}
+  </style>`;
+
+  if (!anyEnabled) {
+    html += `<div class="stat-notice">
+      <strong style="color:var(--gold)">⚠ No statutory deductions are enabled.</strong><br><br>
+      To activate PF, ESI, Professional Tax, or TDS, go to <strong>Settings → Statutory Compliance</strong>
+      and toggle the relevant deductions on. Once enabled, they will automatically be calculated in every month's payroll.
+      <br><br>
+      <strong>Quick reference for ArtzFolio (34 employees, Noida UP):</strong><br>
+      • <strong>PF</strong> — Mandatory (20+ employees). 12% employee + 12% employer on basic up to ₹15,000.<br>
+      • <strong>ESI</strong> — Mandatory (10+ employees). 0.75% employee + 3.25% employer for employees earning ≤ ₹21,000/month.<br>
+      • <strong>Professional Tax</strong> — Not applicable in Uttar Pradesh (₹0).<br>
+      • <strong>TDS</strong> — Applicable if any employee's annual salary exceeds ₹5,00,000.
+    </div>`;
+  }
+
+  html += `
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+    <div style="font-size:13px;color:var(--gray-light)">Statutory Deductions for <strong style="color:var(--gold)">${escHtml(mName)}</strong></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-dark btn-sm" onclick="renderStatutoryCompliance()">↻ Recalculate</button>
+      ${employees.length ? `<button class="btn btn-dark btn-sm" onclick="exportStatutoryXLSX(${year},${month})">⬇ Export XLSX</button>` : ''}
+      ${config.pfEnabled ? `<button class="challan-btn" onclick="printChallan('PF',${year},${month})">📄 PF Challan</button>` : ''}
+      ${config.esiEnabled ? `<button class="challan-btn" onclick="printChallan('ESI',${year},${month})">📄 ESI Challan</button>` : ''}
+    </div>
+  </div>
+
+  <!-- Active statutes -->
+  <div class="stat-pills">
+    <span class="stat-pill ${config.pfEnabled?'stat-pill-on':'stat-pill-off'}">
+      ${config.pfEnabled?'✅':'○'} PF ${config.pfEnabled?'ON':'OFF'}
+    </span>
+    <span class="stat-pill ${config.esiEnabled?'stat-pill-on':'stat-pill-off'}">
+      ${config.esiEnabled?'✅':'○'} ESI ${config.esiEnabled?'ON':'OFF'}
+    </span>
+    <span class="stat-pill ${config.ptEnabled?'stat-pill-on':'stat-pill-off'}">
+      ${config.ptEnabled?'✅':'○'} PT ${config.ptEnabled?'ON':'OFF'}
+    </span>
+    <span class="stat-pill ${config.tdsEnabled?'stat-pill-on':'stat-pill-off'}">
+      ${config.tdsEnabled?'✅':'○'} TDS ${config.tdsEnabled?'ON':'OFF'}
+    </span>
+    ${config.pfAccNumber ? `<span class="stat-pill" style="background:var(--dark3);color:var(--gray-light)">PF A/c: ${escHtml(config.pfAccNumber)}</span>` : ''}
+    ${config.esiAccNumber ? `<span class="stat-pill" style="background:var(--dark3);color:var(--gray-light)">ESI A/c: ${escHtml(config.esiAccNumber)}</span>` : ''}
+  </div>
+
+  <!-- Totals -->
+  <div class="stat-totals-grid">
+    <div class="stat-total-card"><div class="stv">${fmtMoney(totals.pfEmployee||0)}</div><div class="stl">Employee PF</div></div>
+    <div class="stat-total-card"><div class="stv">${fmtMoney(totals.pfEmployer||0)}</div><div class="stl">Employer PF</div></div>
+    <div class="stat-total-card"><div class="stv" style="color:#27ae60">${fmtMoney((totals.pfEmployee||0)+(totals.pfEmployer||0))}</div><div class="stl">Total PF Remittance</div></div>
+    <div class="stat-total-card"><div class="stv">${fmtMoney(totals.esiEmployee||0)}</div><div class="stl">Employee ESI</div></div>
+    <div class="stat-total-card"><div class="stv">${fmtMoney(totals.esiEmployer||0)}</div><div class="stl">Employer ESI</div></div>
+    <div class="stat-total-card"><div class="stv" style="color:#27ae60">${fmtMoney((totals.esiEmployee||0)+(totals.esiEmployer||0))}</div><div class="stl">Total ESI Remittance</div></div>
+    <div class="stat-total-card"><div class="stv">${fmtMoney(totals.professionalTax||0)}</div><div class="stl">Prof. Tax (Employee)</div></div>
+    <div class="stat-total-card"><div class="stv">${fmtMoney(totals.tds||0)}</div><div class="stl">TDS Deducted</div></div>
+  </div>`;
+
+  if (employees.length) {
+    html += `<div style="overflow-x:auto"><table class="az-table">
+    <thead><tr>
+      <th>Employee</th><th>Dept/Level</th><th>Gross Salary</th>
+      <th>Emp. PF</th><th>Er. PF</th>
+      <th>Emp. ESI</th><th>Er. ESI</th>
+      <th>Prof. Tax</th><th>TDS</th>
+      <th>Total Ded. (Emp)</th>
+    </tr></thead><tbody>`;
+    employees.forEach(e => {
+      html += `<tr>
+        <td><strong>${escHtml(e.empName)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(e.empId)}</span></td>
+        <td>${escHtml(e.dept)}<br><span class="badge badge-${e.level&&e.level.startsWith('L')&&parseInt(e.level.slice(1))<=5?'blue':'orange'}">${escHtml(e.level)}</span></td>
+        <td>${fmtMoney(e.grossSalary)}</td>
+        <td>${e.pfEmployee ? fmtMoney(e.pfEmployee) : '—'}</td>
+        <td>${e.pfEmployer ? fmtMoney(e.pfEmployer) : '—'}</td>
+        <td>${e.esiEmployee ? fmtMoney(e.esiEmployee) : '—'}</td>
+        <td>${e.esiEmployer ? fmtMoney(e.esiEmployer) : '—'}</td>
+        <td>${e.professionalTax ? fmtMoney(e.professionalTax) : '—'}</td>
+        <td>${e.tds ? fmtMoney(e.tds) : '—'}</td>
+        <td style="font-weight:700;color:var(--red)">${fmtMoney(e.totalDeductionEmployee)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function exportStatutoryXLSX(year, month) {
+  API.call('getStatutoryReport',{year,month}).then(res=>{
+    if(!res.ok||!res.employees.length){toast('No data','warning');return;}
+    const headers=['Employee','ID','Dept','Level','Gross Salary','Emp PF','Er PF','Emp ESI','Er ESI','Prof Tax','TDS','Total Emp Deduction','Total Er Contribution'];
+    const data=res.employees.map(e=>[e.empName,e.empId,e.dept,e.level,e.grossSalary,e.pfEmployee,e.pfEmployer,e.esiEmployee,e.esiEmployer,e.professionalTax,e.tds,e.totalDeductionEmployee,e.totalDeductionEmployer]);
+    const mName=new Date(year,month-1).toLocaleString('en-IN',{month:'short',year:'numeric'}).replace(' ','_');
+    downloadXLSX(`ArtzFolio_Statutory_${mName}.xlsx`,'Statutory',headers,data);
+  });
+}
+
+function printChallan(type, year, month) {
+  API.call('getStatutoryReport',{year,month}).then(res=>{
+    if(!res.ok){toast('Failed to load data','error');return;}
+    const {employees=[],totals={},config={}}=res;
+    const mName=new Date(year,month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+    const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+    let rows='',totalAmt=0;
+    if(type==='PF'){
+      rows=employees.filter(e=>e.pfEmployee>0||e.pfEmployer>0).map(e=>{
+        const t=e.pfEmployee+e.pfEmployer;totalAmt+=t;
+        return `<tr><td>${escHtml(e.empId)}</td><td>${escHtml(e.empName)}</td><td>${escHtml(e.uan||'—')}</td><td>₹${e.grossSalary.toLocaleString('en-IN')}</td><td>₹${e.pfEmployee.toLocaleString('en-IN')}</td><td>₹${e.pfEmployer.toLocaleString('en-IN')}</td><td><strong>₹${t.toLocaleString('en-IN')}</strong></td></tr>`;
+      }).join('');
+    } else if(type==='ESI'){
+      rows=employees.filter(e=>e.esiEmployee>0||e.esiEmployer>0).map(e=>{
+        const t=e.esiEmployee+e.esiEmployer;totalAmt+=t;
+        return `<tr><td>${escHtml(e.empId)}</td><td>${escHtml(e.empName)}</td><td>${escHtml(e.esiNumber||'—')}</td><td>₹${e.grossSalary.toLocaleString('en-IN')}</td><td>₹${e.esiEmployee.toLocaleString('en-IN')}</td><td>₹${e.esiEmployer.toLocaleString('en-IN')}</td><td><strong>₹${t.toLocaleString('en-IN')}</strong></td></tr>`;
+      }).join('');
+    }
+    const colHeaders=type==='PF'
+      ?'<th>Emp ID</th><th>Name</th><th>UAN</th><th>Gross</th><th>Emp PF</th><th>Er PF</th><th>Total</th>'
+      :'<th>Emp ID</th><th>Name</th><th>ESI No.</th><th>Gross</th><th>Emp ESI</th><th>Er ESI</th><th>Total</th>';
+    const accNo=type==='PF'?config.pfAccNumber:config.esiAccNumber;
+    const pw=window.open('','_blank','width=900,height=700');
+    pw.document.write(`<!DOCTYPE html><html><head><title>${type} Challan ${mName}</title>
+    <style>body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#000}
+    h2{text-align:center;border-bottom:2px solid #000;padding-bottom:8px}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0;font-size:13px}
+    .meta div{padding:4px 0}table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}
+    th{background:#1a1a2e;color:#fff;padding:6px 8px;text-align:left}
+    td{padding:5px 8px;border-bottom:1px solid #ddd}
+    .total-row{font-weight:700;background:#f5f5f5}
+    @media print{button{display:none}}</style></head><body>
+    <h2>${co}<br><span style="font-size:14px">${type} Monthly Contribution Challan</span></h2>
+    <div class="meta">
+      <div><strong>Month:</strong> ${mName}</div>
+      <div><strong>Account No.:</strong> ${escHtml(accNo||'Not configured')}</div>
+      <div><strong>Total Employees:</strong> ${employees.length}</div>
+      <div><strong>Generated:</strong> ${new Date().toLocaleDateString('en-IN')}</div>
+    </div>
+    <table><thead><tr>${colHeaders}</tr></thead><tbody>${rows}
+    <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL REMITTANCE:</td><td>₹${totalAmt.toLocaleString('en-IN')}</td></tr>
+    </tbody></table>
+    <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr">
+      <div><div style="border-top:1px solid #000;margin-top:40px;width:200px;padding-top:4px">Prepared By</div></div>
+      <div><div style="border-top:1px solid #000;margin-top:40px;width:200px;padding-top:4px">Authorised Signatory</div></div>
+    </div>
+    <script>setTimeout(()=>window.print(),600);<\/script></body></html>`);
+    pw.document.close();
+  });
 }
 
 function downloadSalarySlipPDF(data) {
@@ -5580,7 +6031,7 @@ async function renderReports() {
       <div><div class="filter-label">To Date</div><input id="rpt-to" class="filter-input" type="date" value="${todayStr()}"></div>
       <div><div class="filter-label">Employee</div>
         <select id="rpt-emp" class="filter-input"><option value="">All Employees</option>
-          ${(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('')}
+          ${(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.id)} — ${escHtml(e.name)}</option>`).join('')}
         </select></div>
       <div><div class="filter-label">Department</div><input id="rpt-dept" class="filter-input" placeholder="Filter by dept…"></div>
       <div><div class="filter-label">Level</div>
@@ -5727,7 +6178,7 @@ async function renderTrackedTime() {
       <label class="form-label">Employee</label>
       <select id="tt-emp" class="form-input" style="width:180px">
         <option value="">All Employees</option>
-        ${(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)}</option>`).join('')}
+        ${(State.employees||[]).filter(e=>e.status==='Active').map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.id)} — ${escHtml(e.name)}</option>`).join('')}
       </select>
     </div>
     <div class="form-group" style="margin:0">
@@ -5810,6 +6261,305 @@ function exportTrackedTime() {
   const headers=['Date','Employee','Dept','ClockIn','ClockOut','WorkHours','OTHours','Activity','Project','ActivityNote','BillableRate','BillableAmount'];
   const data=rows.map(r=>[r.date,r.empName,r.dept,r.clockIn,r.clockOut,(r.workMinutes/60).toFixed(2),(r.otMinutes/60).toFixed(2),r.activity,r.project,r.activityNote,r.billableRate,r.billableAmount]);
   downloadXLSX(`ArtzFolio_TrackedTime_${todayStr()}.xlsx`,'Tracked Time',headers,data);
+}
+
+// ═══════════════════════════════════════════
+// PETTY CASH TAB
+// ═══════════════════════════════════════════
+
+// State for current petty cash filter
+window._pcMonth = '';
+
+async function renderPettyCash() {
+  document.getElementById('admin-page-title').textContent = 'Petty Cash';
+  const el = document.getElementById('admin-tab-content');
+  el.innerHTML = '<div class="loading-spinner"></div>';
+
+  // Default to current month
+  if (!window._pcMonth) window._pcMonth = todayStr().substring(0,7);
+  const monthVal = window._pcMonth;
+
+  const res = await API.call('getPettyCash', {month: monthVal});
+  if (!res.ok) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${escHtml(res.error)}</p></div>`; return; }
+
+  const {entries=[], totalIn=0, totalOut=0, balance=0} = res;
+  const isOwner = (State.adminRole === 'owner');
+  const canAdd   = ['owner','manager','supervisor'].includes(State.adminRole);
+
+  // Balance colour
+  const balClass = balance >= 0 ? 'color:#27ae60' : 'color:#e74c3c';
+
+  let html = `
+  <style>
+    .pc-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+    .pc-summary-card{background:var(--dark2);border-radius:10px;padding:16px 18px;text-align:center}
+    .pc-summary-card .pc-label{font-size:11px;color:var(--gray-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+    .pc-summary-card .pc-value{font-size:1.5rem;font-weight:700}
+    .pc-filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+    .pc-table{width:100%;border-collapse:collapse;font-size:13px}
+    .pc-table th{background:var(--dark3);color:var(--gold);padding:8px 10px;text-align:left;font-weight:600;position:sticky;top:0;z-index:1}
+    .pc-table td{padding:7px 10px;border-bottom:1px solid var(--dark3);vertical-align:middle}
+    .pc-table tr:hover td{background:var(--dark3)}
+    .pc-badge-in{background:#1a3a2a;color:#27ae60;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
+    .pc-badge-out{background:#3a1a1a;color:#e74c3c;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
+    .pc-badge-status{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+    .pc-status-Pending{background:#3a3010;color:#f0c040}
+    .pc-status-Approved{background:#1a3a2a;color:#27ae60}
+    .pc-status-Rejected{background:#3a1a1a;color:#e74c3c}
+    .pc-bal-pos{color:#27ae60;font-weight:700}
+    .pc-bal-neg{color:#e74c3c;font-weight:700}
+    .pc-receipt-thumb{width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--dark3)}
+    @media(max-width:700px){.pc-summary-grid{grid-template-columns:1fr 1fr}.pc-table{font-size:12px}}
+  </style>
+
+  <!-- Summary Cards -->
+  <div class="pc-summary-grid">
+    <div class="pc-summary-card">
+      <div class="pc-label">💚 Total IN</div>
+      <div class="pc-value" style="color:#27ae60">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(totalIn)}</div>
+    </div>
+    <div class="pc-summary-card">
+      <div class="pc-label">🔴 Total OUT</div>
+      <div class="pc-value" style="color:#e74c3c">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(totalOut)}</div>
+    </div>
+    <div class="pc-summary-card">
+      <div class="pc-label">💰 Balance</div>
+      <div class="pc-value" style="${balClass}">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(balance)}</div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="pc-filter-bar">
+    <input type="month" class="form-input" style="width:160px" value="${escHtml(monthVal)}"
+      onchange="window._pcMonth=this.value;renderPettyCash()">
+    <button class="btn btn-gold btn-sm" onclick="renderPettyCash()">↻ Refresh</button>
+    ${canAdd ? `<button class="btn btn-gold btn-sm" onclick="openPCEntryModal()">+ Add Entry</button>` : ''}
+    ${entries.length ? `<button class="btn btn-dark btn-sm" onclick="exportPCExcel()">⬇ Export XLSX</button>` : ''}
+  </div>`;
+
+  if (!entries.length) {
+    html += `<div class="empty-state"><div class="empty-icon">💵</div><p>No petty cash entries for ${monthVal}.</p>
+      ${canAdd ? `<button class="btn btn-gold" onclick="openPCEntryModal()">+ Add First Entry</button>` : ''}</div>`;
+  } else {
+    html += `<div style="overflow-x:auto"><table class="pc-table">
+    <thead><tr>
+      <th>Date</th><th>Type</th><th>Category</th><th>Description</th>
+      <th>Amount</th><th>Paid To</th><th>Running Bal</th>
+      <th>Recorded By</th><th>Status</th><th>Receipt</th>
+      ${isOwner ? '<th>Actions</th>' : ''}
+    </tr></thead>
+    <tbody>`;
+    entries.forEach(e => {
+      const balCls = e.runningBalance >= 0 ? 'pc-bal-pos' : 'pc-bal-neg';
+      const receiptCell = e.receiptUrl
+        ? `<a href="${escHtml(e.receiptUrl)}" target="_blank" title="View receipt">
+             <img class="pc-receipt-thumb" src="${escHtml(e.receiptUrl)}" onerror="this.style.display='none';this.nextSibling.style.display='inline'" alt="Receipt">
+             <span style="display:none;font-size:18px" title="View receipt">🖼</span>
+           </a>`
+        : `<span style="color:var(--gray-light);font-size:11px">—</span>`;
+      const ownerActions = isOwner ? `<td>
+        ${e.status==='Pending' ? `
+          <button class="btn btn-gold btn-sm" title="Approve" onclick="pcApprove('${escHtml(e.id)}')">✓</button>
+          <button class="btn btn-dark btn-sm" title="Reject" onclick="pcReject('${escHtml(e.id)}')">✗</button>
+        ` : ''}
+        <button class="btn btn-dark btn-sm" title="Edit" onclick="openPCEditModal('${escHtml(e.id)}')">✏</button>
+        <button class="btn btn-dark btn-sm" title="Delete" style="color:#e74c3c" onclick="pcDelete('${escHtml(e.id)}')">🗑</button>
+      </td>` : '';
+      html += `<tr>
+        <td>${escHtml(e.date||'')}</td>
+        <td><span class="${e.type==='IN'?'pc-badge-in':'pc-badge-out'}">${escHtml(e.type||'')}</span></td>
+        <td>${escHtml(e.category||'')}</td>
+        <td style="max-width:180px">${escHtml(e.description||'')}</td>
+        <td style="font-weight:600">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(parseFloat(e.amount)||0)}</td>
+        <td>${escHtml(e.paidTo||'—')}</td>
+        <td class="${balCls}">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(e.runningBalance)}</td>
+        <td style="font-size:11px">${escHtml(e.recordedBy||'')}</td>
+        <td><span class="pc-badge-status pc-status-${escHtml(e.status||'Pending')}">${escHtml(e.status||'Pending')}</span></td>
+        <td>${receiptCell}</td>
+        ${ownerActions}
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ── Petty Cash: Add Entry Modal ──────────────────────────────
+function openPCEntryModal(prefill={}) {
+  const isEdit = !!prefill.id;
+  const categories = ['Office Supplies','Travel','Food & Refreshments','Courier / Delivery',
+                      'Repair & Maintenance','Utilities','Salary Advance','Other'];
+  const catOptions = categories.map(c=>`<option value="${c}" ${prefill.category===c?'selected':''}>${c}</option>`).join('');
+
+  const bodyHtml = `
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <label class="form-label">Date *</label>
+        <input class="form-input" id="pc-date" type="date" value="${escHtml(prefill.date||todayStr())}">
+      </div>
+      <div>
+        <label class="form-label">Type *</label>
+        <select class="form-input" id="pc-type">
+          <option value="IN"  ${prefill.type==='IN' ?'selected':''}>💚 IN (Cash Received)</option>
+          <option value="OUT" ${prefill.type==='OUT'?'selected':''}>🔴 OUT (Cash Spent)</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Category *</label>
+        <select class="form-input" id="pc-category">${catOptions}</select>
+      </div>
+      <div>
+        <label class="form-label">Amount (₹) *</label>
+        <input class="form-input" id="pc-amount" type="number" min="0" step="0.01" placeholder="e.g. 500" value="${prefill.amount||''}">
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label class="form-label">Description *</label>
+      <input class="form-input" id="pc-description" type="text" placeholder="What was this for?" value="${escHtml(prefill.description||'')}">
+    </div>
+    <div style="margin-top:12px">
+      <label class="form-label">Paid To / Received From</label>
+      <input class="form-input" id="pc-paidto" type="text" placeholder="Vendor / person name" value="${escHtml(prefill.paidTo||'')}">
+    </div>
+    <div style="margin-top:12px">
+      <label class="form-label">Note</label>
+      <textarea class="form-input" id="pc-note" rows="2" placeholder="Any additional note…">${escHtml(prefill.note||'')}</textarea>
+    </div>
+    <div style="margin-top:12px">
+      <label class="form-label">Receipt Photo (optional)</label>
+      <input type="file" id="pc-receipt-file" accept="image/*,application/pdf" class="form-input"
+        onchange="previewPCReceipt(this)" style="padding:4px">
+      <div id="pc-receipt-preview" style="margin-top:6px">
+        ${prefill.receiptUrl ? `<a href="${escHtml(prefill.receiptUrl)}" target="_blank"><img src="${escHtml(prefill.receiptUrl)}" style="height:60px;border-radius:4px" onerror="this.style.display='none'"></a>` : ''}
+      </div>
+    </div>`;
+
+  showModal(
+    (isEdit ? 'Edit' : 'Add') + ' Petty Cash Entry',
+    bodyHtml,
+    [
+      {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+      {label: isEdit ? 'Save Changes' : 'Add Entry', cls:'btn-gold',
+       cb: ()=>submitPCEntry(prefill.id||'')}
+    ]
+  );
+}
+
+function previewPCReceipt(input) {
+  const prev = document.getElementById('pc-receipt-preview');
+  if (!prev) return;
+  const file = input.files[0];
+  if (!file) { prev.innerHTML = ''; return; }
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => { prev.innerHTML = `<img src="${e.target.result}" style="height:60px;border-radius:4px;margin-top:4px">`; };
+    reader.readAsDataURL(file);
+  } else {
+    prev.innerHTML = `<span style="font-size:11px;color:var(--gray-light)">📄 ${escHtml(file.name)}</span>`;
+  }
+}
+
+async function submitPCEntry(existingId) {
+  const date        = document.getElementById('pc-date').value.trim();
+  const type        = document.getElementById('pc-type').value;
+  const category    = document.getElementById('pc-category').value;
+  const description = document.getElementById('pc-description').value.trim();
+  const amount      = parseFloat(document.getElementById('pc-amount').value)||0;
+  const paidTo      = document.getElementById('pc-paidto').value.trim();
+  const note        = document.getElementById('pc-note').value.trim();
+
+  if (!date || !type || !category || !description || !amount) {
+    toast('Please fill all required fields (Date, Type, Category, Description, Amount)', 'error'); return;
+  }
+
+  // Read receipt file as base64 if provided
+  let receiptBase64 = '', receiptMime = '';
+  const fileInput = document.getElementById('pc-receipt-file');
+  if (fileInput && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    receiptMime = file.type || 'image/jpeg';
+    receiptBase64 = await new Promise(resolve => {
+      const r = new FileReader();
+      r.onload = e => resolve(e.target.result); // includes data URI prefix — backend strips it
+      r.readAsDataURL(file);
+    });
+  }
+
+  const recordedBy = State.adminUser || State.adminRole || 'unknown';
+
+  let res;
+  if (existingId) {
+    // Edit path
+    const updates = {type, category, description, amount, paidTo, note};
+    if (date) updates.date = date;
+    if (receiptBase64) { updates.receiptBase64 = receiptBase64; updates.receiptMime = receiptMime; }
+    res = await API.call('updatePettyCash', {id: existingId, updates});
+  } else {
+    res = await API.call('addPettyCash', {date, type, category, description, amount, paidTo, note,
+                                           receiptBase64, receiptMime, recordedBy});
+  }
+
+  if (!res.ok) { toast(res.error||'Failed to save entry', 'error'); return; }
+  toast(existingId ? '✓ Entry updated' : '✓ Entry added', 'success');
+  closeModal();
+  renderPettyCash();
+}
+
+function openPCEditModal(id) {
+  // Find the entry in the current rendered table by re-fetching
+  API.call('getPettyCash', {month: window._pcMonth || todayStr().substring(0,7)}).then(res => {
+    if (!res.ok) { toast('Failed to load entry', 'error'); return; }
+    const entry = res.entries.find(e=>e.id===id);
+    if (!entry) { toast('Entry not found', 'error'); return; }
+    openPCEntryModal(entry);
+  });
+}
+
+async function pcApprove(id) {
+  const res = await API.call('updatePettyCash', {id, updates: {
+    status: 'Approved',
+    approvedBy: State.adminUser || State.adminRole,
+    approvalDate: todayStr()
+  }});
+  if (!res.ok) { toast(res.error||'Failed', 'error'); return; }
+  toast('✓ Entry approved', 'success');
+  renderPettyCash();
+}
+
+async function pcReject(id) {
+  if (!confirm('Reject this petty cash entry?')) return;
+  const res = await API.call('updatePettyCash', {id, updates: {
+    status: 'Rejected',
+    approvedBy: State.adminUser || State.adminRole,
+    approvalDate: todayStr()
+  }});
+  if (!res.ok) { toast(res.error||'Failed', 'error'); return; }
+  toast('Entry rejected', 'warning');
+  renderPettyCash();
+}
+
+async function pcDelete(id) {
+  if (!confirm('Permanently delete this petty cash entry? This cannot be undone.')) return;
+  const res = await API.call('deletePettyCash', {id});
+  if (!res.ok) { toast(res.error||'Failed', 'error'); return; }
+  toast('Entry deleted', 'warning');
+  renderPettyCash();
+}
+
+function exportPCExcel() {
+  API.call('getPettyCash', {month: window._pcMonth || todayStr().substring(0,7)}).then(res => {
+    if (!res.ok || !res.entries.length) { toast('No data to export', 'warning'); return; }
+    const headers = ['ID','Date','Type','Category','Description','Amount (₹)','Paid To',
+                     'Running Balance','Recorded By','Status','Approved By','Approval Date','Note'];
+    const data = res.entries.map(e=>[
+      e.id, e.date, e.type, e.category, e.description,
+      parseFloat(e.amount)||0, e.paidTo||'',
+      e.runningBalance, e.recordedBy, e.status,
+      e.approvedBy||'', e.approvalDate||'', e.note||''
+    ]);
+    downloadXLSX(`ArtzFolio_PettyCash_${window._pcMonth||todayStr().substring(0,7)}.xlsx`,
+      'Petty Cash', headers, data);
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -6424,6 +7174,115 @@ async function renderSettings() {
     </div>
   </div>
 
+  <!-- Statutory Compliance Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">📋 Statutory Compliance (PF / ESI / PT / TDS)</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      Enable the relevant deductions below. Once enabled, they are automatically calculated in every month's payroll and shown on salary slips.
+      <br><strong style="color:var(--gold)">ArtzFolio note:</strong> With 34 employees in Noida (UP), PF and ESI are <strong>legally mandatory</strong>. PT = ₹0 in UP.
+    </div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-pfEnabled" ${cfg['pfEnabled']==='true'?'checked':''}> Enable PF Deductions</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-esiEnabled" ${cfg['esiEnabled']==='true'?'checked':''}> Enable ESI Deductions</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-ptEnabled" ${cfg['ptEnabled']==='true'?'checked':''}> Enable Professional Tax (PT)</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-tdsEnabled" ${cfg['tdsEnabled']==='true'?'checked':''}> Enable TDS Deductions (Sec 192)</label>
+      </div>
+      ${cfgField('pfWageCeiling','PF Wage Ceiling (₹)','number')}
+      ${cfgField('pfEmployeeRate','Employee PF Rate (%)','number')}
+      ${cfgField('pfEmployerRate','Employer PF Rate (%)','number')}
+      ${cfgField('esiWageCeiling','ESI Applicability Ceiling (₹)','number')}
+      ${cfgField('esiEmployeeRate','Employee ESI Rate (%)','number')}
+      ${cfgField('esiEmployerRate','Employer ESI Rate (%)','number')}
+      <div class="form-group">
+        <label class="form-label">Professional Tax State</label>
+        <select id="cfg-ptState" class="form-input">
+          ${['UP','DL','HR','RJ','MH','KA','TN','WB'].map(s=>`<option value="${s}" ${(cfg['ptState']||'UP')===s?'selected':''}>${s}${s==='UP'||s==='DL'||s==='HR'?'(₹0)':''}</option>`).join('')}
+        </select>
+      </div>
+      ${cfgField('tdsRate','TDS Rate (%)','number')}
+      ${cfgField('tdsAnnualExemption','TDS Annual Exemption (₹)','number')}
+    </div>
+    <div class="settings-grid" style="margin-top:10px">
+      <div class="settings-section-title" style="grid-column:span 2;font-size:12px;color:var(--gray-light);margin:0 0 8px">Challan Account Numbers (printed on challans)</div>
+      ${cfgField('pfAccNumber','PF Account Number')}
+      ${cfgField('esiAccNumber','ESI Account Number')}
+      ${cfgField('ptRegNumber','PT Registration Number')}
+      ${cfgField('tanNumber','TAN Number (for TDS)')}
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveStatutorySettings()">💾 Save Statutory Settings</button>
+  </div>
+
+  <!-- WhatsApp / SMS Notifications Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">📱 WhatsApp / SMS Notifications</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      Automatically notify employees via WhatsApp when their leave is approved/rejected, salary is ready, or advances are credited.
+      Supports <strong>Gupshup</strong>, <strong>AiSensy</strong>, <strong>Twilio</strong>, or a custom REST API.
+    </div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-whatsappEnabled" ${cfg['whatsappEnabled']==='true'?'checked':''}> Enable WhatsApp Notifications</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Provider</label>
+        <select id="cfg-whatsappProvider" class="form-input">
+          ${['gupshup','aisensy','twilio','custom'].map(p=>`<option value="${p}" ${(cfg['whatsappProvider']||'gupshup')===p?'selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
+        </select>
+      </div>
+      ${cfgField('whatsappApiKey','API Key / Auth Token')}
+      ${cfgField('whatsappFrom','Sender Number / App Name')}
+      ${cfgField('whatsappApiUrl','API URL (AiSensy / Custom)')}
+      ${cfgField('twilioAccountSid','Twilio Account SID')}
+      ${cfgField('twilioAuthToken','Twilio Auth Token')}
+      ${cfgField('otManagerNotifyMobile','Manager Mobile for OT Alerts (10 digits)')}
+    </div>
+    <div class="settings-grid" style="margin-top:10px">
+      <div class="settings-section-title" style="grid-column:span 2;font-size:12px;color:var(--gray-light);margin:0 0 8px">Notification Triggers</div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-notifyLeaveApproval" ${cfg['notifyLeaveApproval']!=='false'?'checked':''}> Notify on leave approval / rejection</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-notifyPayslip" ${cfg['notifyPayslip']!=='false'?'checked':''}> Notify when salary is calculated</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-notifyAdvance" ${cfg['notifyAdvance']!=='false'?'checked':''}> Notify on advance / bonus credit</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-notifyOTApproval" ${cfg['notifyOTApproval']!=='false'?'checked':''}> Notify on OT approval / rejection</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-gold" onclick="saveWhatsAppSettings()">💾 Save WhatsApp Settings</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="wa-test-mobile" class="form-input" type="tel" placeholder="Test mobile (10 digits)" style="width:180px">
+        <button class="btn btn-dark btn-sm" onclick="testWhatsApp()">📤 Send Test</button>
+      </div>
+      <div id="wa-test-result" style="font-size:12px;color:var(--gray-light)"></div>
+    </div>
+  </div>
+
+  <!-- OT Pre-Approval Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">🕐 Overtime Pre-Approval</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      When enabled, supervisors or managers must submit an OT request <strong>before</strong> overtime is worked.
+      Approved OT requests are visible in the Approvals inbox. OT is only registered on clock-out if a pre-approved request exists.
+    </div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-otPreApprovalRequired" ${cfg['otPreApprovalRequired']==='true'?'checked':''}> Require OT pre-approval before OT is counted</label>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveOTSettings()">💾 Save OT Settings</button>
+  </div>
+
   <!-- Backup -->
   <div class="settings-section">
     <div class="settings-section-title">💾 Backup & Data Management</div>
@@ -6629,6 +7488,51 @@ async function saveAutomationSettings() {
   else toast(res.error||'Error','error');
 }
 
+async function saveStatutorySettings() {
+  const textKeys = ['pfWageCeiling','pfEmployeeRate','pfEmployerRate','esiWageCeiling','esiEmployeeRate',
+                    'esiEmployerRate','ptState','tdsRate','tdsAnnualExemption',
+                    'pfAccNumber','esiAccNumber','ptRegNumber','tanNumber'];
+  const checkKeys = ['pfEnabled','esiEnabled','ptEnabled','tdsEnabled'];
+  const updates = {};
+  textKeys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  checkKeys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.checked?'true':'false';});
+  const res = await API.call('updateSettings',{updates});
+  if(res.ok) toast('✓ Statutory settings saved','success');
+  else toast(res.error||'Error','error');
+}
+
+async function saveWhatsAppSettings() {
+  const textKeys = ['whatsappApiKey','whatsappFrom','whatsappApiUrl','twilioAccountSid','twilioAuthToken','otManagerNotifyMobile'];
+  const checkKeys = ['whatsappEnabled','notifyLeaveApproval','notifyPayslip','notifyAdvance','notifyOTApproval'];
+  const selectKeys = ['whatsappProvider'];
+  const updates = {};
+  textKeys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  checkKeys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.checked?'true':'false';});
+  selectKeys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  const res = await API.call('updateSettings',{updates});
+  if(res.ok) toast('✓ WhatsApp settings saved','success');
+  else toast(res.error||'Error','error');
+}
+
+async function testWhatsApp() {
+  const mobile = (document.getElementById('wa-test-mobile')?.value||'').trim();
+  const statusEl = document.getElementById('wa-test-result');
+  if (!mobile) { statusEl.textContent='Enter a mobile number first.'; statusEl.style.color='var(--red)'; return; }
+  statusEl.textContent='Sending…'; statusEl.style.color='var(--gold)';
+  const res = await API.call('testWhatsApp',{mobile, message:`✅ Test from ArtzFolio HRMS — if you received this, WhatsApp notifications are working correctly.`});
+  statusEl.textContent = res.ok ? '✓ '+res.message : '✗ '+res.message;
+  statusEl.style.color = res.ok ? 'var(--green)' : 'var(--red)';
+}
+
+async function saveOTSettings() {
+  const updates = {};
+  const el = document.getElementById('cfg-otPreApprovalRequired');
+  if (el) updates['otPreApprovalRequired'] = el.checked ? 'true' : 'false';
+  const res = await API.call('updateSettings',{updates});
+  if(res.ok) toast('✓ OT settings saved','success');
+  else toast(res.error||'Error','error');
+}
+
 async function runAutoClockOut() {
   const res=await API.call('autoClockOut',{});
   toast(`Auto clock-out done: ${res.affected?.length||0} employees clocked out`,'success',4000);
@@ -6661,14 +7565,79 @@ function downloadXLSX(filename, sheetName, headers, rows=[]) {
   const wb = XLSX.utils.book_new();
   const wsData = [headers, ...rows];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  // Style header row
-  const range = XLSX.utils.decode_range(ws['!ref']);
+  // Style header row gold
+  const range = XLSX.utils.decode_range(ws['!ref']||'A1');
   for (let c = range.s.c; c <= range.e.c; c++) {
     const cellRef = XLSX.utils.encode_cell({r:0, c});
     if (!ws[cellRef]) ws[cellRef] = {v: headers[c]};
-    ws[cellRef].s = {font:{bold:true}, fill:{fgColor:{rgb:'1A1A2E'}}};
+    ws[cellRef].s = {font:{bold:true,color:{rgb:'FFFFFF'}}, fill:{fgColor:{rgb:'1A1A2E'}}, alignment:{horizontal:'center'}};
   }
+  // Auto-width columns
+  ws['!cols'] = headers.map(h=>({wch: Math.max(String(h||'').length+4, 14)}));
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename);
+}
+
+// Download bulk import template with sample rows + ValidValues reference sheet
+function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, validValues) {
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Template with sample rows ─────────────────────
+  const wsData = [headers, ...sampleRows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  const goldFill  = {fgColor:{rgb:'C8922A'}};
+  const navyFill  = {fgColor:{rgb:'1A1A2E'}};
+  const sampleFill= {fgColor:{rgb:'E8F5E9'}}; // light green for sample rows
+  const reqFont   = {bold:true, color:{rgb:'FFFFFF'}};
+  const sampleFont= {italic:true, color:{rgb:'555555'}};
+  const centerAlign = {horizontal:'center'};
+
+  const range = XLSX.utils.decode_range(ws['!ref']||'A1');
+
+  // Style header row
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cell = XLSX.utils.encode_cell({r:0, c});
+    if (!ws[cell]) ws[cell] = {v: headers[c]||''};
+    const isRequired = String(headers[c]||'').includes('*');
+    ws[cell].s = {
+      font: reqFont,
+      fill: isRequired ? goldFill : navyFill,
+      alignment: centerAlign,
+      border: {bottom:{style:'medium',color:{rgb:'C8922A'}}}
+    };
+  }
+
+  // Style sample rows (light green tint + italic)
+  for (let r = 1; r < wsData.length; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = XLSX.utils.encode_cell({r, c});
+      if (!ws[cell]) ws[cell] = {v:''};
+      ws[cell].s = {font: sampleFont, fill: sampleFill};
+    }
+  }
+
+  // Auto-width
+  ws['!cols'] = headers.map(h=>({wch: Math.max(String(h||'').length+4, 16)}));
+
+  // Add instruction row above headers using a note comment approach:
+  // Put a yellow note in cell A1's comment if supported, otherwise first cell text
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+  // ── Sheet 2: Valid Values Reference ────────────────────────
+  if (validValues && validValues.length) {
+    const vvData = [['Column', 'Valid Values / Accepted Options', 'Notes']];
+    validValues.forEach(([col, vals, note]) => vvData.push([col, vals, note||'']));
+    const vvws = XLSX.utils.aoa_to_sheet(vvData);
+    // Style VV header
+    ['A1','B1','C1'].forEach(ref => {
+      if (!vvws[ref]) vvws[ref] = {v:''};
+      vvws[ref].s = {font:{bold:true,color:{rgb:'FFFFFF'}}, fill:goldFill, alignment:centerAlign};
+    });
+    vvws['!cols'] = [{wch:30},{wch:70},{wch:40}];
+    XLSX.utils.book_append_sheet(wb, vvws, 'ValidValues_Reference');
+  }
+
   XLSX.writeFile(wb, filename);
 }
 
@@ -6689,18 +7658,22 @@ function parseXLSX(file) {
   });
 }
 
-// Download bulk import template
+// Download bulk import template — uses rich version if sampleRows provided
 function downloadBulkTemplate() {
-  if (window._currentBulkTemplate) {
-    downloadXLSX(window._currentBulkTemplate.filename, 'Template', window._currentBulkTemplate.headers);
+  const t = window._currentBulkTemplate;
+  if (!t) return;
+  if (t.sampleRows && t.sampleRows.length) {
+    downloadBulkTemplateRich(t.filename, 'Template', t.headers, t.sampleRows, t.validValues||[]);
+  } else {
+    downloadXLSX(t.filename, 'Template', t.headers);
   }
 }
 
 // Show a modal to bulk-import from Excel
-async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml) {
+async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml, sampleRows, validValues) {
   let parsedRows = [];
   // Store template data in window global to avoid JSON.stringify issues with HTML attributes
-  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename };
+  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename, sampleRows: sampleRows||[], validValues: validValues||[] };
   const html = `
   <div style="font-size:13px">
     <p style="color:var(--gray-light);margin-bottom:8px">
@@ -6814,6 +7787,25 @@ function bulkImportEmployees() {
     'noticeperiodDays','nightShiftAllowance','travelAllowance',
     'otBaseHours','employmentType','notes'
   ];
+  const sampleRows = [
+    // Row 1: factory wage worker example
+    ['AZ_EMP_0056','Ravi Kumar','L4',18000,1234,'09:00','19:00',10,'Sunday','','9876543210','ravi.kumar@example.com','Production','Workforce','2025-01-15','1995-06-20','Male','123456789012',90,0,500,9,'Wage Shift Office','Example row — delete before importing'],
+    // Row 2: office staff example
+    ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Staff','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office manager — example row'],
+  ];
+  const validValues = [
+    ['level *','L1, L2, L3, L4, L5, L6, L7, L8, L9, L10','L1=lowest (helper), L10=senior management'],
+    ['weeklyOff1 / weeklyOff2','Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday','Most factories: Sunday off; leave weeklyOff2 blank for single off'],
+    ['category','Workforce, Staff, Management','Workforce=factory floor; Staff=office; Management=supervisors+'],
+    ['gender','Male, Female, Other',''],
+    ['employmentType','Wage Shift Office, Full-Time Office, Work From Home, Hybrid','Determines break deduction and OT rules'],
+    ['noticeperiodDays','30, 60, 90, 180','Common values; L1-L5=90 days; L6-L10=60 days'],
+    ['shiftStart / shiftEnd','HH:MM in 24-hour format','e.g. 09:00, 10:00, 14:00, 22:00'],
+    ['doj / dob','YYYY-MM-DD','e.g. 2025-04-01 — Year-Month-Day format only'],
+    ['pin *','4-digit number','e.g. 1234, 5678 — used for kiosk clock-in'],
+    ['salary *','Monthly gross in ₹','e.g. 18000 — do not use commas or ₹ symbol'],
+    ['employeeCode','AZ_EMP_XXXX format or leave blank','If left blank, system auto-assigns next available ID'],
+  ];
   // Build a field guide to show in the modal header
   const fieldGuide = `<details style="margin-top:10px;font-size:12px">
     <summary style="cursor:pointer;color:var(--gold);font-weight:600">📖 Column Guide (click to expand)</summary>
@@ -6860,43 +7852,81 @@ function bulkImportEmployees() {
       employmentType: row['employmentType']||'Wage Shift Office',
       notes: row['notes']||'',
     };
-  }, 'addEmployee', fieldGuide);
+  }, 'addEmployee', fieldGuide, sampleRows, validValues);
 }
 
 function bulkImportTransactions() {
-  const headers = ['empId *','date *','type *','amount *','note','approvedBy'];
-  const TYPES = 'Advance | Loan | Bonus | Penalty | DamageRecovery | LateFine | KYCFee | PINReactivationFee | Increment';
+  const headers = ['empId * (code or name)','date *','type *','amount *','note','approvedBy'];
+  const empSamples = (State.employees||[]).slice(0,2).map(e=>`${e.id} (${e.name})`);
+  const sampleRows = [
+    [empSamples[0]||'AZ_EMP_0002 (Ramesh Kumar)', '2026-04-10', 'Advance', 5000, 'April advance payment requested by employee', 'Owner'],
+    [empSamples[1]||'AZ_EMP_0005 (Sunita Devi)',  '2026-04-12', 'Bonus',   2000, 'Q1 performance bonus — example row', 'Owner'],
+  ];
+  const validValues = [
+    ['empId *','AZ_EMP_XXXX or employee name','Use employee code (e.g. AZ_EMP_0002) OR full name (e.g. Ramesh Kumar) — both accepted'],
+    ['type *','Advance, Loan, LoanRepayment, Bonus, Penalty, DamageRecovery, LateFine, KYCFee, PINReactivationFee, Increment','Advance/Loan/Penalty = deductions; Bonus/Increment = additions'],
+    ['date *','YYYY-MM-DD','e.g. 2026-04-15'],
+    ['amount *','Number without commas','e.g. 5000 (not ₹5,000)'],
+    ['urgency','normal, urgent','Leave blank for normal'],
+  ];
   openBulkImportModal(
-    `💸 Bulk Import Transactions\n(Types: ${TYPES})`,
+    `💸 Bulk Import Transactions`,
     headers, 'ArtzFolio_Transaction_Template.xlsx',
     row => {
-      if (!row['empId *'] || !row['date *'] || !row['type *'] || !row['amount *']) return null;
-      return {empId:row['empId *'], date:row['date *'], type:row['type *'],
+      if (!row['empId * (code or name)'] || !row['date *'] || !row['type *'] || !row['amount *']) return null;
+      // Resolve empId — accept code or name
+      const raw = String(row['empId * (code or name)']).trim();
+      const emp = (State.employees||[]).find(e=>e.id===raw||e.name.toLowerCase()===raw.toLowerCase()||raw.includes(e.id));
+      const empId = emp ? emp.id : raw;
+      return {empId, date:row['date *'], type:row['type *'],
               amount:parseFloat(row['amount *'])||0, note:row['note']||'',
               approvedBy:row['approvedBy']||State.adminUser||'Admin', status:'Applied'};
-    }, 'addTransaction');
+    }, 'addTransaction', null, sampleRows, validValues);
 }
 
 function bulkImportLeaves() {
-  const headers = ['empId *','type *','startDate *','endDate *','note','urgency'];
-  const TYPES = 'IL | UL | SL | PL | IHL | UHL';
+  const headers = ['empId * (code or name)','type *','startDate *','endDate *','note','urgency'];
+  const empSamples = (State.employees||[]).slice(0,2).map(e=>`${e.id} (${e.name})`);
+  const sampleRows = [
+    [empSamples[0]||'AZ_EMP_0003 (Mohan Lal)', 'IL', '2026-04-20', '2026-04-22', 'Family function — example row', 'normal'],
+    [empSamples[1]||'AZ_EMP_0007 (Anita Singh)','SL', '2026-04-25', '2026-04-25', 'Sick — doctor visit', 'urgent'],
+  ];
+  const validValues = [
+    ['empId *','AZ_EMP_XXXX or employee name','Use employee code OR full name — both accepted'],
+    ['type *','IL, IHL, UL, UHL, SL, PL','IL=Informed Leave; IHL=Half Day Informed; UL=Uninformed; UHL=Half Uninformed; SL=Sick; PL=Paid'],
+    ['startDate / endDate *','YYYY-MM-DD','Both must be filled. Same date for single-day leave.'],
+    ['urgency','normal, urgent','Leave blank for normal'],
+  ];
   openBulkImportModal(
-    `📋 Bulk Import Leaves (Types: ${TYPES})`,
+    `📋 Bulk Import Leaves`,
     headers, 'ArtzFolio_Leave_Template.xlsx',
     row => {
-      if (!row['empId *'] || !row['type *'] || !row['startDate *'] || !row['endDate *']) return null;
-      return {empId:row['empId *'], type:row['type *'],
+      if (!row['empId * (code or name)'] || !row['type *'] || !row['startDate *'] || !row['endDate *']) return null;
+      const raw = String(row['empId * (code or name)']).trim();
+      const emp = (State.employees||[]).find(e=>e.id===raw||e.name.toLowerCase()===raw.toLowerCase()||raw.includes(e.id));
+      const empId = emp ? emp.id : raw;
+      return {empId, type:row['type *'],
               startDate:row['startDate *'], endDate:row['endDate *'],
               note:row['note']||'', urgency:row['urgency']||'normal'};
-    }, 'requestLeave');
+    }, 'requestLeave', null, sampleRows, validValues);
 }
 
 async function bulkImportHolidays() {
   const headers = ['date *','name *','type','applicableTo'];
+  const sampleRows = [
+    ['2026-08-15', 'Independence Day', 'National', 'All'],
+    ['2026-10-02', 'Gandhi Jayanti', 'National', 'All'],
+    ['2026-05-01', 'Labour Day / May Day', 'Company', 'All'],
+  ];
+  const validValues = [
+    ['date *','YYYY-MM-DD','e.g. 2026-08-15 — Year-Month-Day format'],
+    ['type','National, Regional, Company, Optional','National=Gazetted; Company=ArtzFolio-specific; Regional=state holiday'],
+    ['applicableTo','All, Workforce, Staff, Management','Leave blank or use All for everyone'],
+  ];
   openBulkImportModal('📅 Bulk Import Holidays', headers, 'ArtzFolio_Holiday_Template.xlsx', row => {
     if (!row['date *'] || !row['name *']) return null;
     return {date:row['date *'], name:row['name *'], type:row['type']||'National', applicableTo:row['applicableTo']||'All'};
-  }, 'addHoliday');
+  }, 'addHoliday', null, sampleRows, validValues);
 }
 
 // ─── Indian Default Holidays ─────────────────────────────────────────────────
