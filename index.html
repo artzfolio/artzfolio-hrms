@@ -7,7 +7,8 @@
 <meta name="theme-color" content="#111111">
 <title>ArtzFolio HRMS v2</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+  onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* ───────────────────────────────────────────
@@ -17,7 +18,7 @@
   --gold:#C9A84C;--gold-light:#F0D080;--gold-dim:#8A6E2A;
   --black:#111111;--dark:#1A1A1A;--dark2:#222222;--dark3:#2D2D2D;
   --white:#FFFFFF;--off-white:#F5F0E8;--gray:#888888;--gray-light:#CCCCCC;
-  --red:#E53935;--green:#43A047;--blue:#1E88E5;--orange:#FB8C00;
+  --red:#E53935;--green:#43A047;--blue:#1E88E5;--blue-light:#64B5F6;--orange:#FB8C00;
   --radius:12px;--radius-sm:8px;--shadow:0 4px 20px rgba(0,0,0,0.5);
   --trans:all 0.22s ease;
 }
@@ -147,6 +148,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 #kiosk-clock{font-size:1.1rem;font-weight:700;color:var(--white);font-variant-numeric:tabular-nums}
 #kiosk-clock .kiosk-date{font-size:11px;color:var(--gray-light);display:block;text-align:right}
 #kiosk-lang-btn{background:none;color:var(--gold-light);font-size:12px;font-weight:600;padding:4px 10px;border:1px solid var(--gold-dim);border-radius:20px}
+/* #kiosk-body base properties — overridden by the Who's In/Out panel section below when the side panel is shown */
 #kiosk-body{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
 #kiosk-main{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:16px}
 
@@ -573,7 +575,6 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 ─────────────────────────────────────────── */
 .loading-spinner{width:36px;height:36px;border:3px solid var(--dark3);border-top-color:var(--gold);
                  border-radius:50%;animation:spin 0.8s linear infinite;margin:40px auto}
-@keyframes spin{to{transform:rotate(360deg)}}
 .empty-state{text-align:center;padding:48px 24px;color:var(--gray)}
 .empty-state .empty-icon{font-size:3rem;margin-bottom:12px}
 .empty-state p{font-size:14px}
@@ -976,6 +977,53 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 'use strict';
 
 // ═══════════════════════════════════════════
+// PROBLEM 1 — LOCAL PREVIEW DIAGNOSTIC
+// Detects when the file is opened outside Google Apps Script
+// and shows a visible message instead of a blank screen.
+// ═══════════════════════════════════════════
+(function detectLocalOpen() {
+  // In a deployed GAS web app, google.script.run is injected by GAS.
+  // When opened as a plain file:// or via a static server, it is undefined.
+  if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+    document.addEventListener('DOMContentLoaded', function() {
+      // Hide all screens so none of the app UI renders half-broken
+      document.querySelectorAll('.screen').forEach(function(s) { s.style.display = 'none'; });
+      // Inject a clearly visible message
+      var banner = document.createElement('div');
+      banner.style.cssText = [
+        'position:fixed', 'inset:0', 'display:flex', 'flex-direction:column',
+        'align-items:center', 'justify-content:center',
+        'background:#111111', 'color:#F0D080',
+        'font-family:Segoe UI,Arial,sans-serif',
+        'padding:32px', 'text-align:center', 'z-index:99999'
+      ].join(';');
+      banner.innerHTML = [
+        '<div style="font-size:2.5rem;margin-bottom:16px">⚙</div>',
+        '<div style="font-size:1.3rem;font-weight:800;color:#C9A84C;margin-bottom:12px">ArtzFolio HRMS v2</div>',
+        '<div style="font-size:1rem;font-weight:700;color:#E53935;margin-bottom:16px">',
+        '  This app must be deployed via Google Apps Script.',
+        '</div>',
+        '<div style="font-size:13px;color:#CCCCCC;max-width:460px;line-height:1.7;margin-bottom:20px">',
+        '  Local preview is not supported because this app requires a live',
+        '  Google Sheets backend (gas_backend.gs) to function.<br><br>',
+        '  <strong style="color:#F0D080">To deploy:</strong><br>',
+        '  1. Open <em>gas_backend.gs</em> in Google Apps Script<br>',
+        '  2. Run <code style="background:#222;padding:1px 5px;border-radius:3px">bootstrap()</code> once<br>',
+        '  3. Click <strong>Deploy → New deployment → Web app</strong><br>',
+        '  4. Set <em>Execute as: Me</em> &amp; <em>Access: Anyone</em><br>',
+        '  5. Copy the web app URL and paste into the HTML setup screen',
+        '</div>',
+        '<div style="font-size:11px;color:#888;border:1px solid #333;border-radius:6px;padding:8px 14px">',
+        '  HTML file loaded correctly ✓ &nbsp;|&nbsp; JavaScript parsed correctly ✓',
+        '  &nbsp;|&nbsp; Only the GAS backend is missing.',
+        '</div>'
+      ].join('');
+      document.body.appendChild(banner);
+    });
+  }
+})();
+
+// ═══════════════════════════════════════════
 // CONFIG & CONSTANTS
 // ═══════════════════════════════════════════
 const CFG = {
@@ -1016,7 +1064,7 @@ const LS = {
   // Service Worker for offline caching
   if ('serviceWorker' in navigator) {
     const swCode = `
-const CACHE = 'artzfolio-hrms-v1';
+const CACHE = 'artzfolio-hrms-v2026-04'; // Bug VV: update this date string on each redeployment
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))); });
 self.addEventListener('fetch', e => {
@@ -1124,6 +1172,26 @@ const State = {
   gpsPos: null,
   sidebarOpen: false,
 };
+
+// ═══════════════════════════════════════════
+// SETTINGS LOADER — strips passwords from State.settings
+// ═══════════════════════════════════════════
+function applySettingsArr(arr) {
+  State.settings = {};
+  (arr||[]).forEach(s => { State.settings[s.key] = s.value; });
+  // Extract passwords into non-enumerable _pwMap so they don't appear in DevTools State inspection
+  const pw = {
+    owner:      State.settings.adminPassword      || 'ArtzFolio@2026',
+    manager:    State.settings.managerPassword    || 'Manager@2026',
+    supervisor: State.settings.supervisorPassword || 'Supervisor@2026',
+    ownerToken: State.settings.ownerToken         || '',  // Bug P: store for Danger Zone calls
+  };
+  delete State.settings.adminPassword;
+  delete State.settings.managerPassword;
+  delete State.settings.supervisorPassword;
+  delete State.settings.ownerToken;
+  Object.defineProperty(State, '_pwMap', { value: pw, writable: true, enumerable: false, configurable: true });
+}
 
 // ═══════════════════════════════════════════
 // UTILITIES
@@ -1270,7 +1338,7 @@ function showScreen(id) {
   const el = document.getElementById('screen-'+id);
   if (el) el.classList.add('active');
 }
-function showModal(title, bodyHtml, btns=[]) {
+function showModal(title, bodyHtml, btns=[], opts={}) {
   document.getElementById('modal-title').innerHTML = escHtml(title);
   document.getElementById('modal-body').innerHTML = bodyHtml;
   const footer = document.getElementById('modal-footer');
@@ -1291,14 +1359,19 @@ function showModal(title, bodyHtml, btns=[]) {
   }
   // Pause kiosk timer while modal is open — prevents auto-logout mid-interaction
   if (State.currentEmp) clearTimeout(State.kioskTimer);
-  document.getElementById('modal-overlay').classList.add('open');
+  const overlay = document.getElementById('modal-overlay');
+  overlay.dataset.noDismiss = opts.noDismissOnBackdrop ? '1' : '';
+  overlay.classList.add('open');
 }
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   // Resume kiosk timer if employee is logged in and no API call in progress
   if (State.currentEmp && !LoadingOverlay.isActive()) resetKioskTimer();
 }
-document.getElementById('modal-overlay').addEventListener('click', e => { if(e.target===document.getElementById('modal-overlay')) closeModal(); });
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  const overlay = document.getElementById('modal-overlay');
+  if (e.target === overlay && overlay.dataset.noDismiss !== '1') closeModal();
+});
 
 // ═══════════════════════════════════════════
 // KIOSK LOADING OVERLAY HELPERS
@@ -1464,8 +1537,7 @@ async function init() {
       API.call('getActivities', {}),
     ]);
     if (settingsRes.ok) {
-      State.settings = {};
-      (settingsRes.settings||[]).forEach(s => { State.settings[s.key]=s.value; });
+      applySettingsArr(settingsRes.settings||[]);
       document.getElementById('kiosk-company').textContent = State.settings.companyName||'Vishnu Image Folio Pvt Ltd';
       document.getElementById('kiosk-brand').textContent = State.settings.brandName||'ArtzFolio';
       applyBranding();
@@ -1748,7 +1820,7 @@ function buildActionButtons(rec, emp) {
   if (clkIn) {
     const [sh,sm] = (emp.shiftStart||'09:00').split(':').map(Number);
     const now=new Date(), ss=new Date(now.getFullYear(),now.getMonth(),now.getDate(),sh,sm,0);
-    const lateMs = now.getTime() - ss.getTime() - (parseInt(State.settings.graceMinutes||5)*60000);
+    const lateMs = now.getTime() - ss.getTime() - (parseInt(State.settings.gracePeriod||5)*60000);
     const threshold = parseInt(State.settings.lateClockInApprovalMinutes||60);
     if (lateMs > threshold*60000) lateClockIn = true;
   }
@@ -1867,19 +1939,19 @@ function buildLeaveInfoCard(res, emp) {
   const lb = res.leaveBalance || {};
   let html = '';
 
-  // Leave usage this month
+  // Leave usage this year
   html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
     <div style="background:var(--dark3);border-radius:8px;padding:8px;text-align:center">
-      <div style="font-size:1.3rem;font-weight:700;color:var(--gold)">${lb.usedIL||0}</div>
-      <div style="font-size:10px;color:var(--gray-light)">IL Used<br>इस माह</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--gold)">${lb.IL||0}</div>
+      <div style="font-size:10px;color:var(--gray-light)">IL Used<br>इस वर्ष</div>
     </div>
     <div style="background:var(--dark3);border-radius:8px;padding:8px;text-align:center">
-      <div style="font-size:1.3rem;font-weight:700;color:var(--blue)">${lb.usedSL||0}</div>
-      <div style="font-size:10px;color:var(--gray-light)">SL Used<br>इस माह</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--blue)">${lb.SL||0}</div>
+      <div style="font-size:10px;color:var(--gray-light)">SL Used<br>इस वर्ष</div>
     </div>
     <div style="background:var(--dark3);border-radius:8px;padding:8px;text-align:center">
-      <div style="font-size:1.3rem;font-weight:700;color:var(--green)">${lb.usedPL||0}</div>
-      <div style="font-size:10px;color:var(--gray-light)">PL Used<br>इस माह</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--green)">${lb.PL||0}</div>
+      <div style="font-size:10px;color:var(--gray-light)">PL Used<br>इस वर्ष</div>
     </div>
   </div>`;
 
@@ -1960,11 +2032,9 @@ function buildMyInfoCard(emp) {
   }
   // Late deduction tiers
   let lateTiers = '';
-  const grace = parseInt(s.graceMinutes||5);
-  const t1l = parseInt(s.lateT1Limit||15), t1d = parseFloat(s.lateT1Deduction||0.5);
-  const t2l = parseInt(s.lateT2Limit||30), t2d = parseFloat(s.lateT2Deduction||1);
-  const t3d = parseFloat(s.lateT3Deduction||2);
-  lateTiers = `<0-${grace}min: Grace (no deduction)<br>${grace+1}-${t1l}min late: -${t1d} day<br>${t1l+1}-${t2l}min late: -${t2d} day<br>>${t2l}min late: -${t3d} days`;
+  const grace = parseInt(s.gracePeriod||5);   // Bug 8 fix: correct key is gracePeriod
+  const t1 = parseInt(s.late1Max||3), t2 = parseInt(s.late2Max||6), t3 = parseInt(s.late3Max||9);
+  lateTiers = `Grace: ${grace} min after shift start<br>1–${t1} lates/month: verbal warning only<br>${t1+1}–${t2} lates/month: −0.5 day each<br>${t2+1}–${t3} lates/month: −1 day each<br>>${t3} lates/month: −2 days each`;
 
   const row = (icon, label, value, valueClass='') => `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--dark3)">
@@ -1986,7 +2056,7 @@ function buildMyInfoCard(emp) {
       <div style="font-size:11px;line-height:1.7;color:var(--gray-light)">${lateTiers}</div>
     </div>
     ${row('🚫','UL Penalty',`${s.ulPenaltyDays||2} extra days deducted per UL`)}
-    ${row('🥪','Sandwich Rule',s.sandwichRule==='false'?'Not applied':'Applied (leave between 2 offs = deducted)')}
+    ${row('🥪','Sandwich Rule','Applied — holiday/WO sandwiched between 2 leave days is also deducted')}
     ${row('🔐','PIN Block','After '+(s.pinBlockAfter||3)+' wrong attempts → fee ₹'+(s.pinReactivationFee||100))}
   `;
 }
@@ -2005,7 +2075,7 @@ async function cancelLeaveFromKiosk(leaveId, needsManagerApproval) {
       {label:'Confirm Cancellation', cls:'btn-gold', cb: async () => {
         const pin = document.getElementById('cancel-leave-pin')?.value;
         if (!pin) { toast('Enter manager PIN','warning'); return; }
-        const mgrPw=State.settings.managerPassword||'Manager@2026', supPw=State.settings.supervisorPassword||'Supervisor@2026', admPw=State.settings.adminPassword||'ArtzFolio@2026';
+        const mgrPw=(State._pwMap||{}).manager||'Manager@2026', supPw=(State._pwMap||{}).supervisor||'Supervisor@2026', admPw=(State._pwMap||{}).owner||'ArtzFolio@2026';
         if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid PIN','error'); return; }
         closeModal();
         await doCancelLeave(leaveId, true);
@@ -2013,7 +2083,8 @@ async function cancelLeaveFromKiosk(leaveId, needsManagerApproval) {
       {label:'Back', cls:'btn-dark', cb: closeModal},
     ]);
   } else {
-    if (!confirm('Cancel this leave request?')) return;
+    const confirmed = await confirm2('Cancel this pending leave request?');
+    if (!confirmed) return;
     await doCancelLeave(leaveId, false);
   }
 }
@@ -2036,7 +2107,9 @@ async function showAdvanceRequest() {
   resetKioskTimer();
   if (!State.currentEmp) return;
   const emp = State.currentEmp;
-  const approverName = emp.supervisorName || emp.managerName || 'Manager';
+  const _supEmp = emp.supervisorId ? (State.employees||[]).find(e=>e.id===emp.supervisorId) : null;
+  const _mgrEmp = emp.managerId   ? (State.employees||[]).find(e=>e.id===emp.managerId)   : null;
+  const approverName = (_supEmp||_mgrEmp) ? (_supEmp||_mgrEmp).name : 'Supervisor/Manager';
 
   // Fetch live advance eligibility from server
   let elig = null;
@@ -2156,15 +2229,17 @@ async function showLeaveEncashRequest() {
   const emp = State.currentEmp;
   const lb = State.currentEmpRecord?.leaveBalance || {};
   const bal = State.currentEmpRecord?.balance || {};
-  const approverName = emp.supervisorName || emp.managerName || 'Manager';
+  const _supEmp = emp.supervisorId ? (State.employees||[]).find(e=>e.id===emp.supervisorId) : null;
+  const _mgrEmp = emp.managerId   ? (State.employees||[]).find(e=>e.id===emp.managerId)   : null;
+  const approverName = (_supEmp||_mgrEmp) ? (_supEmp||_mgrEmp).name : 'Supervisor/Manager';
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
   const dailyRate = parseFloat(emp.salary||0) / daysInMonth;
-  const availableIL = Math.max(0, (parseFloat(emp.monthlyILEntitlement||1)) - (lb.usedIL||0));
+  const availableIL = Math.max(0, (parseFloat(emp.monthlyILEntitlement||1)) - (lb.IL||0));
 
   const bodyHtml = `
     <div style="background:var(--dark3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="color:var(--gray-light)">IL used this month</span><strong>${lb.usedIL||0} day(s)</strong>
+        <span style="color:var(--gray-light)">IL used this year</span><strong>${lb.IL||0} day(s)</strong>
       </div>
       <div style="display:flex;justify-content:space-between;margin-bottom:4px">
         <span style="color:var(--gray-light)">Daily rate</span><strong class="text-gold">₹${Math.round(dailyRate)}/day</strong>
@@ -2349,7 +2424,8 @@ function doRequestLateClockIn(lateMinutes) {
       const pin = document.getElementById('late-mgr-pin')?.value?.trim();
       if (!reason) { toast('Reason is required','warning'); return; }
       if (!pin) { toast('Manager PIN required','warning'); return; }
-      const mgrPw=State.settings.managerPassword||'Manager@2026', supPw=State.settings.supervisorPassword||'Supervisor@2026', admPw=State.settings.adminPassword||'ArtzFolio@2026';
+      // Bug AA: read from _pwMap (never from State.settings — passwords are stripped at load)
+      const pm=State._pwMap||{}; const mgrPw=pm.manager||'Manager@2026', supPw=pm.supervisor||'Supervisor@2026', admPw=pm.owner||'ArtzFolio@2026';
       if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
       closeModal();
       await doClockIn({lateApproved: true, note: `Late clock-in approved: ${reason}`});
@@ -2383,7 +2459,8 @@ function doRequestClockInAfterMissedOut(yesterdayDate) {
       const note = document.getElementById('missed-out-note')?.value?.trim();
       const pin = document.getElementById('missed-mgr-pin')?.value?.trim();
       if (!pin) { toast('Manager PIN required','warning'); return; }
-      const mgrPw=State.settings.managerPassword||'Manager@2026', supPw=State.settings.supervisorPassword||'Supervisor@2026', admPw=State.settings.adminPassword||'ArtzFolio@2026';
+      // Bug AA: read from _pwMap (never from State.settings — passwords are stripped at load)
+      const pm2=State._pwMap||{}; const mgrPw=pm2.manager||'Manager@2026', supPw=pm2.supervisor||'Supervisor@2026', admPw=pm2.owner||'ArtzFolio@2026';
       if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
       closeModal();
       // First, record yesterday's missed clock-out
@@ -2420,9 +2497,9 @@ function doRequestLateBlockOverride(monthLates, limit) {
     {label:'Override & Allow Clock-In', cls:'btn-gold', cb: async () => {
       const pin = document.getElementById('latebk-pin').value;
       const note = document.getElementById('latebk-note').value;
-      const sv = State.settings?.supervisorPassword||'';
-      const mg = State.settings?.managerPassword||'';
-      const ow = State.settings?.adminPassword||'';
+      const sv = (State._pwMap||{}).supervisor||'';
+      const mg = (State._pwMap||{}).manager||'';
+      const ow = (State._pwMap||{}).owner||'';
       if(!pin || (pin!==sv && pin!==mg && pin!==ow)) {
         toast('Invalid supervisor/manager PIN','error'); return;
       }
@@ -2499,7 +2576,7 @@ function showOTPayoutModal(otMinutes, workMinutes, attendanceId, nightShiftAllow
   const bodyHtml = `
     <div style="text-align:center;margin-bottom:16px">
       <div style="font-size:2rem">🎉</div>
-      <div style="font-size:16px;font-weight:700;margin:4px 0">${tt('shiftComplete')||'Shift Complete!'}</div>
+      <div style="font-size:16px;font-weight:700;margin:4px 0">Shift Complete!</div>
       <div style="color:var(--gray-light);font-size:13px">${hrs}h ${mins}m total • ${new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</div>
     </div>
     <div style="background:var(--dark3);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:14px">
@@ -2560,9 +2637,9 @@ async function initiateOTInstantPayout(otMinutes, totalAmount, attendanceId, otA
       const mode = document.getElementById('ot-pay-mode')?.value || 'Cash';
       const note = document.getElementById('ot-pay-note')?.value?.trim();
       if (!pin) { toast('Enter manager PIN','warning'); return; }
-      const mgrPw = State.settings.managerPassword||'Manager@2026';
-      const supPw = State.settings.supervisorPassword||'Supervisor@2026';
-      const admPw = State.settings.adminPassword||'ArtzFolio@2026';
+      const mgrPw = (State._pwMap||{}).manager||'Manager@2026';
+      const supPw = (State._pwMap||{}).supervisor||'Supervisor@2026';
+      const admPw = (State._pwMap||{}).owner||'ArtzFolio@2026';
       if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
       closeModal();
       try {
@@ -2622,9 +2699,9 @@ function showManagerApprovalModal(onApprove) {
       const pin = document.getElementById('mgr-pin-input')?.value;
       if (!pin) { toast('Enter manager PIN','warning'); return; }
       // Verify against manager/supervisor passwords
-      const mgrPw = State.settings.managerPassword||'Manager@2026';
-      const supPw = State.settings.supervisorPassword||'Supervisor@2026';
-      const admPw = State.settings.adminPassword||'ArtzFolio@2026';
+      const mgrPw = (State._pwMap||{}).manager||'Manager@2026';
+      const supPw = (State._pwMap||{}).supervisor||'Supervisor@2026';
+      const admPw = (State._pwMap||{}).owner||'ArtzFolio@2026';
       if ([mgrPw,supPw,admPw].includes(pin)) { closeModal(); onApprove('manager'); }
       else { toast('Invalid manager credentials','error'); }
     }},
@@ -2676,34 +2753,58 @@ async function showEarnings() {
   const empId = State.currentEmp?.id;
   if (!empId) return;
   const now = new Date();
-  const [balRes, salRes] = await Promise.all([
-    API.call('getBalance',{empId}),
-    API.call('calcSalary',{empId, year:now.getFullYear(), month:now.getMonth()+1, extended:false}),
-  ]);
-  const bal = balRes;
-  const sal = salRes;
+  let balRes, salRes;
+  try {
+    [balRes, salRes] = await Promise.all([
+      API.call('getBalance',{empId}),
+      API.call('calcSalary',{empId, year:now.getFullYear(), month:now.getMonth()+1, extended:false}),
+    ]);
+  } catch(e) {
+    toast('Network error — could not load earnings','error');
+    resetKioskTimer();
+    return;
+  }
+  const bal = balRes || {};
+  const sal = salRes || {};
+  const R = v => `<td style="text-align:right;font-weight:700">${fmtMoney(v||0)}</td>`;
+  const RC = (v,c) => `<td style="text-align:right;font-weight:700;color:var(--${c})">${fmtMoney(v||0)}</td>`;
+  const row = (lbl,valTd) => `<tr><td style="padding:4px 0;color:var(--gray-light)">${lbl}</td>${valTd}</tr>`;
   const html = `
   <div style="font-size:13px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-      <div style="background:var(--dark3);padding:12px;border-radius:8px;text-align:center">
-        <div style="font-size:1.4rem;font-weight:900;color:var(--gold)">${fmtMoney(bal.balance||0)}</div>
-        <div style="font-size:11px;color:var(--gray-light)">${t('balance')}</div>
-      </div>
-      <div style="background:var(--dark3);padding:12px;border-radius:8px;text-align:center">
-        <div style="font-size:1.4rem;font-weight:900;color:var(--green)">${fmtMoney(bal.earned||0)}</div>
-        <div style="font-size:11px;color:var(--gray-light)">Earned / अर्जित</div>
+    <!-- Net salary hero card -->
+    <div style="background:var(--dark3);border-radius:10px;padding:14px;text-align:center;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--gray-light);margin-bottom:2px">Est. Net Salary / अनुमानित वेतन</div>
+      <div style="font-size:2rem;font-weight:900;color:var(--gold)">${fmtMoney(sal.netSalary||0)}</div>
+      <div style="font-size:11px;color:var(--gray-light);margin-top:2px">
+        ${sal.presentDays||0} / ${sal.workingDays||0} days &nbsp;|&nbsp;
+        ${new Date(now.getFullYear(),now.getMonth()).toLocaleString('en-IN',{month:'long',year:'numeric'})}
       </div>
     </div>
+    <!-- Breakdown table -->
     <table style="width:100%;border-collapse:collapse;font-size:12px">
-      <tr><td style="padding:5px 0;color:var(--gray-light)">Base Salary / आधार वेतन</td><td style="text-align:right;font-weight:700">${fmtMoney(State.currentEmp?.salary||0)}</td></tr>
-      <tr><td style="padding:5px 0;color:var(--gray-light)">Days Present / उपस्थित दिन</td><td style="text-align:right">${sal.presentDays||0}</td></tr>
-      <tr><td style="padding:5px 0;color:var(--gray-light)">Daily Rate / दैनिक दर</td><td style="text-align:right">${fmtMoney(sal.dailyRate||0)}</td></tr>
-      <tr><td style="padding:5px 0;color:var(--gray-light)">Advances Deducted / अग्रिम</td><td style="text-align:right;color:var(--red)">- ${fmtMoney(bal.debits||0)}</td></tr>
-      <tr><td style="padding:5px 0;color:var(--gray-light)">Bonuses / बोनस</td><td style="text-align:right;color:var(--green)">+ ${fmtMoney(bal.credits||0)}</td></tr>
-      <tr style="border-top:1px solid var(--dark3)"><td style="padding:8px 0;font-weight:700;color:var(--gold)">Net Balance / बैलेंस</td><td style="text-align:right;font-weight:900;font-size:1.1rem;color:var(--gold)">${fmtMoney(bal.balance||0)}</td></tr>
+      ${row('Base Salary / आधार वेतन', R(State.currentEmp?.salary||0))}
+      ${row('Earned Salary / अर्जित वेतन', R(sal.earnedSalary||0))}
+      ${sal.otEarnings  ? row('OT Earnings / ओटी', RC(sal.otEarnings,'green')) : ''}
+      ${sal.ewEarnings  ? row('Extra Work / अतिरिक्त कार्य', RC(sal.ewEarnings,'green')) : ''}
+      ${sal.travelEarnings ? row('Travel Allow / यात्रा भत्ता', RC(sal.travelEarnings,'green')) : ''}
+      ${sal.bonuses||sal.performanceBonus ? row('Bonus / बोनस', RC((sal.bonuses||0)+(sal.performanceBonus||0),'green')) : ''}
+      ${sal.ulDeduction   ? row('UL Penalty / UL कटौती', `<td style="text-align:right;font-weight:700;color:var(--red)">- ${fmtMoney(sal.ulDeduction)}</td>`) : ''}
+      ${sal.lateDeduction ? row('Late Deduction / लेट कटौती', `<td style="text-align:right;font-weight:700;color:var(--red)">- ${fmtMoney(sal.lateDeduction)}</td>`) : ''}
+      ${sal.sandwichDeduction ? row('Sandwich Penalty', `<td style="text-align:right;font-weight:700;color:var(--red)">- ${fmtMoney(sal.sandwichDeduction)}</td>`) : ''}
+      ${bal.debits ? row('Advances / अग्रिम', `<td style="text-align:right;font-weight:700;color:var(--red)">- ${fmtMoney(bal.debits)}</td>`) : ''}
+      <tr style="border-top:1px solid var(--dark3)">
+        <td style="padding:8px 0;font-weight:700;color:var(--gold)">Net Payable / देय राशि</td>
+        <td style="text-align:right;font-weight:900;font-size:1.1rem;color:var(--gold)">${fmtMoney(sal.netSalary||0)}</td>
+      </tr>
     </table>
-    <div style="margin-top:12px;padding:10px;background:rgba(201,168,76,0.05);border-radius:8px;font-size:11px;color:var(--gray-light)">
-      * Balance as of today. Final payable calculated on salary day.
+    ${(sal.pfEmployee||sal.esiEmployee) ? `
+    <div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;font-size:11px;color:var(--gray-light)">
+      Statutory included above: PF ₹${Math.round(sal.pfEmployee||0).toLocaleString('en-IN')}
+      ${sal.esiEmployee ? ` | ESI ₹${Math.round(sal.esiEmployee||0).toLocaleString('en-IN')}` : ''}
+      ${sal.professionalTax ? ` | PT ₹${Math.round(sal.professionalTax||0).toLocaleString('en-IN')}` : ''}
+    </div>` : ''}
+    <div style="margin-top:10px;padding:8px;background:rgba(201,168,76,0.05);border-radius:8px;font-size:11px;color:var(--gray-light)">
+      * Estimate as of today. Final payable confirmed on salary day.
     </div>
   </div>`;
   showModal(`💰 ${tt('monthEarning')} — ${State.currentEmp?.name}`, html);
@@ -2715,7 +2816,9 @@ async function showESSPayslips() {
   const empId = State.currentEmp?.id;
   if (!empId) return;
   const now = new Date();
-  const res = await API.call('getESSData', {empId, year:now.getFullYear(), month:now.getMonth()+1});
+  let res;
+  try { res = await API.call('getESSData', {empId, year:now.getFullYear(), month:now.getMonth()+1}); }
+  catch(e) { toast('Network error — could not load payslips','error'); resetKioskTimer(); return; }
   if (!res.ok) { showModal('My Payslips', `<p style="color:var(--red)">${escHtml(res.error||'Failed to load')}</p>`); return; }
   const { salary, salaryRecords=[] } = res;
   let html = '';
@@ -2765,7 +2868,9 @@ async function showESSAttendance() {
   const empId = State.currentEmp?.id;
   if (!empId) return;
   const now = new Date();
-  const res = await API.call('getESSData', {empId, year:now.getFullYear(), month:now.getMonth()+1});
+  let res;
+  try { res = await API.call('getESSData', {empId, year:now.getFullYear(), month:now.getMonth()+1}); }
+  catch(e) { toast('Network error — could not load attendance','error'); resetKioskTimer(); return; }
   if (!res.ok) { showModal('My Attendance', `<p style="color:var(--red)">${escHtml(res.error)}</p>`); return; }
   const { attendance=[], leaveBalance={} } = res;
 
@@ -2849,7 +2954,9 @@ async function showLeaveRequest() {
       const reason=document.getElementById('lv-note')?.value;
       if (!from||!to) { toast('Select dates / तारीख चुनें','warning'); return; }
       if(!reason || reason.trim().length < 3) { toast('Please enter a reason for leave','warning'); return; }
-      const res = await API.call('requestLeave',{empId, type, startDate:from, endDate:to, note:reason});
+      let res;
+      try { res = await API.call('requestLeave',{empId, type, startDate:from, endDate:to, note:reason}); }
+      catch(e) { toast('Network error — leave not submitted','error'); return; }
       if (res.ok) {
         closeModal();
         const msg = res.needsSeniorApproval ? 'Leave sent! Requires L5+ approval for 3+ days.' : 'Leave request sent to supervisor!';
@@ -2889,7 +2996,9 @@ async function doApplyExit() {
     {label:'Submit / जमा करें', cls:'btn-red', cb:async()=>{
       const reason=document.getElementById('exit-reason')?.value;
       const exitType=document.getElementById('exit-type')?.value;
-      const res=await API.call('updateEmployee',{empId:emp.id, status:'Notice', notes:`Exit applied ${todayStr()} - ${exitType} - ${reason}`});
+      let res;
+      try { res=await API.call('updateEmployee',{empId:emp.id, status:'Notice', notes:`Exit applied ${todayStr()} - ${exitType} - ${reason}`}); }
+      catch(e) { toast('Network error — exit not submitted','error'); return; }
       if(res.ok){closeModal();toast('Exit application submitted. Salary put on hold until notice completion.','success',6000);}
       else toast('Error','error');
     }},
@@ -2935,42 +3044,37 @@ async function openAdminLogin() {
   document.getElementById('login-step-1').style.display='block';
   document.getElementById('login-step-2').style.display='none';
   document.getElementById('admin-login-err').style.display='none';
-  // Restore remembered role + password
+  // Restore remembered role only (passwords are never stored — Bug E+Y security fix)
   const rememberedRole = LS.g('adminRememberRole');
-  const rememberedPw = LS.g('adminRememberPw');
   if (rememberedRole) {
     selectRole(rememberedRole);
     const cb = document.getElementById('admin-remember-me');
     if (cb) cb.checked = true;
   }
-  if (rememberedPw) {
-    document.getElementById('admin-pw-input').value = rememberedPw;
-  } else {
-    document.getElementById('admin-pw-input').value = '';
-  }
+  document.getElementById('admin-pw-input').value = '';
 }
 async function doAdminLogin() {
   const pw = document.getElementById('admin-pw-input').value;
   const errEl = document.getElementById('admin-login-err');
   errEl.style.display='none';
-  const settings = State.settings||{};
-  const pwMap = {
-    owner: settings.adminPassword||'ArtzFolio@2026',
-    manager: settings.managerPassword||'Manager@2026',
-    supervisor: settings.supervisorPassword||'Supervisor@2026',
+  const pwMap = State._pwMap || {
+    owner: 'ArtzFolio@2026',
+    manager: 'Manager@2026',
+    supervisor: 'Supervisor@2026',
   };
   if (pw === pwMap[selectedRole]) {
     // Save remember-me
     const rememberCb = document.getElementById('admin-remember-me');
     if (rememberCb?.checked) {
       LS.s('adminRememberRole', selectedRole);
-      LS.s('adminRememberPw', pw);
+      // Bug E+Y: Never store password in localStorage — role only
     } else {
-      LS.d('adminRememberRole'); LS.d('adminRememberPw');
+      LS.d('adminRememberRole');
     }
     // Check if 2FA is enabled
     const twoFAEnabled = LS.g('twoFAEnabled') === true;
-    const twoFASecret = LS.g('twoFASecret')||'';
+    // Bug V: read secret from Config (server) first, fallback to localStorage
+    const twoFASecret = State.settings?.twoFASecret || LS.g('twoFASecret') || '';
     if (twoFAEnabled && twoFASecret) {
       // Show step 2
       window._pendingLoginRole = selectedRole;
@@ -2985,19 +3089,20 @@ async function doAdminLogin() {
   } else {
     errEl.textContent='Incorrect password. Try again.';
     errEl.style.display='block';
-    // Clear remembered password if wrong
-    LS.d('adminRememberPw');
+    // Bug E+Y: no password stored, nothing to clear here
   }
 }
 
-function verify2FA() {
+async function verify2FA() {
   const code = (document.getElementById('admin-2fa-input')?.value||'').trim();
-  const secret = LS.g('twoFASecret')||'';
+  // Bug V: read secret from Config first, fallback to localStorage
+  const secret = State.settings?.twoFASecret || LS.g('twoFASecret') || '';
   const errEl = document.getElementById('admin-2fa-err');
   if (!code) { errEl.textContent='Enter your 2FA PIN.'; errEl.style.display='block'; return; }
   if (code === secret) {
     errEl.style.display='none';
-    completeAdminLogin(window._pendingLoginRole || selectedRole);
+    await completeAdminLogin(window._pendingLoginRole || selectedRole);
+    window._pendingLoginRole = null;
   } else {
     errEl.textContent='Wrong 2FA PIN. Try again.';
     errEl.style.display='block';
@@ -3012,10 +3117,29 @@ function back2FAToStep1() {
 }
 
 async function completeAdminLogin(role) {
+  // Bug KK: ask for a real name so audit trail identifies who (not just role)
+  const savedName = LS.g('adminLoginName_' + role) || '';
+  await new Promise(resolve => {
+    showModal('👤 Your Name for Audit Records', `
+      <div style="font-size:13px;color:var(--gray-light);margin-bottom:12px">
+        Enter your name so approvals, salary saves, and audit logs show who performed each action.
+        Multiple ${role}s sharing this login will be distinguished by name.
+      </div>
+      <div class="form-group"><label class="form-label">Your Name *</label>
+        <input id="login-name-input" class="form-input" value="${escHtml(savedName)}" placeholder="e.g. Rajat / Ankur…">
+      </div>`, [
+      {label:'Continue', cls:'btn-gold', cb: () => {
+        const nm = document.getElementById('login-name-input')?.value?.trim();
+        State.adminUser = nm || role; // fallback to role if blank
+        if (nm) LS.s('adminLoginName_' + role, nm);
+        closeModal(); resolve();
+      }},
+    ]);
+    setTimeout(()=>{ const el=document.getElementById('login-name-input'); if(el){el.select();el.focus();} }, 100);
+  });
   State.adminRole = role;
-  State.adminUser = role;
   document.getElementById('admin-brand-role').textContent = `Role: ${role.charAt(0).toUpperCase()+role.slice(1)}`;
-  document.getElementById('admin-user-info').textContent = role.toUpperCase();
+  document.getElementById('admin-user-info').textContent = State.adminUser.toUpperCase();
   showScreen('admin');
   applyRolePermissions();
   await switchTab('dashboard');
@@ -3211,7 +3335,9 @@ async function renderApprovals() {
     return `<div style="background:var(--dark2);border:1px solid var(--blue-light);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
       <div style="flex:1;min-width:200px">
         <strong>${escHtml(r.empName||r.empId)}</strong>
-        <span class="badge badge-gold" style="margin-left:6px">${escHtml(r.empId||'')}</span>
+        ${r.dept  ? `<span class="badge badge-blue"  style="margin-left:6px">${escHtml(r.dept)}</span>`  : ''}
+        ${r.level ? `<span class="badge badge-orange" style="margin-left:4px">${escHtml(r.level)}</span>` : ''}
+        <span style="font-size:10px;color:var(--gray);margin-left:6px">${escHtml(r.empId||'')}</span>
         <div style="font-size:12px;color:var(--gray-light);margin-top:4px">
           📅 OT Date: <strong>${fmtDate(r.otDate)}</strong> &nbsp;⏱ Requested Hours: <strong>${escHtml(r.expectedHours||'')}</strong>
         </div>
@@ -3255,16 +3381,37 @@ async function approvalsApproveTransaction(txId, approved) {
 async function approvalsApproveOT(otId, approved) {
   let res;
   if (approved) {
-    res = await API.call('approveOT', {otId, approvedBy: State.adminUser});
+    res = await API.call('approveOT', {id: otId, approvedBy: State.adminUser});
+    if (res && res.ok) {
+      toast('✓ OT Request Approved — WhatsApp sent', 'success', 4000);
+      await renderApprovals();
+    } else {
+      toast((res && res.error) || 'Error processing OT request', 'error');
+    }
   } else {
-    const reason = prompt('Reason for rejecting OT request (optional):') || '';
-    res = await API.call('rejectOT', {otId, approvedBy: State.adminUser, rejectionReason: reason});
-  }
-  if (res && res.ok) {
-    toast(approved ? '✓ OT Request Approved — WhatsApp sent' : 'OT Request Rejected', approved ? 'success' : 'info', 4000);
-    await renderApprovals();
-  } else {
-    toast((res && res.error) || 'Error processing OT request', 'error');
+    // Bug fix: replace native prompt() (blocked in kiosk/fullscreen) with in-app modal
+    await new Promise(resolve => {
+      showModal('Reject OT Request', `
+        <div class="form-group">
+          <label class="form-label">Reason for rejection (optional)</label>
+          <input id="ot-reject-reason" class="form-input" placeholder="Enter reason…" autocomplete="off">
+        </div>`, [
+        {label:'Reject', cls:'btn-sm', cb: async () => {
+          const reason = document.getElementById('ot-reject-reason')?.value || '';
+          closeModal();
+          res = await API.call('rejectOT', {id: otId, approvedBy: State.adminUser, reason});
+          if (res && res.ok) {
+            toast('OT Request Rejected', 'info', 4000);
+            await renderApprovals();
+          } else {
+            toast((res && res.error) || 'Error processing OT request', 'error');
+          }
+          resolve();
+        }, style:'background:var(--red);color:#fff'},
+        {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
+      ]);
+      setTimeout(() => document.getElementById('ot-reject-reason')?.focus(), 100);
+    });
   }
 }
 
@@ -3357,7 +3504,7 @@ let _tsWeekOffset = 0; // 0=current week, -1=last week, etc.
 function getWeekDates(offset=0) {
   const now = new Date();
   const day = now.getDay(); // 0=Sun
-  const weekStartDay = parseInt(State.settings.weekStartDay||1); // 1=Monday default
+  const weekStartDay = parseInt(State.settings.weekStart||1); // Bug 26 fix: correct key is weekStart
   const diff = (day - weekStartDay + 7) % 7;
   const start = new Date(now); start.setDate(now.getDate() - diff + (offset*7)); start.setHours(0,0,0,0);
   const dates = [];
@@ -3538,7 +3685,7 @@ async function renderDashboard() {
     return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--dark3)" opacity="0.5"/>
       ${paths}
-      <circle cx="${cx}" cy="${cy}" r="${r*0.45}" fill="var(--dark1)"/>
+      <circle cx="${cx}" cy="${cy}" r="${r*0.45}" fill="var(--dark)"/>
     </svg>`;
   }
 
@@ -3598,7 +3745,7 @@ async function renderDashboard() {
   <div class="section-hdr">
     <div class="section-title">Today's Attendance <small style="color:var(--gray)">${todayStr()}</small></div>
     <div class="section-actions">
-      <button class="btn btn-dark btn-sm" onclick="API.call('autoMarkUL',{}).then(()=>toast('UL check done','success'))">Auto-Mark UL</button>
+      <button class="btn btn-dark btn-sm" onclick="API.call('autoMarkUL',{userId:State.adminUser}).then(r=>toast(r.ok?'UL check done ('+(r.marked||0)+' marked)':'Error','success'))">Auto-Mark UL</button>
       <button class="btn btn-dark btn-sm" onclick="switchTab('attendance')">Full View →</button>
     </div>
   </div>
@@ -3628,9 +3775,10 @@ async function renderDashboard() {
 async function renderEmployees(filter='') {
   const res = await API.call('getEmployees');
   let emps = (res.employees||[]);
+  State._allEmployees = emps; // cache unfiltered for client-side filters
   if (filter) {
     const f=filter.toLowerCase();
-    emps = emps.filter(e=>e.name.toLowerCase().includes(f)||e.id.toLowerCase().includes(f)||e.dept.toLowerCase().includes(f)||e.level.toLowerCase().includes(f)||e.mobile?.toLowerCase().includes(f)||e.aadhaar?.includes(f));
+    emps = emps.filter(e=>(e.name+e.id+e.dept+e.level+(e.mobile||'')+(e.aadhaar||'')).toLowerCase().includes(f));
   }
   State.employees = emps;
   const canEdit = ['owner','manager'].includes(State.adminRole);
@@ -3649,14 +3797,15 @@ async function renderEmployees(filter='') {
     <span id="emp-bulk-count" style="font-size:13px;color:var(--gold);font-weight:700">0 selected</span>
     <button class="btn btn-dark btn-sm" onclick="bulkArchiveEmps()">Archive Selected</button>
     <button class="btn btn-green btn-sm" onclick="bulkUnarchiveEmps()">Unarchive Selected</button>
+    <button class="btn btn-dark btn-sm" onclick="bulkSetWeeklyOff()" title="Set Weekly Off day for all selected employees">📅 Set Weekly Off</button>
     <button class="btn btn-dark btn-sm" style="color:var(--gray-light)" onclick="clearEmpCbs()">✕ Clear</button>
   </div>
   <div class="filters-bar">
-    <input class="filter-input" placeholder="Search name/ID/dept…" oninput="renderEmployees(this.value)" value="${escHtml(filter)}">
-    <select class="filter-input" onchange="renderEmpsByStatus(this.value)">
+    <input id="emp-search-input" class="filter-input" placeholder="Search name/ID/dept…" oninput="applyEmpFilters()" value="${escHtml(filter)}">
+    <select id="emp-status-filter" class="filter-input" onchange="applyEmpFilters()">
       <option value="">All Status</option><option value="Active">Active</option><option value="Exited">Exited</option><option value="Archived">Archived</option>
     </select>
-    <select class="filter-input" onchange="renderEmpsByLevel(this.value)">
+    <select id="emp-level-filter" class="filter-input" onchange="applyEmpFilters()">
       <option value="">All Levels</option>
       ${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}">${l}</option>`).join('')}
     </select>
@@ -3702,8 +3851,44 @@ async function renderEmployees(filter='') {
   document.getElementById('admin-tab-content').innerHTML = html;
 }
 
-function renderEmpsByStatus(s) { renderEmployees(); setTimeout(()=>{if(s)State.employees=(State.employees||[]).filter(e=>e.status===s);renderEmployeesInPlace();},0); }
-function renderEmpsByLevel(l) { renderEmployees(); }
+async function applyEmpFilters() {
+  const query  = document.getElementById('emp-search-input')?.value || '';
+  const status = document.getElementById('emp-status-filter')?.value || '';
+  const level  = document.getElementById('emp-level-filter')?.value || '';
+  // Bug H: always filter from _allEmployees, never overwrite State.employees with filtered subset
+  let emps = (State._allEmployees || State.employees || []).slice();
+  if (query)  { const q=query.toLowerCase(); emps=emps.filter(e=>(e.name+e.id+e.dept+e.level+(e.mobile||'')).toLowerCase().includes(q)); }
+  if (status) { emps=emps.filter(e=>e.status===status); }
+  if (level)  { emps=emps.filter(e=>e.level===level); }
+  // Do NOT overwrite State.employees — that preserves the full list for payroll/bulk ops
+  // Update count label
+  const titleEl = document.querySelector('.section-title small');
+  if (titleEl) titleEl.textContent = `${emps.length} shown`;
+  // Re-render only the table body rows
+  const tbody = document.querySelector('.az-table tbody');
+  if (!tbody) { await renderEmployees(); return; } // re-render fresh, then filters will be applied on next change
+  const canEdit = ['owner','manager'].includes(State.adminRole);
+  const isOwner = State.adminRole === 'owner';
+  tbody.innerHTML = emps.length ? emps.map(e=>`<tr>
+    <td><input type="checkbox" class="emp-cb" value="${escHtml(e.id)}" onchange="updateBulkBar()" style="accent-color:var(--gold)"></td>
+    <td><strong>${escHtml(e.name)}</strong></td>
+    <td style="font-size:11px;color:var(--gray-light)">${escHtml(e.id)}</td>
+    <td><span class="badge badge-gold">${escHtml(e.level)}</span><div style="font-size:10px;color:var(--gray-light)">${escHtml(e.dept||'')} ${e.category?'| '+escHtml(e.category):''}</div></td>
+    <td>${e.salary?fmtMoney(e.salary):'—'}</td>
+    <td style="font-size:11px">${escHtml(e.shiftStart||'')}–${escHtml(e.shiftEnd||'')}<br><span style="color:var(--gray-light);font-size:10px">${e.dailyHours||''}h/day</span></td>
+    <td style="font-size:11px">${escHtml(e.weeklyOff1)}${e.weeklyOff2?'+'+e.weeklyOff2:''}</td>
+    <td style="font-size:11px">${fmtDate(e.doj)}</td>
+    <td>${statusBadge(e.status)}</td>
+    <td>
+      <button class="btn btn-dark btn-sm" onclick="showEmpDetail('${escHtml(e.id)}')">View</button>
+      <button class="btn btn-dark btn-sm" onclick="showDocumentVault('${escHtml(e.id)}','${escHtml(e.name)}')" title="Document Vault">📎</button>
+      ${canEdit?`<button class="btn btn-dark btn-sm" onclick="showEditEmpModal('${escHtml(e.id)}')">Edit</button>`:''}
+      ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="archiveEmp('${escHtml(e.id)}')">Archive</button>`:''}
+      ${canEdit&&e.status==='Archived'?`<button class="btn btn-green btn-sm" onclick="unarchiveEmp('${escHtml(e.id)}')">Unarchive</button>`:''}
+      ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="registerFace('${escHtml(e.id)}','${escHtml(e.name)}')">📷 Face</button>`:''}
+      ${isOwner&&e.status==='Archived'?`<button class="btn btn-red btn-sm" onclick="permanentDeleteEmp('${escHtml(e.id)}','${escHtml(e.name)}')" title="Owner only: permanently delete">🗑 Delete</button>`:''}
+    </td></tr>`).join('') : `<tr><td colspan="10" style="text-align:center;color:var(--gray-light);padding:20px">No employees match the current filters.</td></tr>`;
+}
 
 async function showEmpDetail(empId) {
   const res = await API.call('getEmployee',{empId});
@@ -3726,6 +3911,8 @@ async function showEmpDetail(empId) {
     <div><strong>DOB:</strong> ${fmtDate(e.dob)}</div>
     <div><strong>Gender:</strong> ${escHtml(e.gender||'—')}</div>
     <div><strong>Aadhaar:</strong> ${escHtml(e.aadhaar||'—')}</div>
+    <div><strong>UAN:</strong> ${escHtml(e.uan||'—')}</div>
+    <div><strong>ESI No:</strong> ${escHtml(e.esiNumber||'—')}</div>
     <div><strong>Address:</strong> ${escHtml(e.address||'—')}</div>
     <div><strong>Joining:</strong> ${fmtDate(e.doj)}</div>
     <div><strong>Notice Period:</strong> ${escHtml(e.noticeperiodDays||'90')} days</div>
@@ -3816,7 +4003,7 @@ async function uploadDocument(empId, empName) {
   const fileInput = document.getElementById('doc-file');
   if (!fileInput.files[0]) { toast('Please select a file','error'); return; }
   const file = fileInput.files[0];
-  if (file.size > 5*1024*1024) { toast('File too large. Max 5MB allowed.','error'); return; }
+  if (file.size > 3*1024*1024) { toast('File too large. Max 3MB allowed (GAS limit).','error'); return; }
   const fileBase64 = await new Promise(resolve => {
     const r = new FileReader();
     r.onload = e => resolve(e.target.result);
@@ -3836,12 +4023,45 @@ async function uploadDocument(empId, empName) {
 }
 
 async function deleteDocument(docId, empId, empName) {
-  if (!confirm('Delete this document? This cannot be undone.')) return;
+  if (!await confirm2('Delete this document? This cannot be undone.')) return;
   const res = await API.call('deleteDocument', {id:docId});
   if (!res.ok) { toast(res.error||'Delete failed','error'); return; }
   toast('Document deleted','warning');
   closeModal();
   showDocumentVault(empId, empName);
+}
+
+// Bug fix: autoFillLevelDefaults was called onchange on the level select in showAddEmpModal
+// but was never defined. Fills salary/noticePeriod fields with band defaults when level changes.
+// Field IDs match those in showAddEmpModal: e-sal, e-np, e-ss, e-se, e-dh.
+function autoFillLevelDefaults(level) {
+  // Typical defaults by level — only applied when the target field is still blank
+  const LEVEL_DEFAULTS = {
+    L1:  {salary: 10000, noticePeriod: 90, shiftStart:'09:00', shiftEnd:'19:00', dailyHours:10},
+    L2:  {salary: 11000, noticePeriod: 90, shiftStart:'09:00', shiftEnd:'19:00', dailyHours:10},
+    L3:  {salary: 12000, noticePeriod: 90, shiftStart:'09:00', shiftEnd:'19:00', dailyHours:10},
+    L4:  {salary: 14000, noticePeriod: 90, shiftStart:'09:00', shiftEnd:'19:00', dailyHours:10},
+    L5:  {salary: 18000, noticePeriod: 90, shiftStart:'09:00', shiftEnd:'19:00', dailyHours:10},
+    L6:  {salary: 26000, noticePeriod: 60, shiftStart:'10:00', shiftEnd:'18:00', dailyHours:8},
+    L7:  {salary: 32000, noticePeriod: 60, shiftStart:'10:00', shiftEnd:'18:00', dailyHours:8},
+    L8:  {salary: 40000, noticePeriod: 60, shiftStart:'10:00', shiftEnd:'18:00', dailyHours:8},
+    L9:  {salary: 60000, noticePeriod: 60, shiftStart:'10:00', shiftEnd:'18:00', dailyHours:8},
+    L10: {salary:100000, noticePeriod: 60, shiftStart:'10:00', shiftEnd:'18:00', dailyHours:8},
+  };
+  const d = LEVEL_DEFAULTS[level];
+  if (!d) return;
+  // Use actual form field IDs from showAddEmpModal
+  const salEl = document.getElementById('e-sal');
+  const npEl  = document.getElementById('e-np');
+  const ssEl  = document.getElementById('e-ss');
+  const seEl  = document.getElementById('e-se');
+  const dhEl  = document.getElementById('e-dh');
+  // Only auto-fill if field is empty (don't overwrite intentional values)
+  if (salEl && !salEl.value) salEl.value = d.salary;
+  if (npEl  && !npEl.value)  npEl.value  = d.noticePeriod;
+  if (ssEl  && !ssEl.value)  ssEl.value  = d.shiftStart;
+  if (seEl  && !seEl.value)  seEl.value  = d.shiftEnd;
+  if (dhEl  && !dhEl.value)  dhEl.value  = d.dailyHours;
 }
 
 async function showAddEmpModal() {
@@ -3917,6 +4137,10 @@ async function showAddEmpModal() {
     <div class="form-group"><label class="form-label">Aadhaar Number</label><input id="e-aadh" class="form-input" placeholder="XXXX XXXX XXXX"></div>
     <div class="form-group"><label class="form-label">Notice Period (days)</label><input id="e-np" class="form-input" type="number" value="90"></div>
   </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">UAN (PF Account)</label><input id="e-uan" class="form-input" placeholder="Universal Account Number"></div>
+    <div class="form-group"><label class="form-label">ESI Number</label><input id="e-esino" class="form-input" placeholder="ESI Registration Number"></div>
+  </div>
   <div class="form-group"><label class="form-label">Address</label><input id="e-addr" class="form-input" placeholder="Permanent address…"></div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Factory</label><select id="e-fact" class="form-input"><option value="">— Select —</option>${factoryOpts}</select></div>
@@ -3970,6 +4194,8 @@ async function showAddEmpModal() {
         mobile:document.getElementById('e-mob').value, doj:document.getElementById('e-doj').value,
         dob:document.getElementById('e-dob').value, gender:document.getElementById('e-gen').value,
         aadhaar:document.getElementById('e-aadh').value, noticeperiodDays:document.getElementById('e-np').value,
+        uan:document.getElementById('e-uan').value.trim(),
+        esiNumber:document.getElementById('e-esino').value.trim(),
         address:document.getElementById('e-addr').value, factory:document.getElementById('e-fact').value,
         zone:document.getElementById('e-zone').value, department:document.getElementById('e-depar').value,
         project:document.getElementById('e-proj').value,
@@ -4033,6 +4259,10 @@ async function showEditEmpModal(empId) {
       <select id="ee-status" class="form-input"><option value="Active" ${e.status==='Active'?'selected':''}>Active</option><option value="Exited">Exited</option><option value="Archived">Archived</option></select></div>
   </div>
   <div class="form-row">
+    <div class="form-group"><label class="form-label">UAN (PF Account)</label><input id="ee-uan" class="form-input" value="${escHtml(e.uan||'')}"></div>
+    <div class="form-group"><label class="form-label">ESI Number</label><input id="ee-esino" class="form-input" value="${escHtml(e.esiNumber||'')}"></div>
+  </div>
+  <div class="form-row">
     <div class="form-group"><label class="form-label">New PIN (leave blank to keep)</label><input id="ee-pin" class="form-input" type="text" maxlength="4" placeholder="New 4-digit PIN…"></div>
     <div class="form-group"><label class="form-label">Supervisor ID</label><input id="ee-sup" class="form-input" value="${escHtml(e.supervisorId||'')}"></div>
   </div>
@@ -4055,6 +4285,8 @@ async function showEditEmpModal(empId) {
         weeklyOff1:document.getElementById('ee-wo1').value, weeklyOff2:document.getElementById('ee-wo2').value,
         mobile:document.getElementById('ee-mob').value, noticeperiodDays:document.getElementById('ee-np').value,
         aadhaar:document.getElementById('ee-aadh').value, status:document.getElementById('ee-status').value,
+        uan:document.getElementById('ee-uan').value.trim(),
+        esiNumber:document.getElementById('ee-esino').value.trim(),
         address:document.getElementById('ee-addr').value, notes:document.getElementById('ee-notes').value,
         supervisorId:document.getElementById('ee-sup').value,
         nightShiftAllowance:document.getElementById('ee-nsa').value,
@@ -4086,13 +4318,32 @@ async function unarchiveEmp(empId) {
 }
 async function permanentDeleteEmp(empId, name) {
   if (State.adminRole !== 'owner') { toast('Only Owner can permanently delete employees','error'); return; }
-  const ok = await confirm2(`⛔ PERMANENTLY DELETE ${name} (${empId})?\n\nThis cannot be undone. All attendance and salary records for this employee will be preserved in history but the employee profile will be deleted.\n\nType "DELETE" to confirm.`);
-  if (!ok) return;
-  const conf = prompt(`Type DELETE to confirm permanent deletion of ${name}:`);
-  if (conf !== 'DELETE') { toast('Cancelled — type exactly DELETE to confirm','warning'); return; }
-  const res = await API.call('archiveEmployee',{empId, hard:true});
-  if(res.ok){toast(`✓ ${name} permanently deleted`,'success');await renderEmployees();}
-  else toast(res.error||'Error deleting employee','error');
+  // Bug fix: replace native prompt() (blocked in kiosk/fullscreen) with in-app modal confirmation
+  await new Promise(resolve => {
+    showModal('⛔ Permanently Delete Employee', `
+      <div style="background:rgba(200,0,0,0.12);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:14px">
+        <strong style="color:var(--red)">⚠ This cannot be undone.</strong>
+        <div style="font-size:12px;color:var(--white);margin-top:6px">
+          Attendance and salary records for <strong>${escHtml(name)}</strong> (${escHtml(empId)}) will be preserved in history, but the employee profile will be permanently deleted.
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type <strong style="color:var(--red)">DELETE</strong> to confirm</label>
+        <input id="perm-del-conf" class="form-input" placeholder="Type DELETE here" autocomplete="off">
+      </div>`, [
+      {label:'Permanently Delete', cls:'btn-sm', cb: async () => {
+        const conf = document.getElementById('perm-del-conf')?.value || '';
+        if (conf !== 'DELETE') { toast('Type DELETE exactly to confirm','error'); return; }
+        closeModal();
+        const res = await API.call('archiveEmployee',{empId, hard:true});
+        if(res.ok){toast(`✓ ${name} permanently deleted`,'success');await renderEmployees();}
+        else toast(res.error||'Error deleting employee','error');
+        resolve();
+      }, style:'background:var(--red);color:#fff'},
+      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
+    ]);
+    setTimeout(() => document.getElementById('perm-del-conf')?.focus(), 100);
+  });
 }
 function toggleAllEmpCb(checked) {
   document.querySelectorAll('.emp-cb').forEach(cb=>cb.checked=checked);
@@ -4113,15 +4364,54 @@ function clearEmpCbs() {
 }
 async function bulkArchiveEmps() {
   const ids = [...document.querySelectorAll('.emp-cb:checked')].map(cb=>cb.value);
-  if(!ids.length || !confirm(`Archive ${ids.length} employee(s)?`)) return;
+  if(!ids.length) return;
+  if (!await confirm2(`Archive ${ids.length} employee(s)?`)) return;
   for(const id of ids) await API.call('updateEmployee',{empId:id,status:'Archived'});
   toast(`✓ ${ids.length} employee(s) archived`,'success'); await renderEmployees();
 }
 async function bulkUnarchiveEmps() {
   const ids = [...document.querySelectorAll('.emp-cb:checked')].map(cb=>cb.value);
-  if(!ids.length || !confirm(`Reactivate ${ids.length} employee(s)?`)) return;
+  if(!ids.length) return;
+  if (!await confirm2(`Reactivate ${ids.length} employee(s)?`)) return;
   for(const id of ids) await API.call('updateEmployee',{empId:id,status:'Active'});
   toast(`✓ ${ids.length} employee(s) reactivated`,'success'); await renderEmployees();
+}
+
+async function bulkSetWeeklyOff() {
+  const ids = [...document.querySelectorAll('.emp-cb:checked')].map(cb=>cb.value);
+  if(!ids.length) { toast('Select employees first','error'); return; }
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const opts = days.map(d=>`<option value="${d}">${d}</option>`).join('');
+  showModal('📅 Set Weekly Off Day', `
+    <p style="font-size:13px;color:var(--gray-light);margin-bottom:14px">Set weekly off for <strong style="color:var(--gold)">${ids.length} selected employee(s)</strong>.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Weekly Off Day 1 *</label>
+        <select id="bwo-day1" class="form-input">${opts}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Weekly Off Day 2 (optional)</label>
+        <select id="bwo-day2" class="form-input"><option value="">None</option>${opts}</select>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--gray);margin-top:8px">Tip: For rotational off, update each employee individually via the Edit button.</p>
+  `, [
+    {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+    {label:`Apply to ${ids.length} Employees`, cls:'btn-gold', cb: async()=>{
+      const d1 = document.getElementById('bwo-day1').value;
+      const d2 = document.getElementById('bwo-day2').value;
+      closeModal();
+      toast(`Updating ${ids.length} employees…`,'info');
+      let done=0;
+      for(const id of ids) {
+        await API.call('updateEmployee',{empId:id, weeklyOff1:d1, weeklyOff2:d2});
+        done++;
+        if(done%5===0) toast(`${done}/${ids.length} updated…`,'info');
+      }
+      toast(`✓ Weekly off set to ${d1}${d2?' + '+d2:''} for ${ids.length} employees`,'success',5000);
+      await renderEmployees();
+    }},
+  ]);
 }
 
 async function registerFace(empId, empName) {
@@ -4140,14 +4430,19 @@ async function registerFace(empId, empName) {
     {label:'📷 Capture Face', cls:'btn-gold', cb: async()=>{
       document.getElementById('reg-status').textContent='Scanning…';
       const video=document.getElementById('reg-video');
+      if(!video||!video.srcObject){document.getElementById('reg-status').textContent='Camera not ready. Please wait and try again.';return;}
       const descriptors=[];
       for(let i=0;i<3;i++){
-        await new Promise(r=>setTimeout(r,600));
-        const desc=await Face.getDescriptor();
-        if(desc) descriptors.push(desc);
-        document.getElementById('reg-status').textContent=`Sample ${descriptors.length}/3 captured…`;
+        await new Promise(r=>setTimeout(r,700));
+        try {
+          const opts=new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.35});
+          const result=await faceapi.detectSingleFace(video,opts).withFaceLandmarks(true).withFaceDescriptor();
+          const desc=result?Array.from(result.descriptor):null;
+          if(desc) descriptors.push(desc);
+          document.getElementById('reg-status').textContent=`Sample ${descriptors.length}/3 captured… ${desc?'✓':'(no face — keep still)'}`;
+        } catch(fe){ console.warn('Face detect error',fe); }
       }
-      if(descriptors.length<2){document.getElementById('reg-status').textContent='Could not detect face. Try again.';return;}
+      if(descriptors.length<2){document.getElementById('reg-status').textContent='Could not detect face clearly. Ensure good lighting and face the camera directly.';return;}
       // Average descriptors
       const avg=descriptors[0].map((_,i)=>descriptors.reduce((s,d)=>s+d[i],0)/descriptors.length);
       const res=await API.call('updateFaceDescriptor',{empId,descriptor:avg});
@@ -4181,7 +4476,7 @@ async function renderAttendance() {
   }
   const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const yearOpts=[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('');
+  const yearOpts=Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('');
   const monthOpts=months.map((m,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${m}</option>`).join('');
   let html=`
   <div class="section-hdr">
@@ -4222,13 +4517,16 @@ async function renderAttendanceGrid(empId, year, month, emps) {
     <th>Date</th><th>Day</th><th>Clock In</th><th>Clock Out</th><th>Status</th><th>Late</th><th>Hours</th><th>GPS</th><th>Edit</th>
   </tr></thead><tbody>`;
   const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const daysFull=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   for(let d=1;d<=daysInMonth;d++){
     const ds=`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const rec=recMap[ds];
-    const dayName=days[new Date(ds).getDay()];
+    const dowIdx=new Date(ds).getDay();
+    const dayName=days[dowIdx];
+    const dayNameFull=daysFull[dowIdx];
     const status=rec?rec.status:(new Date(ds)<=new Date()?'—':'');
     if(rec){if(rec.status==='P')P++;if(rec.status==='UL')UL++;if(rec.status==='IL')IL++;if(parseInt(rec.lateMinutes)>0)Late++;if(parseInt(rec.otMinutes)>0)OT++;}
-    const isWO=(emp.weeklyOff1===days[new Date(ds).getDay()]);
+    const isWO=(emp.weeklyOff1===dayNameFull)||(emp.weeklyOff2===dayNameFull);
     html+=`<tr class="${isWO?'text-gray':''}">
       <td>${d}</td><td>${dayName}</td>
       <td>${rec&&rec.clockIn?fmtTime(rec.clockIn):'—'}</td>
@@ -4424,9 +4722,28 @@ async function renderLeaves() {
   document.getElementById('admin-tab-content').innerHTML=html;
 }
 
+// Bug fix: filterLeaves was called from onchange/oninput in the leaves filter bar but was never defined.
+// Filters the rendered leaves table client-side without an API round-trip.
+function filterLeaves() {
+  const statusVal = (document.getElementById('lf-status')?.value || '').toLowerCase();
+  const empVal    = (document.getElementById('lf-emp')?.value    || '').toLowerCase();
+  const rows = document.querySelectorAll('#leaves-tbody tr');
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    if (!cells.length) return;
+    const empText    = (cells[0]?.textContent || '').toLowerCase();
+    const statusText = (cells[5]?.textContent || '').toLowerCase();
+    const matchStatus = !statusVal || statusText.includes(statusVal);
+    const matchEmp   = !empVal   || empText.includes(empVal);
+    row.style.display = (matchStatus && matchEmp) ? '' : 'none';
+  });
+}
+
 async function approveLeave(leaveId, approved) {
-  const note=approved?'Approved by admin':'Rejected by admin';
-  const res=await API.call('approveLeave',{leaveId,approved,approvedBy:State.adminUser,note});
+  // Bug CC: must send approverRole so multi-stage approval chain is respected
+  const approverRole = State.adminRole==='owner'?'owner':State.adminRole==='manager'?'manager':'supervisor';
+  const note=approved?`Approved by ${State.adminUser}`:`Rejected by ${State.adminUser}`;
+  const res=await API.call('approveLeave',{leaveId,approved,approvedBy:State.adminUser,note,approverRole});
   if(res.ok){toast(approved?'✓ Leave approved':'Leave rejected',approved?'success':'info');await renderLeaves();}
   else toast(res.error||'Error','error');
 }
@@ -4482,7 +4799,7 @@ async function renderTransactions() {
   <div class="filters-bar">
     <select id="tr-emp" class="filter-input" onchange="loadTransactions()"><option value="">All Employees</option>${empOpts}</select>
     <select id="tr-month" class="filter-input" onchange="loadTransactions()">
-      ${['All Months','2026-04','2026-03','2026-02','2026-01','2025-12'].map((m,i)=>`<option value="${i===0?'':m}">${m}</option>`).join('')}
+      <option value="">All Months</option>${(()=>{const opts=[];const d=new Date();for(let i=0;i<24;i++){const y=d.getFullYear(),m=d.getMonth()-i;const dt=new Date(y,m,1);const s=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;opts.push(`<option value="${s}">${s}</option>`);}return opts.join('');})()}
     </select>
   </div>
   <div id="trans-balance-card" style="display:none;margin-bottom:16px"></div>
@@ -4560,7 +4877,7 @@ function showAddTransModal() {
         <option value="PINReactivationFee">PIN Reactivation Fee</option><option value="Increment">Increment</option>
         <option value="Deduction">Deduction</option><option value="Adjustment">Adjustment</option>
         <option value="LeaveEncashment">Leave Encashment (छुट्टी नकदीकरण)</option>
-        <option value="OTInstantPayout">OT Instant Payout</option>
+        <!-- Bug FF: OTInstantPayout removed — must go through clock-out flow for server-side validation -->
       </select></div>
     <div class="form-group"><label class="form-label">Amount (₹) *</label><input id="at-amt" class="form-input" type="number" placeholder="Amount…"></div>
   </div>
@@ -4604,7 +4921,7 @@ async function renderPoints() {
         ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===month?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('')}
       </select>
       <select id="pts-year-sel" class="filter-input" onchange="renderPoints()">
-        ${[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
+        ${Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
       </select>
     </div>
   </div>
@@ -4632,6 +4949,13 @@ async function renderPoints() {
         <table class="az-table" style="font-size:11px">
           <thead><tr><th>Employee</th><th>On Time (2)</th><th>Quota (4)</th><th>0 Errors (2)</th><th>Clean (2)</th><th>Fastest (+1)</th><th>Idea (+1)</th><th>Note</th><th>Save</th></tr></thead>
           <tbody>`;
+  // Bug DD: empty state when no eligible employees
+  if (lb.length === 0) {
+    html += `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--gray-light)">
+      No eligible employees found. Check <strong>Settings → Points Eligible Levels</strong> to configure who participates<br>
+      <small>(currently configured: ${escHtml((State.settings?.pointsEligibleLevels||'L8,L9,L10'))})</small>
+    </td></tr>`;
+  }
   lb.forEach(item=>{
     html+=`<tr id="prow-${escHtml(item.empId)}">
       <td><strong>${escHtml(item.name.split(' ')[0])}</strong></td>
@@ -4673,26 +4997,26 @@ async function savePoints(empId) {
 }
 
 function getWeeksOfMonth(year, month) {
-  // Returns all Saturdays in the month, each labeled with Mon-Sat range (even if Mon is prior month)
+  // Bug EE: returns Monday (week start) as weekOf value so weekOverlapsMonth on backend is consistent
+  // Window = weekOf(Monday) to weekOf+6(Sunday) — matches backend overlap logic
   const weeks = [];
   const daysInMonth = new Date(year, month, 0).getDate();
+  const fmtSh = dt => dt.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'});
   let weekNum = 1;
   for (let day = 1; day <= daysInMonth; day++) {
     const d = new Date(year, month-1, day);
-    if (d.getDay() === 6) { // Saturday
-      const sat = new Date(d);
-      const mon = new Date(sat);
-      mon.setDate(sat.getDate() - 5); // Monday of same week
-      const fmtSh = dt => dt.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'});
-      const label = `Week ${weekNum} — ${fmtSh(mon)} to ${fmtSh(sat)}`;
-      weeks.push({ value: sat.toISOString().split('T')[0], label });
+    if (d.getDay() === 1) { // Monday — week start
+      const mon = new Date(d);
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6); // Sunday end of week
+      const label = `Week ${weekNum} — ${fmtSh(mon)} to ${fmtSh(sun)}`;
+      weeks.push({ value: mon.toISOString().split('T')[0], label });
       weekNum++;
     }
   }
   if (!weeks.length) {
-    // Month has no Saturday yet (e.g., current month early) — use last day
-    const last = new Date(year, month-1, daysInMonth);
-    weeks.push({ value: last.toISOString().split('T')[0], label: `Week 1 — ${last.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}` });
+    // Month has no Monday yet — use first day of month as fallback
+    const first = new Date(year, month-1, 1);
+    weeks.push({ value: first.toISOString().split('T')[0], label: `Week 1 — ${first.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}` });
   }
   return weeks;
 }
@@ -4710,7 +5034,7 @@ async function renderRoster() {
   const roster=rosterRes.roster||[];
   const codes=['','P','IL','IHL','WO','H','HO','EW','SL','PL','UL'];
   const monthOpts=Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('');
-  const yearOpts=[2025,2026,2027].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('');
+  const yearOpts=Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('');
   const html=`
   <div class="section-hdr">
     <div class="section-title">Roster 📋</div>
@@ -5104,7 +5428,7 @@ async function renderPayroll() {
       ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('')}
     </select>
     <select id="pay-year" class="filter-input">
-      ${[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('')}
+      ${Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('')}
     </select>
     <label style="font-size:12px;color:var(--gray-light);display:flex;align-items:center;gap:6px">
       <input type="checkbox" id="pay-extended" checked> Include 1st–7th extended period
@@ -5135,6 +5459,7 @@ async function generateAllSalaries() {
     <button class="btn btn-dark btn-sm" onclick="exportPayrollCSV()">📤 Export CSV</button>
     <button class="btn btn-dark btn-sm" onclick="exportPayrollXLSX()">📊 Export Excel</button>
     <button class="btn btn-gold btn-sm" onclick="downloadAllSlipsPDF()">📄 Download All PDFs</button>
+    <button class="btn btn-sm" style="background:#1565C0;color:#fff" onclick="saveAllSalaries()">💾 Save to Records</button>
   </div>
   <div class="table-wrap"><table class="az-table">
     <thead><tr><th>Employee</th><th>Dept/Level</th><th>Base</th><th>Present</th><th>UL Ded.</th><th>Late Ded.</th><th>Adv./Loans</th><th>OT Earn.</th><th>Bonus</th><th>Net Salary</th><th>Slip</th></tr></thead>
@@ -5171,7 +5496,7 @@ async function generateAllSalaries() {
         ${(State.employees||[]).map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.id)} — ${escHtml(e.name)}</option>`).join('')}
       </select>
       <select id="hist-year" class="filter-input">
-        ${[2024,2025,2026].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
+        ${Array.from({length:5},(_,i)=>new Date().getFullYear()-2+i).map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
       </select>
       <button class="btn btn-dark btn-sm" onclick="loadHistoricalSlips()">🔍 Load Records</button>
       <button class="btn btn-gold btn-sm" onclick="downloadHistoricalSlipsPDF()">📄 Download All as PDF</button>
@@ -5181,6 +5506,23 @@ async function generateAllSalaries() {
   container.innerHTML=html;
   window._lastPayroll=salaries;
   window._lastPayrollMeta={year,month};
+}
+
+async function saveAllSalaries() {
+  const salaries = window._lastPayroll;
+  const meta = window._lastPayrollMeta;
+  if (!salaries || !salaries.length || !meta) {
+    toast('Generate payroll first before saving','warning'); return;
+  }
+  // Bug S: use in-app confirm2() — native confirm() is blocked on kiosk/fullscreen
+  const confirmed = await confirm2(`Save ${salaries.length} salary records for ${meta.year}-${String(meta.month).padStart(2,'0')} to Google Sheet?\nExisting records for this month will be overwritten.`);
+  if (!confirmed) return;
+  const res = await API.call('saveSalaries', {salaries, year: meta.year, month: meta.month, approvedBy: State.adminUser});
+  if (res.ok) {
+    toast(`✓ Saved ${res.saved} new + ${res.updated} updated salary records`, 'success');
+  } else {
+    toast(res.error || 'Save failed', 'error');
+  }
 }
 
 // Cross-link: jump to Transactions tab filtered to this employee+month
@@ -5649,9 +5991,73 @@ function downloadSalarySlipPDF(data) {
 async function downloadAllSlipsPDF() {
   const salaries=window._lastPayroll||[];
   if(!salaries.length){toast('Generate salaries first','warning');return;}
-  toast(`Generating ${salaries.length} PDF slips…`,'info',3000);
-  for(const s of salaries){await new Promise(r=>setTimeout(r,200)); downloadSalarySlipPDF(s);}
-  toast(`✓ All ${salaries.length} salary slips downloaded`,'success',4000);
+  if(!window.jspdf){toast('PDF library not loaded — try individual downloads','error');return;}
+  toast(`Building combined PDF for ${salaries.length} employees…`,'info',3000);
+  const {jsPDF}=window.jspdf;
+  const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+  const addr=State.settings?.factoryAddress||'Noida, Uttar Pradesh';
+  const meta=window._lastPayrollMeta||{};
+  const monthName=new Date(meta.year||new Date().getFullYear(),(meta.month||new Date().getMonth()+1)-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  let first=true;
+  for(const s of salaries){
+    if(!first) doc.addPage();
+    first=false;
+    buildSlipPage(doc, s, co, addr, monthName);
+    await new Promise(r=>setTimeout(r,30)); // yield to keep browser responsive
+  }
+  const fname=`ArtzFolio_AllSlips_${meta.year||''}_${String(meta.month||'').padStart(2,'0')}.pdf`;
+  doc.save(fname);
+  toast(`✓ Combined PDF saved: ${fname}`,'success',4000);
+}
+
+function buildSlipPage(doc, data, co, addr, monthName) {
+  // Reuse the same rendering logic as downloadSalarySlipPDF but accept an existing doc
+  const W=210, margin=14;
+  let y=margin;
+  const fmt=v=>'Rs.'+Math.round(v||0).toLocaleString('en-IN');
+  const empName=data.empName||data.name||'Employee';
+  doc.setFillColor(26,26,46); doc.rect(0,0,W,32,'F');
+  doc.setTextColor(200,146,42); doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text(co,W/2,13,{align:'center'});
+  doc.setTextColor(200,200,200); doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(addr,W/2,20,{align:'center'});
+  doc.setTextColor(255,220,100); doc.setFontSize(12); doc.setFont('helvetica','bold');
+  doc.text('SALARY SLIP — '+(monthName||'').toUpperCase(),W/2,28,{align:'center'});
+  y=40;
+  doc.setDrawColor(200,146,42); doc.setLineWidth(0.5); doc.rect(margin,y,W-margin*2,30);
+  doc.setTextColor(50,50,50); doc.setFontSize(9); doc.setFont('helvetica','normal');
+  const left=margin+4, mid=W/2+2;
+  [[`Employee Name`,empName,`Dept / Level`,`${data.dept||''} / ${data.level||''}`],
+   [`Employee ID`,data.empId||'—',`Shift`,`${data.shiftStart||'09:00'}–${data.shiftEnd||'19:00'}`],
+   [`Month`,monthName,`Days Present`,`${data.presentDays||0} / ${data.workingDays||0}`]
+  ].forEach((row,ri)=>{
+    doc.setFont('helvetica','bold'); doc.text(row[0]+':',left,y+8+ri*8); doc.setFont('helvetica','normal'); doc.text(String(row[1]),left+32,y+8+ri*8);
+    doc.setFont('helvetica','bold'); doc.text(row[2]+':',mid,y+8+ri*8); doc.setFont('helvetica','normal'); doc.text(String(row[3]),mid+28,y+8+ri*8);
+  });
+  y+=36;
+  const netSalary=parseFloat(data.netSalary||0);
+  doc.setFillColor(200,146,42); doc.rect(margin,y,W-margin*2,10,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text('NET SALARY: '+fmt(netSalary),W/2,y+7,{align:'center'});
+  y+=16;
+  const rows=[
+    ['Gross Earnings',fmt(data.grossSalary||0),'Total Deductions',fmt((parseFloat(data.grossSalary||0)-netSalary))],
+    ['Basic Salary',fmt(data.earnedSalary||0),'Advances',fmt(data.advances||0)],
+    ['OT Earnings',fmt(data.otEarnings||0),'Late Deductions',fmt(data.lateDeduction||0)],
+    ['Bonus',fmt((parseFloat(data.bonus||0)+parseFloat(data.performanceBonus||0))),'UL Deduction',fmt(data.ulDeduction||0)],
+    ['PF Employer',fmt(data.pfEmployer||0),'PF Employee',fmt(data.pfEmployee||0)],
+    ['ESI Employer',fmt(data.esiEmployer||0),'ESI Employee + PT',fmt((parseFloat(data.esiEmployee||0)+parseFloat(data.professionalTax||0)))],
+  ];
+  doc.setTextColor(50,50,50); doc.setFontSize(8);
+  rows.forEach((r,ri)=>{
+    const bg=ri%2===0?[245,245,250]:[255,255,255];
+    doc.setFillColor(...bg); doc.rect(margin,y+ri*7,W-margin*2,7,'F');
+    doc.setFont('helvetica','bold'); doc.text(r[0],left,y+ri*7+5);
+    doc.setFont('helvetica','normal'); doc.text(r[1],W/2-4,y+ri*7+5,{align:'right'});
+    doc.setFont('helvetica','bold'); doc.text(r[2],W/2+4,y+ri*7+5);
+    doc.setFont('helvetica','normal'); doc.text(r[3],W-margin-2,y+ri*7+5,{align:'right'});
+  });
 }
 
 async function loadHistoricalSlips() {
@@ -5724,15 +6130,20 @@ async function downloadHistoricalSlipsPDF() {
 
 function exportPayrollCSV() {
   const data=window._lastPayroll||[];
-  const meta=window._lastPayrollMeta||{year:2026,month:4};
+  if(!data.length){toast('Generate salaries first before exporting','warning');return;}
+  const now=new Date();
+  const meta=window._lastPayrollMeta||{year:now.getFullYear(),month:now.getMonth()+1};
   const headers=['Name','Dept','Level','Base Salary','Days in Month','Present Days','Working Days','UL Days','Late Count','OT Days','Daily Rate','Earned Salary','UL Deduction','Late Deduction','Sandwich Ded','OT Earnings','EW Earnings','Travel Rate/Day','Travel Earnings','Advances','Loans','Bonuses','Penalties','Night Allow','Gross Salary','Net Salary'];
-  const rows=data.map(s=>[s.name,s.dept,s.level,s.baseSalary,s.daysInMonth,s.presentDays,s.workingDays,s.UL,s.lateCount,s.otDays||0,Math.round(s.dailyRate||0),Math.round(s.earnedSalary||0),Math.round(s.ulDeduction||0),Math.round(s.lateDeduction||0),Math.round(s.sandwichDeduction||0),Math.round(s.otEarnings||0),Math.round(s.ewEarnings||0),Math.round(s.travelRatePerDay||0),Math.round(s.travelEarnings||0),Math.round(s.advances||0),Math.round(s.loans||0),Math.round(s.bonuses||0),Math.round(s.penalties||0),Math.round(s.nightAllowance||0),Math.round(s.grossSalary||0),Math.round(s.netSalary||0)]);
+  // Bug X: use s.name||s.empName fallback (calcAllSalaries returns empName on some paths)
+  const rows=data.map(s=>[s.name||s.empName,s.dept,s.level,s.baseSalary,s.daysInMonth,s.presentDays,s.workingDays,s.UL,s.lateCount,s.otDays||0,Math.round(s.dailyRate||0),Math.round(s.earnedSalary||0),Math.round(s.ulDeduction||0),Math.round(s.lateDeduction||0),Math.round(s.sandwichDeduction||0),Math.round(s.otEarnings||0),Math.round(s.ewEarnings||0),Math.round(s.travelRatePerDay||0),Math.round(s.travelEarnings||0),Math.round(s.advances||0),Math.round(s.loans||0),Math.round(s.bonuses||0),Math.round(s.penalties||0),Math.round(s.nightAllowance||0),Math.round(s.grossSalary||0),Math.round(s.netSalary||0)]);
   downloadCSV(`ArtzFolio_Salary_${meta.year}_${String(meta.month).padStart(2,'0')}.csv`, [headers,...rows]);
 }
 
 function exportPayrollXLSX() {
   const data=window._lastPayroll||[];
-  const meta=window._lastPayrollMeta||{year:2026,month:4};
+  if(!data.length){toast('Generate salaries first before exporting','warning');return;}
+  const now=new Date();
+  const meta=window._lastPayrollMeta||{year:now.getFullYear(),month:now.getMonth()+1};
   const headers=['Name','Dept','Level','Base Salary','Days in Month','Present Days','Working Days','UL Days','Late Count','OT Days','Daily Rate','Earned Salary','UL Deduction','Late Deduction','Sandwich Ded','OT Earnings','EW Earnings','Travel Rate/Day','Travel Earnings','Advances','Loans','Bonuses','Penalties','Night Allow','Gross Salary','Net Salary'];
   const rows=data.map(s=>[s.name||s.empName,s.dept,s.level,s.baseSalary,s.daysInMonth,s.presentDays,s.workingDays,s.UL,s.lateCount,s.otDays||0,Math.round(s.dailyRate||0),Math.round(s.earnedSalary||0),Math.round(s.ulDeduction||0),Math.round(s.lateDeduction||0),Math.round(s.sandwichDeduction||0),Math.round(s.otEarnings||0),Math.round(s.ewEarnings||0),Math.round(s.travelRatePerDay||0),Math.round(s.travelEarnings||0),Math.round(s.advances||0),Math.round(s.loans||0),Math.round(s.bonuses||0),Math.round(s.penalties||0),Math.round(s.nightAllowance||0),Math.round(s.grossSalary||0),Math.round(s.netSalary||0)]);
   downloadXLSX(`ArtzFolio_Salary_${meta.year}_${String(meta.month).padStart(2,'0')}.xlsx`,'Payroll',headers,rows);
@@ -5963,9 +6374,10 @@ function downloadFnFPDF() {
     doc.text(fmtRs(fd.totalDeductions),margin+W-margin*2-2,totY+6.5,{align:'right'});
     y=totY+14;
     // Net payable box
-    const netColor=fd.netFnF>=0?[39,174,96]:[192,57,43];
-    doc.setFillColor(...netColor); doc.setGState && doc.setGState(doc.GState({opacity:0.15}));
+    // Bug II: jsPDF 2.5.1 has no GState API — use solid light fill instead
+    if (fd.netFnF >= 0) { doc.setFillColor(240, 255, 240); } else { doc.setFillColor(255, 235, 235); }
     doc.rect(margin,y,W-margin*2,18,'F');
+    const netColor=fd.netFnF>=0?[39,174,96]:[192,57,43];
     doc.setDrawColor(...netColor); doc.setLineWidth(1.5); doc.rect(margin,y,W-margin*2,18);
     doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46);
     doc.text('NET AMOUNT PAYABLE TO EMPLOYEE:',margin+4,y+8);
@@ -6024,7 +6436,7 @@ async function renderReports() {
       </div>
       <div><div class="filter-label">Year</div>
         <select id="rpt-year" class="filter-input">
-          ${[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('')}
+          ${Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('')}
         </select>
       </div>
       <div><div class="filter-label">From Date</div><input id="rpt-from" class="filter-input" type="date" value="${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01"></div>
@@ -6083,17 +6495,25 @@ async function runReport() {
   const type=window._reportType||'attendance';
   const fromDate=document.getElementById('rpt-from')?.value;
   const toDate=document.getElementById('rpt-to')?.value;
-  const month=document.getElementById('rpt-month')?.value;
-  const year=document.getElementById('rpt-year')?.value;
+  let month=document.getElementById('rpt-month')?.value;
+  let year=document.getElementById('rpt-year')?.value;
   const empId=document.getElementById('rpt-emp')?.value;
   const dept=document.getElementById('rpt-dept')?.value;
   const level=document.getElementById('rpt-level')?.value;
   const status=document.getElementById('rpt-status')?.value;
   const txnType=document.getElementById('rpt-type')?.value;
   const leaveType=document.getElementById('rpt-leavetype')?.value;
+  // Bug 50: Points report requires year+month — apply defaults so it never runs with an empty prefix
+  if (type==='points') {
+    const now=new Date();
+    if (!year)  year  = String(now.getFullYear());
+    if (!month) month = String(now.getMonth()+1);
+    // Sync the dropdowns so the user sees what period was used
+    const yEl=document.getElementById('rpt-year');  if(yEl&&!yEl.value) yEl.value=year;
+    const mEl=document.getElementById('rpt-month'); if(mEl&&!mEl.value) mEl.value=month;
+  }
   document.getElementById('report-results').innerHTML='<div class="loading-spinner"></div>';
   document.getElementById('report-summary').innerHTML='';
-  const now=new Date();
   const params={type,fromDate,toDate,month,year,empId,dept,level,status,txnType,leaveType};
   const res=await API.call('getReport',params);
   window._lastReport=res.data||res.leaderboard||[];
@@ -6162,10 +6582,10 @@ async function renderTrackedTime() {
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
   const weekAgoStr = weekAgo.toISOString().slice(0,10);
   el.innerHTML = `
-  <div class="section-header">
+  <div class="section-hdr">
     <div class="section-title">⏱ Tracked Time Report</div>
   </div>
-  <div class="filter-bar" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end">
+  <div class="filters-bar" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end">
     <div class="form-group" style="margin:0">
       <label class="form-label">From</label>
       <input type="date" id="tt-from" class="form-input" value="${weekAgoStr}" style="width:140px">
@@ -6210,9 +6630,9 @@ async function loadTrackedTime() {
   const totalBill = rows.reduce((s,r)=>s+r.billableAmount,0).toFixed(2);
   const summEl = document.getElementById('tt-summary');
   summEl.innerHTML = `
-    <div class="stat-card"><div class="stat-value">${rows.length}</div><div class="stat-label">Entries</div></div>
-    <div class="stat-card"><div class="stat-value">${totalH}h</div><div class="stat-label">Total Hours</div></div>
-    <div class="stat-card"><div class="stat-value">₹${totalBill}</div><div class="stat-label">Billable Amount</div></div>
+    <div class="stat-card"><div class="stat-card-val">${rows.length}</div><div class="stat-card-lbl">Entries</div></div>
+    <div class="stat-card"><div class="stat-card-val">${totalH}h</div><div class="stat-card-lbl">Total Hours</div></div>
+    <div class="stat-card"><div class="stat-card-val">₹${totalBill}</div><div class="stat-card-lbl">Billable Amount</div></div>
   `;
   if(!rows.length){
     document.getElementById('tt-table-wrap').innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><p>No tracked time entries for this period</p></div>';
@@ -6282,7 +6702,7 @@ async function renderPettyCash() {
   const res = await API.call('getPettyCash', {month: monthVal});
   if (!res.ok) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${escHtml(res.error)}</p></div>`; return; }
 
-  const {entries=[], totalIn=0, totalOut=0, balance=0} = res;
+  const {entries=[], totalIn=0, totalOut=0, balance=0, openingBalance=0} = res;
   const isOwner = (State.adminRole === 'owner');
   const canAdd   = ['owner','manager','supervisor'].includes(State.adminRole);
 
@@ -6313,7 +6733,11 @@ async function renderPettyCash() {
   </style>
 
   <!-- Summary Cards -->
-  <div class="pc-summary-grid">
+  <div class="pc-summary-grid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="pc-summary-card">
+      <div class="pc-label">🔄 Opening Balance</div>
+      <div class="pc-value" style="${openingBalance>=0?'color:#aaa':'color:#e74c3c'}">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(openingBalance)}</div>
+    </div>
     <div class="pc-summary-card">
       <div class="pc-label">💚 Total IN</div>
       <div class="pc-value" style="color:#27ae60">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(totalIn)}</div>
@@ -6323,7 +6747,7 @@ async function renderPettyCash() {
       <div class="pc-value" style="color:#e74c3c">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(totalOut)}</div>
     </div>
     <div class="pc-summary-card">
-      <div class="pc-label">💰 Balance</div>
+      <div class="pc-label">💰 Closing Balance</div>
       <div class="pc-value" style="${balClass}">₹${((n)=>(Math.round(parseFloat(n)||0)).toLocaleString('en-IN'))(balance)}</div>
     </div>
   </div>
@@ -6387,9 +6811,19 @@ async function renderPettyCash() {
 // ── Petty Cash: Add Entry Modal ──────────────────────────────
 function openPCEntryModal(prefill={}) {
   const isEdit = !!prefill.id;
-  const categories = ['Office Supplies','Travel','Food & Refreshments','Courier / Delivery',
-                      'Repair & Maintenance','Utilities','Salary Advance','Other'];
+  // Categories: read from GAS Config (synced), fallback to localStorage, then defaults
+  const defaultCats = ['Office Supplies','Travel','Food & Refreshments','Courier / Delivery',
+                       'Repair & Maintenance','Utilities','Raw Materials','Packaging',
+                       'Salary Advance (Employee)','Vendor Payment','Other'];
+  const rawCats = State.settings?.pettyCashCategories || LS.g('pettyCashCategories');
+  let categories = defaultCats;
+  if (rawCats) { try { categories = JSON.parse(rawCats); } catch { categories = defaultCats; } }
   const catOptions = categories.map(c=>`<option value="${c}" ${prefill.category===c?'selected':''}>${c}</option>`).join('');
+
+  // Build employee dropdown — from State.employees or fresh
+  const emps = State.employees || [];
+  const empOpts = `<option value="">— Vendor / Other (type below) —</option>` +
+    emps.map(e=>`<option value="${escHtml(e.id)}" data-name="${escHtml(e.name)}" ${prefill.linkedEmpId===e.id?'selected':''}>${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
 
   const bodyHtml = `
     <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
@@ -6419,7 +6853,15 @@ function openPCEntryModal(prefill={}) {
     </div>
     <div style="margin-top:12px">
       <label class="form-label">Paid To / Received From</label>
-      <input class="form-input" id="pc-paidto" type="text" placeholder="Vendor / person name" value="${escHtml(prefill.paidTo||'')}">
+      <select class="form-input" id="pc-emp-sel" onchange="syncPCEmpToName()" style="margin-bottom:6px">${empOpts}</select>
+      <input class="form-input" id="pc-paidto" type="text" placeholder="Or type vendor / person name" value="${escHtml(prefill.paidTo||'')}">
+      <input type="hidden" id="pc-linked-emp" value="${escHtml(prefill.linkedEmpId||'')}">
+    </div>
+    <div id="pc-deduct-row" style="margin-top:8px;display:none">
+      <label class="form-label" style="font-size:12px">
+        <input type="checkbox" id="pc-deduct-from-salary" ${prefill.deductFromSalary?'checked':''}>
+        Deduct this amount from employee's next salary automatically
+      </label>
     </div>
     <div style="margin-top:12px">
       <label class="form-label">Note</label>
@@ -6445,6 +6887,23 @@ function openPCEntryModal(prefill={}) {
   );
 }
 
+function syncPCEmpToName() {
+  const sel = document.getElementById('pc-emp-sel');
+  const paidToEl = document.getElementById('pc-paidto');
+  const linkedEl = document.getElementById('pc-linked-emp');
+  const deductRow = document.getElementById('pc-deduct-row');
+  if (sel.value) {
+    const opt = sel.options[sel.selectedIndex];
+    paidToEl.value = opt.dataset.name + ' (' + sel.value + ')';
+    linkedEl.value = sel.value;
+    deductRow.style.display = 'block';
+  } else {
+    paidToEl.value = '';
+    linkedEl.value = '';
+    deductRow.style.display = 'none';
+  }
+}
+
 function previewPCReceipt(input) {
   const prev = document.getElementById('pc-receipt-preview');
   if (!prev) return;
@@ -6467,6 +6926,8 @@ async function submitPCEntry(existingId) {
   const amount      = parseFloat(document.getElementById('pc-amount').value)||0;
   const paidTo      = document.getElementById('pc-paidto').value.trim();
   const note        = document.getElementById('pc-note').value.trim();
+  const linkedEmpId = (document.getElementById('pc-linked-emp')?.value||'').trim();
+  const deductFromSalary = document.getElementById('pc-deduct-from-salary')?.checked || false;
 
   if (!date || !type || !category || !description || !amount) {
     toast('Please fill all required fields (Date, Type, Category, Description, Amount)', 'error'); return;
@@ -6477,6 +6938,7 @@ async function submitPCEntry(existingId) {
   const fileInput = document.getElementById('pc-receipt-file');
   if (fileInput && fileInput.files[0]) {
     const file = fileInput.files[0];
+    if (file.size > 3*1024*1024) { toast('Receipt file too large. Max 3 MB allowed (GAS limit).','error'); return; }
     receiptMime = file.type || 'image/jpeg';
     receiptBase64 = await new Promise(resolve => {
       const r = new FileReader();
@@ -6496,6 +6958,7 @@ async function submitPCEntry(existingId) {
     res = await API.call('updatePettyCash', {id: existingId, updates});
   } else {
     res = await API.call('addPettyCash', {date, type, category, description, amount, paidTo, note,
+                                           linkedEmpId, deductFromSalary,
                                            receiptBase64, receiptMime, recordedBy});
   }
 
@@ -6527,7 +6990,7 @@ async function pcApprove(id) {
 }
 
 async function pcReject(id) {
-  if (!confirm('Reject this petty cash entry?')) return;
+  if (!await confirm2('Reject this petty cash entry?')) return;
   const res = await API.call('updatePettyCash', {id, updates: {
     status: 'Rejected',
     approvedBy: State.adminUser || State.adminRole,
@@ -6539,7 +7002,7 @@ async function pcReject(id) {
 }
 
 async function pcDelete(id) {
-  if (!confirm('Permanently delete this petty cash entry? This cannot be undone.')) return;
+  if (!await confirm2('Permanently delete this petty cash entry? This cannot be undone.')) return;
   const res = await API.call('deletePettyCash', {id});
   if (!res.ok) { toast(res.error||'Failed', 'error'); return; }
   toast('Entry deleted', 'warning');
@@ -6664,12 +7127,13 @@ async function renderSettings() {
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
         <button class="btn btn-gold" onclick="saveConnectionSettings()">🔄 Save & Reconnect</button>
-        <button class="btn btn-dark btn-sm" onclick="if(confirm('Clear saved URL and restart setup?')){LS.d('gasUrl');LS.d('token');location.reload();}">Reset Setup</button>
+        <button class="btn btn-dark btn-sm" onclick="confirmResetSetup()">Reset Setup</button>
       </div>
       <div id="conn-test-status" style="margin-top:10px;font-size:12px;min-height:16px"></div>
     </div>`;
     return;
   }
+  const isOwner = State.adminRole === 'owner';
   const cfg={};
   (settingsRes.settings||[]).forEach(s=>cfg[s.key]=s.value);
   const ms=msRes.milestones||[];
@@ -6716,7 +7180,7 @@ async function renderSettings() {
     </div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-gold" onclick="saveConnectionSettings()">💾 Save & Reconnect</button>
-      <button class="btn btn-dark btn-sm" onclick="if(confirm('This will clear saved URL and show the setup screen again. Continue?')){LS.d('gasUrl');LS.d('token');location.reload();}">🔄 Reset & Re-Setup</button>
+      <button class="btn btn-dark btn-sm" onclick="confirmResetSetup()">🔄 Reset & Re-Setup</button>
     </div>
     <div id="conn-test-status" style="margin-top:8px;font-size:12px"></div>
   </div>
@@ -6960,7 +7424,7 @@ async function renderSettings() {
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
       <button class="btn btn-gold" onclick="save2FASettings()">💾 Save 2FA Settings</button>
-      <button class="btn btn-dark btn-sm" onclick="if(confirm('Disable 2FA and clear the PIN?')){LS.s('twoFAEnabled',false);LS.d('twoFASecret');toast('2FA disabled','success');}">Disable 2FA</button>
+      <button class="btn btn-dark btn-sm" onclick="confirmDisable2FA()">Disable 2FA</button>
     </div>
     <div id="twofa-status" style="margin-top:8px;font-size:12px;min-height:14px;color:${LS.g('twoFAEnabled')===true?'var(--green)':'var(--gray-light)'}">
       ${LS.g('twoFAEnabled')===true?'✓ 2FA is currently ENABLED':'2FA is currently disabled'}
@@ -7025,12 +7489,13 @@ async function renderSettings() {
           </tr>
         </thead>
         <tbody id="perms-table-body">
-          ${['dashboard','attendance','leaves','roster','employees','transactions','performance','payroll','fnf','reports','settings'].map(tab => {
+          ${['dashboard','approvals','timesheets','attendance','leaves','roster','employees','transactions','pettycash','points','payroll','fnf','reports','trackedtime','activities','settings'].map(tab => {
             const mgrKey = `perm_mgr_${tab}`;
             const supKey = `perm_sup_${tab}`;
             const mgrAllowed = LS.g(mgrKey) !== false;
             const supAllowed = LS.g(supKey) !== false;
-            const label = tab.charAt(0).toUpperCase()+tab.slice(1);
+            const tabLabels={dashboard:'📊 Dashboard',approvals:'✅ Approvals',timesheets:'⏱ Timesheets',attendance:'📅 Attendance',leaves:'🏖 Leaves',roster:'📋 Roster',employees:'👥 Employees',transactions:'💳 Transactions',pettycash:'💵 Petty Cash',points:'⭐ Points',payroll:'💰 Payroll',fnf:'🤝 FnF / Exit',reports:'📈 Reports',trackedtime:'⏱ Tracked Time',activities:'🏷 Activities',settings:'⚙ Settings'};
+            const label = tabLabels[tab] || tab.charAt(0).toUpperCase()+tab.slice(1);
             return `<tr style="border-bottom:1px solid var(--dark3)">
               <td style="padding:8px">${label}</td>
               <td style="padding:8px;text-align:center">
@@ -7125,8 +7590,7 @@ async function renderSettings() {
     <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
       <button class="btn btn-red btn-sm" onclick="deleteSelectedHolidays()">🗑 Delete Selected</button>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-light)">
-        <input type="checkbox" id="hol-cb-all" onchange="document.querySelectorAll('.hol-cb').forEach(cb=>cb.checked=this.checked)" style="accent-color:var(--gold)">
-        Select All
+        <input type="checkbox" id="hol-cb-all-top" onchange="document.querySelectorAll('.hol-cb').forEach(cb=>cb.checked=this.checked);const h=document.getElementById('hol-cb-all');if(h)h.checked=this.checked;" style="accent-color:var(--gold)"> Select All
       </label>
     </div>
     <div id="holidays-list" style="overflow-x:auto;margin-bottom:12px">
@@ -7140,7 +7604,7 @@ async function renderSettings() {
           <th style="padding:6px;text-align:left">Action</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="holidays-table-body">
     ${hols.map(h=>`<tr style="border-bottom:1px solid var(--dark3)">
       <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
       <td style="padding:6px">${fmtHolDate(h.date)}</td>
@@ -7217,6 +7681,28 @@ async function renderSettings() {
       ${cfgField('tanNumber','TAN Number (for TDS)')}
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveStatutorySettings()">💾 Save Statutory Settings</button>
+  </div>
+
+  <!-- Petty Cash Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">💵 Petty Cash Settings</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      Customize the category dropdown shown in the Petty Cash entry form. Receipts/photos are saved to your Google Drive in the folder <strong style="color:var(--gold)">ArtzFolio_PettyCash/</strong>. Access them from the receipt link in each entry row.
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categories (one per line)</label>
+      <textarea id="cfg-pc-categories" class="form-input" rows="8" placeholder="One category per line…">${(()=>{const gasVal=State.settings?.pettyCashCategories; const lsVal=LS.g('pettyCashCategories'); const raw=gasVal||lsVal; if(raw){try{return JSON.parse(raw).join('\n');}catch{return raw;}} return ['Office Supplies','Travel','Food & Refreshments','Courier / Delivery','Repair & Maintenance','Utilities','Raw Materials','Packaging','Salary Advance (Employee)','Vendor Payment','Other'].join('\n');})()}</textarea>
+      <div style="font-size:11px;color:var(--gray);margin-top:4px">Each line = one dropdown option. Blank lines are ignored.</div>
+    </div>
+    <div class="settings-grid" style="margin-top:14px">
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-pc-requireApproval" ${(State.settings?.pcRequireApproval||LS.g('pcRequireApproval'))==='true'?'checked':''}> Require owner/manager approval before entries are finalised</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="cfg-pc-receiptRequired" ${(State.settings?.pcReceiptRequired||LS.g('pcReceiptRequired'))==='true'?'checked':''}> Require receipt photo for OUT entries</label>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="savePCSettings()">💾 Save Petty Cash Settings</button>
   </div>
 
   <!-- WhatsApp / SMS Notifications Settings -->
@@ -7298,8 +7784,195 @@ async function renderSettings() {
     <div style="margin-top:12px;font-size:11px;color:var(--gray-light)">
       <strong>What is JSON backup?</strong> It is a complete copy of all your data (employees, attendance, salary records, transactions, points) saved as a file on your computer. If your Google account is ever inaccessible or your data needs to move to a new Google Sheet, you import this file to restore everything. Think of it like a photocopy of all your records.
     </div>
-  </div>`;
+  </div>
+
+  ${isOwner ? `
+  <!-- ⚠ DANGER ZONE -->
+  <div class="settings-section" style="border-color:var(--red);border-width:2px">
+    <div class="settings-section-title" style="color:var(--red)">⚠ Danger Zone — Owner Only</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:16px;line-height:1.7">
+      These actions are <strong style="color:var(--red)">permanent and irreversible</strong>. Always export a backup before proceeding.<br>
+      Each action requires you to type a confirmation phrase.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--white)">🗑 Delete a Specific Employee</div>
+          <div style="font-size:11px;color:var(--gray-light)">Permanently removes the employee record. Attendance/salary records are retained for history.</div>
+        </div>
+        <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="dangerDeleteEmployee()">Delete Employee</button>
+      </div>
+      <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--white)">🧹 Clear Attendance Records</div>
+          <div style="font-size:11px;color:var(--gray-light)">Deletes all clock-in/out records for a selected month. Cannot be undone.</div>
+        </div>
+        <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="dangerClearAttendance()">Clear Attendance</button>
+      </div>
+      <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--white)">💸 Clear Salary Records</div>
+          <div style="font-size:11px;color:var(--gray-light)">Deletes all payroll records for a selected month. Cannot be undone.</div>
+        </div>
+        <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="dangerClearSalaryRecords()">Clear Salary Records</button>
+      </div>
+      <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--red)">☢ Full HRMS Reset</div>
+          <div style="font-size:11px;color:var(--gray-light)">Wipes ALL data — employees, attendance, transactions, leaves, salary records, petty cash, everything. The Google Sheet will be cleared and reset to factory state. This cannot be undone.</div>
+        </div>
+        <button class="btn btn-sm" style="background:#7f0000;color:#fff;border:1px solid var(--red)" onclick="dangerFullReset()">☢ Full Reset</button>
+      </div>
+    </div>
+  </div>` : ''}`;
   document.getElementById('admin-tab-content').innerHTML=html;
+}
+
+// ─── Danger Zone functions ───────────────────────────────────────────────────
+// Re-verifies the owner password at runtime so spoofing State.adminRole alone is not enough
+function requireOwnerPin(cb) {
+  if (State.adminRole !== 'owner') { toast('Owner access required','error'); return; }
+  showModal('🔑 Confirm Owner Password', `
+    <p style="font-size:13px;color:var(--gray-light);margin-bottom:12px">Re-enter your owner password to authorise this action.</p>
+    <div class="form-group">
+      <label class="form-label">Owner Password</label>
+      <input id="dz-owner-pin" class="form-input" type="password" placeholder="Owner password…" autocomplete="off">
+    </div>
+  `, [
+    {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+    {label:'Confirm', cls:'btn-gold', cb:()=>{
+      const entered = document.getElementById('dz-owner-pin')?.value||'';
+      const expected = (State._pwMap||{}).owner||'ArtzFolio@2026';
+      if (entered !== expected) { toast('Incorrect owner password','error'); return; }
+      closeModal();
+      setTimeout(cb, 150);
+    }},
+  ]);
+}
+
+async function dangerDeleteEmployee() {
+  requireOwnerPin(async () => {
+  const emps = State.employees || (await API.call('getEmployees',{})).employees || [];
+  const empOpts = emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
+  showModal('🗑 Delete Employee', `
+    <p style="color:var(--red);font-size:13px;margin-bottom:12px">⚠ This permanently deletes the employee record. Attendance and salary history are kept.</p>
+    <div class="form-group">
+      <label class="form-label">Select Employee *</label>
+      <select id="del-emp-sel" class="form-input"><option value="">— choose —</option>${empOpts}</select>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Type <strong style="color:var(--red)">DELETE</strong> to confirm</label>
+      <input id="del-emp-confirm" class="form-input" placeholder="Type DELETE here">
+    </div>
+  `, [
+    {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+    {label:'Permanently Delete', cls:'btn-sm', cb: async()=>{
+      const empId = document.getElementById('del-emp-sel').value;
+      const conf  = document.getElementById('del-emp-confirm').value;
+      if (!empId) { toast('Select an employee','error'); return; }
+      if (conf !== 'DELETE') { toast('Type DELETE exactly to confirm','error'); return; }
+      const res = await API.call('deleteEmployee', {empId, ownerToken: (State._pwMap||{}).ownerToken||State.settings?.ownerToken||''});
+      if (res.ok) { closeModal(); toast('✓ Employee deleted','success'); await renderEmployees(); }
+      else toast(res.error||'Error','error');
+    }, style:'background:var(--red);color:#fff'},
+  ]);
+  }); // end requireOwnerPin
+}
+
+async function dangerClearAttendance() {
+  requireOwnerPin(() => {
+  showModal('🧹 Clear Attendance Records', `
+    <p style="color:var(--red);font-size:13px;margin-bottom:12px">⚠ All attendance records for the selected month will be permanently deleted.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Month</label>
+        <select id="clr-att-mo" class="form-input">${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i)=>`<option value="${i+1}" ${i+1===new Date().getMonth()+1?'selected':''}>${m}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Year</label>
+        <select id="clr-att-yr" class="form-input">${Array.from({length:5},(_,i)=>new Date().getFullYear()-2+i).map(y=>`<option value="${y}" ${y===new Date().getFullYear()?'selected':''}>${y}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Type <strong style="color:var(--red)">CLEAR</strong> to confirm</label>
+      <input id="clr-att-conf" class="form-input" placeholder="Type CLEAR here">
+    </div>
+  `, [
+    {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+    {label:'Clear Attendance', cls:'btn-sm', cb: async()=>{
+      const mo = document.getElementById('clr-att-mo').value;
+      const yr = document.getElementById('clr-att-yr').value;
+      if (document.getElementById('clr-att-conf').value !== 'CLEAR') { toast('Type CLEAR exactly','error'); return; }
+      const res = await API.call('clearSheetMonth', {sheet:'Attendance', year:parseInt(yr), month:parseInt(mo), ownerToken: (State._pwMap||{}).ownerToken||State.settings?.ownerToken||''});
+      if (res.ok) { closeModal(); toast(`✓ Attendance cleared for ${yr}-${mo}`,'success'); }
+      else toast(res.error||'Error','error');
+    }, style:'background:var(--red);color:#fff'},
+  ]);
+  }); // end requireOwnerPin
+}
+
+async function dangerClearSalaryRecords() {
+  requireOwnerPin(() => {
+  showModal('💸 Clear Salary Records', `
+    <p style="color:var(--red);font-size:13px;margin-bottom:12px">⚠ All payroll records for the selected month will be permanently deleted.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Month</label>
+        <select id="clr-sal-mo" class="form-input">${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i)=>`<option value="${i+1}" ${i+1===new Date().getMonth()+1?'selected':''}>${m}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Year</label>
+        <select id="clr-sal-yr" class="form-input">${Array.from({length:5},(_,i)=>new Date().getFullYear()-2+i).map(y=>`<option value="${y}" ${y===new Date().getFullYear()?'selected':''}>${y}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Type <strong style="color:var(--red)">CLEAR</strong> to confirm</label>
+      <input id="clr-sal-conf" class="form-input" placeholder="Type CLEAR here">
+    </div>
+  `, [
+    {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+    {label:'Clear Salary Records', cls:'btn-sm', cb: async()=>{
+      const mo = document.getElementById('clr-sal-mo').value;
+      const yr = document.getElementById('clr-sal-yr').value;
+      if (document.getElementById('clr-sal-conf').value !== 'CLEAR') { toast('Type CLEAR exactly','error'); return; }
+      const res = await API.call('clearSheetMonth', {sheet:'SalaryRecords', year:parseInt(yr), month:parseInt(mo), ownerToken: (State._pwMap||{}).ownerToken||State.settings?.ownerToken||''});
+      if (res.ok) { closeModal(); toast(`✓ Salary records cleared for ${yr}-${mo}`,'success'); }
+      else toast(res.error||'Error','error');
+    }, style:'background:var(--red);color:#fff'},
+  ]);
+  }); // end requireOwnerPin
+}
+
+async function dangerFullReset() {
+  requireOwnerPin(() => {
+  showModal('☢ Full HRMS Reset', `
+    <div style="background:rgba(200,0,0,0.12);border:1px solid var(--red);border-radius:8px;padding:14px;margin-bottom:14px">
+      <strong style="color:var(--red);font-size:14px">⚠ This will permanently erase EVERYTHING:</strong>
+      <ul style="font-size:12px;color:var(--white);margin:8px 0 0 16px;line-height:2">
+        <li>All employees and face data</li><li>All attendance records</li>
+        <li>All salary/payroll records</li><li>All leaves and transactions</li>
+        <li>All petty cash and documents</li><li>All settings and configurations</li>
+      </ul>
+    </div>
+    <p style="font-size:12px;color:var(--gray-light);margin-bottom:12px">The system will reset to factory default. Make sure you have exported a backup first.</p>
+    <div class="form-group">
+      <label class="form-label">Type <strong style="color:var(--red)">RESET EVERYTHING</strong> to confirm</label>
+      <input id="full-reset-conf" class="form-input" placeholder="Type RESET EVERYTHING">
+    </div>
+  `, [
+    {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+    {label:'☢ Permanently Reset All Data', cls:'btn-sm', cb: async()=>{
+      if (document.getElementById('full-reset-conf').value !== 'RESET EVERYTHING') { toast('Type RESET EVERYTHING exactly','error'); return; }
+      closeModal();
+      toast('Resetting… do not close this tab','warning',10000);
+      const res = await API.call('fullReset', {userId: State.adminUser || State.adminRole || 'owner', ownerToken: (State._pwMap||{}).ownerToken||State.settings?.ownerToken||''});
+      if (res.ok) {
+        toast('✓ HRMS fully reset. Reloading…','success',3000);
+        setTimeout(()=>location.reload(), 3000);
+      } else toast(res.error||'Reset failed','error');
+    }, style:'background:#7f0000;color:#fff;border:1px solid var(--red)'},
+  ]);
+  }); // end requireOwnerPin
 }
 
 function saveRolePermissions() {
@@ -7343,7 +8016,12 @@ async function savePolicySettings() {
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   const res=await API.call('updateSettings',{updates});
-  if(res.ok){toast('✓ Policy settings saved','success');}else toast('Error','error');
+  if(res.ok){
+    // Bug BB: refresh State._pwMap so new passwords take effect in the same session
+    const sRes=await API.call('getSettings',{});
+    if(sRes.ok) applySettingsArr(sRes.settings||[]);
+    toast('✓ Policy settings saved','success');
+  }else toast('Error','error');
 }
 
 async function saveCompanySettings() {
@@ -7386,7 +8064,7 @@ async function saveOrgSettings() {
     toast('✓ Organization settings saved','success');
     // Reload settings into State
     const sRes=await API.call('getSettings');
-    if(sRes.ok) State.settings={};(sRes.settings||[]).forEach(s=>{State.settings[s.key]=s.value;});
+    if(sRes.ok){ applySettingsArr(sRes.settings||[]); }
     // Request notification permission if reminders enabled
     if(updates['reminderEnabled']==='true' && 'Notification' in window && Notification.permission==='default'){
       Notification.requestPermission();
@@ -7403,6 +8081,16 @@ async function savePointsSettings() {
   if(pbsEl) updates['pointsBonusInSalary'] = pbsEl.checked ? 'true' : 'false';
   const res=await API.call('updateSettings',{updates});
   if(res.ok){toast('✓ Points settings saved','success');}else toast('Error','error');
+}
+
+async function confirmResetSetup() {
+  const ok = await confirm2('This will clear the saved GAS URL and show the setup screen again. Continue?');
+  if (ok) { LS.d('gasUrl'); LS.d('token'); location.reload(); }
+}
+
+async function confirmDisable2FA() {
+  const ok = await confirm2('Disable 2FA and clear the PIN?');
+  if (ok) { LS.s('twoFAEnabled', false); LS.d('twoFASecret'); toast('2FA disabled', 'success'); }
 }
 
 async function saveConnectionSettings() {
@@ -7431,20 +8119,23 @@ async function saveConnectionSettings() {
   }
 }
 
-function save2FASettings() {
+async function save2FASettings() {
   const enabled = document.getElementById('cfg-2fa-enabled')?.checked;
   const secret = (document.getElementById('cfg-2fa-secret')?.value||'').trim();
-  const confirm = (document.getElementById('cfg-2fa-secret-confirm')?.value||'').trim();
+  const confirmVal = (document.getElementById('cfg-2fa-secret-confirm')?.value||'').trim();
   const statusEl = document.getElementById('twofa-status');
   if (enabled && (!secret || secret.length < 4)) {
     statusEl.textContent='✗ PIN must be at least 4 digits.'; statusEl.style.color='var(--red)'; return;
   }
-  if (enabled && secret !== confirm) {
+  if (enabled && secret !== confirmVal) {
     statusEl.textContent='✗ PINs do not match. Try again.'; statusEl.style.color='var(--red)'; return;
   }
   LS.s('twoFAEnabled', enabled === true);
   if (enabled && secret) { LS.s('twoFASecret', secret); }
   else if (!enabled) { LS.d('twoFASecret'); }
+  // Bug V: also persist secret to GAS Config so it survives browser data clear
+  const updates = { twoFASecret: (enabled && secret) ? secret : '' };
+  await API.call('updateSettings', {updates}).catch(()=>{});
   statusEl.textContent = enabled ? '✓ 2FA ENABLED — login will now require PIN after password' : '2FA disabled.';
   statusEl.style.color = enabled ? 'var(--green)' : 'var(--gray-light)';
   toast(enabled ? '✓ 2FA enabled successfully!' : '2FA disabled', enabled ? 'success' : 'info');
@@ -7524,6 +8215,31 @@ async function testWhatsApp() {
   statusEl.style.color = res.ok ? 'var(--green)' : 'var(--red)';
 }
 
+async function savePCSettings() {
+  const textarea = document.getElementById('cfg-pc-categories');
+  const cats = textarea ? textarea.value.split('\n').map(l=>l.trim()).filter(Boolean) : [];
+  const requireApproval = document.getElementById('cfg-pc-requireApproval')?.checked ? 'true' : 'false';
+  const receiptRequired = document.getElementById('cfg-pc-receiptRequired')?.checked ? 'true' : 'false';
+  // Bug 43: Save locally AND to GAS Config so settings survive across browsers/devices
+  LS.s('pettyCashCategories', JSON.stringify(cats));
+  LS.s('pcRequireApproval', requireApproval);
+  LS.s('pcReceiptRequired', receiptRequired);
+  const res = await API.call('updateSettings', { updates: {
+    pettyCashCategories: JSON.stringify(cats),
+    pcRequireApproval:   requireApproval,
+    pcReceiptRequired:   receiptRequired,
+  }});
+  if (res.ok) {
+    // Keep State.settings in sync so the settings page re-renders correctly
+    State.settings.pettyCashCategories = JSON.stringify(cats);
+    State.settings.pcRequireApproval   = requireApproval;
+    State.settings.pcReceiptRequired   = receiptRequired;
+    toast('✓ Petty Cash settings saved','success');
+  } else {
+    toast(res.error || 'Saved locally but failed to sync to sheet','warning');
+  }
+}
+
 async function saveOTSettings() {
   const updates = {};
   const el = document.getElementById('cfg-otPreApprovalRequired');
@@ -7562,6 +8278,11 @@ const ALL_LEVELS = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
 
 // Generate and download an Excel workbook with one sheet (headers + optional data rows)
 function downloadXLSX(filename, sheetName, headers, rows=[]) {
+  // Bug 51: Guard against XLSX library not loaded (CDN failure)
+  if (typeof XLSX === 'undefined') {
+    toast('Excel library not loaded. Try refreshing or use CSV export instead.', 'error', 5000);
+    return;
+  }
   const wb = XLSX.utils.book_new();
   const wsData = [headers, ...rows];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -7836,7 +8557,7 @@ function bulkImportEmployees() {
     const defaultShiftStart = (State.settings&&State.settings.defaultShiftStart)||'09:00';
     const defaultShiftEnd   = (State.settings&&State.settings.defaultShiftEnd)||'19:00';
     return {
-      id: row['employeeCode (optional, e.g. AZ_EMP_0056)']||'',
+      customId: row['employeeCode (optional, e.g. AZ_EMP_0056)']||'',
       name: row['name *'], level: row['level *'], salary: row['salary *'], pin: String(row['pin *']),
       shiftStart: _excelTimeToHHMM(row['shiftStart (e.g. 09:00)'])||defaultShiftStart,
       shiftEnd:   _excelTimeToHHMM(row['shiftEnd (e.g. 19:00)'])||defaultShiftEnd,
@@ -7966,7 +8687,7 @@ async function loadDefaultHolidays() {
     if (res.ok) added++; else skip++;
   }
   toast(`✓ Added ${added} holidays${skip?' ('+skip+' skipped)':''}`, 'success', 4000);
-  await renderSettings();
+  await refreshHolidayList();
 }
 
 async function saveMilestone(years) {
@@ -7991,25 +8712,40 @@ async function saveBand(level) {
   if(res.ok)toast('✓ Salary band saved','success');else toast('Error','error');
 }
 
+// Bug 44: Refresh only the holiday table rows instead of reloading the full settings page
+async function refreshHolidayList() {
+  const tbody = document.getElementById('holidays-table-body');
+  if (!tbody) { await renderSettings(); return; }
+  const res = await API.call('getHolidays', {});
+  const hols = (res.holidays || []).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  tbody.innerHTML = hols.map(h=>`<tr style="border-bottom:1px solid var(--dark3)">
+    <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
+    <td style="padding:6px">${fmtHolDate(h.date)}</td>
+    <td style="padding:6px">${escHtml(h.name)}</td>
+    <td style="padding:6px">${escHtml(h.type||'Public')}</td>
+    <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
+  </tr>`).join('');
+}
+
 async function addHoliday() {
   const date=document.getElementById('hol-date')?.value;
   const name=document.getElementById('hol-name')?.value;
   const type=document.getElementById('hol-type')?.value;
   if(!date||!name){toast('Date and name required','warning');return;}
   const res=await API.call('addHoliday',{date,name,type,applicableTo:'All'});
-  if(res.ok){toast('✓ Holiday added','success');await renderSettings();}
+  if(res.ok){toast('✓ Holiday added','success'); document.getElementById('hol-name').value=''; await refreshHolidayList();}
 }
 
 async function removeHoliday(date) {
   const res=await API.call('removeHoliday',{date});
-  if(res.ok){toast('Holiday removed','success');await renderSettings();}
+  if(res.ok){toast('Holiday removed','success');await refreshHolidayList();}
 }
 async function deleteHoliday(id) {
   if (State.adminRole !== 'owner') { toast('Only Owner can delete holidays permanently','error'); return; }
   const ok = await confirm2('Remove this holiday from the calendar?');
   if (!ok) return;
   const res = await API.call('removeHoliday',{date:id});
-  if(res.ok){toast('✓ Holiday deleted','success');await renderSettings();}
+  if(res.ok){toast('✓ Holiday deleted','success');await refreshHolidayList();}
   else toast(res.error||'Error','error');
 }
 async function deleteSelectedHolidays() {
@@ -8025,14 +8761,26 @@ async function deleteSelectedHolidays() {
     await Promise.all(ids.slice(i,i+CHUNK).map(id=>API.call('removeHoliday',{date:id})));
   }
   toast(`✓ ${ids.length} holiday(s) deleted`,'success');
-  await renderSettings();
+  await refreshHolidayList(); // Bug OO: was renderSettings() — caused unnecessary 5-API reload
 }
 
 async function addOrgPrompt(type) {
-  const name=prompt(`Add new ${type} name:`);
-  if(!name) return;
-  const res=await API.call('addOrg',{type,name,parentName:''});
-  if(res.ok){toast('✓ Added','success');await renderSettings();}
+  // Bug PP: replace native prompt() with in-app modal (prompt() blocked on kiosk/fullscreen)
+  await new Promise(resolve => {
+    showModal(`➕ Add ${escHtml(type)}`, `<div class="form-group"><label class="form-label">${escHtml(type)} Name *</label><input id="org-prompt-input" class="form-input" placeholder="Enter name…" autocomplete="off"></div>`, [
+      {label:'Add', cls:'btn-gold', cb: async () => {
+        const name = document.getElementById('org-prompt-input')?.value?.trim();
+        if (!name) { toast('Name is required','warning'); return; }
+        closeModal();
+        const res = await API.call('addOrg',{type,name,parentName:''});
+        if(res.ok){toast('✓ Added','success');await renderSettings();}
+        else toast(res.error||'Error','error');
+        resolve();
+      }},
+      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
+    ]);
+    setTimeout(()=>document.getElementById('org-prompt-input')?.focus(), 100);
+  });
 }
 
 async function exportFullBackup() {
@@ -8051,8 +8799,36 @@ async function importBackup(input) {
   const ok=await confirm2('⚠ This will overwrite existing data with the backup file. Are you sure?');
   if(!ok) return;
   const text=await file.text();
-  try { JSON.parse(text); } catch { toast('Invalid JSON file','error'); return; }
-  toast('Import feature: please contact admin to import via Google Sheet directly.','info',6000);
+  let data;
+  try { data=JSON.parse(text); } catch { toast('Invalid JSON file','error'); return; }
+  // Bug WW: implement actual restore by iterating backup sheets and calling batch-save
+  const sheets = Object.keys(data);
+  if (!sheets.length) { toast('Backup file is empty or invalid','error'); return; }
+  showModal('📥 Restore from Backup', `
+    <div style="font-size:13px">
+      <div style="background:rgba(229,57,53,0.1);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:14px">
+        <strong style="color:var(--red)">⚠ Warning:</strong> This will restore data from the backup file to Google Sheet.
+        Existing data for restored sheets will be preserved (rows are appended/merged, not wiped).
+      </div>
+      <div style="color:var(--gray-light);font-size:12px;margin-bottom:8px">Sheets found in backup:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        ${sheets.map(s=>`<span class="badge badge-gold">${escHtml(s)}</span>`).join('')}
+      </div>
+      <p style="font-size:12px;color:var(--gray-light)">For a full restore, it is recommended to use Google Sheets directly: open the sheet, select the tab, and paste data from the backup.</p>
+    </div>`, [
+    {label:'Restore Employees Only', cls:'btn-gold', cb: async () => {
+      closeModal();
+      const rows = data['Employees']||data['employees']||[];
+      if (!rows.length) { toast('No employee data in backup','warning'); return; }
+      let ok=0;
+      for (const emp of rows) {
+        const res = await API.call('addEmployee', {...emp, customId: emp.id});
+        if (res.ok) ok++;
+      }
+      toast(`✓ Restored ${ok}/${rows.length} employee records`,'success',5000);
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+  ]);
 }
 
 // ═══════════════════════════════════════════
@@ -8061,7 +8837,17 @@ async function importBackup(input) {
 async function globalSearch(query) {
   if (!query || query.length < 2) return;
   const results=(State.employees||[]).filter(e=>e.name.toLowerCase().includes(query.toLowerCase())||e.id.toLowerCase().includes(query.toLowerCase())||e.mobile?.includes(query));
-  if (results.length===1) { switchTab('employees'); setTimeout(()=>renderEmployees(query),200); }
+  // Bug 28 fix: navigate for any match count (was === 1 only)
+  if (results.length >= 1) {
+    await switchTab('employees');
+    setTimeout(() => {
+      const inp = document.getElementById('emp-search-input');
+      if (inp) { inp.value = query; applyEmpFilters(); }
+      else renderEmployees(query);
+    }, 200);
+  } else if (query.length >= 2) {
+    toast(`No employees match "${query}"`, 'warning', 2000);
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -8080,17 +8866,23 @@ function exportCSV(data, name) {
 }
 
 let _empSortKey = 'name', _empSortDir = 1;
-function sortTable(col) {
-  if (_empSortKey === col) { _empSortDir *= -1; } else { _empSortKey = col; _empSortDir = 1; }
-  if (State.employees) {
-    State.employees.sort((a,b) => {
+let _sortTableBusy = false; // Bug RR: prevent concurrent calls from rapid column clicks
+async function sortTable(col) {
+  if (_sortTableBusy) return;
+  _sortTableBusy = true;
+  try {
+    if (_empSortKey === col) { _empSortDir *= -1; } else { _empSortKey = col; _empSortDir = 1; }
+    // Bug RR: sort _allEmployees in-place and re-render without another API call
+    const src = State._allEmployees || State.employees || [];
+    src.sort((a,b) => {
       const va = String(a[col]||''), vb = String(b[col]||'');
-      // Numeric sort for salary
       if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(vb))) return (parseFloat(va)-parseFloat(vb)) * _empSortDir;
       return va.localeCompare(vb) * _empSortDir;
     });
-    renderEmployees();
-  }
+    State._allEmployees = src;
+    State.employees = src.slice();
+    await applyEmpFilters(); // re-render from sorted state without API call
+  } finally { _sortTableBusy = false; }
 }
 
 // ═══════════════════════════════════════════
