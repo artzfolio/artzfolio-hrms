@@ -982,13 +982,12 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 // and shows a visible message instead of a blank screen.
 // ═══════════════════════════════════════════
 (function detectLocalOpen() {
-  // In a deployed GAS web app, google.script.run is injected by GAS.
-  // When opened as a plain file:// or via a static server, it is undefined.
-  if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+  // Only block the UI when the file is opened directly from the filesystem (file://)
+  // When hosted on GitHub Pages, a web server, or GAS, the app loads normally.
+  // The init() function handles the case where gasUrl is not yet configured.
+  if (window.location.protocol === 'file:') {
     document.addEventListener('DOMContentLoaded', function() {
-      // Hide all screens so none of the app UI renders half-broken
       document.querySelectorAll('.screen').forEach(function(s) { s.style.display = 'none'; });
-      // Inject a clearly visible message
       var banner = document.createElement('div');
       banner.style.cssText = [
         'position:fixed', 'inset:0', 'display:flex', 'flex-direction:column',
@@ -1001,21 +1000,18 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
         '<div style="font-size:2.5rem;margin-bottom:16px">⚙</div>',
         '<div style="font-size:1.3rem;font-weight:800;color:#C9A84C;margin-bottom:12px">ArtzFolio HRMS v2</div>',
         '<div style="font-size:1rem;font-weight:700;color:#E53935;margin-bottom:16px">',
-        '  This app must be deployed via Google Apps Script.',
+        '  Cannot preview this file locally.',
         '</div>',
         '<div style="font-size:13px;color:#CCCCCC;max-width:460px;line-height:1.7;margin-bottom:20px">',
-        '  Local preview is not supported because this app requires a live',
-        '  Google Sheets backend (gas_backend.gs) to function.<br><br>',
-        '  <strong style="color:#F0D080">To deploy:</strong><br>',
-        '  1. Open <em>gas_backend.gs</em> in Google Apps Script<br>',
-        '  2. Run <code style="background:#222;padding:1px 5px;border-radius:3px">bootstrap()</code> once<br>',
-        '  3. Click <strong>Deploy → New deployment → Web app</strong><br>',
-        '  4. Set <em>Execute as: Me</em> &amp; <em>Access: Anyone</em><br>',
-        '  5. Copy the web app URL and paste into the HTML setup screen',
+        '  Open this app from a web server (GitHub Pages, GAS, or any HTTPS host).<br><br>',
+        '  <strong style="color:#F0D080">To deploy on GitHub Pages:</strong><br>',
+        '  1. Upload <em>ArtzFolio_HRMS_v2.html</em> as <em>index.html</em> to your repo<br>',
+        '  2. Enable GitHub Pages (Settings → Pages → main branch / root)<br>',
+        '  3. Open the Pages URL — the app will guide you through GAS setup<br>',
         '</div>',
         '<div style="font-size:11px;color:#888;border:1px solid #333;border-radius:6px;padding:8px 14px">',
         '  HTML file loaded correctly ✓ &nbsp;|&nbsp; JavaScript parsed correctly ✓',
-        '  &nbsp;|&nbsp; Only the GAS backend is missing.',
+        '  &nbsp;|&nbsp; Serve from HTTPS to connect to the GAS backend.',
         '</div>'
       ].join('');
       document.body.appendChild(banner);
@@ -8723,177 +8719,4 @@ async function refreshHolidayList() {
     <td style="padding:6px">${fmtHolDate(h.date)}</td>
     <td style="padding:6px">${escHtml(h.name)}</td>
     <td style="padding:6px">${escHtml(h.type||'Public')}</td>
-    <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
-  </tr>`).join('');
-}
-
-async function addHoliday() {
-  const date=document.getElementById('hol-date')?.value;
-  const name=document.getElementById('hol-name')?.value;
-  const type=document.getElementById('hol-type')?.value;
-  if(!date||!name){toast('Date and name required','warning');return;}
-  const res=await API.call('addHoliday',{date,name,type,applicableTo:'All'});
-  if(res.ok){toast('✓ Holiday added','success'); document.getElementById('hol-name').value=''; await refreshHolidayList();}
-}
-
-async function removeHoliday(date) {
-  const res=await API.call('removeHoliday',{date});
-  if(res.ok){toast('Holiday removed','success');await refreshHolidayList();}
-}
-async function deleteHoliday(id) {
-  if (State.adminRole !== 'owner') { toast('Only Owner can delete holidays permanently','error'); return; }
-  const ok = await confirm2('Remove this holiday from the calendar?');
-  if (!ok) return;
-  const res = await API.call('removeHoliday',{date:id});
-  if(res.ok){toast('✓ Holiday deleted','success');await refreshHolidayList();}
-  else toast(res.error||'Error','error');
-}
-async function deleteSelectedHolidays() {
-  if (State.adminRole !== 'owner') { toast('Only Owner can delete holidays permanently','error'); return; }
-  const ids = [...document.querySelectorAll('.hol-cb:checked')].map(cb=>cb.value);
-  if(!ids.length) { toast('No holidays selected','warning'); return; }
-  const ok = await confirm2(`Delete ${ids.length} holiday(s)? This cannot be undone.`);
-  if(!ok) return;
-  toast(`Deleting ${ids.length} holidays…`, 'info', 3000);
-  // Chunk in parallel batches of 5 for performance
-  const CHUNK = 5;
-  for(let i=0; i<ids.length; i+=CHUNK){
-    await Promise.all(ids.slice(i,i+CHUNK).map(id=>API.call('removeHoliday',{date:id})));
-  }
-  toast(`✓ ${ids.length} holiday(s) deleted`,'success');
-  await refreshHolidayList(); // Bug OO: was renderSettings() — caused unnecessary 5-API reload
-}
-
-async function addOrgPrompt(type) {
-  // Bug PP: replace native prompt() with in-app modal (prompt() blocked on kiosk/fullscreen)
-  await new Promise(resolve => {
-    showModal(`➕ Add ${escHtml(type)}`, `<div class="form-group"><label class="form-label">${escHtml(type)} Name *</label><input id="org-prompt-input" class="form-input" placeholder="Enter name…" autocomplete="off"></div>`, [
-      {label:'Add', cls:'btn-gold', cb: async () => {
-        const name = document.getElementById('org-prompt-input')?.value?.trim();
-        if (!name) { toast('Name is required','warning'); return; }
-        closeModal();
-        const res = await API.call('addOrg',{type,name,parentName:''});
-        if(res.ok){toast('✓ Added','success');await renderSettings();}
-        else toast(res.error||'Error','error');
-        resolve();
-      }},
-      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
-    ]);
-    setTimeout(()=>document.getElementById('org-prompt-input')?.focus(), 100);
-  });
-}
-
-async function exportFullBackup() {
-  toast('Generating full backup…','info');
-  const res=await API.call('exportAll');
-  if(res.ok){
-    const blob=new Blob([JSON.stringify(res.export,null,2)],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=`ArtzFolio_FullBackup_${todayStr()}.json`; a.click();
-    toast('✓ Backup downloaded','success');
-  } else toast('Export failed','error');
-}
-
-async function importBackup(input) {
-  const file=input.files[0]; if(!file) return;
-  const ok=await confirm2('⚠ This will overwrite existing data with the backup file. Are you sure?');
-  if(!ok) return;
-  const text=await file.text();
-  let data;
-  try { data=JSON.parse(text); } catch { toast('Invalid JSON file','error'); return; }
-  // Bug WW: implement actual restore by iterating backup sheets and calling batch-save
-  const sheets = Object.keys(data);
-  if (!sheets.length) { toast('Backup file is empty or invalid','error'); return; }
-  showModal('📥 Restore from Backup', `
-    <div style="font-size:13px">
-      <div style="background:rgba(229,57,53,0.1);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:14px">
-        <strong style="color:var(--red)">⚠ Warning:</strong> This will restore data from the backup file to Google Sheet.
-        Existing data for restored sheets will be preserved (rows are appended/merged, not wiped).
-      </div>
-      <div style="color:var(--gray-light);font-size:12px;margin-bottom:8px">Sheets found in backup:</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-        ${sheets.map(s=>`<span class="badge badge-gold">${escHtml(s)}</span>`).join('')}
-      </div>
-      <p style="font-size:12px;color:var(--gray-light)">For a full restore, it is recommended to use Google Sheets directly: open the sheet, select the tab, and paste data from the backup.</p>
-    </div>`, [
-    {label:'Restore Employees Only', cls:'btn-gold', cb: async () => {
-      closeModal();
-      const rows = data['Employees']||data['employees']||[];
-      if (!rows.length) { toast('No employee data in backup','warning'); return; }
-      let ok=0;
-      for (const emp of rows) {
-        const res = await API.call('addEmployee', {...emp, customId: emp.id});
-        if (res.ok) ok++;
-      }
-      toast(`✓ Restored ${ok}/${rows.length} employee records`,'success',5000);
-    }},
-    {label:'Cancel', cls:'btn-dark', cb: closeModal},
-  ]);
-}
-
-// ═══════════════════════════════════════════
-// GLOBAL SEARCH
-// ═══════════════════════════════════════════
-async function globalSearch(query) {
-  if (!query || query.length < 2) return;
-  const results=(State.employees||[]).filter(e=>e.name.toLowerCase().includes(query.toLowerCase())||e.id.toLowerCase().includes(query.toLowerCase())||e.mobile?.includes(query));
-  // Bug 28 fix: navigate for any match count (was === 1 only)
-  if (results.length >= 1) {
-    await switchTab('employees');
-    setTimeout(() => {
-      const inp = document.getElementById('emp-search-input');
-      if (inp) { inp.value = query; applyEmpFilters(); }
-      else renderEmployees(query);
-    }, 200);
-  } else if (query.length >= 2) {
-    toast(`No employees match "${query}"`, 'warning', 2000);
-  }
-}
-
-// ═══════════════════════════════════════════
-// UTILITY EXPORTS
-// ═══════════════════════════════════════════
-function downloadCSV(filename, rows) {
-  const csvContent='data:text/csv;charset=utf-8,'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=encodeURI(csvContent); a.download=filename; a.click();
-}
-
-function exportCSV(data, name) {
-  if(!data||!data.length){toast('No data','warning');return;}
-  const headers=Object.keys(data[0]).filter(k=>!['pin','faceDescriptor'].includes(k));
-  const rows=data.map(r=>headers.map(h=>r[h]||''));
-  downloadCSV(`ArtzFolio_${name}_${todayStr()}.csv`,[headers,...rows]);
-}
-
-let _empSortKey = 'name', _empSortDir = 1;
-let _sortTableBusy = false; // Bug RR: prevent concurrent calls from rapid column clicks
-async function sortTable(col) {
-  if (_sortTableBusy) return;
-  _sortTableBusy = true;
-  try {
-    if (_empSortKey === col) { _empSortDir *= -1; } else { _empSortKey = col; _empSortDir = 1; }
-    // Bug RR: sort _allEmployees in-place and re-render without another API call
-    const src = State._allEmployees || State.employees || [];
-    src.sort((a,b) => {
-      const va = String(a[col]||''), vb = String(b[col]||'');
-      if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(vb))) return (parseFloat(va)-parseFloat(vb)) * _empSortDir;
-      return va.localeCompare(vb) * _empSortDir;
-    });
-    State._allEmployees = src;
-    State.employees = src.slice();
-    await applyEmpFilters(); // re-render from sorted state without API call
-  } finally { _sortTableBusy = false; }
-}
-
-// ═══════════════════════════════════════════
-// APP START
-// ═══════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', ()=>{
-  const savedLang=LS.g('lang');
-  if(savedLang) document.body.className='lang-'+savedLang;
-  applyStoredTheme();
-  init();
-});
-</script>
-</body>
-</html>
+    <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="dele
