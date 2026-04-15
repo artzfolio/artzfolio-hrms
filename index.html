@@ -911,6 +911,12 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       <div id="admin-2fa-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
       <button class="btn btn-gold" style="width:100%" onclick="verify2FA()">✓ Verify &amp; Login</button>
       <button class="btn btn-dark btn-sm" style="width:100%;margin-top:10px" onclick="back2FAToStep1()">← Back</button>
+      <!-- Emergency recovery — always visible so admins can never be permanently locked out -->
+      <div style="text-align:center;margin-top:16px">
+        <a onclick="reset2FAEmergency()" style="font-size:11px;color:var(--gray-light);cursor:pointer;text-decoration:underline">
+          Forgot 2FA PIN? Reset via master password →
+        </a>
+      </div>
     </div>
   </div>
 </div>
@@ -3082,8 +3088,17 @@ async function verify2FA() {
   const code  = (document.getElementById('admin-2fa-input')?.value||'').trim();
   const errEl = document.getElementById('admin-2fa-err');
   if (!code) { errEl.textContent='Enter your 2FA PIN.'; errEl.style.display='block'; return; }
-  const r = await API.call('adminLogin', {pin:code, role:window._pendingLoginRole||selectedRole});
-  if (r.ok) {
+  // FIX: compare against the 2FA secret stored in localStorage, NOT via adminLogin
+  // (adminLogin checks the role password, not the 2FA PIN — they are different things)
+  const stored2FA = String(LS.g('twoFASecret')||'').trim();
+  if (!stored2FA) {
+    // If no secret is stored, 2FA config is broken — skip and let user in
+    errEl.style.display='none';
+    await completeAdminLogin(window._pendingLoginRole || selectedRole);
+    window._pendingLoginRole = null;
+    return;
+  }
+  if (code === stored2FA) {
     errEl.style.display='none';
     await completeAdminLogin(window._pendingLoginRole || selectedRole);
     window._pendingLoginRole = null;
@@ -3091,6 +3106,28 @@ async function verify2FA() {
     errEl.textContent='Wrong 2FA PIN. Try again.';
     errEl.style.display='block';
     document.getElementById('admin-2fa-input').value='';
+  }
+}
+
+// Emergency 2FA reset — asks for master password, clears 2FA if correct
+async function reset2FAEmergency() {
+  const masterPw = prompt('Enter your master admin password to reset 2FA:');
+  if (!masterPw) return;
+  const r = await API.call('adminLogin', {pin: masterPw, role: 'owner'});
+  if (r.ok) {
+    LS.d('twoFAEnabled');
+    LS.d('twoFASecret');
+    // Also uncheck the 2FA checkbox in Settings if it exists
+    const cb = document.getElementById('cfg-2fa-enabled');
+    if (cb) cb.checked = false;
+    alert('2FA has been disabled. You can now log in with just your password.\nRe-enable 2FA in Settings after logging in.');
+    // Return to step 1 and auto-proceed
+    back2FAToStep1();
+    document.getElementById('admin-login-err').style.display='none';
+    await completeAdminLogin(window._pendingLoginRole || selectedRole || 'owner');
+    window._pendingLoginRole = null;
+  } else {
+    alert('Master password incorrect. 2FA reset denied.');
   }
 }
 
@@ -7396,6 +7433,20 @@ async function renderSettings() {
     </div>
     <div id="twofa-status" style="margin-top:8px;font-size:12px;min-height:14px;color:${LS.g('twoFAEnabled')===true?'var(--green)':'var(--gray-light)'}">
       ${LS.g('twoFAEnabled')===true?'✓ 2FA is currently ENABLED':'2FA is currently disabled'}
+    </div>
+    <!-- Recovery info box -->
+    <div style="background:var(--dark3);border:1px solid var(--gold-dim);border-radius:6px;padding:12px;margin-top:12px;font-size:12px">
+      <div style="font-weight:700;color:var(--gold);margin-bottom:6px">🛟 Lockout Recovery Guide</div>
+      <div style="color:var(--gray-light);line-height:1.7">
+        <b style="color:var(--white)">Option 1 — Login screen:</b> Click <i>"Forgot 2FA PIN? Reset via master password"</i> on the 2FA screen.<br>
+        <b style="color:var(--white)">Option 2 — Browser console (F12):</b> <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--green)">localStorage.removeItem('twoFAEnabled')</code> → reload.<br>
+        <b style="color:var(--white)">Option 3 — Google Sheet:</b> Config sheet → row <i>adminPassword</i> = your master credential.
+      </div>
+      <div style="margin-top:10px">
+        <button class="btn btn-dark btn-sm" onclick="if(confirm('Clear 2FA from this browser now?')){LS.d('twoFAEnabled');LS.d('twoFASecret');toast('2FA cleared — reload and log in with your password.','success');renderSettings();}">
+          🔓 Emergency: Clear 2FA Now
+        </button>
+      </div>
     </div>
   </div>
 
