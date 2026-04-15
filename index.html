@@ -892,6 +892,46 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       <div id="admin-login-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
       <button class="btn btn-gold" style="width:100%" onclick="doAdminLogin()">Next →</button>
       <button class="btn btn-dark btn-sm" style="width:100%;margin-top:10px" onclick="showScreen('kiosk')">← Back to Kiosk</button>
+      <!-- Forgot password recovery link — always visible -->
+      <div style="text-align:center;margin-top:14px">
+        <a onclick="showForgotPassword()" style="font-size:11px;color:var(--gray-light);cursor:pointer;text-decoration:underline">
+          Forgot password? →
+        </a>
+      </div>
+    </div>
+
+    <!-- Step 3: Forgot Password recovery panel -->
+    <div id="login-step-3" style="display:none">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:28px;margin-bottom:6px">🔑</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold)">Password Recovery</div>
+        <div style="font-size:12px;color:var(--gray-light);margin-top:4px">Passwords are stored in your Google Sheet</div>
+      </div>
+      <div style="background:var(--dark3);border:1px solid var(--gold-dim);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;color:var(--gray-light)">
+        <div style="font-weight:700;color:var(--gold);margin-bottom:8px">How to reset your password:</div>
+        <div style="margin-bottom:6px">
+          <strong style="color:var(--white)">Step 1:</strong> Open your Google Sheet (the one linked to this HRMS app)
+        </div>
+        <div style="margin-bottom:6px">
+          <strong style="color:var(--white)">Step 2:</strong> Click on the <strong style="color:var(--gold)">Config</strong> tab at the bottom
+        </div>
+        <div style="margin-bottom:6px">
+          <strong style="color:var(--white)">Step 3:</strong> Find the row with key = <code style="background:var(--dark1);padding:1px 5px;border-radius:3px;color:var(--green)">adminPassword</code>
+        </div>
+        <div style="margin-bottom:6px">
+          <strong style="color:var(--white)">Step 4:</strong> Edit the <strong>value</strong> column in that row to set your new password
+        </div>
+        <div style="margin-bottom:10px">
+          <strong style="color:var(--white)">Step 5:</strong> Come back here and log in with the new password
+        </div>
+        <div style="border-top:1px solid var(--dark2);padding-top:10px;font-size:11px">
+          <strong style="color:var(--orange)">Default passwords if you never changed them:</strong><br>
+          Owner: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">ArtzFolio@2026</code> &nbsp;|&nbsp;
+          Manager: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">Manager@2026</code> &nbsp;|&nbsp;
+          Supervisor: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">Supervisor@2026</code>
+        </div>
+      </div>
+      <button class="btn btn-dark btn-sm" style="width:100%;margin-top:14px" onclick="hideForgotPassword()">← Back to Login</button>
     </div>
 
     <!-- Step 2: 2FA code (shown only if 2FA is enabled) -->
@@ -3137,6 +3177,18 @@ function back2FAToStep1() {
   window._pendingLoginRole = null;
 }
 
+function showForgotPassword() {
+  document.getElementById('login-step-1').style.display='none';
+  document.getElementById('login-step-2').style.display='none';
+  document.getElementById('login-step-3').style.display='block';
+}
+
+function hideForgotPassword() {
+  document.getElementById('login-step-3').style.display='none';
+  document.getElementById('login-step-1').style.display='block';
+  document.getElementById('admin-login-err').style.display='none';
+}
+
 async function completeAdminLogin(role) {
   // Bug KK: ask for a real name so audit trail identifies who (not just role)
   const savedName = LS.g('adminLoginName_' + role) || '';
@@ -3794,6 +3846,22 @@ async function renderDashboard() {
 // ═══════════════════════════════════════════
 // EMPLOYEES TAB
 // ═══════════════════════════════════════════
+// Sort state for the employees table — must be module-scope so template literals can read them
+let _empSortKey = '';   // which column is currently sorted (empty = unsorted)
+let _empSortDir = 1;    // 1 = ascending, -1 = descending
+
+function sortTable(key) {
+  if (_empSortKey === key) {
+    _empSortDir *= -1; // flip direction if same column clicked again
+  } else {
+    _empSortKey = key;
+    _empSortDir = 1;
+  }
+  // Re-render with same filter but new sort
+  const filterVal = document.getElementById('emp-search-input')?.value || '';
+  renderEmployees(filterVal);
+}
+
 async function renderEmployees(filter='') {
   const res = await API.call('getEmployees');
   let emps = (res.employees||[]);
@@ -3801,6 +3869,14 @@ async function renderEmployees(filter='') {
   if (filter) {
     const f=filter.toLowerCase();
     emps = emps.filter(e=>(e.name+e.id+e.dept+e.level+(e.mobile||'')+(e.aadhaar||'')).toLowerCase().includes(f));
+  }
+  // Apply current sort if one is set
+  if (_empSortKey) {
+    emps = [...emps].sort((a, b) => {
+      let av = a[_empSortKey]||'', bv = b[_empSortKey]||'';
+      if (_empSortKey === 'salary') { av = parseFloat(av)||0; bv = parseFloat(bv)||0; return (av-bv)*_empSortDir; }
+      return String(av).localeCompare(String(bv)) * _empSortDir;
+    });
   }
   State.employees = emps;
   const canEdit = ['owner','manager'].includes(State.adminRole);
@@ -4722,8 +4798,10 @@ async function renderLeaves() {
     // Compute the ISO week for the leave start date (for roster link)
     let rosterWeek='';
     if(l.startDate) {
-      const sd=new Date(l.startDate+'T00:00:00');
-      rosterWeek=getWeekStart(sd);
+      try {
+        const sd=new Date(l.startDate+'T00:00:00');
+        if (!isNaN(sd.getTime())) rosterWeek=getWeekStart(sd);
+      } catch(e) {} // guard against Invalid Date if startDate value is malformed
     }
     html+=`<tr>
       <td><strong>${escHtml(lEmp?.name||l.empId)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(l.empId)}</span></td>
@@ -7806,6 +7884,38 @@ async function renderSettings() {
   </div>
 
   ${isOwner ? `
+  <!-- Danger Zone Token Config -->
+  <div class="settings-section">
+    <div class="settings-section-title">🔑 Danger Zone Token</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:12px;line-height:1.7">
+      This secret token protects destructive operations (Delete Employee, Clear Records, Full Reset).<br>
+      It must be set here AND match the <strong style="color:var(--gold)">ownerToken</strong> row in your Google Sheet → Config tab.<br>
+      If this is blank, Danger Zone actions will show a warning and refuse to run.
+    </div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">Owner Token (Danger Zone secret)</label>
+        <input id="cfg-ownerToken" class="form-input" type="text" placeholder="e.g. ARTZFOLIO_DZ_2026"
+          value="\${escHtml(cfg['ownerToken']||'')}" autocomplete="off">
+        <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
+          Keep this confidential. After setting it here, copy the same value into your Google Sheet → Config tab → key: <code>ownerToken</code>.
+        </div>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end">
+        <div>
+          <button class="btn btn-dark btn-sm" onclick="autoFillOwnerToken()">⚡ Auto-Generate Token</button>
+          <div style="font-size:11px;color:var(--gray-light);margin-top:6px">Generates a random secure token for you</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn btn-gold btn-sm" onclick="saveDZToken()">💾 Save Danger Zone Token</button>
+    </div>
+    <div id="dz-token-status" style="margin-top:8px;font-size:12px;color:\${cfg['ownerToken']?'var(--green)':'var(--orange)'}">
+      \${cfg['ownerToken'] ? '✓ Token is configured' : '⚠ Token not set — Danger Zone actions are blocked'}
+    </div>
+  </div>
+
   <!-- ⚠ DANGER ZONE -->
   <div class="settings-section" style="border-color:var(--red);border-width:2px">
     <div class="settings-section-title" style="color:var(--red)">⚠ Danger Zone — Owner Only</div>
@@ -8058,6 +8168,29 @@ async function saveCompanySettings() {
       applyBranding();
     }
   }else toast('Error','error');
+}
+
+// ─── Danger Zone Token helpers ──────────────────────────────────────────────
+function autoFillOwnerToken() {
+  // Generate a random 24-character token and fill the input
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let token = 'ARTZFOLIO_';
+  for (let i = 0; i < 16; i++) token += chars[Math.floor(Math.random()*chars.length)];
+  const el = document.getElementById('cfg-ownerToken');
+  if (el) { el.value = token; el.focus(); }
+  toast('Token generated — click "Save Danger Zone Token" then copy to your Google Sheet Config tab','info');
+}
+
+async function saveDZToken() {
+  const token = (document.getElementById('cfg-ownerToken')?.value||'').trim();
+  if (!token) { toast('Enter a token value first','error'); return; }
+  const res = await API.call('updateSettings', { updates: { ownerToken: token } });
+  if (res.ok) {
+    const sRes = await API.call('getSettings');
+    if (sRes.ok) applySettingsArr(sRes.settings||[]);
+    toast('✓ Danger Zone token saved. Copy this same value to Google Sheet → Config → ownerToken row.','success');
+    await renderSettings(); // refresh to show green status
+  } else toast(res.error||'Error saving token','error');
 }
 
 async function saveOrgSettings() {
