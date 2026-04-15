@@ -1400,6 +1400,7 @@ function showModal(title, bodyHtml, btns=[], opts={}) {
   const overlay = document.getElementById('modal-overlay');
   overlay.dataset.noDismiss = opts.noDismissOnBackdrop ? '1' : '';
   overlay.classList.add('open');
+  if (typeof opts.onOpen === 'function') opts.onOpen();
 }
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
@@ -2493,7 +2494,8 @@ function doRequestClockInAfterMissedOut(yesterdayDate) {
     </div>
     <div class="form-group">
       <label class="form-label">What time did you leave yesterday?</label>
-      <input id="missed-out-time" class="form-input" type="time" value="19:00">
+      <div id="tp-missed-out" class="form-input" style="padding:4px 8px;height:auto"></div>
+      <script>renderTimePicker('tp-missed-out','19:00');</script>
     </div>
     <div class="form-group">
       <label class="form-label">Reason / Note</label>
@@ -2506,7 +2508,7 @@ function doRequestClockInAfterMissedOut(yesterdayDate) {
   `;
   showModal('🚨 Missed Clock-Out Approval', bodyHtml, [
     {label:'Approve & Clock In', cls:'btn-gold', cb: async () => {
-      const time = document.getElementById('missed-out-time')?.value;
+      const time = getTimePicker('tp-missed-out');
       const note = document.getElementById('missed-out-note')?.value?.trim();
       const pin = document.getElementById('missed-mgr-pin')?.value?.trim();
       if (!pin) { toast('Manager PIN required','warning'); return; }
@@ -4129,6 +4131,89 @@ async function deleteDocument(docId, empId, empName) {
   showDocumentVault(empId, empName);
 }
 
+// ─── 12-HOUR AM/PM TIME PICKER HELPERS ──────────────────────────────────────
+// Renders a compact 12h AM/PM picker inline for a given container ID.
+// The hidden input with id="{id}" stores the value in 24h HH:MM for backend use.
+function renderTimePicker(containerId, initial24h) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  // Parse initial 24h value
+  let initH = 9, initM = 0;
+  if (initial24h && initial24h.includes(':')) {
+    const parts = initial24h.split(':');
+    initH = parseInt(parts[0]) || 0;
+    initM = parseInt(parts[1]) || 0;
+  }
+  const ampm = initH >= 12 ? 'PM' : 'AM';
+  const h12 = initH % 12 === 0 ? 12 : initH % 12;
+  const inputId = containerId + '-val';
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+      <select id="${containerId}-h" class="form-input" style="width:62px;padding:8px 6px;text-align:center"
+        onchange="syncTimePicker('${containerId}')">
+        ${[12,1,2,3,4,5,6,7,8,9,10,11].map(n=>`<option value="${n}" ${n===h12?'selected':''}>${String(n).padStart(2,'0')}</option>`).join('')}
+      </select>
+      <span style="color:var(--gold);font-weight:700;font-size:16px">:</span>
+      <select id="${containerId}-m" class="form-input" style="width:62px;padding:8px 6px;text-align:center"
+        onchange="syncTimePicker('${containerId}')">
+        ${[0,5,10,15,20,25,30,35,40,45,50,55].map(n=>`<option value="${n}" ${n===initM?'selected':''} ${(initM>0&&!([0,5,10,15,20,25,30,35,40,45,50,55].includes(initM)))&&n===0?'':''}}>${String(n).padStart(2,'0')}</option>`).join('')}
+      </select>
+      <select id="${containerId}-ap" class="form-input" style="width:62px;padding:8px 6px;text-align:center"
+        onchange="syncTimePicker('${containerId}')">
+        <option value="AM" ${ampm==='AM'?'selected':''}>AM</option>
+        <option value="PM" ${ampm==='PM'?'selected':''}>PM</option>
+      </select>
+      <input type="hidden" id="${inputId}" value="${initial24h||'09:00'}">
+    </div>`;
+  // Handle non-standard minutes (e.g. existing value like :00 — always included)
+  const mSel = document.getElementById(containerId + '-m');
+  if (mSel && initM !== undefined) {
+    // If initM not in list, add it
+    const existing = Array.from(mSel.options).map(o=>parseInt(o.value));
+    if (!existing.includes(initM)) {
+      const opt = new Option(String(initM).padStart(2,'0'), initM, true, true);
+      mSel.add(opt, 0);
+    }
+    mSel.value = initM;
+  }
+}
+
+// Syncs the three dropdowns → writes 24h value to hidden input
+function syncTimePicker(containerId) {
+  const h = parseInt(document.getElementById(containerId+'-h')?.value)||12;
+  const m = parseInt(document.getElementById(containerId+'-m')?.value)||0;
+  const ap = document.getElementById(containerId+'-ap')?.value||'AM';
+  let h24 = h % 12; // 12 AM→0, 12 PM→12
+  if (ap === 'PM') h24 += 12;
+  const val = String(h24).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  const hidden = document.getElementById(containerId+'-val');
+  if (hidden) hidden.value = val;
+}
+
+// Reads 24h value from the hidden input of a time picker
+function getTimePicker(containerId) {
+  syncTimePicker(containerId); // ensure synced
+  return document.getElementById(containerId+'-val')?.value || '09:00';
+}
+
+// Sets the dropdowns of an already-rendered time picker to a 24h value
+function setTimePicker(containerId, val24h) {
+  if (!val24h || !val24h.includes(':')) return;
+  const parts = val24h.split(':');
+  let h24 = parseInt(parts[0]) || 0;
+  const m  = parseInt(parts[1]) || 0;
+  const ampm = h24 >= 12 ? 'PM' : 'AM';
+  const h12  = h24 % 12 === 0 ? 12 : h24 % 12;
+  const hSel  = document.getElementById(containerId+'-h');
+  const mSel  = document.getElementById(containerId+'-m');
+  const apSel = document.getElementById(containerId+'-ap');
+  if (hSel)  hSel.value  = h12;
+  if (mSel)  mSel.value  = m;
+  if (apSel) apSel.value = ampm;
+  syncTimePicker(containerId);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Bug fix: autoFillLevelDefaults was called onchange on the level select in showAddEmpModal
 // but was never defined. Fills salary/noticePeriod fields with band defaults when level changes.
 // Field IDs match those in showAddEmpModal: e-sal, e-np, e-ss, e-se, e-dh.
@@ -4151,14 +4236,12 @@ function autoFillLevelDefaults(level) {
   // Use actual form field IDs from showAddEmpModal
   const salEl = document.getElementById('e-sal');
   const npEl  = document.getElementById('e-np');
-  const ssEl  = document.getElementById('e-ss');
-  const seEl  = document.getElementById('e-se');
   const dhEl  = document.getElementById('e-dh');
   // Only auto-fill if field is empty (don't overwrite intentional values)
   if (salEl && !salEl.value) salEl.value = d.salary;
   if (npEl  && !npEl.value)  npEl.value  = d.noticePeriod;
-  if (ssEl  && !ssEl.value)  ssEl.value  = d.shiftStart;
-  if (seEl  && !seEl.value)  seEl.value  = d.shiftEnd;
+  if (!getTimePicker('tp-e-ss') || getTimePicker('tp-e-ss')==='00:00') setTimePicker('tp-e-ss', d.shiftStart);
+  if (!getTimePicker('tp-e-se') || getTimePicker('tp-e-se')==='00:00') setTimePicker('tp-e-se', d.shiftEnd);
   if (dhEl  && !dhEl.value)  dhEl.value  = d.dailyHours;
 }
 
@@ -4209,8 +4292,8 @@ async function showAddEmpModal() {
     <div class="form-group"><label class="form-label">Billable Rate (₹/hr) <span style="color:var(--gray-light);font-weight:400">(for time reports)</span></label><input id="e-billable" class="form-input" type="number" value="0" placeholder="0"></div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">Shift Start</label><input id="e-ss" class="form-input" type="time" value="09:00"></div>
-    <div class="form-group"><label class="form-label">Shift End</label><input id="e-se" class="form-input" type="time" value="19:00"></div>
+    <div class="form-group"><label class="form-label">Shift Start</label><div id="tp-e-ss" class="form-input" style="padding:4px 8px;height:auto"></div><script>renderTimePicker('tp-e-ss','09:00');</script></div>
+    <div class="form-group"><label class="form-label">Shift End</label><div id="tp-e-se" class="form-input" style="padding:4px 8px;height:auto"></div><script>renderTimePicker('tp-e-se','19:00');</script></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Daily Work Hours</label><input id="e-dh" class="form-input" type="number" value="10"></div>
@@ -4285,8 +4368,8 @@ async function showAddEmpModal() {
         group:document.getElementById('e-group').value.trim(),
         billableRate:document.getElementById('e-billable').value||0,
         customId:document.getElementById('e-customid').value.trim(),
-        pin, shiftStart:document.getElementById('e-ss').value,
-        shiftEnd:document.getElementById('e-se').value, dailyHours:document.getElementById('e-dh').value,
+        pin, shiftStart:getTimePicker('tp-e-ss'),
+        shiftEnd:getTimePicker('tp-e-se'), dailyHours:document.getElementById('e-dh').value,
         workDaysPerWeek:document.getElementById('e-wd').value,
         weeklyOff1:document.getElementById('e-wo1').value, weeklyOff2:document.getElementById('e-wo2').value,
         mobile:document.getElementById('e-mob').value, doj:document.getElementById('e-doj').value,
@@ -4338,8 +4421,8 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">Dept</label><input id="ee-dept" class="form-input" value="${escHtml(e.dept)}"></div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">Shift Start</label><input id="ee-ss" class="form-input" type="time" value="${e.shiftStart}"></div>
-    <div class="form-group"><label class="form-label">Shift End</label><input id="ee-se" class="form-input" type="time" value="${e.shiftEnd}"></div>
+    <div class="form-group"><label class="form-label">Shift Start</label><div id="tp-ee-ss" class="form-input" style="padding:4px 8px;height:auto"></div></div>
+    <div class="form-group"><label class="form-label">Shift End</label><div id="tp-ee-se" class="form-input" style="padding:4px 8px;height:auto"></div></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Weekly Off 1</label>
@@ -4379,7 +4462,7 @@ async function showEditEmpModal(empId) {
     {label:'Save Changes / सहेजें', cls:'btn-gold', cb:async()=>{
       const payload={empId, name:document.getElementById('ee-name').value, salary:document.getElementById('ee-sal').value,
         level:document.getElementById('ee-level').value, dept:document.getElementById('ee-dept').value,
-        shiftStart:document.getElementById('ee-ss').value, shiftEnd:document.getElementById('ee-se').value,
+        shiftStart:getTimePicker('tp-ee-ss'), shiftEnd:getTimePicker('tp-ee-se'),
         weeklyOff1:document.getElementById('ee-wo1').value, weeklyOff2:document.getElementById('ee-wo2').value,
         mobile:document.getElementById('ee-mob').value, noticeperiodDays:document.getElementById('ee-np').value,
         aadhaar:document.getElementById('ee-aadh').value, status:document.getElementById('ee-status').value,
@@ -4399,7 +4482,10 @@ async function showEditEmpModal(empId) {
       else toast(res.error||'Error','error');
     }},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
-  ]);
+  ], {onOpen: () => {
+    renderTimePicker('tp-ee-ss', e.shiftStart || '09:00');
+    renderTimePicker('tp-ee-se', e.shiftEnd   || '19:00');
+  }});
 }
 
 async function archiveEmp(empId) {
@@ -7465,11 +7551,13 @@ async function renderSettings() {
       </div>
       <div class="form-group">
         <label class="form-label">Clock-In Reminder Time</label>
-        <input id="cfg-reminderClockIn" class="form-input" type="time" value="${escHtml(cfg['reminderClockIn']||'09:00')}">
+        <div id="tp-cfg-clockin" class="form-input" style="padding:4px 8px;height:auto"></div>
+        <script>renderTimePicker('tp-cfg-clockin', '${escHtml(cfg['reminderClockIn']||'09:00')}');</script>
       </div>
       <div class="form-group">
         <label class="form-label">Clock-Out Reminder Time</label>
-        <input id="cfg-reminderClockOut" class="form-input" type="time" value="${escHtml(cfg['reminderClockOut']||'19:00')}">
+        <div id="tp-cfg-clockout" class="form-input" style="padding:4px 8px;height:auto"></div>
+        <script>renderTimePicker('tp-cfg-clockout', '${escHtml(cfg['reminderClockOut']||'19:00')}');</script>
       </div>
     </div>
     <div style="margin-top:14px">
@@ -8194,9 +8282,12 @@ async function saveDZToken() {
 }
 
 async function saveOrgSettings() {
-  const selectKeys=['currency','timezone','weekStart','durationFormat','timeRounding','autoBreakDeduction','reminderClockIn','reminderClockOut','defaultShiftStart','defaultShiftEnd'];
+  const selectKeys=['currency','timezone','weekStart','durationFormat','timeRounding','autoBreakDeduction','defaultShiftStart','defaultShiftEnd'];
   const updates={};
   selectKeys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  // Reminder times now use 12h pickers — read via getTimePicker
+  updates['reminderClockIn']  = getTimePicker('tp-cfg-clockin');
+  updates['reminderClockOut'] = getTimePicker('tp-cfg-clockout');
   // Numeric/text fields
   const ppEl=document.getElementById('cfg-payPeriodStart');
   if(ppEl) updates['payPeriodStart']=ppEl.value;
