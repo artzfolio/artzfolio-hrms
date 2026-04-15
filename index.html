@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v2</title>
+<title>ArtzFolio HRMS v3</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -622,7 +622,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 ═══════════════════════════════════════════ -->
 <div class="screen" id="screen-setup">
   <div class="setup-box">
-    <div class="setup-logo">⚙ ArtzFolio HRMS v2</div>
+    <div class="setup-logo">⚙ ArtzFolio HRMS v3</div>
     <div class="setup-sub">One-time setup required before first use</div>
     <div class="setup-step">
       <strong>Step 1 — Google Apps Script URL</strong><br>
@@ -636,11 +636,11 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
     <div class="setup-step">
       <strong>Step 2 — API Token</strong><br>
       Enter the token you set in your GAS Script Properties.<br>
-      Default is <code style="color:var(--gold)">AZ_TOKEN_2026</code> — change it after setup.
+      Enter the API token you set in the Config sheet of your Google Sheet.
     </div>
     <div class="form-group">
       <label class="form-label">API Token</label>
-      <input id="setup-token" class="form-input" type="text" placeholder="AZ_TOKEN_2026" value="AZ_TOKEN_2026">
+      <input id="setup-token" class="form-input" type="text" placeholder="" value="">
     </div>
     <button class="btn btn-gold btn-lg" style="width:100%" onclick="finishSetup()">▶ Connect &amp; Launch</button>
     <div id="setup-status" style="margin-top:12px;font-size:12px;color:var(--gray-light);text-align:center"></div>
@@ -727,6 +727,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
           <div id="ec-id" style="font-size:11px;color:var(--gray);margin-top:2px"></div>
           <div id="ec-balance" class="emp-balance"></div>
           <div id="ec-status-chip"></div>
+          <!-- RESERVED: GPS geofencing indicator — kept hidden until clock-in geofencing is fully implemented -->
           <div id="ec-gps" class="gps-indicator gps-off" style="margin-top:8px;display:none">
             📍 <span id="ec-gps-text">Getting location…</span>
           </div>
@@ -839,7 +840,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
     <div style="font-size:13px;color:var(--red);font-weight:700;margin-bottom:6px">⚠ Cannot connect to server</div>
     <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">The Google Apps Script URL may have changed after re-deployment. Update it below.</div>
     <input id="conn-err-url" class="form-input" type="url" placeholder="Paste new GAS Web App URL here…" style="font-size:11px;margin-bottom:6px">
-    <input id="conn-err-token" class="form-input" type="text" placeholder="API Token (default: AZ_TOKEN_2026)" style="font-size:11px;margin-bottom:8px">
+    <input id="conn-err-token" class="form-input" type="text" placeholder="API Token" style="font-size:11px;margin-bottom:8px">
     <button class="btn btn-gold" style="width:100%;font-size:12px" onclick="reconnectFromBanner()">🔄 Save & Reconnect</button>
     <div id="conn-err-status" style="font-size:11px;margin-top:6px;color:var(--gray-light)"></div>
   </div>
@@ -902,8 +903,9 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       </div>
       <div class="form-group">
         <label class="form-label">2FA Security PIN</label>
-        <input id="admin-2fa-input" class="form-input" type="password" maxlength="8" placeholder="Enter 2FA PIN"
+        <input id="admin-2fa-input" class="form-input" type="tel" maxlength="8" placeholder="Enter 2FA PIN"
                style="text-align:center;font-size:20px;letter-spacing:4px"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                onkeydown="if(event.key==='Enter')verify2FA()">
       </div>
       <div id="admin-2fa-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
@@ -947,6 +949,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
     <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')"><span class="nav-icon">⏱</span>Tracked Time</div>
     <div class="nav-section">System</div>
     <div class="nav-item" data-tab="activities" onclick="switchTab('activities')"><span class="nav-icon">🏷</span>Activities</div>
+    <div class="nav-item" data-tab="auditlog" onclick="switchTab('auditlog')"><span class="nav-icon">📋</span>Audit Log</div>
     <div class="nav-item" data-tab="settings" onclick="switchTab('settings')"><span class="nav-icon">⚙</span>Settings</div>
     <div id="admin-sidebar-footer">
       <button class="btn btn-dark btn-sm" style="width:100%;margin-bottom:6px" id="btn-back-kiosk" onclick="goBackToKiosk()">← Kiosk Mode</button>
@@ -998,7 +1001,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       ].join(';');
       banner.innerHTML = [
         '<div style="font-size:2.5rem;margin-bottom:16px">⚙</div>',
-        '<div style="font-size:1.3rem;font-weight:800;color:#C9A84C;margin-bottom:12px">ArtzFolio HRMS v2</div>',
+        '<div style="font-size:1.3rem;font-weight:800;color:#C9A84C;margin-bottom:12px">ArtzFolio HRMS v3</div>',
         '<div style="font-size:1rem;font-weight:700;color:#E53935;margin-bottom:16px">',
         '  Cannot preview this file locally.',
         '</div>',
@@ -1024,12 +1027,12 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 // ═══════════════════════════════════════════
 const CFG = {
   gasUrl: '',
-  token: 'AZ_TOKEN_2026',
+  token: '',
   modelPath: 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
   faceThreshold: 0.55,
   pinMaxLen: 4,
   kioskTimeout: 60000,
-  version: '2.0',
+  version: '3.0',
 };
 const LS = {
   g: k => { try { return JSON.parse(localStorage.getItem('az3_'+k)); } catch { return null; } },
@@ -1175,18 +1178,11 @@ const State = {
 function applySettingsArr(arr) {
   State.settings = {};
   (arr||[]).forEach(s => { State.settings[s.key] = s.value; });
-  // Extract passwords into non-enumerable _pwMap so they don't appear in DevTools State inspection
-  const pw = {
-    owner:      State.settings.adminPassword      || 'ArtzFolio@2026',
-    manager:    State.settings.managerPassword    || 'Manager@2026',
-    supervisor: State.settings.supervisorPassword || 'Supervisor@2026',
-    ownerToken: State.settings.ownerToken         || '',  // Bug P: store for Danger Zone calls
-  };
+  // Strip passwords so they are never kept in client memory
   delete State.settings.adminPassword;
   delete State.settings.managerPassword;
   delete State.settings.supervisorPassword;
   delete State.settings.ownerToken;
-  Object.defineProperty(State, '_pwMap', { value: pw, writable: true, enumerable: false, configurable: true });
 }
 
 // ═══════════════════════════════════════════
@@ -1653,7 +1649,17 @@ async function setMode(mode) {
     document.getElementById('face-status').innerHTML = '<span class="en">Position your face…</span><span class="hi">अपना चेहरा रखें…</span>';
     State.faceLoop = setInterval(faceDetectLoop, 1500);
     startFaceDirectionGuide();
+    // 30-second watchdog: if no face matched, fall back to PIN mode automatically
+    if (_faceTimeoutTimer) { clearTimeout(_faceTimeoutTimer); _faceTimeoutTimer = null; }
+    _faceTimeoutTimer = setTimeout(() => {
+      if (!State.faceActive) return;
+      const statusEl = document.getElementById('face-status');
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--orange)">⚠ Face not detected — please use your PIN</span>';
+      setTimeout(() => setMode('pin'), 1200); // brief pause so user can read the message
+    }, 30000);
   } else {
+    // Cancel watchdog whenever leaving face mode (manual switch or successful match)
+    if (_faceTimeoutTimer) { clearTimeout(_faceTimeoutTimer); _faceTimeoutTimer = null; }
     Face.stopCamera();
     State.faceActive = false;
     keypad.style.display='';
@@ -1666,6 +1672,7 @@ let faceDetecting = false;
 let _faceDirectionStep = 0;
 const _faceDirections = ['Look straight 👁', 'Turn left ← slightly', 'Turn right → slightly', 'Tilt up ↑ slightly', 'Tilt down ↓ slightly'];
 let _faceDirectionTimer = null;
+let _faceTimeoutTimer = null; // 30-second watchdog — auto-switches to PIN if no face matched
 function startFaceDirectionGuide() {
   _faceDirectionStep = 0;
   _faceDirectionTimer = setInterval(()=>{
@@ -1683,6 +1690,8 @@ async function faceDetectLoop() {
   try {
     const result = await Face.detectAndIdentify();
     if (result && result.ok) {
+      // Face matched — cancel watchdog, stop loops, hand off to auth handler
+      if (_faceTimeoutTimer) { clearTimeout(_faceTimeoutTimer); _faceTimeoutTimer = null; }
       clearInterval(_faceDirectionTimer);
       document.getElementById('face-status').innerHTML = `<span style="color:var(--green)">✓ ${escHtml(result.employee.name)}</span>`;
       if (State.faceLoop) { clearInterval(State.faceLoop); State.faceLoop=null; }
@@ -1762,10 +1771,11 @@ async function showEmployeeCard(res, pos) {
     } catch {}
   } else { statusText=tt('noRecord'); }
   statusEl.innerHTML = `<span class="${statusCls}">${statusText}</span>`;
-  // GPS indicator
+  // RESERVED: GPS geofencing — logic kept intact but display suppressed until geofencing is fully configured.
+  // To activate: remove the early-return below and ensure factoryLat/factoryLng/factoryRadius are set in Settings.
   const gpsEl = document.getElementById('ec-gps');
   const gpsTxt = document.getElementById('ec-gps-text');
-  if (pos) {
+  if (false && pos) { // GPS display disabled — change 'false' to 'true' when geofencing is ready
     gpsEl.style.display='inline-flex';
     const factLat = parseFloat(State.settings.factoryLat||28.6243);
     const factLng = parseFloat(State.settings.factoryLng||77.3709);
@@ -2071,8 +2081,8 @@ async function cancelLeaveFromKiosk(leaveId, needsManagerApproval) {
       {label:'Confirm Cancellation', cls:'btn-gold', cb: async () => {
         const pin = document.getElementById('cancel-leave-pin')?.value;
         if (!pin) { toast('Enter manager PIN','warning'); return; }
-        const mgrPw=(State._pwMap||{}).manager||'Manager@2026', supPw=(State._pwMap||{}).supervisor||'Supervisor@2026', admPw=(State._pwMap||{}).owner||'ArtzFolio@2026';
-        if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid PIN','error'); return; }
+        const authRes = await API.call('adminLogin', {pin, role:'any'});
+        if (!authRes.ok) { toast('Invalid PIN','error'); return; }
         closeModal();
         await doCancelLeave(leaveId, true);
       }},
@@ -2420,9 +2430,8 @@ function doRequestLateClockIn(lateMinutes) {
       const pin = document.getElementById('late-mgr-pin')?.value?.trim();
       if (!reason) { toast('Reason is required','warning'); return; }
       if (!pin) { toast('Manager PIN required','warning'); return; }
-      // Bug AA: read from _pwMap (never from State.settings — passwords are stripped at load)
-      const pm=State._pwMap||{}; const mgrPw=pm.manager||'Manager@2026', supPw=pm.supervisor||'Supervisor@2026', admPw=pm.owner||'ArtzFolio@2026';
-      if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
+      const authRes = await API.call('adminLogin', {pin, role:'any'});
+      if (!authRes.ok) { toast('Invalid manager credentials','error'); return; }
       closeModal();
       await doClockIn({lateApproved: true, note: `Late clock-in approved: ${reason}`});
     }},
@@ -2455,9 +2464,8 @@ function doRequestClockInAfterMissedOut(yesterdayDate) {
       const note = document.getElementById('missed-out-note')?.value?.trim();
       const pin = document.getElementById('missed-mgr-pin')?.value?.trim();
       if (!pin) { toast('Manager PIN required','warning'); return; }
-      // Bug AA: read from _pwMap (never from State.settings — passwords are stripped at load)
-      const pm2=State._pwMap||{}; const mgrPw=pm2.manager||'Manager@2026', supPw=pm2.supervisor||'Supervisor@2026', admPw=pm2.owner||'ArtzFolio@2026';
-      if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
+      const authRes2 = await API.call('adminLogin', {pin, role:'any'});
+      if (!authRes2.ok) { toast('Invalid manager credentials','error'); return; }
       closeModal();
       // First, record yesterday's missed clock-out
       if (yesterdayDate && time) {
@@ -2493,12 +2501,9 @@ function doRequestLateBlockOverride(monthLates, limit) {
     {label:'Override & Allow Clock-In', cls:'btn-gold', cb: async () => {
       const pin = document.getElementById('latebk-pin').value;
       const note = document.getElementById('latebk-note').value;
-      const sv = (State._pwMap||{}).supervisor||'';
-      const mg = (State._pwMap||{}).manager||'';
-      const ow = (State._pwMap||{}).owner||'';
-      if(!pin || (pin!==sv && pin!==mg && pin!==ow)) {
-        toast('Invalid supervisor/manager PIN','error'); return;
-      }
+      if (!pin) { toast('Enter supervisor/manager PIN','error'); return; }
+      const authResLb = await API.call('adminLogin', {pin, role:'any'});
+      if (!authResLb.ok) { toast('Invalid supervisor/manager PIN','error'); return; }
       closeModal();
       await doClockIn({lateBlockOverridden:true, note:`Late-block override approved: ${note||'manager approved'}`});
     }},
@@ -2633,20 +2638,18 @@ async function initiateOTInstantPayout(otMinutes, totalAmount, attendanceId, otA
       const mode = document.getElementById('ot-pay-mode')?.value || 'Cash';
       const note = document.getElementById('ot-pay-note')?.value?.trim();
       if (!pin) { toast('Enter manager PIN','warning'); return; }
-      const mgrPw = (State._pwMap||{}).manager||'Manager@2026';
-      const supPw = (State._pwMap||{}).supervisor||'Supervisor@2026';
-      const admPw = (State._pwMap||{}).owner||'ArtzFolio@2026';
-      if (![mgrPw,supPw,admPw].includes(pin)) { toast('Invalid manager credentials','error'); return; }
+      const authResOT = await API.call('adminLogin', {pin, role:'any'});
+      if (!authResOT.ok) { toast('Invalid manager credentials','error'); return; }
       closeModal();
       try {
         const res = await API.call('otInstantPayout', {
           empId: State.currentEmp.id,
-          otMinutes, otAmount, nsAmount, totalAmount, attendanceId,
+          attendanceId,
           payMode: mode, note: note||`OT Instant Payout via ${mode}`,
           approvedBy: 'manager'
         });
         if (res.ok) {
-          showOTPayoutReceipt(totalAmount, mode, res.transId);
+          showOTPayoutReceipt(res.amount, mode, res.transId);
         } else {
           toast(res.error||'Payout failed','error');
         }
@@ -2694,11 +2697,8 @@ function showManagerApprovalModal(onApprove) {
     {label:'Approve / मंजूर', cls:'btn-gold', cb: async()=>{
       const pin = document.getElementById('mgr-pin-input')?.value;
       if (!pin) { toast('Enter manager PIN','warning'); return; }
-      // Verify against manager/supervisor passwords
-      const mgrPw = (State._pwMap||{}).manager||'Manager@2026';
-      const supPw = (State._pwMap||{}).supervisor||'Supervisor@2026';
-      const admPw = (State._pwMap||{}).owner||'ArtzFolio@2026';
-      if ([mgrPw,supPw,admPw].includes(pin)) { closeModal(); onApprove('manager'); }
+      const authResMgr = await API.call('adminLogin', {pin, role:'any'});
+      if (authResMgr.ok) { closeModal(); onApprove('manager'); }
       else { toast('Invalid manager credentials','error'); }
     }},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
@@ -2995,7 +2995,7 @@ async function doApplyExit() {
       let res;
       try { res=await API.call('updateEmployee',{empId:emp.id, status:'Notice', notes:`Exit applied ${todayStr()} - ${exitType} - ${reason}`}); }
       catch(e) { toast('Network error — exit not submitted','error'); return; }
-      if(res.ok){closeModal();toast('Exit application submitted. Salary put on hold until notice completion.','success',6000);}
+      if(res.ok){closeModal();toast('Exit application submitted. Salary put on hold until notice completion.','success',6000);API.call('getEmployees').then(r=>{if(r.ok)State.employees=r.employees||[];});}
       else toast('Error','error');
     }},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
@@ -3053,26 +3053,16 @@ async function doAdminLogin() {
   const pw = document.getElementById('admin-pw-input').value;
   const errEl = document.getElementById('admin-login-err');
   errEl.style.display='none';
-  const pwMap = State._pwMap || {
-    owner: 'ArtzFolio@2026',
-    manager: 'Manager@2026',
-    supervisor: 'Supervisor@2026',
-  };
-  if (pw === pwMap[selectedRole]) {
-    // Save remember-me
+  const r = await API.call('adminLogin', {pin:pw, role:selectedRole});
+  if (r.ok) {
+    // Save remember-me (role only — never password)
     const rememberCb = document.getElementById('admin-remember-me');
-    if (rememberCb?.checked) {
-      LS.s('adminRememberRole', selectedRole);
-      // Bug E+Y: Never store password in localStorage — role only
-    } else {
-      LS.d('adminRememberRole');
-    }
-    // Check if 2FA is enabled
+    if (rememberCb?.checked) { LS.s('adminRememberRole', selectedRole); }
+    else { LS.d('adminRememberRole'); }
+    // Check if 2FA step is required
     const twoFAEnabled = LS.g('twoFAEnabled') === true;
-    // Bug V: read secret from Config (server) first, fallback to localStorage
-    const twoFASecret = State.settings?.twoFASecret || LS.g('twoFASecret') || '';
+    const twoFASecret  = State.settings?.twoFASecret || LS.g('twoFASecret') || '';
     if (twoFAEnabled && twoFASecret) {
-      // Show step 2
       window._pendingLoginRole = selectedRole;
       document.getElementById('login-step-1').style.display='none';
       document.getElementById('login-step-2').style.display='block';
@@ -3085,17 +3075,15 @@ async function doAdminLogin() {
   } else {
     errEl.textContent='Incorrect password. Try again.';
     errEl.style.display='block';
-    // Bug E+Y: no password stored, nothing to clear here
   }
 }
 
 async function verify2FA() {
-  const code = (document.getElementById('admin-2fa-input')?.value||'').trim();
-  // Bug V: read secret from Config first, fallback to localStorage
-  const secret = State.settings?.twoFASecret || LS.g('twoFASecret') || '';
+  const code  = (document.getElementById('admin-2fa-input')?.value||'').trim();
   const errEl = document.getElementById('admin-2fa-err');
   if (!code) { errEl.textContent='Enter your 2FA PIN.'; errEl.style.display='block'; return; }
-  if (code === secret) {
+  const r = await API.call('adminLogin', {pin:code, role:window._pendingLoginRole||selectedRole});
+  if (r.ok) {
     errEl.style.display='none';
     await completeAdminLogin(window._pendingLoginRole || selectedRole);
     window._pendingLoginRole = null;
@@ -3119,10 +3107,9 @@ async function completeAdminLogin(role) {
     showModal('👤 Your Name for Audit Records', `
       <div style="font-size:13px;color:var(--gray-light);margin-bottom:12px">
         Enter your name so approvals, salary saves, and audit logs show who performed each action.
-        Multiple ${role}s sharing this login will be distinguished by name.
       </div>
-      <div class="form-group"><label class="form-label">Your Name *</label>
-        <input id="login-name-input" class="form-input" value="${escHtml(savedName)}" placeholder="e.g. Rajat / Ankur…">
+      <div class="form-group"><label class="form-label">Your Name</label>
+        <input id="login-name-input" class="form-input" value="${escHtml(savedName)}" placeholder="e.g. Rajat / Ankur… (or leave blank to use role)">
       </div>`, [
       {label:'Continue', cls:'btn-gold', cb: () => {
         const nm = document.getElementById('login-name-input')?.value?.trim();
@@ -3130,7 +3117,8 @@ async function completeAdminLogin(role) {
         if (nm) LS.s('adminLoginName_' + role, nm);
         closeModal(); resolve();
       }},
-    ]);
+      {label:'Skip', cls:'btn-dark', cb: () => { State.adminUser = role; closeModal(); resolve(); }},
+    ], {noDismissOnBackdrop: true}); // prevent backdrop click leaving Promise unresolved
     setTimeout(()=>{ const el=document.getElementById('login-name-input'); if(el){el.select();el.focus();} }, 100);
   });
   State.adminRole = role;
@@ -3234,6 +3222,7 @@ async function switchTab(tab) {
       case 'reports':     await renderReports(); break;
       case 'trackedtime': await renderTrackedTime(); break;
       case 'activities':  await renderActivitiesSettings(); break;
+      case 'auditlog':    await renderAuditLog(); break;
       case 'settings':    await renderSettings(); break;
       case 'pettycash':   await renderPettyCash(); break;
     }
@@ -5611,7 +5600,6 @@ function printSlip(data) {
     <div>HR / Manager: _____________</div>
     <div>Date: _____________</div>
   </div>`;
-  window.print();
 }
 
 function buildSlipText(data) {
@@ -6205,70 +6193,22 @@ async function calculateFnF() {
   const additionalDues=parseFloat(document.getElementById('fnf-dues')?.value||0);
   const elDays=parseInt(document.getElementById('fnf-el')?.value||0);
   const gratuityEligible=document.getElementById('fnf-gratuity')?.value==='1';
-  const emp=State.employees.find(e=>e.id===empId)||{};
   if(!empId){toast('Select an employee','warning');return;}
   const result=document.getElementById('fnf-result');
   result.innerHTML='<div class="loading-spinner"></div>';
-  const doj=emp.doj;
-  const tenureYears=doj?(new Date(lwd)-new Date(doj))/(365.25*24*3600*1000):0;
-  const tenureDays=doj?Math.round((new Date(lwd)-new Date(doj))/(24*3600*1000)):0;
-  const noticePeriod=parseInt(emp.noticeperiodDays||90);
-  const daysInFinalMonth=new Date(new Date(lwd).getFullYear(),new Date(lwd).getMonth()+1,0).getDate();
-  const dailyRate=parseFloat(emp.salary)/daysInFinalMonth;
-  const daysWorkedFinalMonth=new Date(lwd).getDate();
-  const earlyExit=tenureDays<=7;
-  const kycDeduct=tenureDays<=30;
-  const effectiveDailyRate=earlyExit?(parseFloat(emp.minDayRate||300)):dailyRate;
-  const proRataSalary=earlyExit?(daysWorkedFinalMonth*effectiveDailyRate):(dailyRate*daysWorkedFinalMonth);
-  const noticeShortfall=Math.max(0,noticePeriod-noticeDaysServed);
-  const noticeDeduction=noticeShortfall*dailyRate;
-  const kycFeeAmount=kycDeduct?parseFloat(emp.kycFee||750):0;
-  const elEncashment=elDays*dailyRate;
-  // Gratuity: (salary/26) × 15 × years of service (max 40 years)
-  const gratuity=gratuityEligible?Math.round((parseFloat(emp.salary)/26)*15*Math.min(tenureYears,40)):0;
-  // Pending advances from balance
-  const [balRes, lbRes, transRes] = await Promise.all([
-    API.call('getBalance',{empId}),
-    API.call('getLeaderboard',{year:new Date().getFullYear(),month:new Date().getMonth()+1}),
-    API.call('getTransactions',{empId}),
-  ]);
-  const pendingAdvance=Math.max(0,-(balRes.balance||0));
-  // Performance bonus from this month's points × rate
-  const pointsRate=parseFloat(State.settings?.pointsRatePerPoint||0);
-  const empLb=(lbRes.leaderboard||[]).find(l=>l.empId===empId);
-  const monthPerfBonus=pointsRate>0&&empLb?(empLb.total||0)*pointsRate:0;
-  // Unpaid bonuses from transactions (type=Bonus that are Pending)
-  const trans=transRes.transactions||[];
-  const pendingBonuses=trans.filter(t=>t.type==='Bonus'&&t.status==='Pending').reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
-  // Build lines
-  const earnings=[
-    ['Pro-rata Salary',proRataSalary,earlyExit?`${daysWorkedFinalMonth} days @ ₹${Math.round(effectiveDailyRate)}/day (early exit rate)`:null,'green'],
-    elEncashment?['Earned Leave Encashment',elEncashment,`${elDays} days encashed`,'green']:null,
-    gratuity?['Gratuity',gratuity,`(Salary/26)×15×${Math.round(tenureYears*10)/10} yrs`,'green']:null,
-    monthPerfBonus?['Performance Bonus (this month)',monthPerfBonus,`${empLb?.total||0} pts × ₹${pointsRate}/pt`,'green']:null,
-    pendingBonuses?['Pending Bonuses (un-paid)',pendingBonuses,'From transactions','green']:null,
-    additionalDues?['Additional Dues / Arrears',additionalDues,'As entered','green']:null,
-  ].filter(Boolean);
-  const deductions=[
-    noticeDeduction?['Notice Period Shortfall',noticeDeduction,`${noticeShortfall} days not served`,'red']:null,
-    kycFeeAmount?['KYC Fee',kycFeeAmount,'Exit within 30 days','red']:null,
-    damageRecovery?['Damage Recovery',damageRecovery,'As entered','red']:null,
-    pendingAdvance?['Pending Advance Recovery',pendingAdvance,'Outstanding balance','red']:null,
-    additionalDeductions?['Other Deductions',additionalDeductions,'As entered','red']:null,
-  ].filter(Boolean);
-  const totalEarnings=earnings.reduce((s,[,v])=>s+v,0);
-  const totalDeductions=deductions.reduce((s,[,v])=>s+v,0);
-  const netFnF=totalEarnings-totalDeductions;
-  const fnfData={emp,empId,lwd,tenureYears,tenureDays,earnings,deductions,totalEarnings,totalDeductions,netFnF,dailyRate,daysInFinalMonth,proRataSalary,noticeShortfall,noticePeriod,gratuity,elDays,elEncashment,monthPerfBonus,pendingAdvance,damageRecovery,additionalDues,additionalDeductions};
-  window._lastFnF=fnfData;
+  const res=await API.call('calcFnF',{empId,lwd,noticeDaysServed,damageRecovery,additionalDeductions,additionalDues,elDays,gratuityEligible});
+  if(!res.ok){result.innerHTML=`<div style="color:var(--red);padding:16px">${escHtml(res.error||'Calculation failed')}</div>`;return;}
+  const emp=State.employees.find(e=>e.id===empId)||res.emp||{};
+  window._lastFnF={...res,emp,empId};
+  const {earnings,deductions,totalEarnings,totalDeductions,netFnF,tenureYears,lwd:lwdOut}=res;
   const rowHtml=(items,cls)=>items.map(([lbl,amt,note])=>`
     <tr><td style="padding:6px 4px">${escHtml(lbl)}${note?`<br><span style="font-size:10px;color:var(--gray-light)">${escHtml(note)}</span>`:''}</td>
     <td style="text-align:right;color:var(--${cls});font-weight:600">${cls==='green'?'+':'-'} ${fmtMoney(amt)}</td></tr>`).join('');
   result.innerHTML=`
   <div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:var(--radius);padding:20px;max-width:680px">
     <div style="font-size:1.1rem;font-weight:700;color:var(--gold);margin-bottom:14px">
-      ✦ Full & Final Settlement — ${escHtml(emp.name)}<br>
-      <span style="font-size:11px;font-weight:400;color:var(--gray-light)">${escHtml(emp.level)} | ${escHtml(emp.dept)} | LWD: ${fmtDate(lwd)} | Tenure: ${Math.round(tenureYears*10)/10} yrs</span>
+      ✦ Full & Final Settlement — ${escHtml(emp.name||'')}<br>
+      <span style="font-size:11px;font-weight:400;color:var(--gray-light)">${escHtml(emp.level||'')} | ${escHtml(emp.dept||'')} | LWD: ${fmtDate(lwdOut||lwd)} | Tenure: ${Math.round(tenureYears*10)/10} yrs</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div>
@@ -6289,7 +6229,7 @@ async function calculateFnF() {
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-gold" onclick="downloadFnFPDF()">📄 Download PDF Settlement Letter</button>
-      <button class="btn btn-dark btn-sm" onclick="API.call('updateEmployee',{empId:'${escHtml(empId)}',status:'Exited',lwd:'${lwd}'}).then(r=>r.ok&&toast('Employee marked Exited','success'))">✓ Mark as Exited</button>
+      <button class="btn btn-dark btn-sm" onclick="API.call('updateEmployee',{empId:'${escHtml(empId)}',status:'Exited',lwd:'${lwd}'}).then(async r=>{if(r.ok){toast('Employee marked Exited','success');const er=await API.call('getEmployees');if(er.ok)State.employees=er.employees||[];}})">✓ Mark as Exited</button>
     </div>
   </div>`;
 }
@@ -6975,11 +6915,7 @@ function openPCEditModal(id) {
 }
 
 async function pcApprove(id) {
-  const res = await API.call('updatePettyCash', {id, updates: {
-    status: 'Approved',
-    approvedBy: State.adminUser || State.adminRole,
-    approvalDate: todayStr()
-  }});
+  const res = await API.call('approvePettyCash', {pcId: id, userId: State.adminUser || State.adminRole});
   if (!res.ok) { toast(res.error||'Failed', 'error'); return; }
   toast('✓ Entry approved', 'success');
   renderPettyCash();
@@ -6987,11 +6923,7 @@ async function pcApprove(id) {
 
 async function pcReject(id) {
   if (!await confirm2('Reject this petty cash entry?')) return;
-  const res = await API.call('updatePettyCash', {id, updates: {
-    status: 'Rejected',
-    approvedBy: State.adminUser || State.adminRole,
-    approvalDate: todayStr()
-  }});
+  const res = await API.call('rejectPettyCash', {pcId: id, userId: State.adminUser || State.adminRole});
   if (!res.ok) { toast(res.error||'Failed', 'error'); return; }
   toast('Entry rejected', 'warning');
   renderPettyCash();
@@ -7096,6 +7028,46 @@ async function toggleActivity(id, active) {
 // ═══════════════════════════════════════════
 // SETTINGS TAB
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// AUDIT LOG TAB
+// ═══════════════════════════════════════════
+async function renderAuditLog() {
+  const content = document.getElementById('admin-tab-content');
+  content.innerHTML = `<div class="loading-spinner" style="margin:60px auto"></div>`;
+  const res = await API.call('getAudit', { limit: 200 });
+  if (!res.ok) { content.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>Could not load audit log</p></div>`; return; }
+  const rows = (res.audit || []).slice().reverse(); // newest first
+  if (!rows.length) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No audit entries yet</p></div>`;
+    return;
+  }
+  const rowsHtml = rows.map(r => `
+    <tr>
+      <td style="white-space:nowrap;color:var(--gray-light);font-size:11px">${escHtml(r.timestamp||'')}</td>
+      <td style="white-space:nowrap;font-weight:600;color:var(--gold)">${escHtml(r.userId||'—')}</td>
+      <td style="white-space:nowrap">${escHtml(r.action||'—')}</td>
+      <td style="font-size:12px;color:var(--gray-light);max-width:400px;word-break:break-word">${escHtml(r.details||'')}</td>
+    </tr>`).join('');
+  content.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h2 class="section-title" style="margin:0">📋 Audit Log</h2>
+      <span style="font-size:12px;color:var(--gray-light)">${rows.length} entries (most recent first)</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table" style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--dark3)">
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:var(--gray-light)">Timestamp</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:var(--gray-light)">User / ID</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:var(--gray-light)">Action</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:var(--gray-light)">Details</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+}
+
 async function renderSettings() {
   let settingsRes={settings:[]}, msRes={milestones:[]}, bandsRes={bands:[]}, orgsRes={orgs:[]}, holRes={holidays:[]};
   let gasConnected = true;
@@ -7119,7 +7091,7 @@ async function renderSettings() {
       </div>
       <div class="form-group">
         <label class="form-label">API Token</label>
-        <input id="cfg-gasToken" class="form-input" type="text" value="${escHtml(LS.g('token')||CFG.token||'AZ_TOKEN_2026')}" placeholder="AZ_TOKEN_2026">
+        <input id="cfg-gasToken" class="form-input" type="text" value="${escHtml(LS.g('token')||CFG.token||'')}" placeholder="">
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
         <button class="btn btn-gold" onclick="saveConnectionSettings()">🔄 Save & Reconnect</button>
@@ -7171,7 +7143,7 @@ async function renderSettings() {
       </div>
       <div class="form-group">
         <label class="form-label">API Token</label>
-        <input id="cfg-gasToken" class="form-input" type="text" value="${escHtml(LS.g('token')||CFG.token||'AZ_TOKEN_2026')}" placeholder="AZ_TOKEN_2026">
+        <input id="cfg-gasToken" class="form-input" type="text" value="${escHtml(LS.g('token')||CFG.token||'')}" placeholder="">
       </div>
     </div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
@@ -7825,7 +7797,7 @@ async function renderSettings() {
 }
 
 // ─── Danger Zone functions ───────────────────────────────────────────────────
-// Re-verifies the owner password at runtime so spoofing State.adminRole alone is not enough
+// Re-verifies the owner password server-side so spoofing State.adminRole alone is not enough
 function requireOwnerPin(cb) {
   if (State.adminRole !== 'owner') { toast('Owner access required','error'); return; }
   showModal('🔑 Confirm Owner Password', `
@@ -7836,10 +7808,11 @@ function requireOwnerPin(cb) {
     </div>
   `, [
     {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
-    {label:'Confirm', cls:'btn-gold', cb:()=>{
+    {label:'Confirm', cls:'btn-gold', cb: async ()=>{
       const entered = document.getElementById('dz-owner-pin')?.value||'';
-      const expected = (State._pwMap||{}).owner||'ArtzFolio@2026';
-      if (entered !== expected) { toast('Incorrect owner password','error'); return; }
+      const r = await API.call('adminLogin', {pin:entered, role:'owner'});
+      if (!r.ok) { toast('Incorrect owner password','error'); return; }
+      State._dzToken = r.ownerToken || '';
       closeModal();
       setTimeout(cb, 150);
     }},
@@ -7867,7 +7840,7 @@ async function dangerDeleteEmployee() {
       const conf  = document.getElementById('del-emp-confirm').value;
       if (!empId) { toast('Select an employee','error'); return; }
       if (conf !== 'DELETE') { toast('Type DELETE exactly to confirm','error'); return; }
-      const res = await API.call('deleteEmployee', {empId, ownerToken: (State._pwMap||{}).ownerToken||State.settings?.ownerToken||''});
+      const res = await API.call('deleteEmployee', {empId, ownerToken: State._dzToken||''});
       if (res.ok) { closeModal(); toast('✓ Employee deleted','success'); await renderEmployees(); }
       else toast(res.error||'Error','error');
     }, style:'background:var(--red);color:#fff'},
@@ -7899,7 +7872,7 @@ async function dangerClearAttendance() {
       const mo = document.getElementById('clr-att-mo').value;
       const yr = document.getElementById('clr-att-yr').value;
       if (document.getElementById('clr-att-conf').value !== 'CLEAR') { toast('Type CLEAR exactly','error'); return; }
-      const res = await API.call('clearSheetMonth', {sheet:'Attendance', year:parseInt(yr), month:parseInt(mo), ownerToken: (State._pwMap||{}).ownerToken||State.settings?.ownerToken||''});
+      const res = await API.call('clearSheetMonth', {sheet:'Attendance', year:parseInt(yr), month:parseInt(mo), ownerToken: State._dzToken||''});
       if (res.ok) { closeModal(); toast(`✓ Attendance cleared for ${yr}-${mo}`,'success'); }
       else toast(res.error||'Error','error');
     }, style:'background:var(--red);color:#fff'},
@@ -7931,7 +7904,7 @@ async function dangerClearSalaryRecords() {
       const mo = document.getElementById('clr-sal-mo').value;
       const yr = document.getElementById('clr-sal-yr').value;
       if (document.getElementById('clr-sal-conf').value !== 'CLEAR') { toast('Type CLEAR exactly','error'); return; }
-      const res = await API.call('clearSheetMonth', {sheet:'SalaryRecords', year:parseInt(yr), month:parseInt(mo), ownerToken: (State._pwMap||{}).ownerToken||State.settings?.ownerToken||''});
+      const res = await API.call('clearSheetMonth', {sheet:'SalaryRecords', year:parseInt(yr), month:parseInt(mo), ownerToken: State._dzToken||''});
       if (res.ok) { closeModal(); toast(`✓ Salary records cleared for ${yr}-${mo}`,'success'); }
       else toast(res.error||'Error','error');
     }, style:'background:var(--red);color:#fff'},
@@ -7961,7 +7934,7 @@ async function dangerFullReset() {
       if (document.getElementById('full-reset-conf').value !== 'RESET EVERYTHING') { toast('Type RESET EVERYTHING exactly','error'); return; }
       closeModal();
       toast('Resetting… do not close this tab','warning',10000);
-      const res = await API.call('fullReset', {userId: State.adminUser || State.adminRole || 'owner', ownerToken: (State._pwMap||{}).ownerToken||State.settings?.ownerToken||''});
+      const res = await API.call('fullReset', {userId: State.adminUser || State.adminRole || 'owner', ownerToken: State._dzToken||''});
       if (res.ok) {
         toast('✓ HRMS fully reset. Reloading…','success',3000);
         setTimeout(()=>location.reload(), 3000);
@@ -8013,7 +7986,7 @@ async function savePolicySettings() {
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   const res=await API.call('updateSettings',{updates});
   if(res.ok){
-    // Bug BB: refresh State._pwMap so new passwords take effect in the same session
+    // Refresh settings so any non-password changes take effect in the same session
     const sRes=await API.call('getSettings',{});
     if(sRes.ok) applySettingsArr(sRes.settings||[]);
     toast('✓ Policy settings saved','success');
@@ -8096,7 +8069,7 @@ async function saveConnectionSettings() {
   if (!url) { toast('Please enter the GAS URL','warning'); return; }
   statusEl.textContent = 'Testing connection…'; statusEl.style.color='var(--gold-light)';
   const oldUrl = CFG.gasUrl, oldToken = CFG.token;
-  CFG.gasUrl = url; CFG.token = token||'AZ_TOKEN_2026';
+  CFG.gasUrl = url; CFG.token = token||'';
   try {
     const ok = await API.ping();
     if (ok) {
@@ -8139,7 +8112,7 @@ async function save2FASettings() {
 
 async function reconnectFromBanner() {
   const url = (document.getElementById('conn-err-url')?.value||'').trim();
-  const token = (document.getElementById('conn-err-token')?.value||'').trim() || 'AZ_TOKEN_2026';
+  const token = (document.getElementById('conn-err-token')?.value||'').trim();
   const statusEl = document.getElementById('conn-err-status');
   if (!url) { statusEl.textContent='Please paste the GAS URL above.'; statusEl.style.color='var(--red)'; return; }
   statusEl.textContent='Testing connection…'; statusEl.style.color='var(--gold-light)';
@@ -8719,4 +8692,19 @@ async function refreshHolidayList() {
     <td style="padding:6px">${fmtHolDate(h.date)}</td>
     <td style="padding:6px">${escHtml(h.name)}</td>
     <td style="padding:6px">${escHtml(h.type||'Public')}</td>
-    <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="dele
+    <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// APP START — called once DOM is ready
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+  // Apply stored theme immediately so there's no flash
+  applyStoredTheme && applyStoredTheme();
+  // Boot the app — shows setup screen if no GAS URL is saved, else shows kiosk
+  init();
+});
+</script>
+</body>
+</html>
