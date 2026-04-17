@@ -601,7 +601,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 <div id="toast-container"></div>
 
 <!-- MODAL -->
-<div id="modal-overlay">
+<div id="modal-overlay" autocomplete="off">
   <div id="modal-box">
     <div id="modal-title"></div>
     <div id="modal-body"></div>
@@ -1319,11 +1319,19 @@ function fmtTimeSS(ts) {
 function fmtDT(ts) {
   if (!ts) return '—';
   try {
-    const d = new Date(typeof ts === 'string' ? ts.replace(' ','T') : ts);
+    let clean = typeof ts === 'string' ? ts : String(ts);
+    clean = clean.replace(/\s+GMT[+-]\d{4}\s*\(.*?\)$/, '').replace(/\s+GMT[+-]\d{4}$/, '');
+    const d = new Date(clean.replace(' ','T'));
     if (isNaN(d)) return ts;
-    const datePart = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-    const timePart = d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
-    return datePart + ' ' + timePart;
+    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MON_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const dd = String(d.getDate()).padStart(2,'0');
+    const hh = d.getHours();
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    const ampm = hh >= 12 ? 'pm' : 'am';
+    const hh12 = hh % 12 || 12;
+    return `${DAY_NAMES[d.getDay()]} ${MON_NAMES[d.getMonth()]} ${dd} ${d.getFullYear()} ${String(hh12).padStart(2,'0')}:${mm}:${ss} ${ampm}`;
   } catch { return ts; }
 }
 function fmtDuration(mins, fmt) {
@@ -3724,7 +3732,12 @@ async function renderTimesheets(offset) {
   ]);
   const emps = empsRes.employees||[];
   const attMap = {}; // empId -> {date -> record}
-  (attRes.records||[]).forEach(r=>{ if(!attMap[r.empId]) attMap[r.empId]={}; attMap[r.empId][r.date]=r; });
+  (attRes.employees||[]).forEach(empData => {
+    attMap[empData.empId] = {};
+    (empData.days||[]).forEach(day => {
+      if (day.record) attMap[empData.empId][day.date] = day.record;
+    });
+  });
 
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -3808,7 +3821,7 @@ async function renderTimesheets(offset) {
     html+=`<tr>
       <td class="emp-cell">
         <div class="emp-cell-name">${escHtml(emp.name)}</div>
-        <div class="emp-cell-level">${escHtml(emp.level)} ${escHtml(emp.dept||'')}${billableAmt?` • ${billableAmt}`:''}</div>
+        <div class="emp-cell-level">${escHtml(emp.level)}${emp.dept && emp.dept \!== emp.level ? ' ' + escHtml(emp.dept) : ''}${billableAmt?` • ${billableAmt}`:''}</div>
       </td>
       ${cells}
       <td class="ts-total">${empTotal?fmtHHMM(empTotal):'—'}</td>
@@ -5189,10 +5202,10 @@ async function renderPoints() {
   lb.forEach(item=>{
     html+=`<tr id="prow-${escHtml(item.empId)}">
       <td><strong>${escHtml(item.name.split(' ')[0])}</strong></td>
-      <td><select class="form-input" id="p-ot-${escHtml(item.empId)}" style="width:55px"><option value="0">0</option><option value="2" selected>2</option></select></td>
-      <td><select class="form-input" id="p-qt-${escHtml(item.empId)}" style="width:55px"><option value="0">0</option><option value="2">2</option><option value="4" selected>4</option></select></td>
-      <td><select class="form-input" id="p-ze-${escHtml(item.empId)}" style="width:55px"><option value="0">0</option><option value="2" selected>2</option></select></td>
-      <td><select class="form-input" id="p-cl-${escHtml(item.empId)}" style="width:55px"><option value="0">0</option><option value="2" selected>2</option></select></td>
+      <td><select class="form-input" id="p-ot-${escHtml(item.empId)}" style="width:55px"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option></select></td>
+      <td><select class="form-input" id="p-qt-${escHtml(item.empId)}" style="width:55px"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></td>
+      <td><select class="form-input" id="p-ze-${escHtml(item.empId)}" style="width:55px"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option></select></td>
+      <td><select class="form-input" id="p-cl-${escHtml(item.empId)}" style="width:55px"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option></select></td>
       <td><select class="form-input" id="p-fn-${escHtml(item.empId)}" style="width:55px"><option value="0" selected>0</option><option value="1">+1</option></select></td>
       <td><select class="form-input" id="p-id-${escHtml(item.empId)}" style="width:55px"><option value="0" selected>0</option><option value="1">+1</option></select></td>
       <td><input class="form-input" id="p-nt-${escHtml(item.empId)}" style="width:80px" placeholder="note…"></td>
@@ -7354,6 +7367,14 @@ async function renderSettings() {
   const orgs=orgsRes.orgs||[];
   const hols=holRes.holidays||[];
   function cfgField(key,label,type='text',extra=''){
+    if (type === 'password') {
+      const toggleId = `cfg-toggle-${escHtml(key)}`;
+      return `<div class="form-group"><label class="form-label">${escHtml(label)}</label>
+      <div style="position:relative;display:flex;align-items:center">
+        <input id="cfg-${escHtml(key)}" class="form-input" type="password" value="${escHtml(cfg[key]||'')}" style="padding-right:36px" autocomplete="new-password" ${extra}>
+        <button type="button" id="${toggleId}" onclick="(function(){const inp=document.getElementById('cfg-${escHtml(key)}');const btn=document.getElementById('${toggleId}');inp.type=inp.type==='password'?'text':'password';btn.textContent=inp.type==='password'?'👁':'🙈';})()" style="position:absolute;right:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--gray-light);padding:0">👁</button>
+      </div></div>`;
+    }
     return `<div class="form-group"><label class="form-label">${escHtml(label)}</label>
     <input id="cfg-${escHtml(key)}" class="form-input" type="${type}" value="${escHtml(cfg[key]||'')}" ${extra}></div>`;
   }
@@ -8038,7 +8059,7 @@ async function renderSettings() {
       <div class="form-group">
         <label class="form-label">Owner Token (Danger Zone secret)</label>
         <input id="cfg-ownerToken" class="form-input" type="text" placeholder="e.g. ARTZFOLIO_DZ_2026"
-          value="\${escHtml(cfg['ownerToken']||'')}" autocomplete="off">
+          value="${escHtml(cfg['ownerToken']||'')}" autocomplete="off">
         <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
           Keep this confidential. After setting it here, copy the same value into your Google Sheet → Config tab → key: <code>ownerToken</code>.
         </div>
@@ -8053,8 +8074,8 @@ async function renderSettings() {
     <div style="margin-top:10px">
       <button class="btn btn-gold btn-sm" onclick="saveDZToken()">💾 Save Danger Zone Token</button>
     </div>
-    <div id="dz-token-status" style="margin-top:8px;font-size:12px;color:\${cfg['ownerToken']?'var(--green)':'var(--orange)'}">
-      \${cfg['ownerToken'] ? '✓ Token is configured' : '⚠ Token not set — Danger Zone actions are blocked'}
+    <div id="dz-token-status" style="margin-top:8px;font-size:12px;color:${cfg['ownerToken']?'var(--green)':'var(--orange)'}">
+      ${cfg['ownerToken'] ? '✓ Token is configured' : '⚠ Token not set — Danger Zone actions are blocked'}
     </div>
   </div>
 
@@ -8109,24 +8130,25 @@ async function renderSettings() {
 // ─── Danger Zone functions ───────────────────────────────────────────────────
 async function repairSettingsData() {
   if (State.adminRole !== 'owner') { toast('Owner access required','error'); return; }
-  const tok = State._dzToken || '';
-  if (!tok) { toast('Set your Danger Zone Token first','error'); return; }
-  showModal('🔧 Repair Settings Data', 
-    '<p style="font-size:13px;color:var(--gray-light);margin-bottom:8px">This will restore missing headers and re-seed default data for Loyalty Milestones, Salary Bands, and Org Structure if they are empty.</p>' +
-    '<p style="font-size:12px;color:var(--gold)">Employee records and other data will NOT be affected.</p>',
-    [{label:'Repair Now', cls:'btn-gold', cb: async () => {
-      closeModal();
-      toast('Repairing settings data...', 'info');
-      const res = await API.call('repairSettingsSheets', {userId: State.adminUser || State.adminRole || 'owner', ownerToken: tok});
-      if (res.ok) {
-        toast(res.message || 'Settings repaired successfully', 'success');
-        setTimeout(() => renderSettings(), 1500);
-      } else {
-        toast(res.error || 'Repair failed', 'error');
-      }
-    }},
-    {label:'Cancel', cls:'btn-dark', cb: closeModal}]
-  );
+  requireOwnerPin(async () => {
+    const tok = State._dzToken || '';
+    showModal('🔧 Repair Settings Data',
+      '<p style="font-size:13px;color:var(--gray-light);margin-bottom:8px">This will restore missing headers and re-seed default data for Loyalty Milestones, Salary Bands, and Org Structure if they are empty.</p>' +
+      '<p style="font-size:12px;color:var(--gold)">Employee records and other data will NOT be affected.</p>',
+      [{label:'Repair Now', cls:'btn-gold', cb: async () => {
+        closeModal();
+        toast('Repairing settings data...', 'info');
+        const res = await API.call('repairSettingsSheets', {userId: State.adminUser || State.adminRole || 'owner', ownerToken: tok});
+        if (res.ok) {
+          toast(res.message || 'Settings repaired successfully', 'success');
+          setTimeout(() => renderSettings(), 1500);
+        } else {
+          toast(res.error || 'Repair failed', 'error');
+        }
+      }},
+      {label:'Cancel', cls:'btn-dark', cb: closeModal}]
+    );
+  });
 }
 // Re-verifies the owner password server-side so spoofing State.adminRole alone is not enough
 function requireOwnerPin(cb) {
@@ -8695,10 +8717,6 @@ function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, vali
       alignment: centerAlign,
       border: {bottom:{style:'medium',color:{rgb:'C8922A'}}}
     };
-    // Add "▼" suffix to header to signal dropdown visually
-    if (hasDropdown && ws[cell].v && !String(ws[cell].v).endsWith('▼')) {
-      ws[cell].v = ws[cell].v + ' ▼';
-    }
   }
 
   // ── Style sample rows ────────────────────────────────────────────────────
@@ -8875,7 +8893,8 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
       const CHUNK = 5;
       for (let i=0; i<total; i+=CHUNK) {
         const chunk = parsedRows.slice(i, i+CHUNK);
-        toast(`Importing… ${Math.min(i+CHUNK, total)}/${total}`, 'info', 1500);
+        const statusEl = document.getElementById('bulk-status');
+        if (statusEl) { statusEl.textContent = `Importing… ${Math.min(i+CHUNK, total)}/${total} rows…`; statusEl.style.color='var(--gold)'; }
         const results = await Promise.all(chunk.map(async (row, ci) => {
           const rowNum = i + ci + 1;
           const label = row['name *'] || row['name'] || row['employeeCode (optional, e.g. AZ_EMP_0056)'] || `Row ${rowNum}`;
@@ -8989,7 +9008,18 @@ async function refreshCurrentTab() {
 function _excelTimeToHHMM(v) {
   // Excel stores time as fraction of day (0.375 = 9:00am)
   if (!v && v !== 0) return null;
-  if (typeof v === 'string' && v.match(/^\d{1,2}:\d{2}/)) return v.slice(0,5);
+  if (typeof v === 'string') {
+    // Handle '9:00 AM' / '09:00 AM' format from Excel
+    const ampm = v.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (ampm) {
+      let h = parseInt(ampm[1]), m = parseInt(ampm[2]);
+      const isPM = ampm[3].toUpperCase() === 'PM';
+      if (isPM && h \!== 12) h += 12;
+      if (\!isPM && h === 12) h = 0;
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    }
+    if (v.match(/^\d{1,2}:\d{2}/)) return v.slice(0,5);
+  }
   if (typeof v === 'number' && v >= 0 && v < 1) {
     const totalMins = Math.round(v * 24 * 60);
     const h = Math.floor(totalMins / 60) % 24;
