@@ -900,36 +900,57 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       </div>
     </div>
 
-    <!-- Step 3: Forgot Password recovery panel -->
+    <!-- Step 3: Forgot Password recovery panel (secure OTP flow) -->
     <div id="login-step-3" style="display:none">
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:28px;margin-bottom:6px">🔑</div>
         <div style="font-size:14px;font-weight:700;color:var(--gold)">Password Recovery</div>
-        <div style="font-size:12px;color:var(--gray-light);margin-top:4px">Passwords are stored in your Google Sheet</div>
+        <div style="font-size:12px;color:var(--gray-light);margin-top:4px">Secure one-time code sent to your registered email</div>
       </div>
-      <div style="background:var(--dark3);border:1px solid var(--gold-dim);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;color:var(--gray-light)">
-        <div style="font-weight:700;color:var(--gold);margin-bottom:8px">How to reset your password:</div>
-        <div style="margin-bottom:6px">
-          <strong style="color:var(--white)">Step 1:</strong> Open your Google Sheet (the one linked to this HRMS app)
+
+      <!-- Stage A: request OTP -->
+      <div id="fp-stage-a">
+        <div class="form-group">
+          <label class="form-label">Your Role</label>
+          <select id="fp-role" class="form-input">
+            <option value="owner">Owner / Admin</option>
+            <option value="manager">Manager</option>
+            <option value="supervisor">Supervisor</option>
+          </select>
         </div>
-        <div style="margin-bottom:6px">
-          <strong style="color:var(--white)">Step 2:</strong> Click on the <strong style="color:var(--gold)">Config</strong> tab at the bottom
+        <div class="form-group">
+          <label class="form-label">Registered Recovery Email</label>
+          <input id="fp-email" class="form-input" type="email" placeholder="you@company.com" autocomplete="email">
+          <div style="font-size:11px;color:var(--gray-light);margin-top:4px">Must match the recovery email set in Config. Contact the Owner if you don't remember it.</div>
         </div>
-        <div style="margin-bottom:6px">
-          <strong style="color:var(--white)">Step 3:</strong> Find the row with key = <code style="background:var(--dark1);padding:1px 5px;border-radius:3px;color:var(--green)">adminPassword</code>
+        <div id="fp-err-a" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+        <button class="btn btn-gold" style="width:100%" onclick="fpRequestOTP()">Send One-Time Code</button>
+      </div>
+
+      <!-- Stage B: enter OTP + new password -->
+      <div id="fp-stage-b" style="display:none">
+        <div style="font-size:12px;color:var(--gray-light);margin-bottom:10px;text-align:center">A 6-digit code was sent to <span id="fp-email-shown" style="color:var(--gold)"></span>. It expires in 10 minutes.</div>
+        <div class="form-group">
+          <label class="form-label">6-Digit Code</label>
+          <input id="fp-otp" class="form-input" type="tel" maxlength="6" placeholder="______"
+                 style="text-align:center;font-size:22px;letter-spacing:8px"
+                 oninput="this.value=this.value.replace(/[^0-9]/g,'')">
         </div>
-        <div style="margin-bottom:6px">
-          <strong style="color:var(--white)">Step 4:</strong> Edit the <strong>value</strong> column in that row to set your new password
+        <div class="form-group">
+          <label class="form-label">New Password (min 8 chars)</label>
+          <input id="fp-newpw" class="form-input" type="password" placeholder="New password" autocomplete="new-password">
         </div>
-        <div style="margin-bottom:10px">
-          <strong style="color:var(--white)">Step 5:</strong> Come back here and log in with the new password
+        <div class="form-group">
+          <label class="form-label">Confirm New Password</label>
+          <input id="fp-newpw2" class="form-input" type="password" placeholder="Re-enter new password" autocomplete="new-password">
         </div>
-        <div style="border-top:1px solid var(--dark2);padding-top:10px;font-size:11px">
-          <strong style="color:var(--orange)">Default passwords if you never changed them:</strong><br>
-          Owner: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">ArtzFolio@2026</code> &nbsp;|&nbsp;
-          Manager: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">Manager@2026</code> &nbsp;|&nbsp;
-          Supervisor: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">Supervisor@2026</code>
-        </div>
+        <div id="fp-err-b" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+        <button class="btn btn-gold" style="width:100%" onclick="fpVerifyAndReset()">Verify &amp; Set New Password</button>
+      </div>
+
+      <!-- Employee note -->
+      <div style="margin-top:14px;padding:10px;background:var(--dark3);border:1px solid var(--dark2);border-radius:6px;font-size:11px;color:var(--gray-light);text-align:center">
+        Employees: please contact your admin/manager to reset your 4-digit PIN.
       </div>
       <button class="btn btn-dark btn-sm" style="width:100%;margin-top:14px" onclick="hideForgotPassword()">← Back to Login</button>
     </div>
@@ -1078,7 +1099,7 @@ const CFG = {
   faceThreshold: 0.55,
   pinMaxLen: 4,
   kioskTimeout: 60000,
-  version: '3.0',
+  version: '7.0',
 };
 const LS = {
   g: k => { try { return JSON.parse(localStorage.getItem('az3_'+k)); } catch { return null; } },
@@ -3181,12 +3202,64 @@ function showForgotPassword() {
   document.getElementById('login-step-1').style.display='none';
   document.getElementById('login-step-2').style.display='none';
   document.getElementById('login-step-3').style.display='block';
+  // Reset to stage A
+  document.getElementById('fp-stage-a').style.display='block';
+  document.getElementById('fp-stage-b').style.display='none';
+  ['fp-email','fp-otp','fp-newpw','fp-newpw2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['fp-err-a','fp-err-b'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
 }
 
 function hideForgotPassword() {
   document.getElementById('login-step-3').style.display='none';
   document.getElementById('login-step-1').style.display='block';
   document.getElementById('admin-login-err').style.display='none';
+}
+
+async function fpRequestOTP() {
+  const role = document.getElementById('fp-role').value;
+  const email = (document.getElementById('fp-email').value||'').trim().toLowerCase();
+  const errEl = document.getElementById('fp-err-a');
+  errEl.style.display='none';
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent='Enter a valid email address.'; errEl.style.display='block'; return;
+  }
+  try {
+    const res = await API.call('requestPasswordResetOTP', {role, email});
+    if (!res.ok) {
+      errEl.textContent = res.error || 'Could not send code. Check the email is correct and try again.';
+      errEl.style.display='block'; return;
+    }
+    document.getElementById('fp-email-shown').textContent = email;
+    document.getElementById('fp-stage-a').style.display='none';
+    document.getElementById('fp-stage-b').style.display='block';
+    toast('Code sent. Check your email.','success');
+  } catch(e) {
+    errEl.textContent='Network error. Please try again.'; errEl.style.display='block';
+  }
+}
+
+async function fpVerifyAndReset() {
+  const role = document.getElementById('fp-role').value;
+  const email = (document.getElementById('fp-email').value||'').trim().toLowerCase();
+  const otp = (document.getElementById('fp-otp').value||'').trim();
+  const pw1 = document.getElementById('fp-newpw').value||'';
+  const pw2 = document.getElementById('fp-newpw2').value||'';
+  const errEl = document.getElementById('fp-err-b');
+  errEl.style.display='none';
+  if (otp.length !== 6) { errEl.textContent='Enter the 6-digit code.'; errEl.style.display='block'; return; }
+  if (pw1.length < 8) { errEl.textContent='Password must be at least 8 characters.'; errEl.style.display='block'; return; }
+  if (pw1 !== pw2) { errEl.textContent='Passwords do not match.'; errEl.style.display='block'; return; }
+  try {
+    const res = await API.call('verifyOTPAndResetPassword', {role, email, otp, newPassword:pw1});
+    if (!res.ok) {
+      errEl.textContent = res.error || 'Invalid or expired code.';
+      errEl.style.display='block'; return;
+    }
+    toast('Password reset successfully. Please log in.','success');
+    hideForgotPassword();
+  } catch(e) {
+    errEl.textContent='Network error. Please try again.'; errEl.style.display='block';
+  }
 }
 
 async function completeAdminLogin(role) {
@@ -3973,7 +4046,7 @@ async function applyEmpFilters() {
     <td style="font-size:11px;color:var(--gray-light)">${escHtml(e.id)}</td>
     <td><span class="badge badge-gold">${escHtml(e.level)}</span><div style="font-size:10px;color:var(--gray-light)">${escHtml(e.dept||'')} ${e.category?'| '+escHtml(e.category):''}</div></td>
     <td>${e.salary?fmtMoney(e.salary):'—'}</td>
-    <td style="font-size:11px">${escHtml(e.shiftStart||'')}–${escHtml(e.shiftEnd||'')}<br><span style="color:var(--gray-light);font-size:10px">${e.dailyHours||''}h/day</span></td>
+    <td style="font-size:11px">${fmtShift(e.shiftStart,e.shiftEnd)}<br><span style="color:var(--gray-light);font-size:10px">${e.dailyHours||''}h/day</span></td>
     <td style="font-size:11px">${escHtml(e.weeklyOff1)}${e.weeklyOff2?'+'+e.weeklyOff2:''}</td>
     <td style="font-size:11px">${fmtDate(e.doj)}</td>
     <td>${statusBadge(e.status)}</td>
@@ -4335,8 +4408,10 @@ async function showEditEmpModal(empId) {
   <div class="form-row">
     <div class="form-group"><label class="form-label">Level</label>
       <select id="ee-level" class="form-input">${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}" ${e.level===l?'selected':''}>${l}</option>`).join('')}</select></div>
-    <div class="form-group"><label class="form-label">Dept</label><input id="ee-dept" class="form-input" value="${escHtml(e.dept)}"></div>
+    <div class="form-group"><label class="form-label">Category</label>
+      <select id="ee-cat" class="form-input">${['Workforce','Supervisor','Management'].map(c=>`<option value="${c}" ${e.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
   </div>
+  <div class="form-group"><label class="form-label">Dept</label><input id="ee-dept" class="form-input" value="${escHtml(e.dept)}"></div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Shift Start</label><input id="ee-ss" class="form-input" type="time" value="${e.shiftStart}"></div>
     <div class="form-group"><label class="form-label">Shift End</label><input id="ee-se" class="form-input" type="time" value="${e.shiftEnd}"></div>
@@ -4379,6 +4454,7 @@ async function showEditEmpModal(empId) {
     {label:'Save Changes / सहेजें', cls:'btn-gold', cb:async()=>{
       const payload={empId, name:document.getElementById('ee-name').value, salary:document.getElementById('ee-sal').value,
         level:document.getElementById('ee-level').value, dept:document.getElementById('ee-dept').value,
+        category:document.getElementById('ee-cat').value,
         shiftStart:document.getElementById('ee-ss').value, shiftEnd:document.getElementById('ee-se').value,
         weeklyOff1:document.getElementById('ee-wo1').value, weeklyOff2:document.getElementById('ee-wo2').value,
         mobile:document.getElementById('ee-mob').value, noticeperiodDays:document.getElementById('ee-np').value,
@@ -5984,7 +6060,7 @@ function downloadSalarySlipPDF(data) {
     const left=margin+4, mid=W/2+2;
     const info=[
       ['Employee Name',empName,'Dept / Level',`${data.dept} / ${data.level}`],
-      ['Employee ID',data.empId||'—','Shift Timing',`${data.shiftStart||'09:00'} – ${data.shiftEnd||'19:00'}`],
+      ['Employee ID',data.empId||'—','Shift Timing',fmtShift(data.shiftStart||'09:00',data.shiftEnd||'19:00')],
       ['Month / Year',monthName,'Days Present',`${data.presentDays} / ${data.workingDays}`],
       ['UL Days',String(data.UL||0),'Late Count',String(data.lateCount||0)],
     ];
@@ -6128,7 +6204,7 @@ function buildSlipPage(doc, data, co, addr, monthName) {
   doc.setTextColor(50,50,50); doc.setFontSize(9); doc.setFont('helvetica','normal');
   const left=margin+4, mid=W/2+2;
   [[`Employee Name`,empName,`Dept / Level`,`${data.dept||''} / ${data.level||''}`],
-   [`Employee ID`,data.empId||'—',`Shift`,`${data.shiftStart||'09:00'}–${data.shiftEnd||'19:00'}`],
+   [`Employee ID`,data.empId||'—',`Shift`,fmtShift(data.shiftStart||'09:00',data.shiftEnd||'19:00')],
    [`Month`,monthName,`Days Present`,`${data.presentDays||0} / ${data.workingDays||0}`]
   ].forEach((row,ri)=>{
     doc.setFont('helvetica','bold'); doc.text(row[0]+':',left,y+8+ri*8); doc.setFont('helvetica','normal'); doc.text(String(row[1]),left+32,y+8+ri*8);
@@ -7206,7 +7282,8 @@ async function renderSettings() {
       </div>
       <div class="form-group">
         <label class="form-label">API Token</label>
-        <input id="cfg-gasToken" class="form-input" type="text" value="${escHtml(LS.g('token')||CFG.token||'')}" placeholder="">
+        <input id="cfg-gasToken" class="form-input" type="password" value="${escHtml(LS.g('token')||CFG.token||'')}" placeholder="" autocomplete="off">
+        <div style="font-size:11px;color:var(--gray-light);margin-top:4px">Click the field and use Show-Password in your browser if you need to view it. Rotate via the GAS Config sheet.</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
         <button class="btn btn-gold" onclick="saveConnectionSettings()">🔄 Save & Reconnect</button>
@@ -7258,7 +7335,8 @@ async function renderSettings() {
       </div>
       <div class="form-group">
         <label class="form-label">API Token</label>
-        <input id="cfg-gasToken" class="form-input" type="text" value="${escHtml(LS.g('token')||CFG.token||'')}" placeholder="">
+        <input id="cfg-gasToken" class="form-input" type="password" value="${escHtml(LS.g('token')||CFG.token||'')}" placeholder="" autocomplete="off">
+        <div style="font-size:11px;color:var(--gray-light);margin-top:4px">Click the field and use Show-Password in your browser if you need to view it. Rotate via the GAS Config sheet.</div>
       </div>
     </div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
@@ -7493,10 +7571,9 @@ async function renderSettings() {
       <div class="form-group">
         <label class="form-label">2FA Secret PIN (4–8 digits)</label>
         <input id="cfg-2fa-secret" class="form-input" type="password" maxlength="8"
-          value="${escHtml(LS.g('twoFASecret')||'')}"
-          placeholder="Set a new secret PIN…" autocomplete="new-password">
+          placeholder="${LS.g('twoFASecret')?'•••••• (already set — leave blank to keep)':'Set a new secret PIN…'}" autocomplete="new-password">
         <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
-          This PIN is required after entering the password. Keep it different from your login password.
+          This PIN is required after entering the password. Keep it different from your login password. For security we never display the stored PIN.
         </div>
       </div>
       <div class="form-group">
@@ -7514,15 +7591,13 @@ async function renderSettings() {
     </div>
     <!-- Recovery info box -->
     <div style="background:var(--dark3);border:1px solid var(--gold-dim);border-radius:6px;padding:12px;margin-top:12px;font-size:12px">
-      <div style="font-weight:700;color:var(--gold);margin-bottom:6px">🛟 Lockout Recovery Guide</div>
+      <div style="font-weight:700;color:var(--gold);margin-bottom:6px">🛟 Lockout Recovery</div>
       <div style="color:var(--gray-light);line-height:1.7">
-        <b style="color:var(--white)">Option 1 — Login screen:</b> Click <i>"Forgot 2FA PIN? Reset via master password"</i> on the 2FA screen.<br>
-        <b style="color:var(--white)">Option 2 — Browser console (F12):</b> <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--green)">localStorage.removeItem('twoFAEnabled')</code> → reload.<br>
-        <b style="color:var(--white)">Option 3 — Google Sheet:</b> Config sheet → row <i>adminPassword</i> = your master credential.
+        If you forget your 2FA PIN, use <b style="color:var(--white)">"Forgot 2FA PIN? Reset via master password"</b> on the 2FA screen. If you're still locked out, ask the Owner to reset your account.
       </div>
       <div style="margin-top:10px">
         <button class="btn btn-dark btn-sm" onclick="if(confirm('Clear 2FA from this browser now?')){LS.d('twoFAEnabled');LS.d('twoFASecret');toast('2FA cleared — reload and log in with your password.','success');renderSettings();}">
-          🔓 Emergency: Clear 2FA Now
+          🔓 Clear 2FA on this browser
         </button>
       </div>
     </div>
@@ -8277,17 +8352,24 @@ async function save2FASettings() {
   const secret = (document.getElementById('cfg-2fa-secret')?.value||'').trim();
   const confirmVal = (document.getElementById('cfg-2fa-secret-confirm')?.value||'').trim();
   const statusEl = document.getElementById('twofa-status');
-  if (enabled && (!secret || secret.length < 4)) {
-    statusEl.textContent='✗ PIN must be at least 4 digits.'; statusEl.style.color='var(--red)'; return;
-  }
-  if (enabled && secret !== confirmVal) {
-    statusEl.textContent='✗ PINs do not match. Try again.'; statusEl.style.color='var(--red)'; return;
+  const existing = String(LS.g('twoFASecret')||'');
+  if (enabled) {
+    if (secret && secret.length < 4) {
+      statusEl.textContent='✗ PIN must be at least 4 digits.'; statusEl.style.color='var(--red)'; return;
+    }
+    if (secret && secret !== confirmVal) {
+      statusEl.textContent='✗ PINs do not match. Try again.'; statusEl.style.color='var(--red)'; return;
+    }
+    if (!secret && !existing) {
+      statusEl.textContent='✗ Enter a 4–8 digit PIN to enable 2FA.'; statusEl.style.color='var(--red)'; return;
+    }
   }
   LS.s('twoFAEnabled', enabled === true);
-  if (enabled && secret) { LS.s('twoFASecret', secret); }
+  const finalSecret = enabled ? (secret || existing) : '';
+  if (enabled && finalSecret) { LS.s('twoFASecret', finalSecret); }
   else if (!enabled) { LS.d('twoFASecret'); }
   // Bug V: also persist secret to GAS Config so it survives browser data clear
-  const updates = { twoFASecret: (enabled && secret) ? secret : '' };
+  const updates = { twoFASecret: finalSecret };
   await API.call('updateSettings', {updates}).catch(()=>{});
   statusEl.textContent = enabled ? '✓ 2FA ENABLED — login will now require PIN after password' : '2FA disabled.';
   statusEl.style.color = enabled ? 'var(--green)' : 'var(--gray-light)';
@@ -8453,7 +8535,8 @@ function downloadXLSX(filename, sheetName, headers, rows=[]) {
 }
 
 // Download bulk import template with sample rows + ValidValues reference sheet
-function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, validValues) {
+// columnDropdowns: optional {headerName: [value1, value2, ...]} map — applies Excel dropdown validation
+function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, validValues, columnDropdowns) {
   const wb = XLSX.utils.book_new();
 
   // ── Sheet 1: Template with sample rows ─────────────────────
@@ -8494,8 +8577,31 @@ function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, vali
   // Auto-width
   ws['!cols'] = headers.map(h=>({wch: Math.max(String(h||'').length+4, 16)}));
 
-  // Add instruction row above headers using a note comment approach:
-  // Put a yellow note in cell A1's comment if supported, otherwise first cell text
+  // ── Attach dropdown data validations ───────────────────────
+  // SheetJS community edition writes dataValidations via ws['!dataValidation']
+  if (columnDropdowns && Object.keys(columnDropdowns).length) {
+    const dvs = [];
+    Object.keys(columnDropdowns).forEach(colName => {
+      const idx = headers.indexOf(colName);
+      if (idx < 0) return;
+      const col = XLSX.utils.encode_col(idx);
+      const values = columnDropdowns[colName];
+      // Quoted list works for <= 255 chars total; safe for our short option sets
+      const formula1 = '"' + values.join(',') + '"';
+      dvs.push({
+        sqref: `${col}2:${col}1000`,
+        type: 'list',
+        formula1: formula1,
+        allowBlank: true,
+        showErrorMessage: true,
+        errorTitle: 'Invalid value',
+        error: 'Please pick a value from the dropdown list.',
+        showDropDown: false
+      });
+    });
+    if (dvs.length) ws['!dataValidation'] = dvs;
+  }
+
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
   // ── Sheet 2: Valid Values Reference ────────────────────────
@@ -8537,17 +8643,17 @@ function downloadBulkTemplate() {
   const t = window._currentBulkTemplate;
   if (!t) return;
   if (t.sampleRows && t.sampleRows.length) {
-    downloadBulkTemplateRich(t.filename, 'Template', t.headers, t.sampleRows, t.validValues||[]);
+    downloadBulkTemplateRich(t.filename, 'Template', t.headers, t.sampleRows, t.validValues||[], t.columnDropdowns||{});
   } else {
     downloadXLSX(t.filename, 'Template', t.headers);
   }
 }
 
 // Show a modal to bulk-import from Excel
-async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml, sampleRows, validValues) {
+async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml, sampleRows, validValues, columnDropdowns) {
   let parsedRows = [];
   // Store template data in window global to avoid JSON.stringify issues with HTML attributes
-  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename, sampleRows: sampleRows||[], validValues: validValues||[] };
+  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename, sampleRows: sampleRows||[], validValues: validValues||[], columnDropdowns: columnDropdowns||{} };
   const html = `
   <div style="font-size:13px">
     <p style="color:var(--gray-light);margin-bottom:8px">
@@ -8569,29 +8675,63 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
     {label:'✅ Import All Rows', cls:'btn-gold', cb: async () => {
       parsedRows = window._bulkRows || [];
       if (!parsedRows.length) { toast('No rows to import','warning'); return; }
-      let ok=0, fail=0;
       const total = parsedRows.length;
-      // Chunk imports to avoid hanging the browser (5 parallel calls per chunk)
-      const CHUNK = 5;
-      for (let i=0; i<total; i+=CHUNK) {
-        const chunk = parsedRows.slice(i, i+CHUNK);
-        toast(`Importing… ${Math.min(i+CHUNK, total)}/${total}`, 'info', 1500);
-        const results = await Promise.all(chunk.map(async row => {
+      // Build detailed results array: {row#, name, status, reason}
+      const report = [];
+      // Batch path for employees — single backend call that returns per-row results
+      if (confirmAction === 'addEmployee') {
+        const payloads = parsedRows.map((row, idx) => {
           try {
-            const payload = rowProcessor(row);
-            if (!payload) return false;
-            const res = await API.call(confirmAction, payload);
-            return !!res.ok;
-          } catch(e) { return false; }
-        }));
-        ok += results.filter(Boolean).length;
-        fail += results.filter(r=>!r).length;
-        // Small yield to keep UI responsive
-        await new Promise(r=>setTimeout(r,50));
+            const p = rowProcessor(row);
+            return {rowNum: idx+2, row, payload: p, skipReason: p ? null : 'Missing required field(s): name, level, salary or pin'};
+          } catch(e) { return {rowNum: idx+2, row, payload: null, skipReason: 'Parse error: '+(e.message||e)}; }
+        });
+        const toSend = payloads.filter(x => x.payload).map(x => Object.assign({_rowNum: x.rowNum}, x.payload));
+        let batchRes = {ok:false, results:[]};
+        try {
+          batchRes = await API.call('bulkImportEmployees', {rows: toSend});
+        } catch(e) {
+          batchRes = {ok:false, error:'Network error: '+(e.message||e), results:[]};
+        }
+        // Skipped rows (missing fields)
+        payloads.filter(x => !x.payload).forEach(x => {
+          report.push({rowNum: x.rowNum, name: (x.row && (x.row['name *']||x.row['name']||'')) || '', status:'Failed', reason: x.skipReason});
+        });
+        // Backend per-row results
+        (batchRes.results||[]).forEach(r => {
+          report.push({rowNum: r.row||r._rowNum||'?', name: r.name||'', status: r.status==='ok'?'Imported':'Failed', reason: r.status==='ok'?(r.empId||'OK'):(r.error||'Unknown error')});
+        });
+      } else {
+        // Per-row path for other imports (transactions, leaves, holidays)
+        const CHUNK = 5;
+        for (let i=0; i<total; i+=CHUNK) {
+          const chunk = parsedRows.slice(i, i+CHUNK);
+          toast(`Importing… ${Math.min(i+CHUNK, total)}/${total}`, 'info', 1500);
+          const results = await Promise.all(chunk.map(async (row, ci) => {
+            const rowNum = i + ci + 2;
+            const displayName = String(row['name *']||row['name']||row['empId * (code or name)']||row['date *']||'');
+            try {
+              const payload = rowProcessor(row);
+              if (!payload) return {rowNum, name:displayName, status:'Failed', reason:'Missing required field(s)'};
+              const res = await API.call(confirmAction, payload);
+              return res.ok
+                ? {rowNum, name:displayName, status:'Imported', reason:res.id||res.empId||'OK'}
+                : {rowNum, name:displayName, status:'Failed', reason:res.error||'Unknown error'};
+            } catch(e) {
+              return {rowNum, name:displayName, status:'Failed', reason:'Network: '+(e.message||e)};
+            }
+          }));
+          results.forEach(r => report.push(r));
+          await new Promise(r=>setTimeout(r,50));
+        }
       }
+      const ok   = report.filter(r=>r.status==='Imported').length;
+      const fail = report.filter(r=>r.status==='Failed').length;
       closeModal();
-      toast(`✓ Imported ${ok} of ${total} rows${fail?' | '+fail+' failed':''}`, ok>0?'success':'error', 6000);
       window._bulkRows = [];
+      window._lastImportReport = report;
+      // Show summary + report modal
+      showImportReport(report, ok, fail);
       await refreshCurrentTab();
     }},
     {label:'Cancel', cls:'btn-dark', cb:()=>{window._bulkRows=[];closeModal();}},
@@ -8634,6 +8774,67 @@ async function refreshCurrentTab() {
   else if (tab === 'payroll') { /* no-op */ }
 }
 
+// Show the bulk import result modal with a downloadable .xlsx report
+function showImportReport(report, ok, fail) {
+  const total = report.length;
+  const rowsHtml = report.map(r => {
+    const color = r.status === 'Imported' ? 'var(--green)' : 'var(--red)';
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--dark3);text-align:center">${r.rowNum}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--dark3)">${escHtml(r.name||'')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--dark3);color:${color};font-weight:600">${escHtml(r.status)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid var(--dark3);color:var(--gray-light);font-size:11px">${escHtml(r.reason||'')}</td>
+    </tr>`;
+  }).join('');
+
+  const summaryColor = fail === 0 ? 'var(--green)' : (ok === 0 ? 'var(--red)' : 'var(--gold)');
+  const summaryIcon  = fail === 0 ? '✓' : (ok === 0 ? '✗' : '⚠');
+
+  const body = `
+    <div style="padding:16px 20px">
+      <div style="background:var(--dark2);border-left:4px solid ${summaryColor};padding:14px 16px;margin-bottom:14px;border-radius:4px">
+        <div style="font-size:18px;font-weight:700;color:${summaryColor};margin-bottom:4px">${summaryIcon} Imported ${ok} of ${total} rows</div>
+        <div style="color:var(--gray-light);font-size:13px">${fail > 0 ? `<span style="color:var(--red)">${fail} failed</span> — see details below` : 'All rows imported successfully.'}</div>
+      </div>
+      <div style="max-height:380px;overflow:auto;border:1px solid var(--dark3);border-radius:4px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead style="position:sticky;top:0;background:var(--dark3);z-index:1">
+            <tr>
+              <th style="padding:8px;text-align:center;color:var(--gold);border-bottom:1px solid var(--dark2);width:60px">Row #</th>
+              <th style="padding:8px;text-align:left;color:var(--gold);border-bottom:1px solid var(--dark2)">Name / Identifier</th>
+              <th style="padding:8px;text-align:left;color:var(--gold);border-bottom:1px solid var(--dark2);width:100px">Status</th>
+              <th style="padding:8px;text-align:left;color:var(--gold);border-bottom:1px solid var(--dark2)">Reason / Details</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  showModal('Bulk Import Report', body, [
+    {label:'📥 Download Report (.xlsx)', cls:'btn-gold', cb: downloadLastImportReport},
+    {label:'Close', cls:'btn-dark', cb: closeModal}
+  ]);
+}
+
+// Download the last bulk-import report as .xlsx
+function downloadLastImportReport() {
+  const report = window._lastImportReport || [];
+  if (!report.length) { toast('No report available'); return; }
+  const aoa = [['Row #','Employee Name / Identifier','Status','Reason / Details']];
+  report.forEach(r => aoa.push([r.rowNum, r.name||'', r.status||'', r.reason||'']));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:8},{wch:32},{wch:14},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Import Report');
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+  XLSX.writeFile(wb, `Import_Report_${stamp}.xlsx`);
+  toast('Report downloaded');
+}
+
 // ─── Bulk Import launchers ───────────────────────────────────────────────────
 function _excelTimeToHHMM(v) {
   // Excel stores time as fraction of day (0.375 = 9:00am)
@@ -8665,12 +8866,12 @@ function bulkImportEmployees() {
     // Row 1: factory wage worker example
     ['AZ_EMP_0056','Ravi Kumar','L4',18000,1234,'09:00','19:00',10,'Sunday','','9876543210','ravi.kumar@example.com','Production','Workforce','2025-01-15','1995-06-20','Male','123456789012',90,0,500,9,'Wage Shift Office','Example row — delete before importing'],
     // Row 2: office staff example
-    ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Staff','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office manager — example row'],
+    ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Supervisor','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office supervisor — example row'],
   ];
   const validValues = [
     ['level *','L1, L2, L3, L4, L5, L6, L7, L8, L9, L10','L1=lowest (helper), L10=senior management'],
     ['weeklyOff1 / weeklyOff2','Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday','Most factories: Sunday off; leave weeklyOff2 blank for single off'],
-    ['category','Workforce, Staff, Management','Workforce=factory floor; Staff=office; Management=supervisors+'],
+    ['category','Workforce, Supervisor, Management','Workforce=factory floor; Supervisor=shift/floor leads; Management=office + leadership'],
     ['gender','Male, Female, Other',''],
     ['employmentType','Wage Shift Office, Full-Time Office, Work From Home, Hybrid','Determines break deduction and OT rules'],
     ['noticeperiodDays','30, 60, 90, 180','Common values; L1-L5=90 days; L6-L10=60 days'],
@@ -8693,7 +8894,7 @@ function bulkImportEmployees() {
       <span><strong style="color:var(--off-white)">dailyHours</strong> — Expected work hours per day (default: 10)</span>
       <span><strong style="color:var(--off-white)">weeklyOff1 / weeklyOff2</strong> — Sunday, Monday … Saturday</span>
       <span><strong style="color:var(--off-white)">dept</strong> — Department name (defaults to level if blank)</span>
-      <span><strong style="color:var(--off-white)">category</strong> — Workforce / Staff / Management</span>
+      <span><strong style="color:var(--off-white)">category</strong> — Workforce / Supervisor / Management</span>
       <span><strong style="color:var(--off-white)">doj / dob</strong> — Date of Joining / Birth in YYYY-MM-DD</span>
       <span><strong style="color:var(--off-white)">gender</strong> — Male / Female / Other</span>
       <span><strong style="color:var(--off-white)">aadhaar</strong> — 12-digit Aadhaar number</span>
@@ -8726,7 +8927,14 @@ function bulkImportEmployees() {
       employmentType: row['employmentType']||'Wage Shift Office',
       notes: row['notes']||'',
     };
-  }, 'addEmployee', fieldGuide, sampleRows, validValues);
+  }, 'addEmployee', fieldGuide, sampleRows, validValues, {
+    'level *': ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'],
+    'weeklyOff1': ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+    'weeklyOff2': ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+    'category':  ['Workforce','Supervisor','Management'],
+    'gender':    ['Male','Female','Other'],
+    'employmentType': ['Wage Shift Office','Full-Time Office','Work From Home','Hybrid'],
+  });
 }
 
 function bulkImportTransactions() {
@@ -8755,7 +8963,9 @@ function bulkImportTransactions() {
       return {empId, date:row['date *'], type:row['type *'],
               amount:parseFloat(row['amount *'])||0, note:row['note']||'',
               approvedBy:row['approvedBy']||State.adminUser||'Admin', status:'Applied'};
-    }, 'addTransaction', null, sampleRows, validValues);
+    }, 'addTransaction', null, sampleRows, validValues, {
+      'type *': ['Advance','Loan','LoanRepayment','Bonus','Penalty','DamageRecovery','LateFine','KYCFee','PINReactivationFee','Increment'],
+    });
 }
 
 function bulkImportLeaves() {
@@ -8782,7 +8992,10 @@ function bulkImportLeaves() {
       return {empId, type:row['type *'],
               startDate:row['startDate *'], endDate:row['endDate *'],
               note:row['note']||'', urgency:row['urgency']||'normal'};
-    }, 'requestLeave', null, sampleRows, validValues);
+    }, 'requestLeave', null, sampleRows, validValues, {
+      'type *':  ['IL','IHL','UL','UHL','SL','PL'],
+      'urgency': ['normal','urgent'],
+    });
 }
 
 async function bulkImportHolidays() {
@@ -8795,12 +9008,15 @@ async function bulkImportHolidays() {
   const validValues = [
     ['date *','YYYY-MM-DD','e.g. 2026-08-15 — Year-Month-Day format'],
     ['type','National, Regional, Company, Optional','National=Gazetted; Company=ArtzFolio-specific; Regional=state holiday'],
-    ['applicableTo','All, Workforce, Staff, Management','Leave blank or use All for everyone'],
+    ['applicableTo','All, Workforce, Supervisor, Management','Leave blank or use All for everyone'],
   ];
   openBulkImportModal('📅 Bulk Import Holidays', headers, 'ArtzFolio_Holiday_Template.xlsx', row => {
     if (!row['date *'] || !row['name *']) return null;
     return {date:row['date *'], name:row['name *'], type:row['type']||'National', applicableTo:row['applicableTo']||'All'};
-  }, 'addHoliday', null, sampleRows, validValues);
+  }, 'addHoliday', null, sampleRows, validValues, {
+    'type': ['National','Regional','Company','Optional'],
+    'applicableTo': ['All','Workforce','Supervisor','Management'],
+  });
 }
 
 // ─── Indian Default Holidays ─────────────────────────────────────────────────
