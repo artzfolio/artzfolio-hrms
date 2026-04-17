@@ -8108,9 +8108,9 @@ async function renderSettings() {
 
 // ─── Danger Zone functions ───────────────────────────────────────────────────
 async function repairSettingsData() {
-  if (State.adminRole \!== 'owner') { toast('Owner access required','error'); return; }
+  if (State.adminRole !== 'owner') { toast('Owner access required','error'); return; }
   const tok = State._dzToken || '';
-  if (\!tok) { toast('Set your Danger Zone Token first','error'); return; }
+  if (!tok) { toast('Set your Danger Zone Token first','error'); return; }
   showModal('🔧 Repair Settings Data', 
     '<p style="font-size:13px;color:var(--gray-light);margin-bottom:8px">This will restore missing headers and re-seed default data for Loyalty Milestones, Salary Bands, and Org Structure if they are empty.</p>' +
     '<p style="font-size:12px;color:var(--gold)">Employee records and other data will NOT be affected.</p>',
