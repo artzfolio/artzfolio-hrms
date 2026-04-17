@@ -1,3 +1,4 @@
+<!-- ArtzFolio HRMS v9 | April 2026 | Based on v8 + Bug Fixes -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v3</title>
+<title>ArtzFolio HRMS v9</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -900,38 +901,60 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       </div>
     </div>
 
-    <!-- Step 3: Forgot Password recovery panel -->
+    <!-- Step 3: Forgot Password — OTP flow (3 sub-steps: role-select → OTP verify → new password) -->
     <div id="login-step-3" style="display:none">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:28px;margin-bottom:6px">🔑</div>
-        <div style="font-size:14px;font-weight:700;color:var(--gold)">Password Recovery</div>
-        <div style="font-size:12px;color:var(--gray-light);margin-top:4px">Passwords are stored in your Google Sheet</div>
+      <!-- Sub-step 3a: choose role -->
+      <div id="fp-step-a">
+        <div style="text-align:center;margin-bottom:14px">
+          <div style="font-size:26px;margin-bottom:4px">🔑</div>
+          <div style="font-size:13px;font-weight:700;color:var(--gold)">Password Recovery</div>
+          <div style="font-size:11px;color:var(--gray-light);margin-top:4px">An OTP will be sent to the recovery email configured for your role.</div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label">Your Role</label>
+          <select id="fp-role" class="form-input">
+            <option value="">— Select role —</option>
+            <option value="owner">Owner / Admin</option>
+            <option value="manager">Manager</option>
+            <option value="supervisor">Supervisor</option>
+          </select>
+        </div>
+        <div id="fp-err-a" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
+        <button class="btn btn-gold" style="width:100%" onclick="fpRequestOTP()">📧 Send OTP to Recovery Email</button>
+        <button class="btn btn-dark btn-sm" style="width:100%;margin-top:8px" onclick="hideForgotPassword()">← Back to Login</button>
       </div>
-      <div style="background:var(--dark3);border:1px solid var(--gold-dim);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;color:var(--gray-light)">
-        <div style="font-weight:700;color:var(--gold);margin-bottom:8px">How to reset your password:</div>
-        <div style="margin-bottom:6px">
-          <strong style="color:var(--white)">Step 1:</strong> Open your Google Sheet (the one linked to this HRMS app)
+      <!-- Sub-step 3b: enter OTP + new password -->
+      <div id="fp-step-b" style="display:none">
+        <div style="text-align:center;margin-bottom:12px">
+          <div style="font-size:22px;margin-bottom:4px">📧</div>
+          <div style="font-size:13px;font-weight:700;color:var(--gold)">Enter OTP</div>
+          <div id="fp-masked-email" style="font-size:11px;color:var(--gray-light);margin-top:4px"></div>
         </div>
-        <div style="margin-bottom:6px">
-          <strong style="color:var(--white)">Step 2:</strong> Click on the <strong style="color:var(--gold)">Config</strong> tab at the bottom
+        <div class="form-group">
+          <label class="form-label">6-Digit OTP</label>
+          <input id="fp-otp" class="form-input" type="tel" maxlength="6" placeholder="Enter OTP from email"
+                 style="text-align:center;font-size:20px;letter-spacing:6px"
+                 oninput="this.value=this.value.replace(/[^0-9]/g,'')">
         </div>
-        <div style="margin-bottom:6px">
-          <strong style="color:var(--white)">Step 3:</strong> Find the row with key = <code style="background:var(--dark1);padding:1px 5px;border-radius:3px;color:var(--green)">adminPassword</code>
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <input id="fp-newpwd" class="form-input" type="password" placeholder="Min 8 characters">
         </div>
-        <div style="margin-bottom:6px">
-          <strong style="color:var(--white)">Step 4:</strong> Edit the <strong>value</strong> column in that row to set your new password
+        <div class="form-group">
+          <label class="form-label">Confirm New Password</label>
+          <input id="fp-confirmpwd" class="form-input" type="password" placeholder="Repeat new password">
         </div>
-        <div style="margin-bottom:10px">
-          <strong style="color:var(--white)">Step 5:</strong> Come back here and log in with the new password
-        </div>
-        <div style="border-top:1px solid var(--dark2);padding-top:10px;font-size:11px">
-          <strong style="color:var(--orange)">Default passwords if you never changed them:</strong><br>
-          Owner: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">ArtzFolio@2026</code> &nbsp;|&nbsp;
-          Manager: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">Manager@2026</code> &nbsp;|&nbsp;
-          Supervisor: <code style="background:var(--dark1);padding:1px 4px;border-radius:3px;color:var(--gold)">Supervisor@2026</code>
-        </div>
+        <div id="fp-err-b" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
+        <button class="btn btn-gold" style="width:100%" onclick="fpVerifyAndReset()">✓ Verify &amp; Reset Password</button>
+        <button class="btn btn-dark btn-sm" style="width:100%;margin-top:8px" onclick="fpBackToA()">← Back</button>
       </div>
-      <button class="btn btn-dark btn-sm" style="width:100%;margin-top:14px" onclick="hideForgotPassword()">← Back to Login</button>
+      <!-- Sub-step 3c: success -->
+      <div id="fp-step-c" style="display:none;text-align:center;padding:10px 0">
+        <div style="font-size:32px;margin-bottom:8px">✅</div>
+        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:6px">Password Reset Successful</div>
+        <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px">Your new password has been saved. Please log in.</div>
+        <button class="btn btn-gold" style="width:100%" onclick="hideForgotPassword()">← Go to Login</button>
+      </div>
     </div>
 
     <!-- Step 2: 2FA code (shown only if 2FA is enabled) -->
@@ -1332,6 +1355,41 @@ function fmtShift(start, end) {
 function fmtSalary(v) {
   const n = Math.round(parseFloat(v)||0);
   return '₹ ' + n.toLocaleString('en-IN');
+}
+// Build 12h time picker HTML (replaces <input type="time">)
+// val: "HH:MM" 24h string, id: input id, cls: CSS class
+function build12hPicker(id, val24, cls='form-input') {
+  val24 = val24 || '09:00';
+  const [hh, mm] = val24.split(':').map(Number);
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12  = hh % 12 || 12;
+  let hopts='', mopts='', aopts='';
+  for(let h=1;h<=12;h++) hopts+=`<option value="${h}" ${h===h12?'selected':''}>${String(h).padStart(2,'0')}</option>`;
+  ['00','15','30','45'].forEach(m => mopts+=`<option value="${m}" ${String(mm).padStart(2,'0')===m?'selected':''}>${m}</option>`);
+  // For minutes, also add the exact current value if not in [00,15,30,45]
+  const mmStr = String(mm).padStart(2,'0');
+  if(!['00','15','30','45'].includes(mmStr)) mopts=`<option value="${mmStr}" selected>${mmStr}</option>`+mopts;
+  ['AM','PM'].forEach(a => aopts+=`<option value="${a}" ${a===ampm?'selected':''}>${a}</option>`);
+  return `<div style="display:flex;gap:4px;align-items:center" data-12hpicker="${id}">
+    <select id="${id}_h" class="${cls}" style="width:64px;padding:6px 4px" onchange="sync12hPicker('${id}')">${hopts}</select>
+    <span style="color:var(--gold);font-weight:700">:</span>
+    <select id="${id}_m" class="${cls}" style="width:64px;padding:6px 4px" onchange="sync12hPicker('${id}')">${mopts}</select>
+    <select id="${id}_ap" class="${cls}" style="width:60px;padding:6px 4px" onchange="sync12hPicker('${id}')">${aopts}</select>
+    <input type="hidden" id="${id}" value="${val24}">
+  </div>`;
+}
+function sync12hPicker(id) {
+  const h=parseInt(document.getElementById(id+'_h').value)||12;
+  const m=document.getElementById(id+'_m').value||'00';
+  const ap=document.getElementById(id+'_ap').value||'AM';
+  let h24 = ap==='AM' ? (h===12?0:h) : (h===12?12:h+12);
+  const v = String(h24).padStart(2,'0')+':'+String(m).padStart(2,'0');
+  document.getElementById(id).value=v;
+}
+function get12hPickerValue(id) {
+  // Return the hidden input's 24h value
+  const el=document.getElementById(id);
+  return el ? el.value : '';
 }
 function buildEmpSearchSelect(fieldId, emps, placeholder='Type name or ID…') {
   const listId = fieldId + '_list';
@@ -2493,7 +2551,7 @@ function doRequestClockInAfterMissedOut(yesterdayDate) {
     </div>
     <div class="form-group">
       <label class="form-label">What time did you leave yesterday?</label>
-      <input id="missed-out-time" class="form-input" type="time" value="19:00">
+      <div id="missed-out-time-wrap"></div><input type="hidden" id="missed-out-time" value="19:00">
     </div>
     <div class="form-group">
       <label class="form-label">Reason / Note</label>
@@ -2504,6 +2562,10 @@ function doRequestClockInAfterMissedOut(yesterdayDate) {
       <input id="missed-mgr-pin" class="form-input" type="password" placeholder="Manager PIN…" autocomplete="new-password">
     </div>
   `;
+  setTimeout(()=>{
+    const w=document.getElementById('missed-out-time-wrap');
+    if(w)w.innerHTML=build12hPicker('missed-out-time','19:00');
+  },50);
   showModal('🚨 Missed Clock-Out Approval', bodyHtml, [
     {label:'Approve & Clock In', cls:'btn-gold', cb: async () => {
       const time = document.getElementById('missed-out-time')?.value;
@@ -3181,12 +3243,73 @@ function showForgotPassword() {
   document.getElementById('login-step-1').style.display='none';
   document.getElementById('login-step-2').style.display='none';
   document.getElementById('login-step-3').style.display='block';
+  // reset sub-steps
+  document.getElementById('fp-step-a').style.display='block';
+  document.getElementById('fp-step-b').style.display='none';
+  document.getElementById('fp-step-c').style.display='none';
+  document.getElementById('fp-err-a').style.display='none';
+  document.getElementById('fp-err-b').style.display='none';
+  document.getElementById('fp-role').value='';
+  const oi=document.getElementById('fp-otp'); if(oi)oi.value='';
+  const pi=document.getElementById('fp-newpwd'); if(pi)pi.value='';
+  const ci=document.getElementById('fp-confirmpwd'); if(ci)ci.value='';
 }
-
 function hideForgotPassword() {
   document.getElementById('login-step-3').style.display='none';
   document.getElementById('login-step-1').style.display='block';
   document.getElementById('admin-login-err').style.display='none';
+}
+function fpBackToA() {
+  document.getElementById('fp-step-b').style.display='none';
+  document.getElementById('fp-step-a').style.display='block';
+}
+async function fpRequestOTP() {
+  const role=document.getElementById('fp-role').value;
+  const errEl=document.getElementById('fp-err-a');
+  errEl.style.display='none';
+  if(!role){errEl.textContent='Please select your role.';errEl.style.display='block';return;}
+  errEl.textContent='Sending OTP…';errEl.style.display='block';errEl.style.color='var(--gold)';
+  try {
+    const res=await API.call('forgotPassword',{role});
+    if(!res.ok){
+      errEl.style.color='var(--red)';
+      if(res.error==='NO_RECOVERY_EMAIL') errEl.textContent='No recovery email configured for this role. Contact your system owner to add one in Settings → Security.';
+      else if(res.error==='OTP_RATE_LIMIT') errEl.textContent='Too many attempts. Please wait 1 hour before trying again.';
+      else errEl.textContent=res.message||res.error||'Failed to send OTP.';
+      return;
+    }
+    // store role for verify step
+    window._fpRole=role; window._fpSessionToken=null;
+    document.getElementById('fp-masked-email').textContent='OTP sent to: '+res.maskedEmail+' — valid for 10 minutes.';
+    document.getElementById('fp-step-a').style.display='none';
+    document.getElementById('fp-step-b').style.display='block';
+  } catch(e){errEl.style.color='var(--red)';errEl.textContent='Network error. Please try again.';}
+}
+async function fpVerifyAndReset() {
+  const otp=document.getElementById('fp-otp').value.trim();
+  const np=document.getElementById('fp-newpwd').value;
+  const cp=document.getElementById('fp-confirmpwd').value;
+  const errEl=document.getElementById('fp-err-b');
+  errEl.style.display='none';
+  if(!otp||otp.length!==6){errEl.textContent='Please enter the 6-digit OTP.';errEl.style.display='block';return;}
+  if(np.length<8){errEl.textContent='Password must be at least 8 characters.';errEl.style.display='block';return;}
+  if(np!==cp){errEl.textContent='Passwords do not match.';errEl.style.display='block';return;}
+  errEl.textContent='Verifying OTP…';errEl.style.display='block';errEl.style.color='var(--gold)';
+  try {
+    const vRes=await API.call('verifyOTP',{role:window._fpRole,otp});
+    if(!vRes.ok){
+      errEl.style.color='var(--red)';
+      if(vRes.error==='OTP_EXPIRED') errEl.textContent='OTP expired. Please go back and request a new one.';
+      else if(vRes.error==='OTP_USED') errEl.textContent='OTP already used. Please go back and request a new one.';
+      else if(vRes.error==='OTP_WRONG') errEl.textContent='Incorrect OTP. Please check the email and try again.';
+      else errEl.textContent=vRes.message||vRes.error||'OTP verification failed.';
+      return;
+    }
+    const rRes=await API.call('resetRolePassword',{role:window._fpRole,sessionToken:vRes.sessionToken,newPassword:np});
+    if(!rRes.ok){errEl.style.color='var(--red)';errEl.textContent=rRes.message||rRes.error||'Reset failed.';return;}
+    document.getElementById('fp-step-b').style.display='none';
+    document.getElementById('fp-step-c').style.display='block';
+  } catch(e){errEl.style.color='var(--red)';errEl.textContent='Network error. Please try again.';}
 }
 
 async function completeAdminLogin(role) {
@@ -4187,7 +4310,7 @@ async function showAddEmpModal() {
   <div class="form-row">
     <div class="form-group"><label class="form-label">Department</label><input id="e-dept" class="form-input" placeholder="e.g. Packing L10"></div>
     <div class="form-group"><label class="form-label">Category</label>
-      <select id="e-cat" class="form-input"><option>Workforce</option><option>Management</option><option>Supervisor</option></select></div>
+      <select id="e-cat" class="form-input"><option>Workforce</option><option>Supervisor</option><option>Management</option></select></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Employment Type</label>
@@ -4209,8 +4332,8 @@ async function showAddEmpModal() {
     <div class="form-group"><label class="form-label">Billable Rate (₹/hr) <span style="color:var(--gray-light);font-weight:400">(for time reports)</span></label><input id="e-billable" class="form-input" type="number" value="0" placeholder="0"></div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">Shift Start</label><input id="e-ss" class="form-input" type="time" value="09:00"></div>
-    <div class="form-group"><label class="form-label">Shift End</label><input id="e-se" class="form-input" type="time" value="19:00"></div>
+    <div class="form-group"><label class="form-label">Shift Start</label><div id="e-ss-wrap"></div><input type="hidden" id="e-ss" value="09:00"></div>
+    <div class="form-group"><label class="form-label">Shift End</label><div id="e-se-wrap"></div><input type="hidden" id="e-se" value="19:00"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Daily Work Hours</label><input id="e-dh" class="form-input" type="number" value="10"></div>
@@ -4265,7 +4388,14 @@ async function showAddEmpModal() {
   </div>
   <div class="form-group"><label class="form-label">Notes</label><input id="e-notes" class="form-input" placeholder="Any notes…"></div>
   </div>`;
-  showModal('➕ Add New Employee / नया कर्मचारी', html, [
+  // Init static 12h pickers after DOM renders
+  setTimeout(()=>{
+    const ssW=document.getElementById('e-ss-wrap');
+    const seW=document.getElementById('e-se-wrap');
+    if(ssW) ssW.innerHTML=build12hPicker('e-ss','09:00');
+    if(seW) seW.innerHTML=build12hPicker('e-se','19:00');
+  },50);
+    showModal('➕ Add New Employee / नया कर्मचारी', html, [
     {label:'Add Employee / जोड़ें', cls:'btn-gold', cb:async()=>{
       // Extract employee ID from supervisor/manager search fields (may contain "Name (ID)" format)
       function extractEmpId(val) {
@@ -4338,8 +4468,8 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">Dept</label><input id="ee-dept" class="form-input" value="${escHtml(e.dept)}"></div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">Shift Start</label><input id="ee-ss" class="form-input" type="time" value="${e.shiftStart}"></div>
-    <div class="form-group"><label class="form-label">Shift End</label><input id="ee-se" class="form-input" type="time" value="${e.shiftEnd}"></div>
+    <div class="form-group"><label class="form-label">Shift Start</label>${build12hPicker('ee-ss', e.shiftStart||'09:00')}</div>
+    <div class="form-group"><label class="form-label">Shift End</label>${build12hPicker('ee-se', e.shiftEnd||'19:00')}</div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Weekly Off 1</label>
@@ -7275,6 +7405,18 @@ async function renderSettings() {
       ${cfgField('adminPassword','Admin (Owner) Password','password')}
       ${cfgField('managerPassword','Manager Password','password')}
       ${cfgField('supervisorPassword','Supervisor Password','password')}
+      <div class="form-group" style="grid-column:1/-1;margin-top:8px;padding:10px;background:var(--dark3);border-radius:var(--radius-sm);border:1px solid var(--gold-dim)">
+        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">🔐 Password Recovery Emails</div>
+        <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">
+          When a role clicks "Forgot Password", a one-time OTP is emailed to the address configured here.
+          Leave blank to disable OTP recovery for that role.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          ${cfgField('ownerRecoveryEmail','Owner Recovery Email','email')}
+          ${cfgField('managerRecoveryEmail','Manager Recovery Email','email')}
+          ${cfgField('supervisorRecoveryEmail','Supervisor Recovery Email','email')}
+        </div>
+      </div>
       ${cfgFieldTip('gracePeriod','Grace Period (minutes)','Minutes after shift start where late arrival is not penalised. Default: 5. E.g. shift at 9AM + 5 min grace = no penalty if clocked in by 9:05AM.')}
       ${cfgField('payDay','Salary Pay Day (date of month)')}
       ${cfgFieldTip('extendedCutoff','Extended Period (1st–Nth of next month)','Attendance from the 1st to this date of the following month is included in the previous month\'s salary calculation. E.g. value 7 means Aug salary includes attendance up to Sept 7.')}
@@ -7465,11 +7607,11 @@ async function renderSettings() {
       </div>
       <div class="form-group">
         <label class="form-label">Clock-In Reminder Time</label>
-        <input id="cfg-reminderClockIn" class="form-input" type="time" value="${escHtml(cfg['reminderClockIn']||'09:00')}">
+        ${build12hPicker('cfg-reminderClockIn', cfg['reminderClockIn']||'09:00')}
       </div>
       <div class="form-group">
         <label class="form-label">Clock-Out Reminder Time</label>
-        <input id="cfg-reminderClockOut" class="form-input" type="time" value="${escHtml(cfg['reminderClockOut']||'19:00')}">
+        ${build12hPicker('cfg-reminderClockOut', cfg['reminderClockOut']||'19:00')}
       </div>
     </div>
     <div style="margin-top:14px">
@@ -7945,6 +8087,13 @@ async function renderSettings() {
         </div>
         <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="dangerClearSalaryRecords()">Clear Salary Records</button>
       </div>
+      <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--gold)">🔧 Repair Settings Data</div>
+          <div style="font-size:11px;color:var(--gray-light)">Fixes blank Settings tabs — restores missing headers and re-seeds default Loyalty Milestones, Salary Bands, and Org Structure if empty. Safe to run at any time; does not affect employee or attendance data.</div>
+        </div>
+        <button class="btn btn-sm" style="background:#3a3000;color:var(--gold);border:1px solid var(--gold)" onclick="repairSettingsData()">🔧 Repair Settings</button>
+      </div>
       <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--red)">☢ Full HRMS Reset</div>
@@ -7958,6 +8107,27 @@ async function renderSettings() {
 }
 
 // ─── Danger Zone functions ───────────────────────────────────────────────────
+async function repairSettingsData() {
+  if (State.adminRole \!== 'owner') { toast('Owner access required','error'); return; }
+  const tok = State._dzToken || '';
+  if (\!tok) { toast('Set your Danger Zone Token first','error'); return; }
+  showModal('🔧 Repair Settings Data', 
+    '<p style="font-size:13px;color:var(--gray-light);margin-bottom:8px">This will restore missing headers and re-seed default data for Loyalty Milestones, Salary Bands, and Org Structure if they are empty.</p>' +
+    '<p style="font-size:12px;color:var(--gold)">Employee records and other data will NOT be affected.</p>',
+    [{label:'Repair Now', cls:'btn-gold', cb: async () => {
+      closeModal();
+      toast('Repairing settings data...', 'info');
+      const res = await API.call('repairSettingsSheets', {userId: State.adminUser || State.adminRole || 'owner', ownerToken: tok});
+      if (res.ok) {
+        toast(res.message || 'Settings repaired successfully', 'success');
+        setTimeout(() => renderSettings(), 1500);
+      } else {
+        toast(res.error || 'Repair failed', 'error');
+      }
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: closeModal}]
+  );
+}
 // Re-verifies the owner password server-side so spoofing State.adminRole alone is not enough
 function requireOwnerPin(cb) {
   if (State.adminRole !== 'owner') { toast('Owner access required','error'); return; }
@@ -8460,59 +8630,179 @@ function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, vali
   const wsData = [headers, ...sampleRows];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  const goldFill  = {fgColor:{rgb:'C8922A'}};
-  const navyFill  = {fgColor:{rgb:'1A1A2E'}};
-  const sampleFill= {fgColor:{rgb:'E8F5E9'}}; // light green for sample rows
-  const reqFont   = {bold:true, color:{rgb:'FFFFFF'}};
-  const sampleFont= {italic:true, color:{rgb:'555555'}};
-  const centerAlign = {horizontal:'center'};
+  const goldFill   = {fgColor:{rgb:'C8922A'}};
+  const navyFill   = {fgColor:{rgb:'1A1A2E'}};
+  const sampleFill = {fgColor:{rgb:'E8F5E9'}};
+  const dropFill   = {fgColor:{rgb:'FFF9E6'}}; // pale gold tint for dropdown cols
+  const reqFont    = {bold:true, color:{rgb:'FFFFFF'}};
+  const sampleFont = {italic:true, color:{rgb:'555555'}};
+  const centerAlign= {horizontal:'center'};
 
   const range = XLSX.utils.decode_range(ws['!ref']||'A1');
 
-  // Style header row
+  // ── Dropdown definitions: map header keyword → list values ──────────────
+  // We put lists on a hidden "Dropdowns" sheet and reference by range (Excel-safe).
+  // Also falls back to inline formula1 for smaller lists.
+  const DROPDOWN_MAP = {
+    // key: substring of header (case-insensitive) → options array
+    'level':           ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'],
+    'category':        ['Workforce','Supervisor','Management'],
+    'gender':          ['Male','Female','Other'],
+    'weeklyoff1':      ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+    'weeklyoff2':      ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+    'employmenttype':  ['Wage Shift Office','Full-Time Office','Work From Home','Hybrid'],
+    'noticeperioddays':['30','60','90','180'],
+    'status':          ['Active','Archived'],
+    'type':            ['IL','SL','PL','EL','UL'],   // for leave import
+  };
+
+  // ── Build a hidden "Dropdowns" sheet with all lists as columns ───────────
+  const dropCols = {};   // colKey → {sheetCol (letter), options}
+  let dropColIdx = 0;
+  const dropSheetData = [];
+
+  // For each header, check if it matches a dropdown key
+  const colDropMap = {}; // colIndex (0-based) → {sqrefCol, listRef}
+  headers.forEach((h, ci) => {
+    const hLower = String(h||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    for (const [key, opts] of Object.entries(DROPDOWN_MAP)) {
+      if (hLower.includes(key.replace(/[^a-z0-9]/g,''))) {
+        const colLetter = String.fromCharCode(65 + dropColIdx); // A, B, C…
+        if (!dropCols[key]) {
+          dropCols[key] = {letter: colLetter, options: opts};
+          // Fill column in dropsheet
+          opts.forEach((v, ri) => {
+            if (!dropSheetData[ri]) dropSheetData[ri] = [];
+            dropSheetData[ri][dropColIdx] = v;
+          });
+          dropColIdx++;
+        }
+        colDropMap[ci] = dropCols[key];
+        break;
+      }
+    }
+  });
+
+  // ── Style header row + mark dropdown cols ────────────────────────────────
   for (let c = range.s.c; c <= range.e.c; c++) {
     const cell = XLSX.utils.encode_cell({r:0, c});
     if (!ws[cell]) ws[cell] = {v: headers[c]||''};
     const isRequired = String(headers[c]||'').includes('*');
+    const hasDropdown = !!colDropMap[c];
     ws[cell].s = {
       font: reqFont,
-      fill: isRequired ? goldFill : navyFill,
+      fill: isRequired ? goldFill : (hasDropdown ? {fgColor:{rgb:'2E4A1A'}} : navyFill),
       alignment: centerAlign,
       border: {bottom:{style:'medium',color:{rgb:'C8922A'}}}
     };
+    // Add "▼" suffix to header to signal dropdown visually
+    if (hasDropdown && ws[cell].v && !String(ws[cell].v).endsWith('▼')) {
+      ws[cell].v = ws[cell].v + ' ▼';
+    }
   }
 
-  // Style sample rows (light green tint + italic)
+  // ── Style sample rows ────────────────────────────────────────────────────
   for (let r = 1; r < wsData.length; r++) {
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cell = XLSX.utils.encode_cell({r, c});
       if (!ws[cell]) ws[cell] = {v:''};
-      ws[cell].s = {font: sampleFont, fill: sampleFill};
+      ws[cell].s = {
+        font: sampleFont,
+        fill: colDropMap[c] ? dropFill : sampleFill
+      };
     }
   }
 
-  // Auto-width
-  ws['!cols'] = headers.map(h=>({wch: Math.max(String(h||'').length+4, 16)}));
+  // ── Data validations — rows 2–200 (leaves row 1 as header) ──────────────
+  // XLSX spec: ws['!dataValidations'] = array of validation objects
+  const DATA_ROWS = 200; // apply dropdown to first 200 data rows
+  ws['!dataValidations'] = ws['!dataValidations'] || [];
 
-  // Add instruction row above headers using a note comment approach:
-  // Put a yellow note in cell A1's comment if supported, otherwise first cell text
+  Object.entries(colDropMap).forEach(([ci, {letter, options}]) => {
+    ci = parseInt(ci);
+    const colLetter = XLSX.utils.encode_col(ci);
+    // Use inline list for ≤ 10 options (fits in 255-char Excel formula limit)
+    const inlineList = options.filter(o=>o!=='').join(',');
+    const useInline = inlineList.length <= 255;
+    ws['!dataValidations'].push({
+      type: 'list',
+      allowBlank: true,
+      showDropDown: false,  // false = show the dropdown arrow
+      showErrorMessage: true,
+      errorStyle: 'warning',  // warning = allow override, not hard stop
+      errorTitle: 'Invalid Value',
+      error: `Please select from the dropdown list. Valid options: ${options.filter(o=>o!=='').join(', ')}`,
+      showInputMessage: true,
+      promptTitle: 'Select a value',
+      prompt: options.filter(o=>o!=='').join(' | '),
+      sqref: `${colLetter}2:${colLetter}${DATA_ROWS + 1}`,
+      formula1: useInline ? `"${inlineList}"` : undefined,
+      // For long lists we reference the Dropdowns sheet
+      ...(!useInline ? {formula1: `Dropdowns!$${letter}$1:$${letter}$${options.length}`} : {}),
+    });
+  });
+
+  // Auto-width columns
+  ws['!cols'] = headers.map((h,i) => ({
+    wch: Math.max(String(h||'').length + 4, colDropMap[i] ? 22 : 14)
+  }));
+
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-  // ── Sheet 2: Valid Values Reference ────────────────────────
+  // ── Sheet 2: Dropdowns (hidden list source for long dropdown lists) ──────
+  if (dropColIdx > 0) {
+    // Pad all rows to same length
+    const maxRows = Math.max(...Object.values(dropCols).map(d=>d.options.length));
+    const paddedData = Array.from({length: maxRows}, (_,ri) =>
+      Array.from({length: dropColIdx}, (_,ci) => (dropSheetData[ri]||[])[ci] || '')
+    );
+    // Header row = key names
+    const dropHeaders = Array.from({length: dropColIdx}, (_,ci) =>
+      Object.keys(dropCols)[ci] || ''
+    );
+    const dropWs = XLSX.utils.aoa_to_sheet([dropHeaders, ...paddedData]);
+    dropWs['!cols'] = Array.from({length: dropColIdx}, ()=>({wch:20}));
+    // Style drop sheet headers
+    for (let c = 0; c < dropColIdx; c++) {
+      const cell = XLSX.utils.encode_cell({r:0, c});
+      if (!dropWs[cell]) dropWs[cell] = {v:''};
+      dropWs[cell].s = {font:{bold:true,color:{rgb:'FFFFFF'}}, fill:goldFill};
+    }
+    XLSX.utils.book_append_sheet(wb, dropWs, 'Dropdowns');
+    // Mark it hidden (Excel-compatible)
+    if (!wb.Workbook) wb.Workbook = {};
+    if (!wb.Workbook.Sheets) wb.Workbook.Sheets = [];
+    const dropSheetIdx = wb.SheetNames.indexOf('Dropdowns');
+    if (!wb.Workbook.Sheets[dropSheetIdx]) wb.Workbook.Sheets[dropSheetIdx] = {};
+    wb.Workbook.Sheets[dropSheetIdx].Hidden = 1;
+  }
+
+  // ── Sheet 3: Valid Values Reference (human-readable) ─────────────────────
   if (validValues && validValues.length) {
-    const vvData = [['Column', 'Valid Values / Accepted Options', 'Notes']];
-    validValues.forEach(([col, vals, note]) => vvData.push([col, vals, note||'']));
+    const vvData = [
+      ['Column', 'Valid Values / Accepted Options', 'Notes'],
+      ...validValues.map(([col, vals, note]) => [col, vals, note||''])
+    ];
     const vvws = XLSX.utils.aoa_to_sheet(vvData);
-    // Style VV header
     ['A1','B1','C1'].forEach(ref => {
       if (!vvws[ref]) vvws[ref] = {v:''};
       vvws[ref].s = {font:{bold:true,color:{rgb:'FFFFFF'}}, fill:goldFill, alignment:centerAlign};
     });
-    vvws['!cols'] = [{wch:30},{wch:70},{wch:40}];
-    XLSX.utils.book_append_sheet(wb, vvws, 'ValidValues_Reference');
+    // Style data rows — alternating
+    for (let r = 1; r < vvData.length; r++) {
+      const bg = r % 2 === 0 ? {fgColor:{rgb:'F5F0E8'}} : {fgColor:{rgb:'FFFFFF'}};
+      for (let c = 0; c < 3; c++) {
+        const cell = XLSX.utils.encode_cell({r, c});
+        if (!vvws[cell]) vvws[cell] = {v:''};
+        vvws[cell].s = {fill: bg, font:{color:{rgb:'333333'}}};
+      }
+    }
+    vvws['!cols'] = [{wch:32},{wch:68},{wch:40}];
+    XLSX.utils.book_append_sheet(wb, vvws, 'Valid_Values_Reference');
   }
 
-  XLSX.writeFile(wb, filename);
+  // ── Write file ──────────────────────────────────────────────────────────
+  XLSX.writeFile(wb, filename, {bookType:'xlsx', type:'binary', cellStyles:true});
 }
 
 // Parse an uploaded Excel/CSV file and return array of objects keyed by header row
@@ -8523,7 +8813,16 @@ function parseXLSX(file) {
       try {
         const wb = XLSX.read(e.target.result, {type:'binary', cellDates:true});
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        const rawRows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        // Strip trailing ' ▼' from header keys (added by downloadBulkTemplateRich for visual dropdown cue)
+        const rows = rawRows.map(row => {
+          const clean = {};
+          Object.keys(row).forEach(k => {
+            const cleanKey = k.endsWith(' ▼') ? k.slice(0, -2) : k;
+            clean[cleanKey] = row[k];
+          });
+          return clean;
+        });
         resolve(rows);
       } catch(err) { reject(err); }
     };
@@ -8569,30 +8868,45 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
     {label:'✅ Import All Rows', cls:'btn-gold', cb: async () => {
       parsedRows = window._bulkRows || [];
       if (!parsedRows.length) { toast('No rows to import','warning'); return; }
-      let ok=0, fail=0;
+      let ok=0;
       const total = parsedRows.length;
+      const importLog = []; // {rowNum, name, status, error}
       // Chunk imports to avoid hanging the browser (5 parallel calls per chunk)
       const CHUNK = 5;
       for (let i=0; i<total; i+=CHUNK) {
         const chunk = parsedRows.slice(i, i+CHUNK);
         toast(`Importing… ${Math.min(i+CHUNK, total)}/${total}`, 'info', 1500);
-        const results = await Promise.all(chunk.map(async row => {
+        const results = await Promise.all(chunk.map(async (row, ci) => {
+          const rowNum = i + ci + 1;
+          const label = row['name *'] || row['name'] || row['employeeCode (optional, e.g. AZ_EMP_0056)'] || `Row ${rowNum}`;
           try {
             const payload = rowProcessor(row);
-            if (!payload) return false;
+            if (!payload) {
+              importLog.push({rowNum, label, status:'fail', error:'Row skipped — missing required fields'});
+              return false;
+            }
             const res = await API.call(confirmAction, payload);
-            return !!res.ok;
-          } catch(e) { return false; }
+            if(res.ok) {
+              importLog.push({rowNum, label, status:'ok', error:''});
+              return true;
+            } else {
+              importLog.push({rowNum, label, status:'fail', error:res.error||'Server rejected row'});
+              return false;
+            }
+          } catch(e) {
+            importLog.push({rowNum, label, status:'fail', error:e.message||'Network error'});
+            return false;
+          }
         }));
         ok += results.filter(Boolean).length;
-        fail += results.filter(r=>!r).length;
-        // Small yield to keep UI responsive
         await new Promise(r=>setTimeout(r,50));
       }
+      const fail = total - ok;
       closeModal();
-      toast(`✓ Imported ${ok} of ${total} rows${fail?' | '+fail+' failed':''}`, ok>0?'success':'error', 6000);
       window._bulkRows = [];
       await refreshCurrentTab();
+      // Show import report modal
+      showBulkImportReport(importLog, ok, fail, total);
     }},
     {label:'Cancel', cls:'btn-dark', cb:()=>{window._bulkRows=[];closeModal();}},
   ]);
@@ -8620,6 +8934,43 @@ async function handleBulkFileSelect(input, previewId, statusId) {
   } catch(e) {
     status.innerHTML = `<span style="color:var(--red)">✗ Error parsing file: ${escHtml(e.message)}</span>`;
   }
+}
+
+// ─── Bulk Import Report Modal ────────────────────────────────────────────────
+function showBulkImportReport(log, ok, fail, total) {
+  const rows = log.map((r,i) => {
+    const icon = r.status==='ok' ? '✅' : '❌';
+    const errCell = r.status==='fail'
+      ? `<td style="color:var(--red);font-size:11px">${escHtml(r.error)}</td>`
+      : `<td style="color:var(--green);font-size:11px">Imported successfully</td>`;
+    return `<tr style="border-bottom:1px solid var(--dark3)">
+      <td style="padding:4px 6px;color:var(--gray-light)">${r.rowNum}</td>
+      <td style="padding:4px 6px">${icon} ${escHtml(r.label)}</td>
+      ${errCell}
+    </tr>`;
+  }).join('');
+  const summary = `<div style="margin-bottom:10px;font-size:13px">
+    <span style="color:var(--green);font-weight:700">✅ ${ok} imported</span>
+    ${fail>0?`&nbsp;|&nbsp;<span style="color:var(--red);font-weight:700">❌ ${fail} failed</span>`:''}
+    &nbsp;|&nbsp;<span style="color:var(--gray-light)">Total: ${total}</span>
+  </div>`;
+  const html = `<div>${summary}<div style="max-height:340px;overflow-y:auto;font-size:12px">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="padding:4px 6px;background:var(--dark3);color:var(--gold);text-align:left">#</th>
+        <th style="padding:4px 6px;background:var(--dark3);color:var(--gold);text-align:left">Name / ID</th>
+        <th style="padding:4px 6px;background:var(--dark3);color:var(--gold);text-align:left">Result</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+  ${fail>0?`<div style="margin-top:10px;font-size:11px;color:var(--gold-light)">⚠ Failed rows were <strong>not</strong> imported. Fix the errors and re-upload only the failed rows.</div>`:''}
+  </div>`;
+  showModal(
+    `📊 Import Report — ${ok}/${total} Rows Successful`,
+    html,
+    [{label:'Close', cls:'btn-gold', cb:()=>closeModal()}]
+  );
 }
 
 // Refresh whatever tab is currently active after bulk import
@@ -8665,12 +9016,12 @@ function bulkImportEmployees() {
     // Row 1: factory wage worker example
     ['AZ_EMP_0056','Ravi Kumar','L4',18000,1234,'09:00','19:00',10,'Sunday','','9876543210','ravi.kumar@example.com','Production','Workforce','2025-01-15','1995-06-20','Male','123456789012',90,0,500,9,'Wage Shift Office','Example row — delete before importing'],
     // Row 2: office staff example
-    ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Staff','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office manager — example row'],
+    ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Supervisor','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office manager — example row'],
   ];
   const validValues = [
     ['level *','L1, L2, L3, L4, L5, L6, L7, L8, L9, L10','L1=lowest (helper), L10=senior management'],
     ['weeklyOff1 / weeklyOff2','Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday','Most factories: Sunday off; leave weeklyOff2 blank for single off'],
-    ['category','Workforce, Staff, Management','Workforce=factory floor; Staff=office; Management=supervisors+'],
+    ['category','Workforce, Supervisor, Management','Workforce=factory floor worker; Supervisor=team leader; Management=managers+'],
     ['gender','Male, Female, Other',''],
     ['employmentType','Wage Shift Office, Full-Time Office, Work From Home, Hybrid','Determines break deduction and OT rules'],
     ['noticeperiodDays','30, 60, 90, 180','Common values; L1-L5=90 days; L6-L10=60 days'],
@@ -8706,7 +9057,31 @@ function bulkImportEmployees() {
     </div>
   </details>`;
   openBulkImportModal('👥 Bulk Import Employees', headers, 'ArtzFolio_Employee_Template.xlsx', row => {
-    if (!row['name *'] || !row['level *'] || !row['salary *'] || !row['pin *']) return null;
+    // Validate required fields — throw with specific message so import report shows which field is missing
+    const missing = [];
+    if (!row['name *'])   missing.push('name');
+    if (!row['level *'])  missing.push('level');
+    if (!row['salary *']) missing.push('salary');
+    if (!row['pin *'])    missing.push('pin');
+    if (missing.length) throw new Error('Missing required: ' + missing.join(', '));
+    // Validate dropdown values
+    const VALID_LEVELS = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
+    const VALID_CATS   = ['Workforce','Supervisor','Management'];
+    const VALID_GENDER = ['Male','Female','Other'];
+    const VALID_EMPT   = ['Wage Shift Office','Full-Time Office','Work From Home','Hybrid'];
+    const VALID_DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday',''];
+    const lvl = String(row['level *']||'').trim();
+    if (!VALID_LEVELS.includes(lvl)) throw new Error(`Invalid level "${lvl}" — use L1–L10`);
+    const cat = String(row['category']||'Workforce').trim();
+    if (cat && !VALID_CATS.includes(cat)) throw new Error(`Invalid category "${cat}" — use Workforce, Supervisor, or Management`);
+    const gen = String(row['gender']||'Male').trim();
+    if (gen && !VALID_GENDER.includes(gen)) throw new Error(`Invalid gender "${gen}" — use Male, Female, or Other`);
+    const emp = String(row['employmentType']||'').trim();
+    if (emp && !VALID_EMPT.includes(emp)) throw new Error(`Invalid employmentType "${emp}"`);
+    const wo1 = String(row['weeklyOff1']||'Sunday').trim();
+    if (wo1 && !VALID_DAYS.includes(wo1)) throw new Error(`Invalid weeklyOff1 "${wo1}"`);
+    const pinStr = String(row['pin *']).trim();
+    if (!/^\d{4}$/.test(pinStr)) throw new Error(`PIN must be exactly 4 digits, got "${pinStr}"`);
     const defaultShiftStart = (State.settings&&State.settings.defaultShiftStart)||'09:00';
     const defaultShiftEnd   = (State.settings&&State.settings.defaultShiftEnd)||'19:00';
     return {
