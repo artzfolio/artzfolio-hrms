@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v10 | April 2026 | Based on v9 + Bug Fixes -->
+<!-- ArtzFolio HRMS v11 | April 2026 | Based on v10 + Bug Fixes -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v10</title>
+<title>ArtzFolio HRMS v11</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1657,7 +1657,7 @@ async function init() {
     ]);
     if (settingsRes.ok) {
       applySettingsArr(settingsRes.settings||[]);
-      document.getElementById('kiosk-company').textContent = State.settings.companyName||'Vishnu Image Folio Pvt Ltd';
+      document.getElementById('kiosk-company').textContent = State.settings.companyName||'';
       document.getElementById('kiosk-brand').textContent = State.settings.brandName||'ArtzFolio';
       applyBranding();
       if (State.settings.kioskTimeout) CFG.kioskTimeout = parseInt(State.settings.kioskTimeout)*1000;
@@ -1813,37 +1813,34 @@ function startFaceDirectionGuide() {
     _faceDirectionStep++;
   }, 900);
 }
-async function faceDetectLoop() {
+function faceDetectLoop() {
   if (faceDetecting || !State.faceActive) return;
   faceDetecting = true;
-  try {
-    const result = await Face.detectAndIdentify();
-    if (result && result.ok) {
-      // Face matched — cancel watchdog, stop loops, hand off to auth handler
-      if (_faceTimeoutTimer) { clearTimeout(_faceTimeoutTimer); _faceTimeoutTimer = null; }
-      clearInterval(_faceDirectionTimer);
-      document.getElementById('face-status').innerHTML = `<span style="color:var(--green)">✓ ${escHtml(result.employee.name)}</span>`;
-      if (State.faceLoop) { clearInterval(State.faceLoop); State.faceLoop=null; }
-      State.faceActive = false;
-      handleAuthResult(result);
-    } else {
-      // Guide is already running; on failure, flash "No match"
-      const statusEl = document.getElementById('face-status');
-      if(statusEl){
-        const prev = statusEl.innerHTML;
-        statusEl.innerHTML = '<span style="color:var(--orange)">⚠ No match — keep still</span>';
-        setTimeout(()=>{ if(statusEl) statusEl.innerHTML=prev; }, 1200);
+  (async () => {
+    try {
+      const result = await Face.detectAndIdentify();
+      if (result && result.ok) {
+        // Face matched — cancel watchdog, stop loops, hand off to auth handler
+        if (_faceTimeoutTimer) { clearTimeout(_faceTimeoutTimer); _faceTimeoutTimer = null; }
+        clearInterval(_faceDirectionTimer);
+        document.getElementById('face-status').innerHTML = `<span style="color:var(--green)">✓ ${escHtml(result.employee.name)}</span>`;
+        if (State.faceLoop) { clearInterval(State.faceLoop); State.faceLoop=null; }
+        State.faceActive = false;
+        handleAuthResult(result);
+      } else {
+        // Guide is already running; on failure, flash "No match"
+        const statusEl = document.getElementById('face-status');
+        if(statusEl){
+          const prev = statusEl.innerHTML;
+          statusEl.innerHTML = '<span style="color:var(--orange)">⚠ No match — keep still</span>';
+          setTimeout(()=>{ if(statusEl) statusEl.innerHTML=prev; }, 1200);
+        }
       }
+    } finally {
+      faceDetecting = false;
     }
-  } catch(e) {}
-  faceDetecting = false;
+  })();
 }
-// Patch face start to also begin direction guide
-const _origFaceLoopStart = () => {
-  State.faceLoop = setInterval(faceDetectLoop, 1500);
-  startFaceDirectionGuide();
-};
-
 // ═══════════════════════════════════════════
 // AUTH RESULT HANDLER (PIN or Face)
 // ═══════════════════════════════════════════
@@ -2858,8 +2855,8 @@ async function doBreakOut() {
 }
 
 async function refreshEmpCard() {
-  if (!State.currentEmp) return;
   try {
+    if (!State.currentEmp) return;
     const res = await API.call('auth',{pin:null, empId:State.currentEmp.id, skipPinCheck:true});
     if (res.ok) {
       // Merge updated fields into state
@@ -2874,7 +2871,10 @@ async function refreshEmpCard() {
       document.getElementById('ec-balance').innerHTML = buildBalanceHtml(res.balance, res.todayRecord);
       buildLeaveInfoCard(res, State.currentEmp);
     }
-  } catch {}
+  } catch(e) {
+    console.error('refreshEmpCard failed:', e);
+    toast('Could not refresh card. Please try again.','error');
+  }
 }
 
 async function showEarnings() {
@@ -3128,7 +3128,7 @@ async function doApplyExit() {
       let res;
       try { res=await API.call('updateEmployee',{empId:emp.id, status:'Notice', notes:`Exit applied ${todayStr()} - ${exitType} - ${reason}`}); }
       catch(e) { toast('Network error — exit not submitted','error'); return; }
-      if(res.ok){closeModal();toast('Exit application submitted. Salary put on hold until notice completion.','success',6000);API.call('getEmployees').then(r=>{if(r.ok)State.employees=r.employees||[];});}
+      if(res.ok){closeModal();toast('Exit application submitted. Salary put on hold until notice completion.','success',6000);API.call('getEmployees').then(r=>{if(r.ok)State.employees=r.employees||[];}).catch(e=>{toast('Network error. Please try again.','error');console.error(e);});}
       else toast('Error','error');
     }},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
@@ -3989,7 +3989,7 @@ async function renderDashboard() {
   <div class="section-hdr">
     <div class="section-title">Today's Attendance <small style="color:var(--gray)">${todayStr()}</small></div>
     <div class="section-actions">
-      <button class="btn btn-dark btn-sm" onclick="API.call('autoMarkUL',{userId:State.adminUser}).then(r=>toast(r.ok?'UL check done ('+(r.marked||0)+' marked)':'Error','success'))">Auto-Mark UL</button>
+      <button class="btn btn-dark btn-sm" onclick="API.call('autoMarkUL',{userId:State.adminUser}).then(r=>toast(r.ok?'UL check done ('+(r.marked||0)+' marked)':'Error','success')).catch(e=>{toast('Network error. Please try again.','error');console.error(e);})">Auto-Mark UL</button>
       <button class="btn btn-dark btn-sm" onclick="switchTab('attendance')">Full View →</button>
     </div>
   </div>
@@ -4757,7 +4757,7 @@ async function renderAttendance() {
   <div class="section-hdr">
     <div class="section-title">Attendance Management</div>
     <div class="section-actions">
-      <button class="btn btn-dark btn-sm" onclick="API.call('autoClockOut',{}).then(r=>toast('Auto clock-out done: '+r.affected?.length+' employees','success'))">Auto Clock-Out</button>
+      <button class="btn btn-dark btn-sm" onclick="API.call('autoClockOut',{}).then(r=>toast('Auto clock-out done: '+r.affected?.length+' employees','success')).catch(e=>{toast('Network error. Please try again.','error');console.error(e);})">Auto Clock-Out</button>
     </div>
   </div>
   <div class="filters-bar">
@@ -5839,7 +5839,7 @@ function printSlip(data) {
   const monthName=new Date(data.year,data.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
   area.innerHTML=`
   <div class="slip-header">
-    <div class="slip-company">${escHtml(State.settings.companyName||'Vishnu Image Folio Pvt Ltd')}</div>
+    <div class="slip-company">${escHtml(State.settings.companyName||'')}</div>
     <div style="font-size:11pt;color:#888">${escHtml(State.settings.factoryAddress||'Noida, UP')}</div>
     <div class="slip-month">SALARY SLIP — ${monthName}</div>
   </div>
@@ -5895,7 +5895,7 @@ function printSlip(data) {
 }
 
 function buildSlipText(data) {
-  const co = State.settings.companyName||'Vishnu Image Folio Pvt Ltd';
+  const co = State.settings.companyName||'';
   const monthName = new Date(data.year,data.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
   const fmt = v => '₹'+Math.round(v||0).toLocaleString('en-IN');
   return [
@@ -5940,7 +5940,7 @@ function shareSlipWhatsApp(data) {
 }
 
 function shareSlipEmail(data) {
-  const co = State.settings.companyName||'Vishnu Image Folio Pvt Ltd';
+  const co = State.settings.companyName||'';
   const monthName = new Date(data.year,data.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
   const subject = encodeURIComponent(`Salary Slip — ${data.empName||data.name} — ${monthName}`);
   const body = encodeURIComponent(buildSlipText(data));
@@ -6079,7 +6079,7 @@ function exportStatutoryXLSX(year, month) {
     const data=res.employees.map(e=>[e.empName,e.empId,e.dept,e.level,e.grossSalary,e.pfEmployee,e.pfEmployer,e.esiEmployee,e.esiEmployer,e.professionalTax,e.tds,e.totalDeductionEmployee,e.totalDeductionEmployer]);
     const mName=new Date(year,month-1).toLocaleString('en-IN',{month:'short',year:'numeric'}).replace(' ','_');
     downloadXLSX(`ArtzFolio_Statutory_${mName}.xlsx`,'Statutory',headers,data);
-  });
+  }).catch(e => { toast('Network error. Please try again.','error'); console.error(e); });
 }
 
 function printChallan(type, year, month) {
@@ -6087,7 +6087,7 @@ function printChallan(type, year, month) {
     if(!res.ok){toast('Failed to load data','error');return;}
     const {employees=[],totals={},config={}}=res;
     const mName=new Date(year,month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
-    const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+    const co=State.settings?.companyName||'';
     let rows='',totalAmt=0;
     if(type==='PF'){
       rows=employees.filter(e=>e.pfEmployee>0||e.pfEmployer>0).map(e=>{
@@ -6130,12 +6130,12 @@ function printChallan(type, year, month) {
     </div>
     <script>setTimeout(()=>window.print(),600);<\/script></body></html>`);
     pw.document.close();
-  });
+  }).catch(e => { toast('Network error. Please try again.','error'); console.error(e); });
 }
 
 function downloadSalarySlipPDF(data) {
   if(!data){toast('No slip data','warning');return;}
-  const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+  const co=State.settings?.companyName||'';
   const addr=State.settings?.factoryAddress||'Noida, Uttar Pradesh';
   const empName=data.empName||data.name||'Employee';
   const monthName=new Date(data.year,data.month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
@@ -6270,7 +6270,7 @@ async function downloadAllSlipsPDF() {
   if(!window.jspdf){toast('PDF library not loaded — try individual downloads','error');return;}
   toast(`Building combined PDF for ${salaries.length} employees…`,'info',3000);
   const {jsPDF}=window.jspdf;
-  const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+  const co=State.settings?.companyName||'';
   const addr=State.settings?.factoryAddress||'Noida, Uttar Pradesh';
   const meta=window._lastPayrollMeta||{};
   const monthName=new Date(meta.year||new Date().getFullYear(),(meta.month||new Date().getMonth()+1)-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
@@ -6521,7 +6521,7 @@ async function calculateFnF() {
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-gold" onclick="downloadFnFPDF()">📄 Download PDF Settlement Letter</button>
-      <button class="btn btn-dark btn-sm" onclick="API.call('updateEmployee',{empId:'${escHtml(empId)}',status:'Exited',lwd:'${lwd}'}).then(async r=>{if(r.ok){toast('Employee marked Exited','success');const er=await API.call('getEmployees');if(er.ok)State.employees=er.employees||[];}})">✓ Mark as Exited</button>
+      <button class="btn btn-dark btn-sm" onclick="API.call('updateEmployee',{empId:'${escHtml(empId)}',status:'Exited',lwd:'${lwd}'}).then(async r=>{if(r.ok){toast('Employee marked Exited','success');const er=await API.call('getEmployees');if(er.ok)State.employees=er.employees||[];}}).catch(e=>{toast('Network error. Please try again.','error');console.error(e);})">✓ Mark as Exited</button>
     </div>
   </div>`;
 }
@@ -6529,7 +6529,7 @@ async function calculateFnF() {
 function downloadFnFPDF() {
   const fd=window._lastFnF;
   if(!fd){toast('Calculate F&F first','warning');return;}
-  const co=State.settings?.companyName||'Vishnu Image Folio Pvt Ltd';
+  const co=State.settings?.companyName||'';
   const addr=State.settings?.factoryAddress||'Noida, Uttar Pradesh';
   if(window.jspdf){
     const {jsPDF}=window.jspdf;
@@ -7203,7 +7203,7 @@ function openPCEditModal(id) {
     const entry = res.entries.find(e=>e.id===id);
     if (!entry) { toast('Entry not found', 'error'); return; }
     openPCEntryModal(entry);
-  });
+  }).catch(e => { toast('Network error. Please try again.','error'); console.error(e); });
 }
 
 async function pcApprove(id) {
@@ -7242,7 +7242,7 @@ function exportPCExcel() {
     ]);
     downloadXLSX(`ArtzFolio_PettyCash_${window._pcMonth||todayStr().substring(0,7)}.xlsx`,
       'Petty Cash', headers, data);
-  });
+  }).catch(e => { toast('Network error. Please try again.','error'); console.error(e); });
 }
 
 // ═══════════════════════════════════════════
