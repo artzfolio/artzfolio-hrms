@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v9 | April 2026 | Based on v8 + Bug Fixes -->
+<!-- ArtzFolio HRMS v10 | April 2026 | Based on v9 + Bug Fixes -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v9</title>
+<title>ArtzFolio HRMS v10</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -623,7 +623,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 ═══════════════════════════════════════════ -->
 <div class="screen" id="screen-setup">
   <div class="setup-box">
-    <div class="setup-logo">⚙ ArtzFolio HRMS v3</div>
+    <div class="setup-logo">⚙ ArtzFolio HRMS v10</div>
     <div class="setup-sub">One-time setup required before first use</div>
     <div class="setup-step">
       <strong>Step 1 — Google Apps Script URL</strong><br>
@@ -632,7 +632,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
     </div>
     <div class="form-group">
       <label class="form-label">GAS Web App URL</label>
-      <input id="setup-gas-url" class="form-input" type="url" placeholder="https://script.google.com/macros/s/...../exec">
+      <input id="setup-gas-url" class="form-input" type="url" placeholder="https://script.google.com/macros/s/...../exec" autocomplete="off">
     </div>
     <div class="setup-step">
       <strong>Step 2 — API Token</strong><br>
@@ -641,7 +641,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
     </div>
     <div class="form-group">
       <label class="form-label">API Token</label>
-      <input id="setup-token" class="form-input" type="text" placeholder="" value="">
+      <input id="setup-token" class="form-input" type="text" placeholder="" value="" autocomplete="off">
     </div>
     <button class="btn btn-gold btn-lg" style="width:100%" onclick="finishSetup()">▶ Connect &amp; Launch</button>
     <div id="setup-status" style="margin-top:12px;font-size:12px;color:var(--gray-light);text-align:center"></div>
@@ -840,8 +840,8 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
   <div id="kiosk-conn-error" style="display:none;padding:14px 16px;margin:0 16px 12px;background:rgba(229,57,53,0.12);border:1px solid var(--red);border-radius:10px;text-align:center">
     <div style="font-size:13px;color:var(--red);font-weight:700;margin-bottom:6px">⚠ Cannot connect to server</div>
     <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">The Google Apps Script URL may have changed after re-deployment. Update it below.</div>
-    <input id="conn-err-url" class="form-input" type="url" placeholder="Paste new GAS Web App URL here…" style="font-size:11px;margin-bottom:6px">
-    <input id="conn-err-token" class="form-input" type="text" placeholder="API Token" style="font-size:11px;margin-bottom:8px">
+    <input id="conn-err-url" class="form-input" type="url" placeholder="Paste new GAS Web App URL here…" style="font-size:11px;margin-bottom:6px" autocomplete="off">
+    <input id="conn-err-token" class="form-input" type="text" placeholder="API Token" style="font-size:11px;margin-bottom:8px" autocomplete="off">
     <button class="btn btn-gold" style="width:100%;font-size:12px" onclick="reconnectFromBanner()">🔄 Save & Reconnect</button>
     <div id="conn-err-status" style="font-size:11px;margin-top:6px;color:var(--gray-light)"></div>
   </div>
@@ -934,15 +934,16 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
           <label class="form-label">6-Digit OTP</label>
           <input id="fp-otp" class="form-input" type="tel" maxlength="6" placeholder="Enter OTP from email"
                  style="text-align:center;font-size:20px;letter-spacing:6px"
+                 autocomplete="one-time-code"
                  oninput="this.value=this.value.replace(/[^0-9]/g,'')">
         </div>
         <div class="form-group">
           <label class="form-label">New Password</label>
-          <input id="fp-newpwd" class="form-input" type="password" placeholder="Min 8 characters">
+          <input id="fp-newpwd" class="form-input" type="password" placeholder="Min 8 characters" autocomplete="new-password">
         </div>
         <div class="form-group">
           <label class="form-label">Confirm New Password</label>
-          <input id="fp-confirmpwd" class="form-input" type="password" placeholder="Repeat new password">
+          <input id="fp-confirmpwd" class="form-input" type="password" placeholder="Repeat new password" autocomplete="new-password">
         </div>
         <div id="fp-err-b" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
         <button class="btn btn-gold" style="width:100%" onclick="fpVerifyAndReset()">✓ Verify &amp; Reset Password</button>
@@ -1101,7 +1102,7 @@ const CFG = {
   faceThreshold: 0.55,
   pinMaxLen: 4,
   kioskTimeout: 60000,
-  version: '3.0',
+  version: '10.0',
 };
 const LS = {
   g: k => { try { return JSON.parse(localStorage.getItem('az3_'+k)); } catch { return null; } },
@@ -1629,10 +1630,24 @@ async function finishSetup() {
 }
 
 async function init() {
+  // Bug fix v10: show a loading splash immediately so the screen is never blank
+  const splashId = 'az-init-splash';
+  if (!document.getElementById(splashId)) {
+    document.body.insertAdjacentHTML('beforeend',
+      `<div id="${splashId}" style="position:fixed;inset:0;background:#111111;display:flex;flex-direction:column;` +
+      `align-items:center;justify-content:center;z-index:99999;gap:18px">` +
+      `<div style="font-size:2rem;font-weight:900;color:#C9A84C;letter-spacing:2px">ArtzFolio HRMS</div>` +
+      `<div class="kiosk-spinner"></div>` +
+      `<div style="color:#888;font-size:12px">Connecting to backend\u2026</div></div>`
+    );
+  }
+  const removeSplash = () => { const s = document.getElementById(splashId); if (s) s.remove(); };
+
   // Load saved config
   const savedUrl = LS.g('gasUrl'), savedToken = LS.g('token');
   if (savedUrl) { CFG.gasUrl = savedUrl; CFG.token = savedToken||CFG.token; }
-  else { showScreen('setup'); return; }
+  else { removeSplash(); showScreen('setup'); return; }
+
   // Load settings and employees in background
   try {
     const [settingsRes, empsRes, activitiesRes] = await Promise.all([
@@ -1659,6 +1674,7 @@ async function init() {
     }
   } catch(e) {
     // Show connection recovery UI directly on kiosk — visible BEFORE login
+    removeSplash();
     setInterval(updateClock, 1000); updateClock();
     showScreen('kiosk');
     buildPinDots();
@@ -1667,6 +1683,7 @@ async function init() {
     return;
   }
   // Start clock
+  removeSplash();
   setInterval(updateClock, 1000); updateClock();
   showScreen('kiosk');
   buildPinDots();
@@ -3219,26 +3236,43 @@ async function verify2FA() {
   }
 }
 
-// Emergency 2FA reset — asks for master password, clears 2FA if correct
+// Emergency 2FA reset — asks for master password via in-app modal (Bug fix: native prompt/alert are blocked in fullscreen/kiosk)
 async function reset2FAEmergency() {
-  const masterPw = prompt('Enter your master admin password to reset 2FA:');
-  if (!masterPw) return;
-  const r = await API.call('adminLogin', {pin: masterPw, role: 'owner'});
-  if (r.ok) {
-    LS.d('twoFAEnabled');
-    LS.d('twoFASecret');
-    // Also uncheck the 2FA checkbox in Settings if it exists
-    const cb = document.getElementById('cfg-2fa-enabled');
-    if (cb) cb.checked = false;
-    alert('2FA has been disabled. You can now log in with just your password.\nRe-enable 2FA in Settings after logging in.');
-    // Return to step 1 and auto-proceed
-    back2FAToStep1();
-    document.getElementById('admin-login-err').style.display='none';
-    await completeAdminLogin(window._pendingLoginRole || selectedRole || 'owner');
-    window._pendingLoginRole = null;
-  } else {
-    alert('Master password incorrect. 2FA reset denied.');
-  }
+  await new Promise(resolve => {
+    showModal('🔓 Emergency 2FA Reset', `
+      <div style="font-size:13px;color:var(--gray-light);margin-bottom:12px">
+        Enter your master admin (Owner) password to disable 2FA. After reset you can log in with your password only.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Master Admin Password</label>
+        <input id="tfa-reset-pw" class="form-input" type="password" placeholder="Owner password" autocomplete="current-password">
+      </div>
+      <div id="tfa-reset-err" style="color:var(--red);font-size:12px;margin-top:6px;display:none"></div>`, [
+      {label:'Reset 2FA', cls:'btn-gold', cb: async () => {
+        const masterPw = document.getElementById('tfa-reset-pw')?.value || '';
+        if (!masterPw) { document.getElementById('tfa-reset-err').textContent='Enter password.'; document.getElementById('tfa-reset-err').style.display='block'; return; }
+        const r = await API.call('adminLogin', {pin: masterPw, role: 'owner'});
+        if (r.ok) {
+          LS.d('twoFAEnabled');
+          LS.d('twoFASecret');
+          const cb = document.getElementById('cfg-2fa-enabled');
+          if (cb) cb.checked = false;
+          closeModal();
+          toast('✓ 2FA disabled. Log in with your password.', 'success', 5000);
+          back2FAToStep1();
+          document.getElementById('admin-login-err').style.display='none';
+          await completeAdminLogin(window._pendingLoginRole || selectedRole || 'owner');
+          window._pendingLoginRole = null;
+          resolve();
+        } else {
+          document.getElementById('tfa-reset-err').textContent = 'Master password incorrect. 2FA reset denied.';
+          document.getElementById('tfa-reset-err').style.display = 'block';
+        }
+      }},
+      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
+    ]);
+    setTimeout(()=>document.getElementById('tfa-reset-pw')?.focus(), 100);
+  });
 }
 
 function back2FAToStep1() {
@@ -7684,7 +7718,7 @@ async function renderSettings() {
         <b style="color:var(--white)">Option 3 — Google Sheet:</b> Config sheet → row <i>adminPassword</i> = your master credential.
       </div>
       <div style="margin-top:10px">
-        <button class="btn btn-dark btn-sm" onclick="if(confirm('Clear 2FA from this browser now?')){LS.d('twoFAEnabled');LS.d('twoFASecret');toast('2FA cleared — reload and log in with your password.','success');renderSettings();}">
+        <button class="btn btn-dark btn-sm" onclick="confirm2('Clear 2FA from this browser now?').then(ok=>{if(ok){LS.d('twoFAEnabled');LS.d('twoFASecret');toast('2FA cleared — reload and log in with your password.','success');renderSettings();}})">
           🔓 Emergency: Clear 2FA Now
         </button>
       </div>
@@ -8111,7 +8145,7 @@ async function renderSettings() {
       <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--gold)">🔧 Repair Settings Data</div>
-          <div style="font-size:11px;color:var(--gray-light)">Fixes blank Settings tabs — restores missing headers and re-seeds default Loyalty Milestones, Salary Bands, and Org Structure if empty. Safe to run at any time; does not affect employee or attendance data.</div>
+          <div style="font-size:11px;color:var(--gray-light)">Fixes blank Settings tabs — restores missing headers, removes blank holiday rows, and force-reseeds Loyalty Milestones and Salary Bands if all values are empty/zero. Safe to run at any time; does not affect employee or attendance data.</div>
         </div>
         <button class="btn btn-sm" style="background:#3a3000;color:var(--gold);border:1px solid var(--gold)" onclick="repairSettingsData()">🔧 Repair Settings</button>
       </div>
@@ -9100,7 +9134,8 @@ function bulkImportEmployees() {
     const VALID_GENDER = ['Male','Female','Other'];
     const VALID_EMPT   = ['Wage Shift Office','Full-Time Office','Work From Home','Hybrid'];
     const VALID_DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday',''];
-    const lvl = String(row['level *']||'').trim();
+    // Bug B1 fix: normalise level to uppercase so l1/l2 etc. from Excel work correctly
+    const lvl = String(row['level *']||'').trim().toUpperCase();
     if (!VALID_LEVELS.includes(lvl)) throw new Error(`Invalid level "${lvl}" — use L1–L10`);
     const cat = String(row['category']||'Workforce').trim();
     if (cat && !VALID_CATS.includes(cat)) throw new Error(`Invalid category "${cat}" — use Workforce, Supervisor, or Management`);
@@ -9116,12 +9151,12 @@ function bulkImportEmployees() {
     const defaultShiftEnd   = (State.settings&&State.settings.defaultShiftEnd)||'19:00';
     return {
       customId: row['employeeCode (optional, e.g. AZ_EMP_0056)']||'',
-      name: row['name *'], level: row['level *'], salary: row['salary *'], pin: String(row['pin *']),
+      name: row['name *'], level: lvl, salary: row['salary *'], pin: String(row['pin *']),
       shiftStart: _excelTimeToHHMM(row['shiftStart (e.g. 09:00)'])||defaultShiftStart,
       shiftEnd:   _excelTimeToHHMM(row['shiftEnd (e.g. 19:00)'])||defaultShiftEnd,
       dailyHours: row['dailyHours']||10, workDaysPerWeek: row['workDaysPerWeek']||6,
       weeklyOff1: row['weeklyOff1']||'Sunday', weeklyOff2: row['weeklyOff2']||'',
-      mobile: row['mobile']||'', email: row['email']||'', dept: row['dept']||row['level *'],
+      mobile: row['mobile']||'', email: row['email']||'', dept: row['dept']||lvl,
       category: row['category']||'Workforce', doj: row['doj (YYYY-MM-DD)']||todayStr(),
       dob: row['dob (YYYY-MM-DD)']||'', gender: row['gender']||'Male', aadhaar: row['aadhaar']||'',
       noticeperiodDays: row['noticeperiodDays']||90,
@@ -9268,6 +9303,52 @@ async function addMilestone() {
 async function saveBand(level) {
   const res=await API.call('updateSalaryBand',{level,maleMin:document.getElementById(`b-mm-${level}`)?.value||0,maleMax:document.getElementById(`b-mx-${level}`)?.value||0,femaleMin:document.getElementById(`b-fm-${level}`)?.value||0,femaleMax:document.getElementById(`b-fx-${level}`)?.value||0});
   if(res.ok)toast('✓ Salary band saved','success');else toast('Error','error');
+}
+
+// Bug fix v10: these functions were missing — Add / Delete holiday handlers
+async function addHoliday() {
+  const date = document.getElementById('hol-date')?.value;
+  const name = (document.getElementById('hol-name')?.value || '').trim();
+  const type = document.getElementById('hol-type')?.value || 'National';
+  if (!date) { toast('Please pick a date', 'warning'); return; }
+  if (!name) { toast('Please enter a holiday name', 'warning'); return; }
+  const res = await API.call('addHoliday', {date, name, type, applicableTo:'All'});
+  if (res.ok) {
+    toast('✓ Holiday added', 'success');
+    document.getElementById('hol-name').value = '';
+    await refreshHolidayList();
+  } else {
+    toast(res.error || 'Failed to add holiday', 'error');
+  }
+}
+
+async function deleteHoliday(idOrDate) {
+  const ok = await confirm2('Remove this holiday?');
+  if (!ok) return;
+  // id starts with 'HOL_', otherwise it's a date string
+  const payload = idOrDate.startsWith('HOL_')
+    ? {id: idOrDate, date: ''}
+    : {id: '', date: idOrDate};
+  const res = await API.call('removeHoliday', payload);
+  if (res.ok) { toast('Holiday removed', 'success'); await refreshHolidayList(); }
+  else toast(res.error || 'Failed', 'error');
+}
+
+async function deleteSelectedHolidays() {
+  const checked = Array.from(document.querySelectorAll('.hol-cb:checked')).map(cb => cb.value);
+  if (!checked.length) { toast('No holidays selected', 'warning'); return; }
+  const ok = await confirm2(`Delete ${checked.length} selected holiday(s)?`);
+  if (!ok) return;
+  let done = 0;
+  for (const idOrDate of checked) {
+    const payload = idOrDate.startsWith('HOL_')
+      ? {id: idOrDate, date: ''}
+      : {id: '', date: idOrDate};
+    const res = await API.call('removeHoliday', payload);
+    if (res.ok) done++;
+  }
+  toast(`✓ Removed ${done} holiday(s)`, 'success');
+  await refreshHolidayList();
 }
 
 // Bug 44: Refresh only the holiday table rows instead of reloading the full settings page
