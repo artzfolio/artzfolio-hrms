@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v11 | April 2026 | Based on v10 + Bug Fixes -->
+<!-- ArtzFolio HRMS v12 | April 2026 | Based on v11 + Bug Fixes -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v11</title>
+<title>ArtzFolio HRMS v12</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1033,7 +1033,10 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       <button id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
       <button id="back-btn" class="btn btn-dark btn-sm" onclick="goBack()" style="display:none" title="Go back">← Back</button>
       <div id="admin-page-title">Dashboard</div>
-      <input id="admin-search-global" class="form-input" type="search" placeholder="🔍 Search employees…" oninput="globalSearch(this.value)">
+      <div style="position:relative">
+        <input id="admin-search-global" class="form-input" type="search" placeholder="🔍 Search employees…" oninput="globalSearch(this.value)" autocomplete="off" style="width:200px">
+        <div id="global-search-results" style="display:none;position:absolute;top:100%;left:0;width:280px;background:var(--dark2);border:1px solid var(--dark3);border-radius:6px;z-index:9999;max-height:260px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.5)"></div>
+      </div>
       <button class="btn btn-dark btn-sm" onclick="refreshCurrentPage()" title="Refresh this page" style="min-width:36px">↻</button>
       <button class="btn btn-dark btn-sm" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Light/Dark theme">🌙</button>
       <div id="admin-user-info" style="font-size:11px;color:var(--gray-light)"></div>
@@ -1687,9 +1690,59 @@ async function init() {
   setInterval(updateClock, 1000); updateClock();
   showScreen('kiosk');
   buildPinDots();
+  startWioRefresh(); // FIX-01: populate Who's In/Out panel on load
   // Pre-load face models in background
   setTimeout(() => Face.loadModels(), 2000);
 }
+
+// FIX-05: global employee search
+function globalSearch(q) {
+  const res = document.getElementById('global-search-results');
+  if (!res) return;
+  q = (q||'').trim().toLowerCase();
+  if (!q) { res.style.display = 'none'; res.innerHTML = ''; return; }
+  const emps = State.employees||[];
+  const hits = emps.filter(e =>
+    (e.name||'').toLowerCase().includes(q) ||
+    (e.id||'').toLowerCase().includes(q) ||
+    (e.dept||'').toLowerCase().includes(q) ||
+    (e.department||'').toLowerCase().includes(q) ||
+    (e.level||'').toLowerCase().includes(q) ||
+    (e.mobile||'').includes(q) ||
+    (e.employmentType||'').toLowerCase().includes(q)
+  ).slice(0,12);
+  if (!hits.length) {
+    res.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--gray-light)">No results found</div>';
+  } else {
+    res.innerHTML = hits.map(e => `
+      <div onclick="globalSearchGo('${escHtml(e.id)}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--dark3);display:flex;gap:10px;align-items:center" onmouseenter="this.style.background='var(--dark3)'" onmouseleave="this.style.background=''">
+        <div style="min-width:36px;height:36px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--dark1)">${escHtml((e.name||'?').substring(0,2).toUpperCase())}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--white)">${escHtml(e.name)}</div>
+          <div style="font-size:11px;color:var(--gray-light)">${escHtml(e.id)} · ${escHtml(e.dept||e.department||'')} · ${escHtml(e.level||'')}</div>
+        </div>
+      </div>`).join('');
+  }
+  res.style.display = 'block';
+}
+function globalSearchGo(empId) {
+  const res = document.getElementById('global-search-results');
+  const inp = document.getElementById('admin-search-global');
+  if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+  if (inp) inp.value = '';
+  // Navigate to Employees tab and highlight the employee
+  switchTab('employees');
+  setTimeout(() => {
+    const row = document.querySelector(`[data-emp-id="${empId}"]`);
+    if (row) { row.scrollIntoView({behavior:'smooth',block:'center'}); row.click(); }
+  }, 400);
+}
+document.addEventListener('click', e => {
+  const res = document.getElementById('global-search-results');
+  if (res && !res.contains(e.target) && e.target.id !== 'admin-search-global') {
+    res.style.display = 'none';
+  }
+});
 
 function updateClock() {
   const now = new Date();
@@ -1742,7 +1795,11 @@ function keyPress(key) {
   }
 }
 document.addEventListener('keydown', e => {
-  if (document.getElementById('screen-kiosk').classList.contains('active') && State.authMode==='pin' && !document.getElementById('emp-card').classList.contains('visible')) {
+  // FIX-06A: guard against ghost events when admin panel is active
+  if (!State.isAdmin &&
+      document.getElementById('screen-kiosk').classList.contains('active') &&
+      State.authMode==='pin' &&
+      !document.getElementById('emp-card').classList.contains('visible')) {
     if (e.key>='0'&&e.key<='9') keyPress(e.key);
     else if (e.key==='Backspace') keyPress('del');
     else if (e.key==='Enter') keyPress('enter');
@@ -3376,6 +3433,7 @@ async function completeAdminLogin(role) {
     setTimeout(()=>{ const el=document.getElementById('login-name-input'); if(el){el.select();el.focus();} }, 100);
   });
   State.adminRole = role;
+  State.isAdmin = true;
   document.getElementById('admin-brand-role').textContent = `Role: ${role.charAt(0).toUpperCase()+role.slice(1)}`;
   document.getElementById('admin-user-info').textContent = State.adminUser.toUpperCase();
   showScreen('admin');
@@ -3385,7 +3443,7 @@ async function completeAdminLogin(role) {
   refreshApprovalsBadge();
 }
 
-function adminLogout() { State.adminRole=null; State.adminUser=null; showScreen('kiosk'); }
+function adminLogout() { State.adminRole=null; State.adminUser=null; State.isAdmin=false; showScreen('kiosk'); }
 function goBackToKiosk() { showScreen('kiosk'); }
 // ─── Theme Toggle ──────────────────────────────────────────────────────────
 function toggleTheme() {
@@ -3788,12 +3846,12 @@ async function renderTimesheets(offset) {
       const parts = date.split('-').map(Number);
       const d = new Date(parts[0], parts[1]-1, parts[2]);
       const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon,...
-      const wo1 = emp.weeklyOff1 || 'Sunday';
-      const wo2 = emp.weeklyOff2 || '';
-      const dayName = dayNames[dayOfWeek]; // 'Sun','Mon',...
-      const wo1Short = wo1.substring(0,3);
-      const wo2Short = wo2 ? wo2.substring(0,3) : '';
-      if(dayName===wo1Short||(wo2Short&&dayName===wo2Short)) return '<span class="ts-rest">Weekly Off</span>';
+      // FIX-04: use full lowercase name comparison (matches backend logic) to avoid case/truncation mismatch
+      const DAY_FULL = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+      const dayFull = DAY_FULL[dayOfWeek];
+      const wo1Full = (emp.weeklyOff1||'Sunday').toLowerCase();
+      const wo2Full = (emp.weeklyOff2||'').toLowerCase();
+      if(dayFull===wo1Full||(wo2Full&&dayFull===wo2Full)) return '<span class="ts-rest">Weekly Off</span>';
       if(date>todayStr2) return '<span style="color:var(--dark3)">-</span>';
       return '<span class="ts-hours absent">A</span>';
     }
@@ -4094,7 +4152,7 @@ async function renderEmployees(filter='') {
       </tr></thead>
       <tbody>`;
   emps.forEach(e => {
-    html+=`<tr>
+    html+=`<tr data-emp-id="${escHtml(e.id)}">
       <td style="width:30px"><input type="checkbox" class="emp-cb" value="${escHtml(e.id)}" style="accent-color:var(--gold)" onchange="updateBulkBar()"></td>
       <td><strong>${escHtml(e.name)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(e.mobile||'')}</span></td>
       <td style="font-size:11px">${escHtml(e.id)}</td>
@@ -5269,8 +5327,11 @@ async function savePoints(empId) {
     note:document.getElementById(`p-nt-${empId}`)?.value||'',
   };
   const res=await API.call('addPoints',payload);
-  if(res.ok){toast(`✓ ${res.total} pts saved for employee`,'success');}
-  else toast(res.error||'Error','error');
+  if(res.ok){
+    toast(`✓ ${res.total} pts saved for employee`,'success');
+    // FIX-11: refresh the full points view so the right-side panel shows saved values
+    await renderPoints();
+  } else toast(res.error||'Error','error');
 }
 
 function getWeeksOfMonth(year, month) {
@@ -5324,7 +5385,6 @@ async function renderRoster() {
       <select id="roster-month-sel" class="filter-input" style="display:none">${monthOpts}</select>
       <select id="roster-year-sel" class="filter-input" style="display:none">${yearOpts}</select>
       <button class="btn btn-gold btn-sm" onclick="saveAndPublishRoster()">💾 Save & Publish</button>
-      <button class="btn btn-dark btn-sm" onclick="syncApprovedLeavesToRoster()" title="Pull approved leaves into roster cells">🔄 Sync Leaves</button>
       <button class="btn btn-dark btn-sm" onclick="downloadRosterPDF()">📄 PDF / Print</button>
       <button class="btn btn-dark btn-sm" onclick="exportRosterCSV()">📊 CSV</button>
     </div>
@@ -5337,12 +5397,24 @@ async function renderRoster() {
   </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
   window._rosterEmps=emps; window._rosterCodes=codes;
+  // FIX-09: auto-sync approved leaves into the roster grid on every load
+  setTimeout(() => syncApprovedLeavesToRoster(), 300);
 }
 
 function buildWeeklyRosterHTML(emps, roster, weekStart, codes) {
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  return `<div class="roster-grid"><table class="roster-table">
-    <thead><tr><th>#</th><th>Employee</th><th>Dept</th>${days.map(d=>`<th>${d}</th>`).join('')}<th>Notes</th></tr></thead>
+  const MONTH_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // FIX-08: compute actual date for each column to show in header
+  const wsDate = new Date(weekStart + 'T00:00:00');
+  const dayHeaders = days.map((d, i) => {
+    const dt = new Date(wsDate); dt.setDate(wsDate.getDate() + i);
+    return `<th>${d}<br><small style="font-weight:400;font-size:9px">${dt.getDate()} ${MONTH_SHORT[dt.getMonth()]}</small></th>`;
+  });
+  const weDate = new Date(wsDate); weDate.setDate(wsDate.getDate() + 6);
+  const weekRangeLabel = `${wsDate.getDate()} ${MONTH_SHORT[wsDate.getMonth()]} – ${weDate.getDate()} ${MONTH_SHORT[weDate.getMonth()]} ${weDate.getFullYear()}`;
+  return `<div style="font-size:11px;color:var(--gray-light);margin-bottom:6px">Week of <strong style="color:var(--gold)">${weekRangeLabel}</strong></div>
+  <div class="roster-grid"><table class="roster-table">
+    <thead><tr><th>#</th><th>Employee</th><th>Dept</th>${dayHeaders.join('')}<th>Notes</th></tr></thead>
     <tbody>${emps.map((emp,i)=>{
       const row=roster.find(r=>r.empId===emp.id)||{};
       return `<tr>
@@ -7062,8 +7134,8 @@ function openPCEntryModal(prefill={}) {
       <div>
         <label class="form-label">Type *</label>
         <select class="form-input" id="pc-type">
-          <option value="IN"  ${prefill.type==='IN' ?'selected':''}>💚 IN (Cash Received)</option>
-          <option value="OUT" ${prefill.type==='OUT'?'selected':''}>🔴 OUT (Cash Spent)</option>
+          <option value="in"  ${(prefill.type||'').toLowerCase()==='in' ?'selected':''}>+ IN (Cash Received)</option>
+          <option value="out" ${(prefill.type||'').toLowerCase()==='out'?'selected':''}>- OUT (Cash Spent)</option>
         </select>
       </div>
       <div>
@@ -7925,8 +7997,10 @@ async function renderSettings() {
         const items=orgs.filter(o=>o.type===type);
         return `<div style="margin-bottom:10px">
           <div style="font-size:11px;font-weight:700;color:var(--gold-light);margin-bottom:4px">${type.toUpperCase()}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">${items.map(o=>`<span class="badge badge-gray">${escHtml(o.name)}</span>`).join('')}
-          <button class="btn btn-dark btn-sm" onclick="addOrgPrompt('${type}')">+ Add ${type}</button></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            ${items.map(o=>`<span class="badge badge-gray" style="display:inline-flex;align-items:center;gap:4px">${escHtml(o.name)}<button onclick="deleteOrgEntry('${type}','${escHtml(o.name)}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:0 2px;line-height:1" title="Delete">✕</button></span>`).join('')}
+            <button class="btn btn-dark btn-sm" onclick="addOrgPrompt('${type}')">+ Add ${type}</button>
+          </div>
         </div>`;
       }).join('')}
     </div>
@@ -8079,6 +8153,44 @@ async function renderSettings() {
       <strong>What is JSON backup?</strong> It is a complete copy of all your data (employees, attendance, salary records, transactions, points) saved as a file on your computer. If your Google account is ever inaccessible or your data needs to move to a new Google Sheet, you import this file to restore everything. Think of it like a photocopy of all your records.
     </div>
   </div>
+
+  <!-- FIX-13: System Maintenance / Cleaner -->
+  ${isOwner ? `
+  <div class="settings-section">
+    <div class="settings-section-title">🧹 System Maintenance</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      Free up Google Sheet space and remove stale data. Select actions below and click <strong style="color:var(--gold)">Run Selected Actions</strong>.
+      Each action is independent. Your current and recent records are never affected.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sc-clearAudit" style="margin-top:3px;accent-color:var(--gold)">
+        <div><strong>Clear Old Audit Logs</strong><br><span style="font-size:11px;color:var(--gray-light)">Delete audit entries older than <input id="sc-auditMonths" type="number" value="3" min="1" max="24" style="width:40px;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);padding:2px 4px;border-radius:3px"> months. Keeps all recent entries.</span></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sc-clearOrphaned" style="margin-top:3px;accent-color:var(--gold)">
+        <div><strong>Clear Orphaned Attendance</strong><br><span style="font-size:11px;color:var(--gray-light)">Delete attendance records whose employee ID no longer exists in the Employees sheet.</span></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sc-clearOldTrans" style="margin-top:3px;accent-color:var(--gold)">
+        <div><strong>Clear Old Settled Transactions</strong><br><span style="font-size:11px;color:var(--gray-light)">Delete Settled or Cancelled transaction records older than 12 months.</span></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sc-clearOldSalary" style="margin-top:3px;accent-color:var(--gold)">
+        <div><strong>Clear Old Salary Records</strong><br><span style="font-size:11px;color:var(--gray-light)">Delete salary records before year <input id="sc-salaryYear" type="number" value="${new Date().getFullYear()-2}" min="2020" style="width:60px;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);padding:2px 4px;border-radius:3px">. Current and last year are always kept.</span></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sc-archiveInactive" style="margin-top:3px;accent-color:var(--gold)">
+        <div><strong>Archive Inactive Employees</strong><br><span style="font-size:11px;color:var(--gray-light)">Move Inactive/Terminated employees (LWD older than 6 months) to an ArchivedEmployees sheet. Removes them from the active list.</span></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sc-compressCache" style="margin-top:3px;accent-color:var(--gold)">
+        <div><strong>Compress Cache</strong><br><span style="font-size:11px;color:var(--gray-light)">Force-clear all backend cache keys so the next request fetches fresh data from the Sheet.</span></div>
+      </label>
+    </div>
+    <button class="btn btn-red" onclick="runSystemClean()">🧹 Run Selected Actions</button>
+    <div id="sc-result" style="margin-top:12px;font-size:12px;min-height:16px"></div>
+  </div>` : ''}
 
   ${isOwner ? `
   <!-- Danger Zone Token Config -->
@@ -8558,6 +8670,23 @@ async function saveAutomationSettings() {
   else toast(res.error||'Error','error');
 }
 
+// FIX-14: Org structure add/delete
+async function addOrgPrompt(type) {
+  const name = (prompt(`Add ${type} — enter name:`) || '').trim();
+  if (!name) return;
+  const parentName = (type === 'zone' || type === 'department') ? (prompt('Parent factory/zone name (or leave blank):') || '') : '';
+  const res = await API.call('addOrg', {type, name, parentName});
+  if (res.ok) { toast(`✓ ${type} "${name}" added`, 'success'); renderSettings(); }
+  else toast(res.error || 'Error adding org', 'error');
+}
+async function deleteOrgEntry(type, name) {
+  const ok = await confirm2(`Delete ${type} "${name}"? This cannot be undone.`);
+  if (!ok) return;
+  const res = await API.call('deleteOrg', {type, name});
+  if (res.ok) { toast(`✓ Deleted ${type} "${name}"`, 'success'); renderSettings(); }
+  else toast(res.error || 'Error deleting org', 'error');
+}
+
 async function saveStatutorySettings() {
   const textKeys = ['pfWageCeiling','pfEmployeeRate','pfEmployerRate','esiWageCeiling','esiEmployeeRate',
                     'esiEmployerRate','ptState','tdsRate','tdsAnnualExemption',
@@ -8569,6 +8698,34 @@ async function saveStatutorySettings() {
   const res = await API.call('updateSettings',{updates});
   if(res.ok) toast('✓ Statutory settings saved','success');
   else toast(res.error||'Error','error');
+}
+
+// FIX-13: System Maintenance runner
+async function runSystemClean() {
+  const actions = [];
+  if (document.getElementById('sc-clearAudit')?.checked) actions.push('clearOldAudit');
+  if (document.getElementById('sc-clearOrphaned')?.checked) actions.push('clearOrphanedAttendance');
+  if (document.getElementById('sc-clearOldTrans')?.checked) actions.push('clearOldTransactions');
+  if (document.getElementById('sc-clearOldSalary')?.checked) actions.push('clearOldSalaryRecords');
+  if (document.getElementById('sc-archiveInactive')?.checked) actions.push('archiveInactiveEmployees');
+  if (document.getElementById('sc-compressCache')?.checked) actions.push('compressCache');
+  if (!actions.length) { toast('Select at least one action first', 'warning'); return; }
+  const ok = await confirm2(`Run ${actions.length} maintenance action(s)?\n\n${actions.join(', ')}\n\nThis cannot be undone.`);
+  if (!ok) return;
+  const params = {
+    auditMonths: parseInt(document.getElementById('sc-auditMonths')?.value)||3,
+    salaryYearBefore: parseInt(document.getElementById('sc-salaryYear')?.value)||(new Date().getFullYear()-2),
+  };
+  const token = LS.g('ownerToken') || '';
+  const res = await API.call('systemClean', {actions, params, ownerToken: token});
+  const statusEl = document.getElementById('sc-result');
+  if (!res.ok) { toast(res.error||'Error running cleaner','error'); if(statusEl) statusEl.textContent = 'Error: '+(res.error||'Unknown'); return; }
+  const summary = (res.results||[]).map(r => {
+    const n = r.deleted !== undefined ? `${r.deleted} deleted` : r.moved !== undefined ? `${r.moved} moved` : '';
+    return `${r.action}: ${r.status}${n?' ('+n+')':''}${r.error?' — '+r.error:''}`;
+  }).join(' | ');
+  if(statusEl) statusEl.textContent = '✓ Done — ' + summary;
+  toast('✓ Maintenance complete','success');
 }
 
 async function saveWhatsAppSettings() {
@@ -9040,10 +9197,17 @@ async function refreshCurrentTab() {
 
 // ─── Bulk Import launchers ───────────────────────────────────────────────────
 function _excelTimeToHHMM(v) {
-  // Excel stores time as fraction of day (0.375 = 9:00am)
-  if (!v && v !== 0) return null;
+  // FIX-02: handles string HH:mm, AM/PM strings, decimal fractions, AND Date objects
+  if (v === null || v === undefined || v === '') return '';
+  // Date object branch: XLSX.js cellDates:true converts time cells to Date
+  // Time-only values are relative to 1899-12-30 (Excel epoch), use UTC hours/minutes
+  if (v instanceof Date) {
+    const h = v.getUTCHours(), m = v.getUTCMinutes();
+    if (h === 0 && m === 0) return ''; // midnight = empty/unset, trigger default
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
   if (typeof v === 'string') {
-    // Handle '9:00 AM' / '09:00 AM' format from Excel
+    // Handle '9:00 AM' / '09:00 AM' format
     const ampm = v.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
     if (ampm) {
       let h = parseInt(ampm[1]), m = parseInt(ampm[2]);
@@ -9052,16 +9216,26 @@ function _excelTimeToHHMM(v) {
       if (!isPM && h === 12) h = 0;
       return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
     }
-    if (v.match(/^\d{1,2}:\d{2}/)) return v.slice(0,5);
+    if (/^\d{1,2}:\d{2}/.test(v)) return v.slice(0,5);
+    // Decimal fraction stored as string (e.g. '0.375')
+    const n = parseFloat(v);
+    if (!isNaN(n) && n > 0 && n < 1) {
+      const totalMins = Math.round(n * 24 * 60);
+      return `${String(Math.floor(totalMins/60)).padStart(2,'0')}:${String(totalMins%60).padStart(2,'0')}`;
+    }
+    return '';
   }
-  if (typeof v === 'number' && v >= 0 && v < 1) {
-    const totalMins = Math.round(v * 24 * 60);
-    const h = Math.floor(totalMins / 60) % 24;
-    const m = totalMins % 60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  if (typeof v === 'number') {
+    // FIX-02: exclude 0 (midnight / empty cell) so the default shift time kicks in
+    if (v > 0 && v < 1) {
+      const totalMins = Math.round(v * 24 * 60);
+      const h = Math.floor(totalMins / 60) % 24;
+      const m = totalMins % 60;
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    }
+    return '';
   }
-  if (typeof v === 'string') return v.slice(0,5);
-  return null;
+  return '';
 }
 
 function bulkImportEmployees() {
@@ -9156,7 +9330,8 @@ function bulkImportEmployees() {
       shiftEnd:   _excelTimeToHHMM(row['shiftEnd (e.g. 19:00)'])||defaultShiftEnd,
       dailyHours: row['dailyHours']||10, workDaysPerWeek: row['workDaysPerWeek']||6,
       weeklyOff1: row['weeklyOff1']||'Sunday', weeklyOff2: row['weeklyOff2']||'',
-      mobile: row['mobile']||'', email: row['email']||'', dept: row['dept']||lvl,
+      mobile: row['mobile']||'', email: row['email']||'',
+      dept: row['dept']||lvl, department: row['dept']||lvl,
       category: row['category']||'Workforce', doj: row['doj (YYYY-MM-DD)']||todayStr(),
       dob: row['dob (YYYY-MM-DD)']||'', gender: row['gender']||'Male', aadhaar: row['aadhaar']||'',
       noticeperiodDays: row['noticeperiodDays']||90,
