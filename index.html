@@ -3821,7 +3821,7 @@ async function renderTimesheets(offset) {
     html+=`<tr>
       <td class="emp-cell">
         <div class="emp-cell-name">${escHtml(emp.name)}</div>
-        <div class="emp-cell-level">${escHtml(emp.level)}${emp.dept && emp.dept \!== emp.level ? ' ' + escHtml(emp.dept) : ''}${billableAmt?` • ${billableAmt}`:''}</div>
+        <div class="emp-cell-level">${escHtml(emp.level)}${emp.dept && emp.dept !== emp.level ? ' ' + escHtml(emp.dept) : ''}${billableAmt?` • ${billableAmt}`:''}</div>
       </td>
       ${cells}
       <td class="ts-total">${empTotal?fmtHHMM(empTotal):'—'}</td>
@@ -9014,8 +9014,8 @@ function _excelTimeToHHMM(v) {
     if (ampm) {
       let h = parseInt(ampm[1]), m = parseInt(ampm[2]);
       const isPM = ampm[3].toUpperCase() === 'PM';
-      if (isPM && h \!== 12) h += 12;
-      if (\!isPM && h === 12) h = 0;
+      if (isPM && h !== 12) h += 12;
+      if (!isPM && h === 12) h = 0;
       return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
     }
     if (v.match(/^\d{1,2}:\d{2}/)) return v.slice(0,5);
