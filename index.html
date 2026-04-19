@@ -150,7 +150,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 #kiosk-clock .kiosk-date{font-size:11px;color:var(--gray-light);display:block;text-align:right}
 #kiosk-lang-btn{background:none;color:var(--gold-light);font-size:12px;font-weight:600;padding:4px 10px;border:1px solid var(--gold-dim);border-radius:20px}
 /* #kiosk-body base properties — overridden by the Who's In/Out panel section below when the side panel is shown */
-#kiosk-body{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+#kiosk-body{flex:1;display:flex;align-items:stretch;justify-content:center;padding:16px;overflow-y:auto;min-height:0}
 #kiosk-main{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:16px}
 
 /* Face scan container */
@@ -235,21 +235,22 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
    WHO'S IN/OUT PANEL (kiosk right panel)
 ─────────────────────────────────────────── */
 #kiosk-body{display:flex;flex-direction:row;flex:1;overflow:hidden}
-#kiosk-main{flex:0 0 360px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:20px 12px 20px;gap:12px}
-#whoinout-panel{flex:1;background:var(--dark2);border-left:1px solid var(--dark3);display:flex;flex-direction:column;overflow:hidden}
+#kiosk-main{flex:0 0 360px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;padding:20px 12px 20px;gap:12px;min-height:0}
+#whoinout-panel{flex:1;background:var(--dark2);border-left:1px solid var(--dark3);display:flex;flex-direction:column;overflow:hidden;min-height:0}
 #whoinout-header{padding:14px 18px;border-bottom:1px solid var(--dark3);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #whoinout-title{font-size:14px;font-weight:700;color:var(--gold)}
-#whoinout-counts{display:flex;gap:16px;padding:14px 18px;border-bottom:1px solid var(--dark3);flex-shrink:0}
+#whoinout-counts{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--dark3);flex-shrink:0}
 .wio-count-box{flex:1;background:var(--dark3);border-radius:var(--radius-sm);padding:10px 12px;text-align:center}
-.wio-count-val{font-size:1.8rem;font-weight:900}
-.wio-count-lbl{font-size:10px;color:var(--gray-light);margin-top:2px}
+.wio-count-val{font-size:2rem;font-weight:900;line-height:1}
+.wio-count-lbl{font-size:10px;color:var(--gray-light);margin-top:4px}
 .wio-count-in{color:var(--green)}
 .wio-count-break{color:var(--orange)}
 .wio-count-out{color:var(--gray)}
-#whoinout-list{flex:1;overflow-y:scroll;padding:10px 14px;scrollbar-width:thin;scrollbar-color:var(--gold-dim) var(--dark3)}
-#whoinout-list::-webkit-scrollbar{width:6px}
+#whoinout-list{flex:1;min-height:0;overflow-y:auto;padding:10px 14px;scrollbar-width:auto;scrollbar-color:var(--gold-dim) var(--dark3)}
+#whoinout-list::-webkit-scrollbar{width:8px}
 #whoinout-list::-webkit-scrollbar-track{background:var(--dark3)}
-#whoinout-list::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:3px}
+#whoinout-list::-webkit-scrollbar-thumb{background:var(--gold);border-radius:4px}
+#whoinout-list::-webkit-scrollbar-thumb:hover{background:var(--gold-light)}
 .wio-section-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--gray);padding:8px 0 4px}
 .wio-emp-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;margin-bottom:3px;transition:background 0.2s}
 .wio-emp-row:hover{background:var(--dark3)}
@@ -1139,6 +1140,18 @@ const CFG = {
   // localStorage override is applied only when a value is actually saved there.
   // To configure: paste your GAS deploy URL into HARDCODED_GAS_URL below, then redeploy.
   gasUrl: (function(){
+    // Priority 1: URL hash param  #gasUrl=...  (shareable link for employees)
+    try {
+      const hash = decodeURIComponent(location.hash.replace(/^#/,''));
+      const hm = hash.match(/(?:^|[&?])gasUrl=([^&]+)/);
+      if (hm && hm[1]) { localStorage.setItem('az3_gasUrl', JSON.stringify(hm[1])); return hm[1]; }
+    } catch(e) {}
+    // Priority 2: URL query param  ?gasUrl=...
+    try {
+      const qm = location.search.match(/[?&]gasUrl=([^&]+)/);
+      if (qm && qm[1]) { const u=decodeURIComponent(qm[1]); localStorage.setItem('az3_gasUrl', JSON.stringify(u)); return u; }
+    } catch(e) {}
+    // Priority 3: saved in localStorage by owner on this device
     try { const ls = JSON.parse(localStorage.getItem('az3_gasUrl')); if (ls) return ls; } catch(e) {}
     return 'PASTE_GAS_DEPLOY_URL_HERE'; // ← replace with your actual GAS web app URL
   })(),
@@ -1675,12 +1688,18 @@ async function finishSetup() {
   const ok = await API.ping();
   if (ok) {
     LS.s('gasUrl', url); LS.s('token', token);
-    // Show download-configured-app button so all employee devices work without re-entering URL
+    // Show share link + download options so all employee devices work without re-entering URL
+    const _shareUrl = location.href.split('#')[0].split('?')[0] + '#gasUrl=' + encodeURIComponent(url) + '&token=' + encodeURIComponent(token||'AZ_TOKEN_2026');
     status.innerHTML = `✓ Connected!
       <div style="margin-top:12px;padding:14px;background:rgba(201,168,76,0.12);border:1px solid var(--gold-dim);border-radius:8px;text-align:left">
-        <div style="font-weight:700;color:var(--gold);margin-bottom:6px">⬇ Deploy to all devices</div>
-        <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">Download a pre-configured copy with your GAS URL baked in. Upload that file to GitHub — employees open it and it connects automatically, no setup needed.</div>
-        <button class="btn btn-gold" style="width:100%" onclick="downloadConfiguredApp('${url.replace(/'/g,"\\'")}','${(token||'AZ_TOKEN_2026').replace(/'/g,"\\'")}')">⬇ Download Configured App</button>
+        <div style="font-weight:700;color:var(--gold);margin-bottom:8px">📤 Share with employees</div>
+        <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px"><strong>Option 1 — Share this link</strong> (easiest): copy the URL below and send to all staff. Opening it on any device auto-configures the app.</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <input type="text" value="${_shareUrl.replace(/"/g,'&quot;')}" readonly style="flex:1;font-size:10px;padding:6px 8px;background:var(--dark1);border:1px solid var(--dark3);border-radius:6px;color:var(--gray-light);cursor:text" onclick="this.select()">
+          <button class="btn btn-gold btn-sm" onclick="navigator.clipboard.writeText('${_shareUrl.replace(/'/g,"\\'")}').then(()=>toast('Link copied!','success'))">Copy</button>
+        </div>
+        <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px"><strong>Option 2 — Download & upload to GitHub</strong>: bakes the URL into the file itself.</div>
+        <button class="btn btn-dark" style="width:100%;font-size:12px" onclick="downloadConfiguredApp('${url.replace(/'/g,"\\'")}','${(token||'AZ_TOKEN_2026').replace(/'/g,"\\'")}')">⬇ Download Configured App</button>
       </div>`;
     status.style.color = 'var(--green)';
     setTimeout(() => init(), 2000);
