@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v12 | April 2026 | Based on v11 + Bug Fixes -->
+<!-- ArtzFolio HRMS v13 | April 2026 | Based on v12 + 11 Issue Fixes -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v12</title>
+<title>ArtzFolio HRMS v13</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -190,7 +190,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 .kiosk-wrong-warn{color:var(--red);font-size:12px;text-align:center;padding:8px 16px;background:rgba(229,57,53,0.1);border-radius:var(--radius-sm);border:1px solid var(--red)}
 
 /* Employee action card */
-#emp-card{width:100%;display:none;flex-direction:column;gap:12px}
+#emp-card{width:100%;display:none;flex-direction:column;gap:12px;overflow-y:auto;max-height:calc(100vh - 120px)}
 #emp-card.visible{display:flex}
 .emp-card-top{background:var(--dark2);border:1px solid var(--gold-dim);border-radius:var(--radius);padding:16px;text-align:center}
 .emp-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--gold);margin:0 auto 10px;display:block;background:var(--dark3)}
@@ -667,6 +667,20 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
   <div id="kiosk-body">
     <div id="kiosk-main">
 
+      <!-- Issue 4: Kiosk mode selector — shown on kiosk home, hidden once mode chosen -->
+      <div id="kiosk-mode-select" style="display:flex;flex-direction:column;gap:16px;width:100%;padding:8px 0">
+        <div style="text-align:center;font-size:13px;color:var(--gray-light);margin-bottom:4px">
+          <span class="en">What would you like to do?</span>
+          <span class="hi">आप क्या करना चाहते हैं?</span>
+        </div>
+        <button onclick="kioskModeChoose('clockin')" style="background:var(--green);color:#fff;border:none;border-radius:var(--radius);padding:22px 16px;font-size:18px;font-weight:800;cursor:pointer;letter-spacing:1px;box-shadow:0 4px 16px rgba(67,160,71,0.4);transition:var(--trans)" onmouseenter="this.style.opacity='0.9'" onmouseleave="this.style.opacity='1'">
+          ⏱ <span class="en">CLOCK IN / CLOCK OUT</span><span class="hi">हाज़िरी दर्ज करें</span>
+        </button>
+        <button onclick="kioskModeChoose('dashboard')" style="background:var(--dark2);color:var(--gold);border:2px solid var(--gold-dim);border-radius:var(--radius);padding:22px 16px;font-size:18px;font-weight:800;cursor:pointer;letter-spacing:1px;transition:var(--trans)" onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--gold-dim)'">
+          👤 <span class="en">MY DASHBOARD</span><span class="hi">मेरा डैशबोर्ड</span>
+        </button>
+      </div>
+
       <!-- Face Scan Container -->
       <div id="face-container">
         <video id="face-video" autoplay muted playsinline></video>
@@ -678,11 +692,11 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
         </div>
       </div>
 
-      <!-- PIN display dots -->
-      <div id="pin-dots"></div>
+      <!-- PIN display dots — hidden until mode is chosen (Issue 4) -->
+      <div id="pin-dots" style="display:none"></div>
 
-      <!-- Auth mode toggle -->
-      <div id="mode-toggle">
+      <!-- Auth mode toggle — hidden until mode is chosen (Issue 4) -->
+      <div id="mode-toggle" style="display:none">
         <button class="mode-btn active" id="btn-mode-pin" onclick="setMode('pin')">
           <span class="en">🔢 PIN</span>
           <span class="hi">पिन</span>
@@ -693,8 +707,8 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
         </button>
       </div>
 
-      <!-- Hint -->
-      <div id="kiosk-hint">
+      <!-- Hint — hidden until mode is chosen (Issue 4) -->
+      <div id="kiosk-hint" style="display:none">
         <span class="en">Enter your PIN to continue</span>
         <span class="hi">अपना पिन दर्ज करें</span>
       </div>
@@ -702,8 +716,8 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
       <!-- Warning -->
       <div id="pin-warning" style="display:none" class="kiosk-wrong-warn"></div>
 
-      <!-- Keypad (PIN mode) -->
-      <div id="keypad">
+      <!-- Keypad (PIN mode) — hidden until mode is chosen (Issue 4) -->
+      <div id="keypad" style="display:none">
         <button class="key-btn" onclick="keyPress('1')">1</button>
         <button class="key-btn" onclick="keyPress('2')">2</button>
         <button class="key-btn" onclick="keyPress('3')">3</button>
@@ -803,6 +817,17 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
           </button>
           <button class="action-btn secondary" onclick="showESSAttendance()">
             🗓 <span class="en">My Attendance</span><span class="hi">मेरी हाज़िरी</span>
+          </button>
+        </div>
+        <!-- Issue 5: Logout button -->
+        <button onclick="hideEmpCard()" style="margin-top:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:var(--radius-sm);padding:12px;font-size:14px;font-weight:600;cursor:pointer;color:var(--white);width:100%;transition:var(--trans)" onmouseenter="this.style.background='var(--red)'" onmouseleave="this.style.background='var(--dark3)'">
+          🚪 <span class="en">Logout / Back</span><span class="hi">लॉग आउट</span>
+        </button>
+        <!-- Issue 5: Countdown timer for auto-logout -->
+        <div id="kiosk-countdown" style="display:none;text-align:center;font-size:12px;color:var(--gray-light);margin-top:4px">
+          <span id="kiosk-countdown-text"></span>
+          <button onclick="resetKioskTimer()" style="margin-left:8px;background:var(--gold);color:var(--dark);border:none;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-weight:700">
+            <span class="en">Stay Logged In</span><span class="hi">लॉगिन रखें</span>
           </button>
         </div>
       </div>
@@ -1099,13 +1124,16 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 // CONFIG & CONSTANTS
 // ═══════════════════════════════════════════
 const CFG = {
-  gasUrl: '',
-  token: '',
+  // Issue 1: GAS URL and token are hardcoded here — setup screen is never shown to employees.
+  // Owner/admin can update these values from the Settings tab in the admin panel.
+  gasUrl: (function(){ try{ return JSON.parse(localStorage.getItem('az3_gasUrl'))||''; }catch(e){return '';} })(),
+  token:  (function(){ try{ return JSON.parse(localStorage.getItem('az3_token'))||'AZ_TOKEN_2026'; }catch(e){return 'AZ_TOKEN_2026';} })(),
   modelPath: 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
   faceThreshold: 0.55,
   pinMaxLen: 4,
   kioskTimeout: 60000,
-  version: '10.0',
+  kioskLogoutSeconds: 60,
+  version: '13.0',
 };
 const LS = {
   g: k => { try { return JSON.parse(localStorage.getItem('az3_'+k)); } catch { return null; } },
@@ -1480,6 +1508,13 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
   const overlay = document.getElementById('modal-overlay');
   if (e.target === overlay && overlay.dataset.noDismiss !== '1') closeModal();
 });
+// Issue 5: reset auto-logout timer on any emp-card interaction
+document.getElementById('emp-card').addEventListener('click', () => {
+  if (State.currentEmp) resetKioskTimer();
+});
+document.getElementById('emp-card').addEventListener('touchstart', () => {
+  if (State.currentEmp) resetKioskTimer();
+}, {passive: true});
 
 // ═══════════════════════════════════════════
 // KIOSK LOADING OVERLAY HELPERS
@@ -1646,10 +1681,10 @@ async function init() {
   }
   const removeSplash = () => { const s = document.getElementById(splashId); if (s) s.remove(); };
 
-  // Load saved config
-  const savedUrl = LS.g('gasUrl'), savedToken = LS.g('token');
-  if (savedUrl) { CFG.gasUrl = savedUrl; CFG.token = savedToken||CFG.token; }
-  else { removeSplash(); showScreen('setup'); return; }
+  // Issue 1: never show setup screen to employees.
+  // CFG.gasUrl and CFG.token are already populated from localStorage at CFG init time.
+  // If no URL is configured yet, show the kiosk with a "Server unavailable" banner.
+  // The setup screen is only accessible via admin panel Settings tab.
 
   // Load settings and employees in background
   try {
@@ -1664,6 +1699,7 @@ async function init() {
       document.getElementById('kiosk-brand').textContent = State.settings.brandName||'ArtzFolio';
       applyBranding();
       if (State.settings.kioskTimeout) CFG.kioskTimeout = parseInt(State.settings.kioskTimeout)*1000;
+      if (State.settings.kioskLogoutSeconds) CFG.kioskLogoutSeconds = parseInt(State.settings.kioskLogoutSeconds)||60;
     }
     if (empsRes.ok) {
       State.employees = empsRes.employees||[];
@@ -1807,13 +1843,18 @@ document.addEventListener('keydown', e => {
 });
 
 async function submitPin() {
+  // Issue 3: guard against double-submission race condition
+  if (State._pinSubmitting) return;
   if (State.pin.length < 4) { toast('Enter at least 4 digits / कम से कम 4 अंक डालें','warning'); return; }
+  State._pinSubmitting = true;
   const pin = State.pin;
+  State._lastPin = pin; // capture for PendingAttendance flow
   State.pin = ''; updatePinDots();
   try {
     const res = await API.call('auth', {pin, empId:null});
     handleAuthResult(res);
   } catch(e) { toast('Connection error. Try again.','error'); }
+  finally { State._pinSubmitting = false; }
 }
 
 async function setMode(mode) {
@@ -1918,10 +1959,33 @@ async function handleAuthResult(res) {
   }
   warn.style.display='none';
   State.currentEmp = res.employee;
-  State.currentEmpRecord = res; // includes pendingLeaves, approvedLeaves, upcomingHolidays, leaveBalance, missedClockOutYesterday
-  // Get GPS
+  State.currentEmpRecord = res;
   const pos = await GPS.get();
   State.gpsPos = pos;
+
+  // Issue 4: if employee chose "CLOCK IN/CLOCK OUT" mode, create a PendingAttendance request
+  // and show a confirmation screen instead of full dashboard.
+  if (State.kioskChosenMode === 'clockin') {
+    State.kioskChosenMode = null;
+    const emp = res.employee;
+    const rec = res.todayRecord;
+    const reqType = (rec && rec.clockIn && !rec.clockOut) ? 'clockOut' : 'clockIn';
+    try {
+      const pRes = await API.call('addPendingAttendance', {empId: emp.id, pin: State._lastPin||'', requestType: reqType});
+      if (pRes.ok) {
+        toast(`✅ ${reqType === 'clockIn' ? 'Clock-in' : 'Clock-out'} request submitted! Waiting for supervisor approval.`, 'success', 5000);
+      } else {
+        toast('Could not submit request: '+(pRes.error||'Unknown error'), 'error');
+      }
+    } catch(e) {
+      toast('Network error — request not submitted', 'error');
+    }
+    // Return to kiosk home without showing dashboard
+    hideEmpCard();
+    return;
+  }
+
+  State.kioskChosenMode = null;
   showEmployeeCard(res, pos);
 }
 
@@ -3200,18 +3264,57 @@ function gpsDistance(lat1,lon1,lat2,lon2){const R=6371000,dLat=(lat2-lat1)*Math.
 function hideEmpCard() {
   State.currentEmp=null; State.currentEmpRecord=null;
   document.getElementById('emp-card').classList.remove('visible');
-  document.getElementById('keypad').style.display='';
-  document.getElementById('pin-dots').style.display='';
-  document.getElementById('mode-toggle').style.display='';
-  document.getElementById('kiosk-hint').style.display='';
+  // Issue 4: hide PIN entry elements and show mode selector again
+  document.getElementById('keypad').style.display='none';
+  document.getElementById('pin-dots').style.display='none';
+  document.getElementById('mode-toggle').style.display='none';
+  document.getElementById('kiosk-hint').style.display='none';
+  const modeSelect = document.getElementById('kiosk-mode-select');
+  if (modeSelect) modeSelect.style.display = 'flex';
+  const countdown = document.getElementById('kiosk-countdown');
+  if (countdown) countdown.style.display = 'none';
   State.pin=''; updatePinDots();
   clearTimeout(State.kioskTimer);
+  clearInterval(State._countdownInterval);
   if (State.authMode==='face') setMode('pin'); // reset to pin mode
 }
 
 function resetKioskTimer() {
+  // Issue 5: countdown timer with "Stay Logged In" button
   clearTimeout(State.kioskTimer);
-  State.kioskTimer = setTimeout(hideEmpCard, CFG.kioskTimeout);
+  clearInterval(State._countdownInterval);
+  const logoutSecs = CFG.kioskLogoutSeconds || 60;
+  const warnSecs = Math.min(30, Math.floor(logoutSecs * 0.5));
+  const countdown = document.getElementById('kiosk-countdown');
+  const countdownText = document.getElementById('kiosk-countdown-text');
+  if (countdown) countdown.style.display = 'none';
+  State.kioskTimer = setTimeout(() => {
+    // Show countdown warning in last warnSecs seconds
+    if (countdown) countdown.style.display = 'block';
+    let remaining = warnSecs;
+    if (countdownText) countdownText.textContent = `Auto-logout in ${remaining}s`;
+    State._countdownInterval = setInterval(() => {
+      remaining--;
+      if (countdownText) countdownText.textContent = `Auto-logout in ${remaining}s`;
+      if (remaining <= 0) {
+        clearInterval(State._countdownInterval);
+        hideEmpCard();
+      }
+    }, 1000);
+  }, (logoutSecs - warnSecs) * 1000);
+}
+
+// Issue 4: kiosk mode choose — clock-in flow vs dashboard flow
+function kioskModeChoose(mode) {
+  State.kioskChosenMode = mode;
+  const modeSelect = document.getElementById('kiosk-mode-select');
+  if (modeSelect) modeSelect.style.display = 'none';
+  // Show normal PIN entry elements
+  document.getElementById('keypad').style.display='grid';
+  document.getElementById('pin-dots').style.display='flex';
+  document.getElementById('mode-toggle').style.display='flex';
+  document.getElementById('kiosk-hint').style.display='';
+  State.pin=''; updatePinDots();
 }
 
 // ═══════════════════════════════════════════
@@ -3547,14 +3650,16 @@ async function switchTab(tab) {
 // APPROVALS INBOX TAB
 // ═══════════════════════════════════════════
 async function renderApprovals() {
-  const [leaveRes, transRes, otRes] = await Promise.all([
+  const [leaveRes, transRes, otRes, pendAttRes] = await Promise.all([
     API.call('getPendingLeaves'),
     API.call('getTransactions', {status:'Pending'}),
     API.call('getOTRequests', {status:'Pending'}),
+    API.call('getPendingAttendance', {status:'Pending'}),
   ]);
   const pendingLeaves = leaveRes.leaves||[];
   const pendingTrans  = transRes.transactions||[];
   const pendingOT     = otRes.requests||[];
+  const pendingAttendance = pendAttRes.pending||[];
 
   // Separate transaction types
   const advances       = pendingTrans.filter(t=>t.type==='Advance');
@@ -3562,7 +3667,7 @@ async function renderApprovals() {
   const exitApps       = pendingTrans.filter(t=>t.type==='ExitApplication');
   const otherRequests  = pendingTrans.filter(t=>!['Advance','LeaveEncashment','ExitApplication'].includes(t.type));
 
-  const totalPending = pendingLeaves.length + advances.length + encashments.length + exitApps.length + otherRequests.length + pendingOT.length;
+  const totalPending = pendingLeaves.length + advances.length + encashments.length + exitApps.length + otherRequests.length + pendingOT.length + pendingAttendance.length;
 
   // Update sidebar badge
   const badge = document.getElementById('badge-approvals');
@@ -3648,6 +3753,26 @@ async function renderApprovals() {
     </div>`;
   }
 
+  function pendingAttRow(r) {
+    return `<div style="background:var(--dark2);border:1px solid var(--blue);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+      <div style="flex:1;min-width:200px">
+        <strong>${escHtml(r.name||r.empId)}</strong>
+        <span class="badge badge-blue" style="margin-left:6px">${escHtml(r.dept||'')}</span>
+        <span class="badge badge-orange" style="margin-left:4px">${escHtml(r.level||'')}</span>
+        <span style="font-size:10px;color:var(--gray);margin-left:6px">${escHtml(r.empId||'')}</span>
+        <div style="font-size:12px;margin-top:4px">
+          Request: <strong style="color:var(--blue)">${escHtml(r.requestType||'clockIn')}</strong>
+        </div>
+        <div style="font-size:10px;color:var(--gray-light);margin-top:2px">Submitted: ${escHtml(r.timestamp||'')}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-green btn-sm" onclick="approvePendingAtt('${escHtml(r.id)}','approve')">✓ Approve & Clock</button>
+        <button class="btn btn-red btn-sm" onclick="approvePendingAtt('${escHtml(r.id)}','reject')">✗ Reject</button>
+      </div>
+    </div>`;
+  }
+
+  html += approvalCard('⏱ Kiosk Attendance Requests', pendingAttendance, pendingAttRow);
   html += approvalCard('🕐 OT Pre-Approval Requests', pendingOT, otRow);
   html += approvalCard('🏖 Leave Requests', pendingLeaves, leaveRow);
   html += approvalCard('🤝 Advance Requests', advances, t => transRow(t,'Approve','btn-green','approvalsApproveTransaction'));
@@ -3656,6 +3781,14 @@ async function renderApprovals() {
   if (otherRequests.length) html += approvalCard('📋 Other Requests', otherRequests, t => transRow(t,'Approve','btn-green','approvalsApproveTransaction'));
 
   document.getElementById('admin-tab-content').innerHTML = html;
+}
+
+async function approvePendingAtt(pendingId, action) {
+  const res = await API.call('approvePendingAttendance', {pendingId, approvedBy: State.adminUser, action});
+  if (res.ok) {
+    toast(action==='approve' ? '✓ Attendance approved and clocked' : 'Attendance request rejected', action==='approve'?'success':'info', 3000);
+    await renderApprovals();
+  } else toast(res.error||'Error','error');
 }
 
 async function approvalsApproveLeave(leaveId, approved, stage) {
@@ -3772,7 +3905,10 @@ async function refreshWhoInOut() {
     if(outList.length){
       html+=`<div class="wio-section-hdr">⬜ Not Clocked In (${outList.length})</div>`;
       outList.slice(0,15).forEach(o=>{ html+=empRow(o,'out','wio-dot-out',''); });
-      if(outList.length>15) html+=`<div style="font-size:11px;color:var(--gray);text-align:center;padding:6px">+${outList.length-15} more</div>`;
+      if(outList.length>15) {
+        State._wioOutOverflow = outList;
+        html+=`<div onclick="showWioOverflow('out')" style="font-size:11px;color:var(--gold);text-align:center;padding:6px;cursor:pointer;text-decoration:underline">+${outList.length-15} more — tap to see all</div>`;
+      }
     }
     if(!html) html='<div style="color:var(--gray-light);font-size:12px;text-align:center;padding:20px">No attendance data yet</div>';
     const listEl=document.getElementById('whoinout-list');
@@ -3784,6 +3920,34 @@ async function refreshWhoInOut() {
     if(listEl) listEl.innerHTML='<div style="color:var(--gray-light);font-size:11px;text-align:center;padding:20px">Connect to server to see live data</div>';
   }
 }
+// Issue 2: show full list modal for +N overflow badges
+function showWioOverflow(listKey) {
+  const list = listKey === 'out' ? (State._wioOutOverflow||[]) : [];
+  const title = listKey === 'out' ? '⬜ Not Clocked In — Full List' : 'All Employees';
+  openModal(title,
+    `<div style="max-height:60vh;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:var(--dark3)">
+          <th style="padding:8px;text-align:left;color:var(--gold-light)">Name</th>
+          <th style="padding:8px;text-align:left;color:var(--gold-light)">ID</th>
+          <th style="padding:8px;text-align:left;color:var(--gold-light)">Dept</th>
+          <th style="padding:8px;text-align:left;color:var(--gold-light)">Level</th>
+        </tr></thead>
+        <tbody>${list.map(o=>{
+          const emp = (State.employees||[]).find(e=>e.id===o.empId)||{};
+          return `<tr style="border-bottom:1px solid var(--dark3)">
+            <td style="padding:7px 8px">${escHtml(o.name)}</td>
+            <td style="padding:7px 8px;color:var(--gray-light)">${escHtml(o.empId||'')}</td>
+            <td style="padding:7px 8px;color:var(--gray-light)">${escHtml(emp.department||emp.dept||'')}</td>
+            <td style="padding:7px 8px;color:var(--gray-light)">${escHtml(emp.level||'')}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`,
+    [{label:'Close', cls:'btn-dark', cb:closeModal}]
+  );
+}
+
 function startWioRefresh() {
   refreshWhoInOut();
   clearInterval(_wioTimer);
@@ -3824,10 +3988,13 @@ async function renderTimesheets(offset) {
   ]);
   const emps = empsRes.employees||[];
   const attMap = {}; // empId -> {date -> record}
+  const dayStatusMap = {}; // empId -> {date -> {status, leaveType}} — Issue 7: include leave data
   (attRes.employees||[]).forEach(empData => {
     attMap[empData.empId] = {};
+    dayStatusMap[empData.empId] = {};
     (empData.days||[]).forEach(day => {
       if (day.record) attMap[empData.empId][day.date] = day.record;
+      dayStatusMap[empData.empId][day.date] = {status: day.status, leaveType: day.leaveType||''};
     });
   });
 
@@ -3841,23 +4008,36 @@ async function renderTimesheets(offset) {
   }
 
   function cellContent(rec, emp, date) {
+    // Issue 7: check backend day-status first (includes leave override from Leaves sheet)
+    const daySt = (dayStatusMap[emp.id||emp.empId]||{})[date]||{};
     if(!rec) {
-      // Use explicit date parsing to avoid timezone shift issues
       const parts = date.split('-').map(Number);
       const d = new Date(parts[0], parts[1]-1, parts[2]);
-      const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon,...
-      // FIX-04: use full lowercase name comparison (matches backend logic) to avoid case/truncation mismatch
+      const dayOfWeek = d.getDay();
       const DAY_FULL = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
       const dayFull = DAY_FULL[dayOfWeek];
       const wo1Full = (emp.weeklyOff1||'Sunday').toLowerCase();
       const wo2Full = (emp.weeklyOff2||'').toLowerCase();
+      if(daySt.status==='holiday') return '<span class="ts-hours holiday">H</span>';
       if(dayFull===wo1Full||(wo2Full&&dayFull===wo2Full)) return '<span class="ts-rest">Weekly Off</span>';
       if(date>todayStr2) return '<span style="color:var(--dark3)">-</span>';
+      // Issue 7: if backend says it's a leave day, show leave type instead of A
+      const lt = daySt.leaveType || daySt.status;
+      if(lt && ['UL','IL','SL','PL','IHL','EL','leave'].includes(lt)) {
+        const cls = lt==='UL' ? 'absent' : 'leave';
+        return `<span class="ts-hours ${cls}">${lt==='leave'?'L':lt}</span>`;
+      }
       return '<span class="ts-hours absent">A</span>';
     }
-    if(['IL','SL','PL','IHL'].includes(rec.status)) return `<span class="ts-hours leave">${rec.status}</span>`;
+    if(['IL','SL','PL','IHL','EL'].includes(rec.status)) return `<span class="ts-hours leave">${rec.status}</span>`;
     if(rec.status==='H') return '<span class="ts-hours holiday">H</span>';
     if(rec.status==='UL') return '<span class="ts-hours absent">UL</span>';
+    // Issue 7: if attendance record exists but no clock-in and backend marks as leave
+    const lt = daySt.leaveType || daySt.status;
+    if(!rec.clockIn && lt && ['UL','IL','SL','PL','IHL','EL'].includes(lt)) {
+      const cls = lt==='UL' ? 'absent' : 'leave';
+      return `<span class="ts-hours ${cls}">${lt}</span>`;
+    }
     const wm=parseInt(rec.workMinutes||0);
     const ot=parseInt(rec.otMinutes||0);
     const dur=fmtHHMM(wm);
@@ -3913,7 +4093,8 @@ async function renderTimesheets(offset) {
     html+=`<tr>
       <td class="emp-cell">
         <div class="emp-cell-name">${escHtml(emp.name)}</div>
-        <div class="emp-cell-level">${escHtml(emp.level)}${emp.dept && emp.dept !== emp.level ? ' ' + escHtml(emp.dept) : ''}${billableAmt?` • ${billableAmt}`:''}</div>
+        <div class="emp-cell-level">${escHtml(emp.level)} · ${escHtml(emp.department||emp.dept||'')}${billableAmt?` • ${billableAmt}`:''}</div>
+        <div style="font-size:9px;color:var(--gray)">${escHtml(emp.id||'')}</div>
       </td>
       ${cells}
       <td class="ts-total">${empTotal?fmtHHMM(empTotal):'—'}</td>
@@ -5278,7 +5459,7 @@ async function renderPoints() {
       <div class="section-title" style="margin-bottom:12px">Add Weekly Points</div>
       <div style="margin-bottom:12px">
         <label class="form-label">Week of</label>
-        <select id="pts-week" class="form-input" style="margin-bottom:10px">${weekOpts}</select>
+        <select id="pts-week" class="form-input" style="margin-bottom:10px" onchange="loadPointsForWeek(this.value)">${weekOpts}</select>
       </div>
       <div id="pts-entry-grid">
         <table class="az-table" style="font-size:11px">
@@ -5312,6 +5493,9 @@ async function renderPoints() {
     </div>
   </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
+  // Issue 9: pre-fill first week's saved values
+  const firstWeek = weeks[0]?.value;
+  if (firstWeek) setTimeout(()=>loadPointsForWeek(firstWeek), 100);
 }
 
 async function savePoints(empId) {
@@ -5328,10 +5512,56 @@ async function savePoints(empId) {
   };
   const res=await API.call('addPoints',payload);
   if(res.ok){
-    toast(`✓ ${res.total} pts saved for employee`,'success');
-    // FIX-11: refresh the full points view so the right-side panel shows saved values
-    await renderPoints();
+    toast(`✓ ${res.total} pts saved`,'success');
+    // Issue 9: Repopulate THIS employee's entry grid inputs with saved values — don't re-render whole view
+    document.getElementById(`p-ot-${empId}`).value  = payload.onTime;
+    document.getElementById(`p-qt-${empId}`).value  = payload.quotaDone;
+    document.getElementById(`p-ze-${empId}`).value  = payload.zeroErrors;
+    document.getElementById(`p-cl-${empId}`).value  = payload.cleanWorkspace;
+    document.getElementById(`p-fn-${empId}`).value  = payload.bonusFastest;
+    document.getElementById(`p-id-${empId}`).value  = payload.bonusIdea;
+    // Show total inline
+    const row = document.getElementById(`prow-${empId}`);
+    if (row) {
+      const existing = row.querySelector('.pts-saved-total');
+      const totalEl = existing || document.createElement('span');
+      totalEl.className = 'pts-saved-total';
+      totalEl.style.cssText='margin-left:6px;background:var(--green);color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700';
+      totalEl.textContent = `${res.total}pts ✓`;
+      if (!existing) row.querySelector('td:last-child').appendChild(totalEl);
+    }
+    // Refresh leaderboard panel only
+    const lbRes = await API.call('getLeaderboard', {year: parseInt(document.getElementById('pts-year-sel')?.value)||new Date().getFullYear(), month: parseInt(document.getElementById('pts-month-sel')?.value)||new Date().getMonth()+1});
+    const lb = lbRes.leaderboard||[];
+    const lbContainer = document.getElementById('lb-container');
+    if (lbContainer) {
+      lbContainer.innerHTML = lb.map((item,i)=>{
+        const rankIcon=i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
+        const rankCls=i===0?'rank1':i===1?'rank2':i===2?'rank3':'';
+        return `<div class="lb-row ${rankCls}">
+          <div class="lb-rank r${i+1}">${rankIcon}</div>
+          <div class="flex-1"><div class="lb-name">${escHtml(item.name)}</div><div class="lb-dept">${escHtml(item.dept)}</div></div>
+          <div><div class="lb-points">${item.total}</div><div class="lb-weekly">pts this month</div></div>
+        </div>`;
+      }).join('');
+    }
   } else toast(res.error||'Error','error');
+}
+
+// Issue 9: pre-fill entry grid with saved values when week selector changes
+async function loadPointsForWeek(weekOf) {
+  const ptsRes = await API.call('getPoints', {weekOf});
+  if (!ptsRes.ok) return;
+  ptsRes.points.forEach(pt => {
+    const id = pt.empId;
+    const ot = document.getElementById(`p-ot-${id}`); if(ot) ot.value = pt.onTime||0;
+    const qt = document.getElementById(`p-qt-${id}`); if(qt) qt.value = pt.quotaDone||0;
+    const ze = document.getElementById(`p-ze-${id}`); if(ze) ze.value = pt.zeroErrors||0;
+    const cl = document.getElementById(`p-cl-${id}`); if(cl) cl.value = pt.cleanWorkspace||0;
+    const fn = document.getElementById(`p-fn-${id}`); if(fn) fn.value = pt.bonusFastest||0;
+    const pd = document.getElementById(`p-id-${id}`); if(pd) pd.value = pt.bonusIdea||0;
+    const nt = document.getElementById(`p-nt-${id}`); if(nt) nt.value = pt.note||'';
+  });
 }
 
 function getWeeksOfMonth(year, month) {
@@ -7395,16 +7625,55 @@ async function toggleActivity(id, active) {
 // ═══════════════════════════════════════════
 // AUDIT LOG TAB
 // ═══════════════════════════════════════════
-async function renderAuditLog() {
+// Issue 11: improved audit log with pagination, filters, CSV export
+let _auditOffset = 0;
+const _auditPageSize = 50;
+let _auditFilters = {};
+
+async function renderAuditLog(resetPage) {
+  if (resetPage) _auditOffset = 0;
   const content = document.getElementById('admin-tab-content');
-  content.innerHTML = `<div class="loading-spinner" style="margin:60px auto"></div>`;
-  const res = await API.call('getAudit', { limit: 200 });
-  if (!res.ok) { content.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>Could not load audit log</p></div>`; return; }
-  const rows = (res.audit || []).slice().reverse(); // newest first
-  if (!rows.length) {
-    content.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No audit entries yet</p></div>`;
+
+  // Build filter bar HTML (first call only, or if container doesn't exist)
+  const existingFilters = document.getElementById('audit-filter-bar');
+  if (!existingFilters) {
+    content.innerHTML = `
+      <div class="section-hdr" style="margin-bottom:14px">
+        <h2 class="section-title" style="margin:0">📋 Audit Log</h2>
+        <div class="section-actions">
+          <button class="btn btn-dark btn-sm" onclick="exportAuditCSV()">📥 CSV</button>
+        </div>
+      </div>
+      <div id="audit-filter-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <input id="audit-f-userId" class="filter-input" placeholder="User ID…" style="width:130px" onchange="_auditFilters.userId=this.value;renderAuditLog(true)">
+        <input id="audit-f-action" class="filter-input" placeholder="Action…" style="width:130px" onchange="_auditFilters.action=this.value;renderAuditLog(true)">
+        <input id="audit-f-from" class="filter-input" type="date" title="From date" onchange="_auditFilters.fromDate=this.value;renderAuditLog(true)">
+        <input id="audit-f-to" class="filter-input" type="date" title="To date" onchange="_auditFilters.toDate=this.value;renderAuditLog(true)">
+        <button class="btn btn-dark btn-sm" onclick="_auditFilters={};document.querySelectorAll('#audit-filter-bar input').forEach(i=>i.value='');renderAuditLog(true)">✕ Clear</button>
+      </div>
+      <div id="audit-table-area"></div>
+      <div id="audit-pagination" style="display:flex;gap:8px;align-items:center;margin-top:14px;justify-content:center"></div>`;
+  }
+
+  const tableArea = document.getElementById('audit-table-area');
+  const pagination = document.getElementById('audit-pagination');
+  if (tableArea) tableArea.innerHTML = `<div class="loading-spinner" style="margin:40px auto"></div>`;
+
+  const params = { limit: _auditPageSize, offset: _auditOffset, ..._auditFilters };
+  const res = await API.call('getAudit', params);
+  if (!res.ok) {
+    if (tableArea) tableArea.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>Could not load audit log</p></div>`;
     return;
   }
+  const rows = res.audit || [];
+  const total = res.total || 0;
+
+  if (!rows.length && !_auditOffset) {
+    if (tableArea) tableArea.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No audit entries found</p></div>`;
+    if (pagination) pagination.innerHTML = '';
+    return;
+  }
+
   const rowsHtml = rows.map(r => `
     <tr>
       <td style="white-space:nowrap;color:var(--gray-light);font-size:11px">${escHtml(r.timestamp||'')}</td>
@@ -7412,24 +7681,48 @@ async function renderAuditLog() {
       <td style="white-space:nowrap">${escHtml(r.action||'—')}</td>
       <td style="font-size:12px;color:var(--gray-light);max-width:400px;word-break:break-word">${escHtml(r.details||'')}</td>
     </tr>`).join('');
-  content.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <h2 class="section-title" style="margin:0">📋 Audit Log</h2>
-      <span style="font-size:12px;color:var(--gray-light)">${rows.length} entries (most recent first)</span>
-    </div>
+
+  if (tableArea) tableArea.innerHTML = `
+    <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">Showing ${_auditOffset+1}–${Math.min(_auditOffset+rows.length, total)} of ${total} entries</div>
     <div style="overflow-x:auto">
       <table class="data-table" style="width:100%;border-collapse:collapse">
         <thead>
           <tr style="background:var(--dark3)">
-            <th style="padding:10px 12px;text-align:left;font-size:12px;color:var(--gray-light)">Timestamp</th>
-            <th style="padding:10px 12px;text-align:left;font-size:12px;color:var(--gray-light)">User / ID</th>
-            <th style="padding:10px 12px;text-align:left;font-size:12px;color:var(--gray-light)">Action</th>
-            <th style="padding:10px 12px;text-align:left;font-size:12px;color:var(--gray-light)">Details</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px">Timestamp</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px">User / ID</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px">Action</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px">Details</th>
           </tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>`;
+
+  // Pagination
+  if (pagination) {
+    const totalPages = Math.ceil(total / _auditPageSize);
+    const currentPage = Math.floor(_auditOffset / _auditPageSize) + 1;
+    const btnStyle = 'padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;border:1px solid var(--dark3)';
+    pagination.innerHTML = `
+      <button style="${btnStyle};background:${_auditOffset>0?'var(--dark3)':'var(--dark)'};" ${_auditOffset===0?'disabled':''} onclick="_auditOffset=Math.max(0,_auditOffset-${_auditPageSize});renderAuditLog()">← Prev</button>
+      <span style="font-size:12px;color:var(--gray-light)">Page ${currentPage} / ${totalPages||1}</span>
+      <button style="${btnStyle};background:${_auditOffset+_auditPageSize<total?'var(--dark3)':'var(--dark)'};" ${_auditOffset+_auditPageSize>=total?'disabled':''} onclick="_auditOffset+=${_auditPageSize};renderAuditLog()">Next →</button>`;
+  }
+}
+
+async function exportAuditCSV() {
+  toast('Fetching all audit entries…','info',2000);
+  const res = await API.call('getAudit', {limit:5000, offset:0, ..._auditFilters});
+  if (!res.ok) { toast('Export failed','error'); return; }
+  const rows = res.audit || [];
+  const headers = ['Timestamp','User ID','Action','Details'];
+  const csvRows = [headers, ...rows.map(r=>[r.timestamp||'',r.userId||'',r.action||'',r.details||''].map(v=>`"${String(v).replace(/"/g,'""')}"`))]
+    .map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csvRows], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `AuditLog_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
 }
 
 async function renderSettings() {
