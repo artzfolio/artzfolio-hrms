@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v17 | April 2026 | Fix shift times 12:00AM bug + weekly off case + OTP Config fallback -->
+<!-- ArtzFolio HRMS v18 | April 2026 | Fix WO+1day timezone, bulk leaves, dept save, supervisorId, PIN label, daily hours auto-calc -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1465,6 +1465,18 @@ function sync12hPicker(id) {
   let h24 = ap==='AM' ? (h===12?0:h) : (h===12?12:h+12);
   const v = String(h24).padStart(2,'0')+':'+String(m).padStart(2,'0');
   document.getElementById(id).value=v;
+  if (id==='ee-ss'||id==='ee-se') autoCalcShiftHours();
+}
+function autoCalcShiftHours() {
+  const ss=document.getElementById('ee-ss')?.value;
+  const se=document.getElementById('ee-se')?.value;
+  const dhEl=document.getElementById('ee-dh');
+  if(!ss||!se||!dhEl) return;
+  const [sh,sm]=ss.split(':').map(Number);
+  const [eh,em]=se.split(':').map(Number);
+  let startMin=sh*60+sm, endMin=eh*60+em;
+  if(endMin<=startMin) endMin+=24*60;
+  dhEl.value=((endMin-startMin)/60).toFixed(1);
 }
 function get12hPickerValue(id) {
   // Return the hidden input's 24h value
@@ -4138,9 +4150,11 @@ function getWeekDates(offset=0) {
 async function renderTimesheets(offset) {
   if(offset!==undefined) _tsWeekOffset=offset;
   const dates = getWeekDates(_tsWeekOffset);
-  const weekStart = dates[0].toISOString().split('T')[0];
-  const weekEnd = dates[6].toISOString().split('T')[0];
-  const todayStr2 = new Date().toISOString().split('T')[0];
+  // localYMD avoids toISOString() which converts IST midnight to UTC previous day
+  function localYMD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  const weekStart = localYMD(dates[0]);
+  const weekEnd = localYMD(dates[6]);
+  const todayStr2 = localYMD(new Date());
 
   const [empsRes, attRes] = await Promise.all([
     API.call('getEmployees', {status:'Active'}),
@@ -4245,7 +4259,7 @@ async function renderTimesheets(offset) {
     <thead><tr>
       <th class="emp-col">Employee</th>
       ${dates.map((d,i)=>{
-        const isToday=d.toISOString().split('T')[0]===todayStr2;
+        const isToday=localYMD(d)===todayStr2;
         return `<th style="${isToday?'background:rgba(201,168,76,0.2);color:var(--gold)':''}">${dayNames[d.getDay()]}<br><small style="font-weight:400;font-size:9px">${d.getDate()} ${monthNames[d.getMonth()]}</small></th>`;
       }).join('')}
       <th>Total</th>
@@ -4257,7 +4271,7 @@ async function renderTimesheets(offset) {
     const empAtt=attMap[emp.id]||{};
     let empTotal=0;
     const cells=dates.map((d,i)=>{
-      const ds=d.toISOString().split('T')[0];
+      const ds=localYMD(d);
       const rec=empAtt[ds];
       const wm=parseInt(rec?.workMinutes||0);
       empTotal+=wm; tsWeekTotals[i]+=wm; tsGrandTotal+=wm;
@@ -4871,7 +4885,8 @@ async function showAddEmpModal() {
       if (!pin) { pin = String(Math.floor(1000 + Math.random() * 9000)); autoPin = true; }
       const payload={
         name:document.getElementById('e-name').value.trim(), level:document.getElementById('e-level').value,
-        dept:document.getElementById('e-dept').value||document.getElementById('e-level').value,
+        dept:document.getElementById('e-dept').value,
+        department:document.getElementById('e-dept').value,
         category:document.getElementById('e-cat').value, salary:document.getElementById('e-sal').value,
         employmentType:document.getElementById('e-emptype').value,
         group:document.getElementById('e-group').value.trim(),
@@ -4919,6 +4934,7 @@ async function showEditEmpModal(empId) {
   const res = await API.call('getEmployee',{empId});
   if (!res.ok) { toast('Not found','error'); return; }
   const e=res.employee;
+  const hasPIN=res.hasPIN;
   const html=`<div style="font-size:13px;max-height:60vh;overflow-y:auto;padding-right:4px">
   <div class="form-row">
     <div class="form-group"><label class="form-label">Full Name</label><input id="ee-name" class="form-input" value="${escHtml(e.name)}"></div>
@@ -4927,7 +4943,7 @@ async function showEditEmpModal(empId) {
   <div class="form-row">
     <div class="form-group"><label class="form-label">Level</label>
       <select id="ee-level" class="form-input">${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}" ${e.level===l?'selected':''}>${l}</option>`).join('')}</select></div>
-    <div class="form-group"><label class="form-label">Dept</label><input id="ee-dept" class="form-input" value="${escHtml(e.dept)}"></div>
+    <div class="form-group"><label class="form-label">Department</label><input id="ee-dept" class="form-input" value="${escHtml(e.department||e.dept||'')}"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Shift Start</label>${build12hPicker('ee-ss', e.shiftStart||'09:00')}</div>
@@ -4953,7 +4969,7 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">ESI Number</label><input id="ee-esino" class="form-input" value="${escHtml(e.esiNumber||'')}"></div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">New PIN (leave blank to keep)</label><input id="ee-pin" class="form-input" type="text" maxlength="4" placeholder="New 4-digit PIN…"></div>
+    <div class="form-group"><label class="form-label">PIN Status: <span style="color:${hasPIN?'var(--green)':'var(--orange)'};font-weight:600">${hasPIN?'Set (4-digit)':'Not set'}</span> — New PIN (blank = keep)</label><input id="ee-pin" class="form-input" type="text" maxlength="4" placeholder="${hasPIN?'Enter new PIN to replace…':'Set a 4-digit PIN…'}"></div>
     <div class="form-group"><label class="form-label">Supervisor ID</label><input id="ee-sup" class="form-input" value="${escHtml(e.supervisorId||'')}"></div>
   </div>
   <div class="form-row">
@@ -4969,8 +4985,9 @@ async function showEditEmpModal(empId) {
   </div>`;
   showModal(`✏ Edit: ${e.name}`, html, [
     {label:'Save Changes / सहेजें', cls:'btn-gold', cb:async()=>{
+      const deptVal=document.getElementById('ee-dept').value;
       const payload={empId, name:document.getElementById('ee-name').value, salary:document.getElementById('ee-sal').value,
-        level:document.getElementById('ee-level').value, dept:document.getElementById('ee-dept').value,
+        level:document.getElementById('ee-level').value, dept:deptVal, department:deptVal,
         shiftStart:document.getElementById('ee-ss').value, shiftEnd:document.getElementById('ee-se').value,
         weeklyOff1:document.getElementById('ee-wo1').value, weeklyOff2:document.getElementById('ee-wo2').value,
         mobile:document.getElementById('ee-mob').value, noticeperiodDays:document.getElementById('ee-np').value,
@@ -5381,21 +5398,30 @@ async function renderLeaves() {
     <select class="filter-input" id="lf-status" onchange="filterLeaves()"><option value="">All Status</option><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option><option value="Auto">Auto-UL</option></select>
     <input class="filter-input" id="lf-emp" type="text" placeholder="Filter by employee…" oninput="filterLeaves()">
   </div>
+  <div id="leave-bulk-bar" style="display:none;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;gap:10px;flex-wrap:wrap">
+    <span id="leave-bulk-count" style="font-size:13px;color:var(--gold);font-weight:600">0 selected</span>
+    <button class="btn btn-green btn-sm" onclick="bulkLeaveAction(true)">✓ Approve Selected</button>
+    <button class="btn btn-red btn-sm" onclick="bulkLeaveAction(false)">✗ Reject Selected</button>
+    <button class="btn btn-dark btn-sm" onclick="clearLeaveSelection()">✕ Clear</button>
+  </div>
   <div class="table-wrap">
     <table class="az-table" id="leaves-table">
-      <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Requested</th><th>Approved By</th><th>Actions</th></tr></thead>
+      <thead><tr>
+        <th style="width:30px"><input type="checkbox" id="leave-cb-all" style="accent-color:var(--gold)" onchange="toggleAllLeaveCb(this.checked)" title="Select all visible"></th>
+        <th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Requested</th><th>Approved By</th><th>Actions</th>
+      </tr></thead>
       <tbody id="leaves-tbody">`;
   all.forEach(l=>{
     const lEmp=(State.employees||[]).find(e=>e.id===l.empId);
-    // Compute the ISO week for the leave start date (for roster link)
     let rosterWeek='';
     if(l.startDate) {
       try {
         const sd=new Date(l.startDate+'T00:00:00');
         if (!isNaN(sd.getTime())) rosterWeek=getWeekStart(sd);
-      } catch(e) {} // guard against Invalid Date if startDate value is malformed
+      } catch(e) {}
     }
-    html+=`<tr>
+    html+=`<tr data-leave-id="${escHtml(l.id)}" data-leave-status="${escHtml(l.status)}">
+      <td style="width:30px"><input type="checkbox" class="leave-cb" value="${escHtml(l.id)}" style="accent-color:var(--gold)" onchange="updateLeaveBulkBar()"></td>
       <td><strong>${escHtml(lEmp?.name||l.empId)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(l.empId)}</span></td>
       <td>${statusBadge(l.type)}</td>
       <td>${fmtDate(l.startDate)}</td>
@@ -5414,7 +5440,6 @@ async function renderLeaves() {
   document.getElementById('admin-tab-content').innerHTML=html;
 }
 
-// Bug fix: filterLeaves was called from onchange/oninput in the leaves filter bar but was never defined.
 // Filters the rendered leaves table client-side without an API round-trip.
 function filterLeaves() {
   const statusVal = (document.getElementById('lf-status')?.value || '').toLowerCase();
@@ -5423,12 +5448,49 @@ function filterLeaves() {
   rows.forEach(row => {
     const cells = row.querySelectorAll('td');
     if (!cells.length) return;
-    const empText    = (cells[0]?.textContent || '').toLowerCase();
-    const statusText = (cells[5]?.textContent || '').toLowerCase();
+    const empText    = (cells[1]?.textContent || '').toLowerCase();
+    const statusText = (cells[6]?.textContent || '').toLowerCase();
     const matchStatus = !statusVal || statusText.includes(statusVal);
     const matchEmp   = !empVal   || empText.includes(empVal);
     row.style.display = (matchStatus && matchEmp) ? '' : 'none';
   });
+  updateLeaveBulkBar();
+}
+function toggleAllLeaveCb(checked) {
+  document.querySelectorAll('.leave-cb').forEach(cb=>{
+    if(cb.closest('tr').style.display!=='none') cb.checked=checked;
+  });
+  updateLeaveBulkBar();
+}
+function updateLeaveBulkBar() {
+  const selected=document.querySelectorAll('.leave-cb:checked');
+  const bar=document.getElementById('leave-bulk-bar');
+  const countEl=document.getElementById('leave-bulk-count');
+  if(!bar) return;
+  if(selected.length>0){bar.style.display='flex';if(countEl)countEl.textContent=selected.length+' selected';}
+  else{bar.style.display='none';}
+}
+function clearLeaveSelection() {
+  document.querySelectorAll('.leave-cb').forEach(cb=>cb.checked=false);
+  const allCb=document.getElementById('leave-cb-all');
+  if(allCb) allCb.checked=false;
+  updateLeaveBulkBar();
+}
+async function bulkLeaveAction(approved) {
+  const selected=[...document.querySelectorAll('.leave-cb:checked')].map(cb=>cb.value);
+  if(!selected.length){toast('No leaves selected','info');return;}
+  const action=approved?'Approve':'Reject';
+  const ok=await confirm2(`${action} ${selected.length} leave(s)?`);
+  if(!ok) return;
+  const approverRole=State.adminRole==='owner'?'owner':State.adminRole==='manager'?'manager':'supervisor';
+  const note=approved?`Bulk approved by ${State.adminUser}`:`Bulk rejected by ${State.adminUser}`;
+  let done=0,failed=0;
+  for(const leaveId of selected){
+    const res=await API.call('approveLeave',{leaveId,approved,approvedBy:State.adminUser,note,approverRole});
+    if(res.ok) done++; else failed++;
+  }
+  toast(`${action}d ${done} leave(s)${failed?` (${failed} failed)`:''}`,approved?'success':'info');
+  await renderLeaves();
 }
 
 async function approveLeave(leaveId, approved) {
