@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v16 | April 2026 | OTP resend button + GmailApp fallback + rate-limit fix -->
+<!-- ArtzFolio HRMS v17 | April 2026 | Fix shift times 12:00AM bug + weekly off case + OTP Config fallback -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v16</title>
+<title>ArtzFolio HRMS v17</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1416,8 +1416,13 @@ function fmtDuration(mins, fmt) {
 }
 function fmtShift(start, end) {
   function to12h(t) {
-    if (!t || !t.includes(':')) return t||'—';
-    const [h,m] = t.split(':').map(Number);
+    if (!t) return '—';
+    // Extract HH:MM from end of string — handles "09:00", "09:00:00", and corrupted
+    // datetime strings like "1899-12-30 09:00:00" that result from GAS time-cell reads
+    const tm = t.match(/(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!tm) return '—';
+    const h = parseInt(tm[1]), m = parseInt(tm[2]);
+    if (isNaN(h) || isNaN(m)) return '—';
     const ampm = h >= 12 ? 'PM' : 'AM';
     const h12 = h % 12 || 12;
     return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
@@ -1432,6 +1437,9 @@ function fmtSalary(v) {
 // val: "HH:MM" 24h string, id: input id, cls: CSS class
 function build12hPicker(id, val24, cls='form-input') {
   val24 = val24 || '09:00';
+  // Sanitize: extract HH:MM from datetime strings like "1899-12-30 09:00:00"
+  const sanitize = val24.match(/(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (sanitize) val24 = String(parseInt(sanitize[1])).padStart(2,'0') + ':' + sanitize[2];
   const [hh, mm] = val24.split(':').map(Number);
   const ampm = hh >= 12 ? 'PM' : 'AM';
   const h12  = hh % 12 || 12;
@@ -3585,7 +3593,14 @@ async function fpRequestOTP() {
     }
     // store role for verify step
     window._fpRole=role; window._fpSessionToken=null;
-    document.getElementById('fp-masked-email').textContent='OTP sent to: '+res.maskedEmail+' — valid for 10 minutes.';
+    const msgEl=document.getElementById('fp-masked-email');
+    if(res.otpInSheet){
+      msgEl.style.color='var(--orange)';
+      msgEl.textContent='⚠ Email delivery failed. OTP written to Google Sheets Config tab (key: '+res.configKey+'). Copy it from there, enter below, then delete that row.';
+    } else {
+      msgEl.style.color='';
+      msgEl.textContent='OTP sent to: '+res.maskedEmail+' — valid for 10 minutes.';
+    }
     document.getElementById('fp-step-a').style.display='none';
     document.getElementById('fp-step-b').style.display='block';
   } catch(e){errEl.style.color='var(--red)';errEl.textContent='Network error. Please try again.';}
@@ -3627,14 +3642,22 @@ async function fpResendOTP() {
     const res = await API.call('forgotPassword', {role});
     if (!res.ok) {
       if (res.error === 'OTP_RATE_LIMIT') msg.textContent = 'Too many requests. Please wait 1 hour before trying again.';
-      else if (res.error === 'EMAIL_SEND_FAILED') msg.textContent = 'Email delivery failed. Ask your system owner to redeploy the GAS script to fix email permissions.';
       else msg.textContent = res.message || res.error || 'Failed to resend OTP.';
       msg.style.color = 'var(--red)';
+    } else if (res.otpInSheet) {
+      msg.textContent = '⚠ Email failed. New OTP written to Config sheet (key: ' + res.configKey + '). Copy from Google Sheets.';
+      msg.style.color = 'var(--orange)';
+      document.getElementById('fp-otp').value = '';
+      const msgEl = document.getElementById('fp-masked-email');
+      msgEl.style.color = 'var(--orange)';
+      msgEl.textContent = '⚠ Email delivery failed. OTP written to Google Sheets Config tab (key: ' + res.configKey + ').';
     } else {
       msg.textContent = 'New OTP sent to ' + res.maskedEmail + '. Valid for 10 minutes.';
       msg.style.color = 'var(--green)';
       document.getElementById('fp-otp').value = '';
-      document.getElementById('fp-masked-email').textContent = 'OTP sent to: ' + res.maskedEmail + ' — valid for 10 minutes.';
+      const msgEl2 = document.getElementById('fp-masked-email');
+      msgEl2.style.color = '';
+      msgEl2.textContent = 'OTP sent to: ' + res.maskedEmail + ' — valid for 10 minutes.';
     }
   } catch(e) { msg.textContent = 'Network error. Please try again.'; msg.style.color = 'var(--red)'; }
   // Re-enable resend link after 30 seconds to prevent accidental spam
@@ -4428,6 +4451,7 @@ async function renderEmployees(filter='') {
   const res = await API.call('getEmployees');
   let emps = (res.employees||[]);
   State._allEmployees = emps; // cache unfiltered for client-side filters
+  State.employees = emps;     // keep global employee list in sync for timesheet/kiosk views
   if (filter) {
     const f=filter.toLowerCase();
     emps = emps.filter(e=>(e.name+e.id+e.dept+e.level+(e.mobile||'')+(e.aadhaar||'')).toLowerCase().includes(f));
@@ -4440,7 +4464,6 @@ async function renderEmployees(filter='') {
       return String(av).localeCompare(String(bv)) * _empSortDir;
     });
   }
-  State.employees = emps;
   const canEdit = ['owner','manager'].includes(State.adminRole);
   const isOwner = State.adminRole === 'owner';
   let html = `
@@ -4912,9 +4935,9 @@ async function showEditEmpModal(empId) {
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Weekly Off 1</label>
-      <select id="ee-wo1" class="form-input">${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(d=>`<option value="${d}" ${e.weeklyOff1===d?'selected':''}>${d}</option>`).join('')}</select></div>
+      <select id="ee-wo1" class="form-input">${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(d=>`<option value="${d}" ${(e.weeklyOff1||'').toLowerCase()===d.toLowerCase()?'selected':''}>${d}</option>`).join('')}</select></div>
     <div class="form-group"><label class="form-label">Weekly Off 2</label>
-      <select id="ee-wo2" class="form-input"><option value="">None</option>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(d=>`<option value="${d}" ${e.weeklyOff2===d?'selected':''}>${d}</option>`).join('')}</select></div>
+      <select id="ee-wo2" class="form-input"><option value="">None</option>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(d=>`<option value="${d}" ${(e.weeklyOff2||'').toLowerCase()===d.toLowerCase()?'selected':''}>${d}</option>`).join('')}</select></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Mobile</label><input id="ee-mob" class="form-input" value="${escHtml(e.mobile||'')}"></div>
