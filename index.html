@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v13 | April 2026 | Based on v12 + 11 Issue Fixes -->
+<!-- ArtzFolio HRMS v16 | April 2026 | OTP resend button + GmailApp fallback + rate-limit fix -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v15</title>
+<title>ArtzFolio HRMS v16</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -985,6 +985,10 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
         <div id="fp-err-b" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
         <button class="btn btn-gold" style="width:100%" onclick="fpVerifyAndReset()">✓ Verify &amp; Reset Password</button>
         <button class="btn btn-dark btn-sm" style="width:100%;margin-top:8px" onclick="fpBackToA()">← Back</button>
+        <div style="text-align:center;margin-top:10px">
+          <a id="fp-resend-link" onclick="fpResendOTP()" style="font-size:11px;color:var(--gray-light);cursor:pointer;text-decoration:underline">Didn't receive OTP? Resend →</a>
+        </div>
+        <div id="fp-resend-msg" style="font-size:11px;text-align:center;margin-top:4px;display:none"></div>
       </div>
       <!-- Sub-step 3c: success -->
       <div id="fp-step-c" style="display:none;text-align:center;padding:10px 0">
@@ -3552,6 +3556,8 @@ function showForgotPassword() {
   const oi=document.getElementById('fp-otp'); if(oi)oi.value='';
   const pi=document.getElementById('fp-newpwd'); if(pi)pi.value='';
   const ci=document.getElementById('fp-confirmpwd'); if(ci)ci.value='';
+  const rm=document.getElementById('fp-resend-msg'); if(rm){rm.style.display='none';rm.textContent='';}
+  const rl=document.getElementById('fp-resend-link'); if(rl)rl.style.pointerEvents='';
 }
 function hideForgotPassword() {
   document.getElementById('login-step-3').style.display='none';
@@ -3609,6 +3615,30 @@ async function fpVerifyAndReset() {
     document.getElementById('fp-step-b').style.display='none';
     document.getElementById('fp-step-c').style.display='block';
   } catch(e){errEl.style.color='var(--red)';errEl.textContent='Network error. Please try again.';}
+}
+async function fpResendOTP() {
+  const role = window._fpRole;
+  if (!role) return;
+  const link = document.getElementById('fp-resend-link');
+  const msg = document.getElementById('fp-resend-msg');
+  link.style.pointerEvents = 'none';
+  msg.textContent = 'Resending OTP…'; msg.style.color = 'var(--gold)'; msg.style.display = 'block';
+  try {
+    const res = await API.call('forgotPassword', {role});
+    if (!res.ok) {
+      if (res.error === 'OTP_RATE_LIMIT') msg.textContent = 'Too many requests. Please wait 1 hour before trying again.';
+      else if (res.error === 'EMAIL_SEND_FAILED') msg.textContent = 'Email delivery failed. Ask your system owner to redeploy the GAS script to fix email permissions.';
+      else msg.textContent = res.message || res.error || 'Failed to resend OTP.';
+      msg.style.color = 'var(--red)';
+    } else {
+      msg.textContent = 'New OTP sent to ' + res.maskedEmail + '. Valid for 10 minutes.';
+      msg.style.color = 'var(--green)';
+      document.getElementById('fp-otp').value = '';
+      document.getElementById('fp-masked-email').textContent = 'OTP sent to: ' + res.maskedEmail + ' — valid for 10 minutes.';
+    }
+  } catch(e) { msg.textContent = 'Network error. Please try again.'; msg.style.color = 'var(--red)'; }
+  // Re-enable resend link after 30 seconds to prevent accidental spam
+  setTimeout(() => { link.style.pointerEvents = ''; msg.style.display = 'none'; }, 30000);
 }
 
 async function completeAdminLogin(role) {
@@ -7972,6 +8002,16 @@ async function renderSettings() {
           ${cfgField('managerRecoveryEmail','Manager Recovery Email','email')}
           ${cfgField('supervisorRecoveryEmail','Supervisor Recovery Email','email')}
         </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <select id="test-otp-role" class="form-input" style="width:140px;font-size:12px">
+            <option value="owner">Owner</option>
+            <option value="manager">Manager</option>
+            <option value="supervisor">Supervisor</option>
+          </select>
+          <button class="btn btn-dark btn-sm" onclick="testOTPEmailDelivery()">📧 Send Test Email</button>
+          <span id="test-otp-result" style="font-size:11px;color:var(--gray-light)"></span>
+        </div>
+        <div style="font-size:11px;color:var(--gray-light);margin-top:6px">Use "Send Test Email" to verify that OTP delivery works for each role before employees use Forgot Password. If it fails, the GAS script must be redeployed as a <strong>New Deployment</strong> to re-authorize email permissions.</div>
       </div>
       ${cfgFieldTip('gracePeriod','Grace Period (minutes)','Minutes after shift start where late arrival is not penalised. Default: 5. E.g. shift at 9AM + 5 min grace = no penalty if clocked in by 9:05AM.')}
       ${cfgField('payDay','Salary Pay Day (date of month)')}
@@ -9215,6 +9255,17 @@ async function savePCSettings() {
   } else {
     toast(res.error || 'Saved locally but failed to sync to sheet','warning');
   }
+}
+
+async function testOTPEmailDelivery() {
+  const role = document.getElementById('test-otp-role').value;
+  const resEl = document.getElementById('test-otp-result');
+  resEl.textContent = 'Sending test email…'; resEl.style.color = 'var(--gold)';
+  try {
+    const res = await API.call('testOTPEmail', {role});
+    if (res.ok) { resEl.textContent = '✓ ' + res.message; resEl.style.color = 'var(--green)'; }
+    else { resEl.textContent = '✗ ' + (res.message || res.error); resEl.style.color = 'var(--red)'; }
+  } catch(e) { resEl.textContent = 'Network error'; resEl.style.color = 'var(--red)'; }
 }
 
 async function saveOTSettings() {
