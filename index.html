@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v13</title>
+<title>ArtzFolio HRMS v15</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -7961,7 +7961,7 @@ async function renderSettings() {
       ${cfgField('adminPassword','Admin (Owner) Password','password')}
       ${cfgField('managerPassword','Manager Password','password')}
       ${cfgField('supervisorPassword','Supervisor Password','password')}
-      <div class="form-group" style="grid-column:1/-1;margin-top:8px;padding:10px;background:var(--dark3);border-radius:var(--radius-sm);border:1px solid var(--gold-dim)">
+      <div class="form-group" style="grid-column:1/-1;margin-top:8px;padding:10px;background:var(--dark2);border-radius:var(--radius-sm);border:1px solid var(--gold-dim)">
         <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">🔐 Password Recovery Emails</div>
         <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">
           When a role clicks "Forgot Password", a one-time OTP is emailed to the address configured here.
@@ -8910,7 +8910,7 @@ function applyBranding() {
 }
 
 async function savePolicySettings() {
-  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','lateMultiplier','monthlyLateBlockThreshold','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day'];
+  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','lateMultiplier','monthlyLateBlockThreshold','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day','ownerRecoveryEmail','managerRecoveryEmail','supervisorRecoveryEmail'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   const res=await API.call('updateSettings',{updates});
