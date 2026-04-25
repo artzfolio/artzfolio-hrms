@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v19 | April 2026 | FIX: loadAppData undefined crash on GAS URL save, toISOString timezone bug -1day in roster, per-row approve/reject in All Leaves, dept display, PIN show current, daily hours add-modal auto-calc, supervisor datalist name-search, case-insensitive WO compare -->
+<!-- ArtzFolio HRMS v20 | April 2026 | FIX: roster empty after refresh (date cell format mismatch in handleGetRoster/handleUpdateRoster/handlePublishRoster), points entry grid zeros after save (handleGetPoints/handleAddPoints date mismatch + always-append bug) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v19</title>
+<title>ArtzFolio HRMS v20</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
