@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v21 | April 2026 | FIX: points entry grid carries over values from one week to another — loadPointsForWeek now resets all cells to 0 before filling saved data -->
+<!-- ArtzFolio HRMS v22 | April 2026 | FEAT: Points Save All button; Roster week/month dropdown replacing date picker; roster persist fix (backend in v20/v21) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v21</title>
+<title>ArtzFolio HRMS v22</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -5745,9 +5745,12 @@ async function renderPoints() {
   html+=`</div></div>
     <div>
       <div class="section-title" style="margin-bottom:12px">Add Weekly Points</div>
-      <div style="margin-bottom:12px">
-        <label class="form-label">Week of</label>
-        <select id="pts-week" class="form-input" style="margin-bottom:10px" onchange="loadPointsForWeek(this.value)">${weekOpts}</select>
+      <div style="margin-bottom:12px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+        <div>
+          <label class="form-label">Week of</label>
+          <select id="pts-week" class="form-input" onchange="loadPointsForWeek(this.value)">${weekOpts}</select>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="saveAllPoints()" style="margin-bottom:2px">💾 Save All</button>
       </div>
       <div id="pts-entry-grid">
         <table class="az-table" style="font-size:11px">
@@ -5831,6 +5834,49 @@ async function savePoints(empId) {
   } else toast(res.error||'Error','error');
 }
 
+// FIX-V22-01: save all employees' points in one click
+async function saveAllPoints() {
+  const week=document.getElementById('pts-week')?.value;
+  if(!week){toast('Select a week first','warning');return;}
+  const empRows=document.querySelectorAll('[id^="prow-"]');
+  if(!empRows.length){toast('No employees to save','warning');return;}
+  let saved=0,failed=0;
+  for(const row of empRows){
+    const empId=row.id.replace('prow-','');
+    const payload={
+      empId, weekOf:week, addedBy:State.adminUser,
+      onTime:        parseInt(document.getElementById(`p-ot-${empId}`)?.value||0),
+      quotaDone:     parseInt(document.getElementById(`p-qt-${empId}`)?.value||0),
+      zeroErrors:    parseInt(document.getElementById(`p-ze-${empId}`)?.value||0),
+      cleanWorkspace:parseInt(document.getElementById(`p-cl-${empId}`)?.value||0),
+      bonusFastest:  parseInt(document.getElementById(`p-fn-${empId}`)?.value||0),
+      bonusIdea:     parseInt(document.getElementById(`p-id-${empId}`)?.value||0),
+      note:          document.getElementById(`p-nt-${empId}`)?.value||'',
+    };
+    const res=await API.call('addPoints',payload);
+    if(res.ok) saved++; else failed++;
+  }
+  const yr=parseInt(document.getElementById('pts-year-sel')?.value)||new Date().getFullYear();
+  const mo=parseInt(document.getElementById('pts-month-sel')?.value)||new Date().getMonth()+1;
+  const lbRes=await API.call('getLeaderboard',{year:yr,month:mo});
+  const lb=lbRes.leaderboard||[];
+  const lbContainer=document.getElementById('lb-container');
+  if(lbContainer){
+    lbContainer.innerHTML=lb.map((item,i)=>{
+      const rankIcon=i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
+      const rankCls=i===0?'rank1':i===1?'rank2':i===2?'rank3':'';
+      return `<div class="lb-row ${rankCls}">
+        <div class="lb-rank r${i+1}">${rankIcon}</div>
+        <div class="flex-1"><div class="lb-name">${escHtml(item.name)}</div><div class="lb-dept">${escHtml(item.dept)}</div></div>
+        <div><div class="lb-points">${item.total}</div><div class="lb-weekly">pts this month</div></div>
+      </div>`;
+    }).join('');
+  }
+  lb.forEach(item=>{const totEl=document.getElementById(`ptot-${item.empId}`);if(totEl)totEl.textContent=item.total||0;});
+  await loadPointsForWeek(week);
+  toast(`✓ Points saved for ${saved} employee${saved!==1?'s':''}${failed?` | ${failed} failed`:''}`,saved>0?'success':'error',5000);
+}
+
 // Issue 9: pre-fill entry grid with saved values when week selector changes
 async function loadPointsForWeek(weekOf) {
   // FIX-V21-01: reset every entry cell to 0/empty BEFORE loading the week's data.
@@ -5886,14 +5932,19 @@ function getWeeksOfMonth(year, month) {
 window._rosterView = 'weekly';
 async function renderRoster() {
   const now=new Date();
-  const weekStart=getWeekStart(now);
   const empsRes=await API.call('getEmployees',{status:'Active'});
   const emps=empsRes.employees||[];
-  const rosterRes=await API.call('getRoster',{weekStart});
-  const roster=rosterRes.roster||[];
   const codes=['','P','IL','IHL','WO','H','HO','EW','SL','PL','UL'];
-  const monthOpts=Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('');
-  const yearOpts=Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('');
+  // FIX-V22-02: week dropdown from month/year selectors — mirrors Points UI
+  const month=now.getMonth()+1; const year=now.getFullYear();
+  const currentWeekStart=getWeekStart(now);
+  const weeksList=getWeeksOfMonth(year,month);
+  const defaultWeek=weeksList.find(w=>w.value===currentWeekStart)?.value||weeksList[0]?.value||currentWeekStart;
+  const monthOpts=Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===month?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('');
+  const yearOpts=Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('');
+  const weekOpts=weeksList.map(w=>`<option value="${w.value}" ${w.value===defaultWeek?'selected':''}>${w.label}</option>`).join('');
+  const rosterRes=await API.call('getRoster',{weekStart:defaultWeek});
+  const roster=rosterRes.roster||[];
   const html=`
   <div class="section-hdr">
     <div class="section-title">Roster 📋</div>
@@ -5902,22 +5953,22 @@ async function renderRoster() {
         <button id="roster-view-weekly" class="btn btn-gold btn-sm" onclick="setRosterView('weekly')" style="border-radius:0;padding:6px 12px">Weekly</button>
         <button id="roster-view-monthly" class="btn btn-dark btn-sm" onclick="setRosterView('monthly')" style="border-radius:0;padding:6px 12px">Monthly</button>
       </div>
-      <input id="roster-week" type="date" class="filter-input" value="${weekStart}" onchange="loadRosterForWeek(this.value)">
-      <select id="roster-month-sel" class="filter-input" style="display:none">${monthOpts}</select>
-      <select id="roster-year-sel" class="filter-input" style="display:none">${yearOpts}</select>
+      <select id="roster-month-sel" class="filter-input" onchange="onRosterMonthYearChange()">${monthOpts}</select>
+      <select id="roster-year-sel" class="filter-input" onchange="onRosterMonthYearChange()">${yearOpts}</select>
+      <select id="roster-week-sel" class="filter-input" onchange="loadRosterForWeek(this.value)">${weekOpts}</select>
       <button class="btn btn-gold btn-sm" onclick="saveAndPublishRoster()">💾 Save & Publish</button>
       <button class="btn btn-dark btn-sm" onclick="downloadRosterPDF()">📄 PDF / Print</button>
       <button class="btn btn-dark btn-sm" onclick="exportRosterCSV()">📊 CSV</button>
     </div>
   </div>
   <div id="roster-grid-area">
-    ${buildWeeklyRosterHTML(emps, roster, weekStart, codes)}
+    ${buildWeeklyRosterHTML(emps, roster, defaultWeek, codes)}
   </div>
   <div style="margin-top:10px;font-size:11px;color:var(--gray-light)">
     <strong>Codes:</strong> P=Present | IL=Informed Leave | IHL=Half Leave | WO=Weekly Off | H=Holiday | HO=Half Day Off | EW=Extra Work | SL=Sick Leave | PL=Paid Leave | UL=Uninformed Leave
   </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
-  window._rosterEmps=emps; window._rosterCodes=codes;
+  window._rosterEmps=emps; window._rosterCodes=codes; window._rosterView='weekly';
   // FIX-09: auto-sync approved leaves into the roster grid on every load
   setTimeout(() => syncApprovedLeavesToRoster(), 300);
 }
@@ -6001,13 +6052,12 @@ async function setRosterView(view) {
   window._rosterView=view;
   document.getElementById('roster-view-weekly').className=view==='weekly'?'btn btn-gold btn-sm':'btn btn-dark btn-sm';
   document.getElementById('roster-view-monthly').className=view==='monthly'?'btn btn-gold btn-sm':'btn btn-dark btn-sm';
-  document.getElementById('roster-week').style.display=view==='weekly'?'':'none';
-  document.getElementById('roster-month-sel').style.display=view==='monthly'?'':'none';
-  document.getElementById('roster-year-sel').style.display=view==='monthly'?'':'none';
+  // FIX-V22-02: week-sel hides in monthly; month/year are always visible
+  const weekSel=document.getElementById('roster-week-sel'); if(weekSel) weekSel.style.display=view==='weekly'?'':'none';
   const area=document.getElementById('roster-grid-area');
   if(!area) return;
   if(view==='weekly') {
-    const weekStart=document.getElementById('roster-week')?.value||getWeekStart(new Date());
+    const weekStart=document.getElementById('roster-week-sel')?.value||getWeekStart(new Date());
     const rosterRes=await API.call('getRoster',{weekStart});
     area.innerHTML=buildWeeklyRosterHTML(window._rosterEmps||[], rosterRes.roster||[], weekStart, window._rosterCodes||[]);
   } else {
@@ -6015,6 +6065,25 @@ async function setRosterView(view) {
     const year=parseInt(document.getElementById('roster-year-sel')?.value||new Date().getFullYear());
     area.innerHTML='<div class="loading-spinner"></div>';
     area.innerHTML=await buildMonthlyRosterHTML(window._rosterEmps||[], year, month);
+  }
+}
+
+// FIX-V22-02: rebuild week dropdown when month/year changes
+function populateRosterWeeks(year, month) {
+  const sel=document.getElementById('roster-week-sel'); if(!sel) return;
+  const weeks=getWeeksOfMonth(year,month);
+  sel.innerHTML=weeks.map(w=>`<option value="${w.value}">${w.label}</option>`).join('');
+}
+async function onRosterMonthYearChange() {
+  const month=parseInt(document.getElementById('roster-month-sel')?.value||new Date().getMonth()+1);
+  const year=parseInt(document.getElementById('roster-year-sel')?.value||new Date().getFullYear());
+  if(window._rosterView==='monthly') {
+    const area=document.getElementById('roster-grid-area');
+    if(area){area.innerHTML='<div class="loading-spinner"></div>';area.innerHTML=await buildMonthlyRosterHTML(window._rosterEmps||[],year,month);}
+  } else {
+    populateRosterWeeks(year,month);
+    const wk=document.getElementById('roster-week-sel')?.value;
+    if(wk) await loadRosterForWeek(wk);
   }
 }
 
@@ -6055,7 +6124,7 @@ async function saveAndPublishRoster() {
     if (!pRes.ok) { toast('Warning: roster saved but leave publish failed: '+(pRes.error||''), 'warning'); return; }
     toast(`✓ Roster published! ${pRes.published||0} leave record(s) synced to Leaves sheet.`, 'success', 5000);
   } else {
-    const weekStart = document.getElementById('roster-week')?.value||getWeekStart(new Date());
+    const weekStart = document.getElementById('roster-week-sel')?.value||getWeekStart(new Date());
     await saveAllRoster(weekStart);
     // Bug 8B: publish to Leaves sheet
     const pRes = await API.call('publishRoster', {weekStart, empId:''});
@@ -6072,7 +6141,7 @@ function downloadRosterPDF() {
     ? new Date(parseInt(document.getElementById('roster-year-sel')?.value||now.getFullYear()),
                parseInt(document.getElementById('roster-month-sel')?.value||now.getMonth()+1)-1)
                .toLocaleString('en-IN',{month:'long',year:'numeric'})
-    : `Week of ${document.getElementById('roster-week')?.value||getWeekStart(now)}`;
+    : `Week of ${document.getElementById('roster-week-sel')?.value||getWeekStart(now)}`;
 
   // Clone the visible roster table and replace selects/inputs with their values
   const tableEl = document.querySelector('.roster-table');
@@ -6129,7 +6198,7 @@ function exportRosterCSV() {
   let headers, rows, filename;
   if (!isMonthly) {
     // Weekly roster
-    const weekStart = document.getElementById('roster-week')?.value||getWeekStart(now);
+    const weekStart = document.getElementById('roster-week-sel')?.value||getWeekStart(now);
     const days = ['mon','tue','wed','thu','fri','sat','sun'];
     // Build date-aware column labels (Mon 13 Apr etc.)
     const ws = new Date(weekStart+'T00:00:00');
@@ -6238,7 +6307,7 @@ async function saveAllRoster(weekStart) {
 }
 
 async function publishRoster() {
-  await saveAllRoster(document.getElementById('roster-week')?.value||getWeekStart(new Date()));
+  await saveAllRoster(document.getElementById('roster-week-sel')?.value||getWeekStart(new Date()));
   toast('✓ Roster published! Share with team.','success',5000);
 }
 
@@ -6252,7 +6321,7 @@ async function syncApprovedLeavesToRoster() {
   // Determine date range for current view
   let startDate, endDate;
   if(!isMonthly) {
-    startDate=document.getElementById('roster-week')?.value||getWeekStart(now);
+    startDate=document.getElementById('roster-week-sel')?.value||getWeekStart(now);
     const ws=new Date(startDate+'T00:00:00');
     const we=new Date(ws); we.setDate(ws.getDate()+6);
     endDate=localDateStr(we); // FIX-V19-02
@@ -6440,7 +6509,7 @@ async function viewLeaveInRoster(weekStart) {
   if(!weekStart) return;
   await switchTab('roster');
   setTimeout(()=>{
-    const ws=document.getElementById('roster-week');
+    const ws=document.getElementById('roster-week-sel');
     if(ws) {
       ws.value=weekStart;
       loadRosterForWeek(weekStart);
