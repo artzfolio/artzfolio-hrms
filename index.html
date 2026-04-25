@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v18 | April 2026 | Fix WO+1day timezone, bulk leaves, dept save, supervisorId, PIN label, daily hours auto-calc -->
+<!-- ArtzFolio HRMS v19 | April 2026 | FIX: loadAppData undefined crash on GAS URL save, toISOString timezone bug -1day in roster, per-row approve/reject in All Leaves, dept display, PIN show current, daily hours add-modal auto-calc, supervisor datalist name-search, case-insensitive WO compare -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v17</title>
+<title>ArtzFolio HRMS v19</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1466,6 +1466,7 @@ function sync12hPicker(id) {
   const v = String(h24).padStart(2,'0')+':'+String(m).padStart(2,'0');
   document.getElementById(id).value=v;
   if (id==='ee-ss'||id==='ee-se') autoCalcShiftHours();
+  if (id==='e-ss'||id==='e-se') autoCalcAddShiftHours(); // FIX-V19-06
 }
 function autoCalcShiftHours() {
   const ss=document.getElementById('ee-ss')?.value;
@@ -1478,6 +1479,20 @@ function autoCalcShiftHours() {
   if(endMin<=startMin) endMin+=24*60;
   dhEl.value=((endMin-startMin)/60).toFixed(1);
 }
+// FIX-V19-06: auto-calc daily hours for ADD employee modal (uses e-ss/e-se/e-dh IDs)
+function autoCalcAddShiftHours() {
+  const ss=document.getElementById('e-ss')?.value;
+  const se=document.getElementById('e-se')?.value;
+  const dhEl=document.getElementById('e-dh');
+  if(!ss||!se||!dhEl) return;
+  const [sh,sm]=ss.split(':').map(Number);
+  const [eh,em]=se.split(':').map(Number);
+  let startMin=sh*60+sm, endMin=eh*60+em;
+  if(endMin<=startMin) endMin+=24*60;
+  dhEl.value=((endMin-startMin)/60).toFixed(1);
+}
+// FIX-V19-02: global local-date helper — avoids toISOString() UTC shift for IST timezone
+function localDateStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function get12hPickerValue(id) {
   // Return the hidden input's 24h value
   const el=document.getElementById(id);
@@ -1819,6 +1834,34 @@ async function init() {
   startWioRefresh(); // FIX-01: populate Who's In/Out panel on load
   // Pre-load face models in background
   setTimeout(() => Face.loadModels(), 2000);
+}
+
+// FIX-V19-01: loadAppData — fetches settings + employees + activities and applies to State.
+// Called by testGASConnection() after a successful URL save so the current session
+// picks up the new backend without requiring a full page reload.
+async function loadAppData() {
+  const [settingsRes, empsRes, activitiesRes] = await Promise.all([
+    API.call('getSettings'),
+    API.call('getEmployees', {status:'Active'}),
+    API.call('getActivities', {}),
+  ]);
+  if (settingsRes.ok) {
+    applySettingsArr(settingsRes.settings||[]);
+    const co = document.getElementById('kiosk-company');
+    const br = document.getElementById('kiosk-brand');
+    if (co) co.textContent = State.settings.companyName||'';
+    if (br) br.textContent = State.settings.brandName||'ArtzFolio';
+    if (typeof applyBranding === 'function') applyBranding();
+    if (State.settings.kioskTimeout) CFG.kioskTimeout = parseInt(State.settings.kioskTimeout)*1000;
+    if (State.settings.kioskLogoutSeconds) CFG.kioskLogoutSeconds = parseInt(State.settings.kioskLogoutSeconds)||60;
+  }
+  if (empsRes.ok) { State.employees = empsRes.employees||[]; State.empsFetched = Date.now(); }
+  if (activitiesRes && activitiesRes.ok) {
+    const allActs = activitiesRes.activities||[];
+    State.activities = allActs.filter(a=>a.type==='activity');
+    State.projects = allActs.filter(a=>a.type==='project');
+    State.clients = allActs.filter(a=>a.type==='client');
+  }
 }
 
 // Issue 10: global search — uses State.searchIndex (loaded from GAS getSearchIndex on admin login)
@@ -3378,7 +3421,11 @@ async function doApplyExit() {
 }
 
 function addDays(dateStr, days) {
-  const d=new Date(dateStr); d.setDate(d.getDate()+days); return d.toISOString().split('T')[0];
+  // FIX-V19-02: use local date parts to avoid toISOString() UTC shift for IST
+  const parts=dateStr.split('-').map(Number);
+  const d=new Date(parts[0],parts[1]-1,parts[2]);
+  d.setDate(d.getDate()+days);
+  return localDateStr(d);
 }
 function gpsDistance(lat1,lon1,lat2,lon2){const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 
@@ -4527,7 +4574,7 @@ async function renderEmployees(filter='') {
       <td style="width:30px"><input type="checkbox" class="emp-cb" value="${escHtml(e.id)}" style="accent-color:var(--gold)" onchange="updateBulkBar()"></td>
       <td><strong>${escHtml(e.name)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(e.mobile||'')}</span></td>
       <td style="font-size:11px">${escHtml(e.id)}</td>
-      <td><span class="badge badge-${e.category==='Workforce'?'orange':'blue'}">${escHtml(e.level)}</span><br><span style="font-size:10px;color:var(--gray-light)">${escHtml(e.dept)}</span></td>
+      <td><span class="badge badge-${e.category==='Workforce'?'orange':'blue'}">${escHtml(e.level)}</span><br><span style="font-size:10px;color:var(--gray-light)">${escHtml(e.department||e.dept||'')}</span></td>
       <td>${fmtMoney(e.salary)}</td>
       <td style="font-size:11px">${fmtShift(e.shiftStart,e.shiftEnd)}<br><span style="color:var(--gray-light)">${escHtml(e.dailyHours||'—')}h/day</span></td>
       <td style="font-size:11px">${escHtml(e.weeklyOff1)}${e.weeklyOff2?'+'+e.weeklyOff2:''}</td>
@@ -4770,7 +4817,8 @@ async function showAddEmpModal() {
   const deptOpts = orgs.filter(o=>o.type==='department').map(o=>`<option>${escHtml(o.name)}</option>`).join('');
   const projOpts = orgs.filter(o=>o.type==='project').map(o=>`<option>${escHtml(o.name)}</option>`).join('');
   // Build datalist for supervisor/manager search
-  const empDatalistOpts = allEmps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
+  // FIX-V19-07: value="Name (ID)" so typing employee name shows suggestions; extractEmpId() parses the ID from the "(ID)" suffix
+  const empDatalistOpts = allEmps.map(e=>`<option value="${escHtml(e.name+' ('+e.id+')')}">${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
   const html = `<div style="font-size:13px;max-height:60vh;overflow-y:auto;padding-right:4px">
   <div class="form-row">
     <div class="form-group"><label class="form-label">Employee ID <span style="color:var(--gray-light);font-weight:400">(optional — auto-assigned if blank)</span></label><input id="e-customid" class="form-input" placeholder="e.g. AZ_EMP_0001 or leave blank"></div>
@@ -4969,7 +5017,7 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">ESI Number</label><input id="ee-esino" class="form-input" value="${escHtml(e.esiNumber||'')}"></div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">PIN Status: <span style="color:${hasPIN?'var(--green)':'var(--orange)'};font-weight:600">${hasPIN?'Set (4-digit)':'Not set'}</span> — New PIN (blank = keep)</label><input id="ee-pin" class="form-input" type="text" maxlength="4" placeholder="${hasPIN?'Enter new PIN to replace…':'Set a 4-digit PIN…'}"></div>
+    <div class="form-group"><label class="form-label">Current PIN: <span style="color:${hasPIN?'var(--green)':'var(--orange)'};font-weight:700;letter-spacing:3px">${res.currentPin||'Not set'}</span><span style="font-weight:400;color:var(--gray-light);font-size:11px;margin-left:8px">— New PIN (leave blank to keep current)</span></label><input id="ee-pin" class="form-input" type="text" maxlength="4" placeholder="${hasPIN?'Enter new 4-digit PIN to replace…':'Set a 4-digit PIN…'}" style="letter-spacing:4px;font-size:16px"></div>
     <div class="form-group"><label class="form-label">Supervisor ID</label><input id="ee-sup" class="form-input" value="${escHtml(e.supervisorId||'')}"></div>
   </div>
   <div class="form-row">
@@ -5431,6 +5479,8 @@ async function renderLeaves() {
       <td style="font-size:11px">${fmtDT(l.requestDate)}</td>
       <td style="font-size:11px">${escHtml(l.approvedBy||'—')}</td>
       <td style="white-space:nowrap">
+        ${l.status==='Pending'?`<button class="btn btn-green btn-sm" onclick="approveLeave('${escHtml(l.id)}',true)">✓</button>
+        <button class="btn btn-red btn-sm" onclick="approveLeave('${escHtml(l.id)}',false)">✗</button>`:''}
         <button class="btn btn-dark btn-sm" title="View week in Roster" onclick="viewLeaveInRoster('${escHtml(rosterWeek)}')">📋</button>
         <button class="btn btn-dark btn-sm" title="View employee payroll transactions" onclick="viewEmpTransactions('${escHtml(l.empId)}','','')" style="font-size:10px">💸</button>
       </td>
@@ -5810,14 +5860,14 @@ function getWeeksOfMonth(year, month) {
       const mon = new Date(d);
       const sun = new Date(mon); sun.setDate(mon.getDate() + 6); // Sunday end of week
       const label = `Week ${weekNum} — ${fmtSh(mon)} to ${fmtSh(sun)}`;
-      weeks.push({ value: mon.toISOString().split('T')[0], label });
+      weeks.push({ value: localDateStr(mon), label }); // FIX-V19-02
       weekNum++;
     }
   }
   if (!weeks.length) {
     // Month has no Monday yet — use first day of month as fallback
     const first = new Date(year, month-1, 1);
-    weeks.push({ value: first.toISOString().split('T')[0], label: `Week 1 — ${first.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}` });
+    weeks.push({ value: localDateStr(first), label: `Week 1 — ${first.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}` }); // FIX-V19-02
   }
   return weeks;
 }
@@ -5921,7 +5971,8 @@ async function buildMonthlyRosterHTML(emps, year, month) {
       // Issue 8A: weekly off stored as full day name; getDay() 0=Sunday…6=Saturday (same convention, no off-by-one)
       const _DAY_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
       const _dayFull=_DAY_FULL[dow];
-      const _isEmpWO=(_dayFull===(emp.weeklyOff1||'Sunday'))||(emp.weeklyOff2&&_dayFull===emp.weeklyOff2);
+      // FIX-V19-02: case-insensitive comparison to handle legacy lowercase weeklyOff values
+      const _isEmpWO=(_dayFull.toLowerCase()===(emp.weeklyOff1||'Sunday').toLowerCase())||(emp.weeklyOff2&&_dayFull.toLowerCase()===emp.weeklyOff2.toLowerCase());
       const defaultVal=_isEmpWO?'WO':'';
       return `<td style="padding:1px"><select id="${key}" class="form-input" style="width:34px;padding:2px 1px;font-size:9px;background:${getRosterCellColor(defaultVal)}" onchange="this.style.background=getRosterCellColor(this.value)">
         ${codes.map(c=>`<option value="${c}" style="background:var(--dark2)" ${defaultVal===(c||'')?'selected':''}>${c||'—'}</option>`).join('')}
@@ -6132,9 +6183,10 @@ async function loadRosterForWeek(weekStart) {
 function getRosterCellColor(code){const m={P:'rgba(67,160,71,0.3)',IL:'rgba(30,136,229,0.3)',UL:'rgba(229,57,53,0.3)',WO:'rgba(136,136,136,0.2)',H:'rgba(201,168,76,0.3)',EW:'rgba(251,140,0,0.3)'};return m[code]||'transparent';}
 
 function getWeekStart(d) {
+  // FIX-V19-02: was toISOString() which converts IST midnight → UTC previous day (-1 day bug)
   const day=d.getDay(), diff=d.getDate()-day+(day===0?-6:1);
   const mon=new Date(d); mon.setDate(diff);
-  return mon.toISOString().split('T')[0];
+  return localDateStr(mon);
 }
 
 async function saveAllRoster(weekStart) {
@@ -6142,7 +6194,8 @@ async function saveAllRoster(weekStart) {
   const days=['mon','tue','wed','thu','fri','sat','sun'];
   // Compute date strings for each day of the week
   const ws=new Date(weekStart+'T00:00:00');
-  const dayDates=days.map((_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return d.toISOString().split('T')[0];});
+  // FIX-V19-02: toISOString() converts IST midnight to UTC prev-day; use localDateStr instead
+  const dayDates=days.map((_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return localDateStr(d);});
 
   // Collect leave-coded cells to auto-create leave requests
   const leaveCodes=['IL','UL','SL','PL','IHL','UHL'];
@@ -6194,7 +6247,7 @@ async function syncApprovedLeavesToRoster() {
     startDate=document.getElementById('roster-week')?.value||getWeekStart(now);
     const ws=new Date(startDate+'T00:00:00');
     const we=new Date(ws); we.setDate(ws.getDate()+6);
-    endDate=we.toISOString().split('T')[0];
+    endDate=localDateStr(we); // FIX-V19-02
   } else {
     const month=parseInt(document.getElementById('roster-month-sel')?.value||now.getMonth()+1);
     const year=parseInt(document.getElementById('roster-year-sel')?.value||now.getFullYear());
@@ -6222,7 +6275,7 @@ async function syncApprovedLeavesToRoster() {
     // Iterate each day of the leave
     for(let d=new Date(lvStart); d<=lvEnd; d.setDate(d.getDate()+1)) {
       if(d<rStart||d>rEnd) continue;
-      const dateStr=d.toISOString().split('T')[0];
+      const dateStr=localDateStr(d); // FIX-V19-02
       if(!isMonthly) {
         // Weekly — find the day column
         const ws2=new Date(startDate+'T00:00:00');
@@ -9161,10 +9214,18 @@ async function saveConnectionSettings() {
   try {
     const ok = await API.ping();
     if (ok) {
+      // FIX-V19-01: save URL BEFORE calling loadAppData so revert only happens on ping failure,
+      // not on a loadAppData error (which would previously show "loadAppData is not defined")
       LS.s('gasUrl', url); LS.s('token', CFG.token);
-      statusEl.textContent = '✓ Connected! Settings saved.'; statusEl.style.color='var(--green)';
+      statusEl.textContent = '✓ Connected! Reloading data…'; statusEl.style.color='var(--green)';
+      try {
+        await loadAppData();
+        statusEl.textContent = '✓ Connected! Settings & employees reloaded.'; statusEl.style.color='var(--green)';
+      } catch(le) {
+        console.warn('loadAppData after URL save:', le);
+        statusEl.textContent = '✓ Connected & saved. Reload the page to see latest data.'; statusEl.style.color='var(--green)';
+      }
       toast('✓ GAS URL updated and connected!','success');
-      await loadAppData();
     } else {
       CFG.gasUrl = oldUrl; CFG.token = oldToken;
       statusEl.textContent = '✗ Connection failed. Check URL and token.'; statusEl.style.color='var(--red)';
