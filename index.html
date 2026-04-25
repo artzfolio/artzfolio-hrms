@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v20 | April 2026 | FIX: roster empty after refresh (date cell format mismatch in handleGetRoster/handleUpdateRoster/handlePublishRoster), points entry grid zeros after save (handleGetPoints/handleAddPoints date mismatch + always-append bug) -->
+<!-- ArtzFolio HRMS v21 | April 2026 | FIX: points entry grid carries over values from one week to another — loadPointsForWeek now resets all cells to 0 before filling saved data -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v20</title>
+<title>ArtzFolio HRMS v21</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -5833,6 +5833,14 @@ async function savePoints(empId) {
 
 // Issue 9: pre-fill entry grid with saved values when week selector changes
 async function loadPointsForWeek(weekOf) {
+  // FIX-V21-01: reset every entry cell to 0/empty BEFORE loading the week's data.
+  // Without this, switching from a week that has saved records to one that doesn't
+  // leaves the previous week's values sitting in the cells (API returns 0 rows →
+  // forEach never runs → nothing updates → stale values persist across all weeks).
+  ['p-ot-','p-qt-','p-ze-','p-cl-','p-fn-','p-id-'].forEach(prefix=>{
+    document.querySelectorAll(`[id^="${prefix}"]`).forEach(el=>{ el.value='0'; });
+  });
+  document.querySelectorAll('[id^="p-nt-"]').forEach(el=>{ el.value=''; });
   const ptsRes = await API.call('getPoints', {weekOf});
   if (!ptsRes.ok) return;
   ptsRes.points.forEach(pt => {
