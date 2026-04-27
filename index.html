@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v22 | April 2026 | FEAT: Points Save All button; Roster week/month dropdown replacing date picker; roster persist fix (backend in v20/v21) -->
+<!-- ArtzFolio HRMS v23 | April 2026 | FIX: monthly roster hang (11220→1020 DOM elements via input+datalist); monthly view loads saved weekly data (getRosterMonth backend); PLEASE WAIT auto-interrupt silenced (getTodayAttendance now silent, WIO refresh 60s→300s) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v22</title>
+<title>ArtzFolio HRMS v23</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1617,7 +1617,9 @@ const LoadingOverlay = {
 const API = {
   async call(action, params={}, retries=2) {
     // Actions that silently poll in background — don't show full overlay
-    const silent = ['getSettings','getEmployees','ping'].includes(action);
+    // FIX-V23-03: getTodayAttendance is a background auto-refresh; showing the overlay
+    // every 60 s blocks the admin mid-work ("PLEASE WAIT" interruption)
+    const silent = ['getSettings','getEmployees','ping','getTodayAttendance'].includes(action);
     if (!silent) LoadingOverlay.show();
     for (let i=0; i<=retries; i++) {
       try {
@@ -4170,7 +4172,7 @@ function showWioOverflow(listKey) {
 function startWioRefresh() {
   refreshWhoInOut();
   clearInterval(_wioTimer);
-  _wioTimer = setInterval(refreshWhoInOut, 60000); // refresh every minute
+  _wioTimer = setInterval(refreshWhoInOut, 300000); // FIX-V23-03: refresh every 5 min (was 60s)
 }
 function stopWioRefresh() {
   clearInterval(_wioTimer); _wioTimer=null;
@@ -6007,18 +6009,26 @@ function buildWeeklyRosterHTML(emps, roster, weekStart, codes) {
 }
 
 async function buildMonthlyRosterHTML(emps, year, month) {
+  // FIX-V23-05: fetch saved data from backend (previously never called any API)
+  let savedData={};
+  try {
+    const res=await API.call('getRosterMonth',{year,month});
+    if(res.ok) savedData=res.data||{};
+  } catch(e){}
+
   const daysInMonth=new Date(year,month,0).getDate();
   const dayNums=Array.from({length:daysInMonth},(_,i)=>i+1);
-  const codes=window._rosterCodes||['','P','IL','IHL','WO','H','HO','EW','SL','PL','UL'];
-  // Fetch all roster data for this month — by iterating weeks
-  const allRoster={};
-  emps.forEach(e=>{allRoster[e.id]={};});
-  // Build day headers with day-of-week
+  // FIX-V23-05: single shared <datalist> replaces per-cell <select> (11220 → 1020 DOM elements)
+  const codeList=['P','IL','IHL','WO','H','HO','EW','SL','PL','UL'];
+  const datalist=`<datalist id="mr-codes-list">${codeList.map(c=>`<option value="${c}">`).join('')}</datalist>`;
+
   const dayHeaders=dayNums.map(d=>{
     const dt=new Date(year,month-1,d);
     const dow=['Su','Mo','Tu','We','Th','Fr','Sa'][dt.getDay()];
-    return `<th style="min-width:32px;font-size:9px;padding:2px">${d}<br><span style="color:${dow==='Su'?'var(--red)':dow==='Sa'?'var(--gold)':'var(--gray-light)'}">${dow}</span></th>`;
+    return `<th style="min-width:34px;font-size:9px;padding:2px">${d}<br><span style="color:${dow==='Su'?'var(--red)':dow==='Sa'?'var(--gold)':'var(--gray-light)'}">${dow}</span></th>`;
   }).join('');
+
+  const _DAY_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const rows=emps.map((emp,i)=>`<tr>
     <td>${i+1}</td>
     <td style="white-space:nowrap"><strong>${escHtml(emp.name.split(' ')[0])}</strong></td>
@@ -6026,20 +6036,16 @@ async function buildMonthlyRosterHTML(emps, year, month) {
       const dateStr=`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const key=`mr-${escHtml(emp.id)}-${dateStr}`;
       const dt=new Date(year,month-1,d);
-      const dow=dt.getDay();
-      // Issue 8A: weekly off stored as full day name; getDay() 0=Sunday…6=Saturday (same convention, no off-by-one)
-      const _DAY_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-      const _dayFull=_DAY_FULL[dow];
-      // FIX-V19-02: case-insensitive comparison to handle legacy lowercase weeklyOff values
+      const _dayFull=_DAY_FULL[dt.getDay()];
       const _isEmpWO=(_dayFull.toLowerCase()===(emp.weeklyOff1||'Sunday').toLowerCase())||(emp.weeklyOff2&&_dayFull.toLowerCase()===emp.weeklyOff2.toLowerCase());
-      const defaultVal=_isEmpWO?'WO':'';
-      return `<td style="padding:1px"><select id="${key}" class="form-input" style="width:34px;padding:2px 1px;font-size:9px;background:${getRosterCellColor(defaultVal)}" onchange="this.style.background=getRosterCellColor(this.value)">
-        ${codes.map(c=>`<option value="${c}" style="background:var(--dark2)" ${defaultVal===(c||'')?'selected':''}>${c||'—'}</option>`).join('')}
-      </select></td>`;
+      const saved=(savedData[emp.id]||{})[dateStr]||'';
+      const val=saved||(_isEmpWO?'WO':'');
+      return `<td style="padding:1px"><input id="${key}" list="mr-codes-list" class="form-input" value="${escHtml(val)}" style="width:34px;padding:2px 1px;font-size:9px;background:${getRosterCellColor(val)};color:var(--white);text-transform:uppercase" oninput="validateRosterCell(this)" onchange="validateRosterCell(this)"></td>`;
     }).join('')}
     <td><input class="form-input" id="mrn-${escHtml(emp.id)}" style="width:80px;font-size:9px" placeholder="notes…"></td>
   </tr>`).join('');
-  return `<div style="overflow-x:auto"><table class="roster-table" style="font-size:10px">
+
+  return `${datalist}<div style="overflow-x:auto"><table class="roster-table" style="font-size:10px">
     <thead><tr><th>#</th><th>Employee</th>${dayHeaders}<th>Notes</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>
@@ -6258,6 +6264,13 @@ async function loadRosterForWeek(weekStart) {
 }
 
 function getRosterCellColor(code){const m={P:'rgba(67,160,71,0.3)',IL:'rgba(30,136,229,0.3)',UL:'rgba(229,57,53,0.3)',WO:'rgba(136,136,136,0.2)',H:'rgba(201,168,76,0.3)',EW:'rgba(251,140,0,0.3)'};return m[code]||'transparent';}
+
+// FIX-V23-04: validate free-text input in monthly roster cells (input+datalist replaces select)
+function validateRosterCell(el){
+  const v=el.value.trim().toUpperCase();
+  el.value=['P','IL','IHL','WO','H','HO','EW','SL','PL','UL',''].includes(v)?v:'';
+  el.style.background=getRosterCellColor(el.value);
+}
 
 function getWeekStart(d) {
   // FIX-V19-02: was toISOString() which converts IST midnight → UTC previous day (-1 day bug)
