@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v29 | May 2026 | FIX-29: Root-cause holiday column shift repaired; getHolidayDates() helper; payroll/attendance/roster holiday date normalization -->
+<!-- ArtzFolio HRMS v30 | May 2026 | FIX-v30: Loyalty Bonus Vesting System — Settings section, Employee Profile panel, Kiosk card, Salary Slip integration, Bonus Tracker admin tab -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v28</title>
+<title>ArtzFolio HRMS v30</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -788,6 +788,12 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
           </div>
         </div>
 
+        <!-- v30: Loyalty Bonus Card -->
+        <div class="mini-card" id="ec-lb-card" style="display:none">
+          <h4>💎 <span class="en">My Loyalty Bonus</span><span class="hi">मेरा लॉयल्टी बोनस</span></h4>
+          <div id="ec-lb-content" style="font-size:13px"></div>
+        </div>
+
         <!-- Leave & Holidays Info Card -->
         <div class="mini-card" id="ec-leave-info-card">
           <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-leave-body')">
@@ -1055,6 +1061,7 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
     <div class="nav-item" data-tab="points" onclick="switchTab('points')"><span class="nav-icon">⭐</span>Points</div>
     <div class="nav-section">Payroll & Reports</div>
     <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')"><span class="nav-icon">💰</span>Payroll</div>
+    <div class="nav-item" data-tab="bonustracker" onclick="switchTab('bonustracker')"><span class="nav-icon">💎</span>Bonus Tracker</div>
     <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')"><span class="nav-icon">🤝</span>FnF / Exit</div>
     <div class="nav-item" data-tab="reports" onclick="switchTab('reports')"><span class="nav-icon">📈</span>Reports</div>
     <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')"><span class="nav-icon">⏱</span>Tracked Time</div>
@@ -2219,6 +2226,8 @@ async function showEmployeeCard(res, pos) {
   showMilestoneCard(res.milestoneInfo);
   // Points
   showPointsCard(res.pointsInfo, emp);
+  // v30: Loyalty Bonus card — load async, non-blocking
+  showLoyaltyBonusCard(emp.id, emp.status);
   // Leave & Holiday info panel
   buildLeaveInfoCard(res, emp);
   // My Info & Rules panel
@@ -3869,6 +3878,7 @@ async function switchTab(tab) {
       case 'auditlog':    await renderAuditLog(); break;
       case 'settings':    await renderSettings(); break;
       case 'pettycash':   await renderPettyCash(); break;
+      case 'bonustracker': await renderBonusTracker(); break;
     }
   } catch(e) {
     document.getElementById('admin-tab-content').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>Error loading tab: ${escHtml(e.message)}</p></div>`;
@@ -4688,10 +4698,43 @@ async function showEmpDetail(empId) {
   <div style="margin-top:14px;padding:12px;background:var(--dark3);border-radius:8px">
     <strong style="color:var(--gold);font-size:11px">SALARY BAND FOR ${escHtml(e.level)}:</strong><br>
     <span style="font-size:11px;color:var(--gray-light)">Male: ${fmtMoney(myBand.maleMin||0)}–${fmtMoney(myBand.maleMax||0)} | Female: ${fmtMoney(myBand.femaleMin||0)}–${fmtMoney(myBand.femaleMax||0)}</span>
+  </div>
+  <!-- v30: Loyalty Bonus Account Panel -->
+  <div id="emp-lb-panel" style="margin-top:14px;padding:12px;background:var(--dark3);border-radius:8px;border-left:3px solid var(--gold)">
+    <strong style="color:var(--gold);font-size:11px">💎 LOYALTY BONUS ACCOUNT:</strong>
+    <div id="emp-lb-loading" style="font-size:11px;color:var(--gray-light);margin-top:4px">Loading bonus data…</div>
+    <div id="emp-lb-content" style="display:none"></div>
   </div>`;
   showModal(`👤 ${e.name} — Employee Profile`, html,
     [{label:'📎 Documents', cls:'btn-dark', cb:()=>{closeModal();showDocumentVault(e.id,e.name);}},
      {label:'Close', cls:'btn-dark', cb:closeModal}]);
+  // Load loyalty bonus async after modal renders
+  API.call('getEmployeeLoyaltyBonus', {employee_id: e.id}).then(lbRes => {
+    const loadEl = document.getElementById('emp-lb-loading');
+    const contEl = document.getElementById('emp-lb-content');
+    if (!loadEl || !contEl) return;
+    loadEl.style.display = 'none';
+    contEl.style.display = 'block';
+    if (!lbRes.ok) { contEl.innerHTML = `<span style="color:var(--gray-light);font-size:11px">—</span>`; return; }
+    const d = lbRes.data || {};
+    const hasPending = (d.has_pending_withdrawal || false);
+    contEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:12px">
+        <div><span style="color:var(--gray-light)">Current Balance:</span><br><strong style="font-size:15px">₹${Math.round(d.current_balance||0).toLocaleString('en-IN')}</strong></div>
+        <div><span style="color:var(--gray-light)">Eligible to Withdraw:</span><br><strong style="color:var(--green);font-size:15px">₹${Math.round(d.eligible_to_withdraw||0).toLocaleString('en-IN')}</strong></div>
+        <div><span style="color:var(--gray-light)">Total Accrued:</span><br>₹${Math.round(d.total_accrued||0).toLocaleString('en-IN')}</div>
+        <div><span style="color:var(--gray-light)">Total Withdrawn:</span><br>₹${Math.round(d.total_withdrawn||0).toLocaleString('en-IN')}</div>
+        ${(d.total_forfeited||0)>0?`<div style="grid-column:span 2"><span style="color:var(--gray-light)">Total Forfeited:</span><br><strong style="color:var(--red)">₹${Math.round(d.total_forfeited).toLocaleString('en-IN')}</strong></div>`:''}
+      </div>
+      ${d.next_milestone_months?`<div style="margin-top:8px;font-size:11px;color:var(--gray-light)">Next milestone: after ${d.next_milestone_months} months, ${d.next_milestone_pct}% becomes withdrawable</div>`:'<div style="margin-top:8px;font-size:11px;color:var(--green)">✓ Maximum vesting reached</div>'}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-dark btn-sm" onclick="showEmpLBHistory('${escHtml(e.id)}','${escHtml(e.name)}')">📋 View History</button>
+        ${State.adminRole==='owner'&&hasPending?`<button class="btn btn-gold btn-sm" onclick="showPendingLBWithdrawals('${escHtml(e.id)}','${escHtml(e.name)}')">✅ Approve Withdrawal</button>`:''}
+      </div>`;
+  }).catch(()=>{
+    const loadEl = document.getElementById('emp-lb-loading');
+    if (loadEl) loadEl.textContent = 'Could not load bonus data.';
+  });
 }
 
 // ─── Document Vault ──────────────────────────────────────────
@@ -6578,8 +6621,10 @@ function printSlip(data) {
       <tr><td>Night Allowance${data.nightShiftMultiplier&&data.nightShiftMultiplier!=1?` (${data.nightShiftMultiplier}×)`:''}</td><td>₹${Math.round(data.nightAllowance||0).toLocaleString('en-IN')}</td><td>Advances</td><td>₹${Math.round(data.advances||0).toLocaleString('en-IN')}</td></tr>
       <tr><td>Travel Allowance${data.travelRatePerDay?` (₹${Math.round(data.travelRatePerDay)}/day × ${(data.presentDays||0)}d)`:''}</td><td>₹${Math.round(data.travelEarnings||0).toLocaleString('en-IN')}</td><td>Loans / Other</td><td>₹${Math.round((data.loans||0)+(data.penalties||0)).toLocaleString('en-IN')}</td></tr>
       <tr><td>Bonus / Incentive</td><td>₹${Math.round(data.bonuses||0).toLocaleString('en-IN')}</td><td></td><td></td></tr>
+      ${(data.loyaltyBonusWithdrawal||0)>0?`<tr><td style="color:#1565C0;font-weight:600">💎 Loyalty Bonus Withdrawal</td><td style="color:#1565C0;font-weight:600">₹${Math.round(data.loyaltyBonusWithdrawal).toLocaleString('en-IN')}</td><td></td><td></td></tr>`:''}
     </tbody>
   </table>
+  ${(data.loyaltyBonusBalance!==undefined)?`<div style="margin-top:6px;padding:6px 10px;background:#e8f4fd;border-left:3px solid #1565C0;border-radius:4px;font-size:11px;color:#1565C0">💎 Loyalty Bonus Balance as of ${todayStr()}: ₹${Math.round(data.loyaltyBonusBalance||0).toLocaleString('en-IN')} | Eligible to Withdraw: ₹${Math.round(data.loyaltyBonusEligible||0).toLocaleString('en-IN')}</div>`:''}
   ${(data.pfEmployee||data.esiEmployee||data.professionalTax||data.tds) ? `
   <div style="margin-top:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;padding:8px 12px;font-size:11px">
     <strong style="font-size:12px">Statutory Deductions (included in net):</strong>
@@ -6902,6 +6947,7 @@ function downloadSalarySlipPDF(data) {
       ['Travel Allowance',data.travelEarnings||0],
       ['Performance Bonus',data.performanceBonus||0],
       ['Other Bonus/Incentive',data.bonuses||0],
+      ...((data.loyaltyBonusWithdrawal||0)>0?[['Loyalty Bonus Withdrawal',data.loyaltyBonusWithdrawal]]:[]),
     ];
     const deductions=[
       ['UL Penalty',data.ulDeduction||0],
@@ -6956,7 +7002,15 @@ function downloadSalarySlipPDF(data) {
     doc.setFillColor(255,248,225); doc.rect(margin,y,W-margin*2,10,'F');
     doc.setTextColor(100,80,0); doc.setFontSize(7.5); doc.setFont('helvetica','italic');
     doc.text('Please raise any salary queries to HR within 7 days of receipt. This slip is system-generated and is valid without signature.',margin+3,y+7);
-    y+=16;
+    y+=12;
+    // v30: Loyalty Bonus footnote (always shown)
+    if (data.loyaltyBonusBalance !== undefined) {
+      doc.setFillColor(240,248,255); doc.rect(margin,y,W-margin*2,9,'F');
+      doc.setTextColor(26,26,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+      const lbNote = `Loyalty Bonus Balance as of ${todayStr()}: Rs.${Math.round(data.loyaltyBonusBalance||0).toLocaleString('en-IN')} | Eligible to Withdraw: Rs.${Math.round(data.loyaltyBonusEligible||0).toLocaleString('en-IN')}`;
+      doc.text(lbNote, margin+3, y+6);
+      y+=12;
+    } else { y+=4; }
     // Signatures
     doc.setDrawColor(150,150,150); doc.setLineWidth(0.3);
     doc.setTextColor(80,80,80); doc.setFontSize(8); doc.setFont('helvetica','normal');
@@ -8136,11 +8190,11 @@ async function exportAuditCSV() {
 }
 
 async function renderSettings() {
-  let settingsRes={settings:[]}, msRes={milestones:[]}, bandsRes={bands:[]}, orgsRes={orgs:[]}, holRes={holidays:[]};
+  let settingsRes={settings:[]}, msRes={milestones:[]}, bandsRes={bands:[]}, orgsRes={orgs:[]}, holRes={holidays:[]}, lbRes={settings:[]};
   let gasConnected = true;
   try {
-    [settingsRes,msRes,bandsRes,orgsRes,holRes]=await Promise.all([
-      API.call('getSettings'),API.call('getMilestones'),API.call('getSalaryBands'),API.call('getOrgs'),API.call('getHolidays')
+    [settingsRes,msRes,bandsRes,orgsRes,holRes,lbRes]=await Promise.all([
+      API.call('getSettings'),API.call('getMilestones'),API.call('getSalaryBands'),API.call('getOrgs'),API.call('getHolidays'),API.call('getLoyaltyBonusSettings')
     ]);
   } catch(e) {
     gasConnected = false;
@@ -8172,6 +8226,7 @@ async function renderSettings() {
   const cfg={};
   (settingsRes.settings||[]).forEach(s=>cfg[s.key]=s.value);
   const ms=msRes.milestones||[];
+  const lbSettings=lbRes.settings||[];
   const bands=bandsRes.bands||[];
   const orgs=orgsRes.orgs||[];
   const hols=(holRes.holidays||[]).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
@@ -8951,6 +9006,65 @@ async function renderSettings() {
     <div id="sc-result" style="margin-top:12px;font-size:12px;min-height:16px"></div>
   </div>` : ''}
 
+  <!-- v30: Loyalty Bonus Vesting Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">💎 Loyalty Bonus Vesting</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      Configure the monthly loyalty bonus and vesting schedule for each employee level. Changes take effect from the next monthly accrual cycle.
+    </div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px" id="lb-settings-table">
+      <thead>
+        <tr style="background:var(--dark3)">
+          <th style="padding:8px;text-align:left;color:var(--gold)">Level</th>
+          <th style="padding:8px;text-align:left;color:var(--gold)">Monthly Bonus (₹)</th>
+          <th style="padding:8px;text-align:left;color:var(--gold)">Vesting Schedule</th>
+          <th style="padding:8px;text-align:center;color:var(--gold)">Active</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(level => {
+          const row = lbSettings.find(s=>s.level===level)||{level, monthly_bonus_amount:0, vesting_schedule_json:'[]', is_active:true};
+          let sched = [];
+          try { sched = JSON.parse(row.vesting_schedule_json||'[]'); } catch(e) {}
+          if (!sched.length) sched = [{months:6,withdrawable_pct:20},{months:12,withdrawable_pct:40},{months:24,withdrawable_pct:100}];
+          const schedHtml = sched.map((m,i)=>`
+            <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px" id="lb-ms-${level}-${i}">
+              <span style="color:var(--gray-light);white-space:nowrap">After</span>
+              <input type="number" min="1" max="240" style="width:48px" class="form-input" id="lb-months-${level}-${i}" value="${m.months||6}">
+              <span style="color:var(--gray-light);white-space:nowrap">mo,</span>
+              <input type="number" min="1" max="100" style="width:48px" class="form-input" id="lb-pct-${level}-${i}" value="${m.withdrawable_pct||m.pct||20}">
+              <span style="color:var(--gray-light)">%</span>
+              <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveMS('${level}',${i})">✕</button>
+            </div>`).join('');
+          const isActive = String(row.is_active).toLowerCase() !== 'false';
+          return `<tr style="border-bottom:1px solid var(--dark3)" id="lb-row-${level}">
+            <td style="padding:10px 8px;font-weight:700;color:var(--gold)">${level}</td>
+            <td style="padding:10px 8px">
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="color:var(--gray-light)">₹</span>
+                <input type="number" min="0" step="50" class="form-input" id="lb-amt-${level}" value="${parseFloat(row.monthly_bonus_amount)||0}" style="width:80px">
+              </div>
+            </td>
+            <td style="padding:10px 8px">
+              <div id="lb-ms-container-${level}">${schedHtml}</div>
+              <button class="btn btn-dark btn-sm" style="margin-top:4px;font-size:10px" onclick="lbAddMS('${level}')">+ Add Milestone</button>
+            </td>
+            <td style="padding:10px 8px;text-align:center">
+              <input type="checkbox" id="lb-active-${level}" ${isActive?'checked':''} style="accent-color:var(--gold);width:16px;height:16px">
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-gold" onclick="saveLoyaltyBonusSettings()">💾 Save Loyalty Bonus Settings</button>
+      <button class="btn btn-dark btn-sm" onclick="switchTab('bonustracker')" style="margin-left:4px">📊 View Bonus Tracker →</button>
+    </div>
+    <div id="lb-save-status" style="margin-top:8px;font-size:12px;min-height:16px"></div>
+  </div>
+
   ${isOwner ? `
   <!-- Danger Zone Token Config — FIX-25: cleaner description + ⓘ tooltip -->
   <div class="settings-section">
@@ -9053,6 +9167,276 @@ async function renderSettings() {
     </div>
   </div>` : ''}`;
   document.getElementById('admin-tab-content').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v30: LOYALTY BONUS VESTING — Frontend Functions
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Kiosk: show/hide My Loyalty Bonus card ─────────────────────
+async function showLoyaltyBonusCard(empId, empStatus) {
+  const card = document.getElementById('ec-lb-card');
+  const content = document.getElementById('ec-lb-content');
+  if (!card || !content) return;
+  card.style.display = 'block';
+  content.innerHTML = '<span style="color:var(--gray-light)">Loading…</span>';
+  try {
+    const res = await API.call('getEmployeeLoyaltyBonus', {employee_id: empId});
+    if (!res.ok || !res.data) { card.style.display = 'none'; return; }
+    const d = res.data;
+    const isNotice = (empStatus||'').toLowerCase() === 'notice period';
+    if (isNotice && (d.total_forfeited||0) > 0) {
+      content.innerHTML = `<div style="background:rgba(229,57,53,0.15);border:1px solid var(--red);border-radius:6px;padding:8px;font-size:12px;color:var(--red)">
+        ⚠ Your loyalty bonus of ₹${Math.round(d.total_forfeited).toLocaleString('en-IN')} has been forfeited due to active notice period.
+      </div>`;
+      return;
+    }
+    const bal = Math.round(d.current_balance||0);
+    const elig = Math.round(d.eligible_to_withdraw||0);
+    const nextMs = d.next_milestone_months;
+    const hasPending = false; // employees can't see pending status in kiosk
+    content.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div><div style="font-size:11px;color:var(--gray-light)">Balance</div><div style="font-size:18px;font-weight:700">₹${bal.toLocaleString('en-IN')}</div></div>
+        <div style="text-align:right"><div style="font-size:11px;color:var(--gray-light)">Eligible Now</div><div style="font-size:18px;font-weight:700;color:var(--green)">₹${elig.toLocaleString('en-IN')}</div></div>
+      </div>
+      ${nextMs?`<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">In ${nextMs} months, ${d.next_milestone_pct}% becomes withdrawable</div>`:'<div style="font-size:11px;color:var(--green);margin-bottom:8px">✓ Maximum vesting reached</div>'}
+      ${elig > 0 ? `<button class="btn btn-gold btn-sm" style="width:100%" onclick="showKioskLBWithdrawRequest('${escHtml(empId)}',${elig})">
+        <span class="en">💎 Request Withdrawal</span><span class="hi">निकासी अनुरोध</span>
+      </button>` : ''}
+    `;
+  } catch(e) {
+    card.style.display = 'none';
+  }
+}
+
+async function showKioskLBWithdrawRequest(empId, eligibleAmount) {
+  resetKioskTimer();
+  let inputHtml = `<div style="margin-bottom:14px;font-size:13px;color:var(--gray-light)">You are eligible to withdraw up to <strong style="color:var(--gold)">₹${Math.round(eligibleAmount).toLocaleString('en-IN')}</strong>.</div>
+    <div class="form-group"><label class="form-label">Amount to withdraw (₹)</label>
+    <input id="lb-withdraw-amt" class="form-input" type="number" min="1" max="${Math.round(eligibleAmount)}" placeholder="Enter amount" step="100"></div>`;
+  showModal('💎 Request Loyalty Bonus Withdrawal', inputHtml, [
+    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+    {label:'Submit Request', cls:'btn-gold', cb: async () => {
+      const amt = parseFloat(document.getElementById('lb-withdraw-amt')?.value||0);
+      if (!amt || amt <= 0) { toast('Enter a valid amount','error'); return; }
+      if (amt > eligibleAmount) { toast('Amount exceeds eligible balance','error'); return; }
+      closeModal();
+      const res = await API.call('requestLoyaltyBonusWithdrawal', {employee_id: empId, requested_amount: amt});
+      if (res.ok) {
+        toast(`✓ Withdrawal request of ₹${Math.round(amt).toLocaleString('en-IN')} submitted. It will be processed with your next salary.`,'success',5000);
+        showLoyaltyBonusCard(empId, '');
+      } else {
+        toast(res.error||'Request failed','error');
+      }
+    }}
+  ]);
+}
+
+// ── Admin: Employee History Modal ─────────────────────────────
+async function showEmpLBHistory(empId, empName) {
+  const res = await API.call('getEmployeeLoyaltyBonusHistory', {employee_id: empId});
+  if (!res.ok) { toast('Could not load history','error'); return; }
+  const history = res.history || [];
+  const typeColor = {ACCRUAL:'var(--green)', WITHDRAWAL:'var(--blue)', FORFEITURE:'var(--red)', WITHDRAWAL_PENDING:'var(--orange)'};
+  const rows = history.map(h=>`<tr>
+    <td style="padding:6px 4px;font-size:11px">${escHtml(h.transaction_date||'')}</td>
+    <td><span style="color:${typeColor[h.transaction_type]||'var(--white)'};font-size:11px;font-weight:600">${escHtml(h.transaction_type||'')}</span></td>
+    <td style="text-align:right;font-size:12px;font-weight:600">₹${Math.round(parseFloat(h.amount)||0).toLocaleString('en-IN')}</td>
+    <td style="font-size:11px;color:var(--gray-light)">${escHtml(h.notes||'')}</td>
+  </tr>`).join('');
+  const html = history.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:var(--dark3)"><th style="padding:6px 4px;text-align:left;font-size:11px">Date</th><th style="padding:6px 4px;text-align:left;font-size:11px">Type</th><th style="padding:6px 4px;text-align:right;font-size:11px">Amount</th><th style="padding:6px 4px;text-align:left;font-size:11px">Notes</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`
+    : '<div style="text-align:center;padding:20px;color:var(--gray-light)">No transactions yet.</div>';
+  showModal(`💎 Loyalty Bonus History — ${escHtml(empName)}`, html, [{label:'Close', cls:'btn-dark', cb:closeModal}]);
+}
+
+async function showPendingLBWithdrawals(empId, empName) {
+  const res = await API.call('getPendingLoyaltyWithdrawals');
+  if (!res.ok) { toast('Could not load pending withdrawals','error'); return; }
+  const pending = (res.pending||[]).filter(p=>!empId||p.employee_id===empId);
+  if (!pending.length) { toast('No pending withdrawal requests','info'); return; }
+  const rows = pending.map(p=>`<tr>
+    <td style="padding:8px 4px;font-size:12px">${escHtml(p.employee_id)}</td>
+    <td style="padding:8px 4px;font-size:12px">${escHtml(p.transaction_date||'')}</td>
+    <td style="padding:8px 4px;text-align:right;font-weight:700">₹${Math.round(parseFloat(p.amount)||0).toLocaleString('en-IN')}</td>
+    <td style="padding:8px 4px">
+      <button class="btn btn-gold btn-sm" onclick="approveLBWithdrawal('${escHtml(p.ledger_id)}')">✅ Approve</button>
+    </td>
+  </tr>`).join('');
+  const html = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:var(--dark3)"><th style="padding:6px 4px;text-align:left;font-size:11px">Employee</th><th style="padding:6px 4px;text-align:left;font-size:11px">Date</th><th style="padding:6px 4px;text-align:right;font-size:11px">Amount</th><th style="padding:6px 4px;font-size:11px">Action</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+  showModal(`💎 Pending Withdrawal Requests${empName?' — '+empName:''}`, html, [{label:'Close', cls:'btn-dark', cb:closeModal}]);
+}
+
+async function approveLBWithdrawal(ledgerId) {
+  const approvedBy = State.adminUser || State.adminRole || 'admin';
+  const res = await API.call('approveLoyaltyBonusWithdrawal', {ledger_id: ledgerId, approved_by: approvedBy});
+  if (res.ok) {
+    toast(`✓ Withdrawal of ₹${Math.round(res.amount||0).toLocaleString('en-IN')} approved for ${escHtml(res.employee_id||'')}`, 'success');
+    closeModal();
+  } else {
+    toast(res.error||'Approval failed','error');
+  }
+}
+
+// ── Settings: Loyalty Bonus Vesting Schedule inline builder ────
+function lbAddMS(level) {
+  const container = document.getElementById(`lb-ms-container-${level}`);
+  if (!container) return;
+  const existing = container.querySelectorAll('[id^="lb-ms-'+level+'-"]');
+  const idx = existing.length;
+  const div = document.createElement('div');
+  div.id = `lb-ms-${level}-${idx}`;
+  div.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px';
+  div.innerHTML = `<span style="color:var(--gray-light);white-space:nowrap">After</span>
+    <input type="number" min="1" max="240" style="width:48px" class="form-input" id="lb-months-${level}-${idx}" value="24">
+    <span style="color:var(--gray-light);white-space:nowrap">mo,</span>
+    <input type="number" min="1" max="100" style="width:48px" class="form-input" id="lb-pct-${level}-${idx}" value="100">
+    <span style="color:var(--gray-light)">%</span>
+    <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveMS('${level}',${idx})">✕</button>`;
+  container.appendChild(div);
+}
+
+function lbRemoveMS(level, idx) {
+  const el = document.getElementById(`lb-ms-${level}-${idx}`);
+  if (el) el.remove();
+}
+
+async function saveLoyaltyBonusSettings() {
+  const levels = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
+  const settings = [];
+  for (const level of levels) {
+    const amt = parseFloat(document.getElementById(`lb-amt-${level}`)?.value||0);
+    const isActive = document.getElementById(`lb-active-${level}`)?.checked !== false;
+    const container = document.getElementById(`lb-ms-container-${level}`);
+    const milestoneRows = container ? container.querySelectorAll('[id^="lb-ms-'+level+'-"]') : [];
+    const schedule = [];
+    milestoneRows.forEach((row, i) => {
+      const months = parseInt(document.getElementById(`lb-months-${level}-${i}`)?.value||0);
+      const pct = parseFloat(document.getElementById(`lb-pct-${level}-${i}`)?.value||0);
+      if (months > 0 && pct > 0) schedule.push({months, withdrawable_pct: pct});
+    });
+    if (amt < 0) { toast(`Level ${level}: Amount cannot be negative`, 'error'); return; }
+    if (!schedule.length) { toast(`Level ${level}: At least one vesting milestone required`, 'error'); return; }
+    const months = schedule.map(m=>m.months);
+    if (new Set(months).size !== months.length) { toast(`Level ${level}: Duplicate months in vesting schedule`, 'error'); return; }
+    settings.push({level, monthly_bonus_amount: amt, vesting_schedule_json: JSON.stringify(schedule), is_active: isActive});
+  }
+  const statusEl = document.getElementById('lb-save-status');
+  if (statusEl) statusEl.textContent = 'Saving…';
+  const res = await API.call('saveLoyaltyBonusSettings', {settings, userId: State.adminUser||State.adminRole||'admin'});
+  if (res.ok) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✓ Loyalty Bonus settings saved successfully.</span>';
+    toast('✓ Loyalty Bonus settings saved', 'success');
+  } else {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red)">${escHtml(res.error||'Save failed')}</span>`;
+    toast(res.error||'Save failed','error');
+  }
+}
+
+// ── Admin: Bonus Tracker Tab ───────────────────────────────────
+async function renderBonusTracker() {
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const [balRes, pendRes] = await Promise.all([
+    API.call('getLoyaltyBonusAllBalances'),
+    API.call('getPendingLoyaltyWithdrawals')
+  ]);
+  const balances = balRes.balances || [];
+  const pending  = pendRes.pending  || [];
+
+  const totalLiability  = balances.reduce((s,b)=>s+parseFloat(b.current_balance||0),0);
+  const totalEligible   = balances.reduce((s,b)=>s+parseFloat(b.eligible_to_withdraw||0),0);
+  const totalForfeited  = balances.reduce((s,b)=>s+parseFloat(b.total_forfeited||0),0);
+  const pendingCount    = pending.length;
+  const pendingTotal    = pending.reduce((s,p)=>s+parseFloat(p.amount||0),0);
+
+  // Build employee name map for display
+  const empMap = {};
+  (State.employees||[]).forEach(e => { empMap[e.id] = e.name; });
+
+  const pendingRows = pending.map(p => {
+    const name = empMap[p.employee_id] || p.employee_id;
+    return `<tr>
+      <td style="padding:8px 6px">${escHtml(p.employee_id)}</td>
+      <td>${escHtml(name)}</td>
+      <td>${escHtml(p.transaction_date||'')}</td>
+      <td style="text-align:right;font-weight:700;color:var(--gold)">₹${Math.round(parseFloat(p.amount||0)).toLocaleString('en-IN')}</td>
+      <td><button class="btn btn-gold btn-sm" onclick="approveLBWithdrawal('${escHtml(p.ledger_id)}').then(()=>renderBonusTracker())">✅ Approve</button></td>
+    </tr>`;
+  }).join('');
+
+  const balRows = balances.map(b => {
+    const name = empMap[b.employee_id] || b.employee_id;
+    const hasPend = b.has_pending_withdrawal;
+    return `<tr>
+      <td style="padding:8px 6px;font-size:12px">${escHtml(b.employee_id)}</td>
+      <td style="font-size:12px">${escHtml(name)}</td>
+      <td style="text-align:right">₹${Math.round(parseFloat(b.current_balance||0)).toLocaleString('en-IN')}</td>
+      <td style="text-align:right;color:var(--green)">₹${Math.round(parseFloat(b.eligible_to_withdraw||0)).toLocaleString('en-IN')}</td>
+      <td style="text-align:right;color:var(--gray-light)">₹${Math.round(parseFloat(b.total_accrued||0)).toLocaleString('en-IN')}</td>
+      <td style="text-align:right">${parseFloat(b.total_forfeited||0)>0?`<span style="color:var(--red)">₹${Math.round(parseFloat(b.total_forfeited)).toLocaleString('en-IN')}</span>`:'—'}</td>
+      <td>${hasPend?'<span style="color:var(--orange);font-size:11px">⏳ Pending</span>':'—'}</td>
+      <td><button class="btn btn-dark btn-sm" onclick="showEmpLBHistory('${escHtml(b.employee_id)}','${escHtml(name)}')">📋</button></td>
+    </tr>`;
+  }).join('');
+
+  const html = `
+  <div class="section-hdr">
+    <div class="section-title">💎 Bonus Tracker</div>
+    <div class="section-actions">
+      <button class="btn btn-gold btn-sm" onclick="runLBAccrualConfirm()">▶ Run Monthly Accrual</button>
+      <button class="btn btn-dark btn-sm" onclick="exportCSV(${JSON.stringify(balances)},'loyalty_bonus_balances')">📤 Export CSV</button>
+      <button class="btn btn-dark btn-sm" onclick="renderBonusTracker()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+    <div class="stat-card blue"><div class="stat-card-val">₹${Math.round(totalLiability).toLocaleString('en-IN')}</div><div class="stat-card-lbl">💎 Total Bonus Liability</div></div>
+    <div class="stat-card" style="background:rgba(67,160,71,0.15);border:1px solid var(--green)"><div class="stat-card-val" style="color:var(--green)">₹${Math.round(totalEligible).toLocaleString('en-IN')}</div><div class="stat-card-lbl">✅ Total Eligible to Withdraw</div></div>
+    <div class="stat-card" style="background:rgba(251,140,0,0.15);border:1px solid var(--orange)"><div class="stat-card-val" style="color:var(--orange)">${pendingCount}</div><div class="stat-card-lbl">⏳ Pending Withdrawals (₹${Math.round(pendingTotal).toLocaleString('en-IN')})</div></div>
+    ${totalForfeited>0?`<div class="stat-card" style="background:rgba(229,57,53,0.15);border:1px solid var(--red)"><div class="stat-card-val" style="color:var(--red)">₹${Math.round(totalForfeited).toLocaleString('en-IN')}</div><div class="stat-card-lbl">❌ Total Forfeited</div></div>`:''}
+  </div>
+
+  ${pending.length ? `
+  <div class="settings-section" style="margin-bottom:20px;border:1px solid var(--orange)">
+    <div class="settings-section-title" style="color:var(--orange)">⏳ Pending Withdrawal Approvals</div>
+    <div class="table-wrap"><table class="az-table">
+      <thead><tr><th>Emp ID</th><th>Name</th><th>Request Date</th><th>Amount</th><th>Action</th></tr></thead>
+      <tbody>${pendingRows}</tbody>
+    </table></div>
+  </div>` : ''}
+
+  <div class="settings-section">
+    <div class="settings-section-title">📊 All Employee Balances</div>
+    ${balances.length ? `<div class="table-wrap"><table class="az-table">
+      <thead><tr><th>Emp ID</th><th>Name</th><th style="text-align:right">Balance</th><th style="text-align:right">Eligible</th><th style="text-align:right">Total Accrued</th><th style="text-align:right">Forfeited</th><th>Pending</th><th>History</th></tr></thead>
+      <tbody>${balRows}</tbody>
+    </table></div>`
+    : '<div style="text-align:center;padding:20px;color:var(--gray-light)">No bonus balances yet. Run a monthly accrual to begin.</div>'}
+  </div>`;
+
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+
+async function runLBAccrualConfirm() {
+  showModal('▶ Run Monthly Loyalty Bonus Accrual',
+    '<p style="font-size:13px;color:var(--gray-light)">This will credit the monthly loyalty bonus to all active employees. Employees on Notice Period, Terminated, Inactive, Archived, or Deleted status will be skipped.</p><p style="font-size:12px;color:var(--orange)">Proceed?</p>',
+    [{label:'Cancel', cls:'btn-dark', cb: closeModal},
+     {label:'Run Accrual', cls:'btn-gold', cb: async () => {
+       closeModal();
+       toast('Running accrual…','info');
+       const res = await API.call('runMonthlyLoyaltyBonusAccrual', {userId: State.adminUser||State.adminRole||'admin'});
+       if (res.ok) {
+         toast(`✓ Accrual complete: ${res.processed} processed, ${res.skipped} skipped`, 'success', 5000);
+         setTimeout(() => renderBonusTracker(), 1000);
+       } else {
+         toast(res.error||'Accrual failed','error');
+       }
+     }}]
+  );
 }
 
 // ─── Danger Zone functions ───────────────────────────────────────────────────
