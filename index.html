@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v23 | April 2026 | FIX: monthly roster hang (11220→1020 DOM elements via input+datalist); monthly view loads saved weekly data (getRosterMonth backend); PLEASE WAIT auto-interrupt silenced (getTodayAttendance now silent, WIO refresh 60s→300s) -->
+<!-- ArtzFolio HRMS v24 | May 2026 | FIX-17: ownerToken localStorage key mismatch fixed; FIX-18: Test Data Reset (employees/attendance/leaves/roster only, settings preserved) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v23</title>
+<title>ArtzFolio HRMS v24</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -8959,6 +8959,13 @@ async function renderSettings() {
         </div>
         <button class="btn btn-sm" style="background:#3a3000;color:var(--gold);border:1px solid var(--gold)" onclick="repairSettingsData()">🔧 Repair Settings</button>
       </div>
+      <div style="background:var(--dark3);border:1px solid #5a3000;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--orange)">🧪 Clear Test Data Only</div>
+          <div style="font-size:11px;color:var(--gray-light)">Deletes all employees, attendance, leaves, roster, pending attendance, and points — but keeps your settings, salary bands, milestones, org structure, holidays, salary records, and petty cash intact. Use this to wipe test/seed data before going live.</div>
+        </div>
+        <button class="btn btn-sm" style="background:#5a3000;color:#fff;border:1px solid var(--orange)" onclick="dangerClearTestData()">🧪 Clear Test Data</button>
+      </div>
       <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--red)">☢ Full HRMS Reset</div>
@@ -9141,6 +9148,46 @@ async function dangerFullReset() {
   }); // end requireOwnerPin
 }
 
+// FIX-18: Clear Test Data — employees/attendance/leaves/roster only, settings preserved
+async function dangerClearTestData() {
+  requireOwnerPin(() => {
+  showModal('🧪 Clear Test Data', `
+    <div style="background:rgba(180,80,0,0.15);border:1px solid var(--orange);border-radius:8px;padding:14px;margin-bottom:14px">
+      <strong style="color:var(--orange);font-size:14px">This will permanently delete:</strong>
+      <ul style="font-size:12px;color:var(--white);margin:8px 0 0 16px;line-height:2">
+        <li>All employees and their PIN/face data</li>
+        <li>All attendance clock-in/out records</li>
+        <li>All leave requests</li>
+        <li>All roster/schedule entries</li>
+        <li>All points tracker entries</li>
+        <li>All pending attendance requests</li>
+      </ul>
+    </div>
+    <div style="background:rgba(0,180,0,0.08);border:1px solid var(--green);border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px;color:var(--gray-light);line-height:1.8">
+      <strong style="color:var(--green)">✓ These will be KEPT:</strong><br>
+      Settings &amp; Config · Salary Bands · Loyalty Milestones · Org Structure · Holidays ·
+      Salary Records · Transactions · Petty Cash · Activities · Documents
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type <strong style="color:var(--orange)">CLEAR TEST DATA</strong> to confirm</label>
+      <input id="test-reset-conf" class="form-input" placeholder="Type CLEAR TEST DATA">
+    </div>
+  `, [
+    {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+    {label:'🧪 Clear Test Data', cls:'btn-sm', cb: async()=>{
+      if (document.getElementById('test-reset-conf').value !== 'CLEAR TEST DATA') { toast('Type CLEAR TEST DATA exactly','error'); return; }
+      closeModal();
+      toast('Clearing test data… do not close this tab','warning',8000);
+      const res = await API.call('testDataReset', {userId: State.adminUser || State.adminRole || 'owner', ownerToken: State._dzToken||''});
+      if (res.ok) {
+        toast('✓ Test data cleared. Settings preserved. Reloading…','success',3000);
+        setTimeout(()=>location.reload(), 3000);
+      } else toast(res.error||'Reset failed','error');
+    }, style:'background:#5a3000;color:#fff;border:1px solid var(--orange)'},
+  ]);
+  }); // end requireOwnerPin
+}
+
 function saveRolePermissions() {
   const checkboxes = document.querySelectorAll('[data-perm-key]');
   checkboxes.forEach(cb => { LS.s(cb.dataset.permKey, cb.checked); });
@@ -9222,8 +9269,8 @@ async function saveDZToken() {
   if (!token) { toast('Enter a token value first','error'); return; }
   const res = await API.call('updateSettings', { updates: { ownerToken: token } });
   if (res.ok) {
-    // Issue 12: also save to localStorage 'ownerToken' for Danger Zone actions
-    localStorage.setItem('ownerToken', token);
+    // FIX-17: use LS.s() so key is 'az3_ownerToken', matching LS.g() reads in runSystemClean
+    LS.s('ownerToken', token);
     const sRes = await API.call('getSettings');
     if (sRes.ok) applySettingsArr(sRes.settings||[]);
     toast('✓ Danger Zone token saved to both Config sheet and local storage.','success');
@@ -9233,7 +9280,7 @@ async function saveDZToken() {
 
 // Issue 12: test token without triggering any destructive action
 async function testDZToken() {
-  const token = (document.getElementById('cfg-ownerToken')?.value||localStorage.getItem('ownerToken')||'').trim();
+  const token = (document.getElementById('cfg-ownerToken')?.value||(LS.g('ownerToken')||'')).trim();
   if (!token) { toast('No token to test — enter or load a token first','warning'); return; }
   const res = await API.call('testOwnerToken', { ownerToken: token });
   if (res.valid) toast('Token valid ✓ — Danger Zone access will be granted','success');
