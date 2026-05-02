@@ -1354,13 +1354,22 @@ function fmtDate(ds) {
   } catch { return ds; }
 }
 function fmtHolDate(ds) {
-  // For holiday display: "Thu, 1 Jan 2026"
   if (!ds) return '—';
   try {
-    const d = typeof ds === 'string' ? new Date(ds.includes('T') || (ds.includes(' ') && !ds.match(/^\d{4}-\d{2}-\d{2} /)) ? ds : ds.length === 10 ? ds + 'T00:00:00' : ds) : new Date(ds);
-    if (isNaN(d)) return ds;
-    return d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+    const base = typeof ds === 'string' && ds.match(/^\d{4}-\d{2}-\d{2}/) ? ds.substring(0,10)+'T00:00:00' : ds;
+    const d = new Date(base);
+    if (isNaN(d)) return String(ds);
+    return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
   } catch { return ds; }
+}
+function fmtHolDay(ds) {
+  if (!ds) return '—';
+  try {
+    const base = typeof ds === 'string' && ds.match(/^\d{4}-\d{2}-\d{2}/) ? ds.substring(0,10)+'T00:00:00' : ds;
+    const d = new Date(base);
+    if (isNaN(d)) return '—';
+    return d.toLocaleDateString('en-IN',{weekday:'long'});
+  } catch { return '—'; }
 }
 function fmtTime(ts) {
   if (!ts) return '—';
@@ -8158,7 +8167,7 @@ async function renderSettings() {
   const ms=msRes.milestones||[];
   const bands=bandsRes.bands||[];
   const orgs=orgsRes.orgs||[];
-  const hols=holRes.holidays||[];
+  const hols=(holRes.holidays||[]).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   function cfgField(key,label,type='text',extra=''){
     if (type === 'password') {
       const toggleId = `cfg-toggle-${escHtml(key)}`;
@@ -8662,19 +8671,23 @@ async function renderSettings() {
         <tr style="border-bottom:1px solid var(--dark3)">
           <th style="padding:6px;text-align:left;width:30px"><input type="checkbox" id="hol-cb-all" onchange="document.querySelectorAll('.hol-cb').forEach(cb=>cb.checked=this.checked)" style="accent-color:var(--gold)"></th>
           <th style="padding:6px;text-align:left">Date</th>
-          <th style="padding:6px;text-align:left">Name</th>
+          <th style="padding:6px;text-align:left">Day</th>
+          <th style="padding:6px;text-align:left">Holiday Name</th>
           <th style="padding:6px;text-align:left">Type</th>
+          <th style="padding:6px;text-align:left">Applicable To</th>
           <th style="padding:6px;text-align:left">Action</th>
         </tr>
       </thead>
       <tbody id="holidays-table-body">
-    ${hols.map(h=>`<tr style="border-bottom:1px solid var(--dark3)">
+    ${hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.type]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
       <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
-      <td style="padding:6px">${fmtHolDate(h.date)}</td>
+      <td style="padding:6px;white-space:nowrap">${fmtHolDate(h.date)}</td>
+      <td style="padding:6px;white-space:nowrap">${fmtHolDay(h.date)}</td>
       <td style="padding:6px">${escHtml(h.name)}</td>
-      <td style="padding:6px">${escHtml(h.type||'Public')}</td>
+      <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.type||'Public')}</span></td>
+      <td style="padding:6px;font-size:11px;color:var(--gray-light)">${escHtml(h.applicableTo||'All')}</td>
       <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
-    </tr>`).join('')}
+    </tr>`}).join('')}
       </tbody>
     </table>
     </div>
@@ -10348,13 +10361,15 @@ async function refreshHolidayList() {
   if (!tbody) { await renderSettings(); return; }
   const res = await API.call('getHolidays', {});
   const hols = (res.holidays || []).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  tbody.innerHTML = hols.map(h=>`<tr style="border-bottom:1px solid var(--dark3)">
+  tbody.innerHTML = hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.type]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
     <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
-    <td style="padding:6px">${fmtHolDate(h.date)}</td>
+    <td style="padding:6px;white-space:nowrap">${fmtHolDate(h.date)}</td>
+    <td style="padding:6px;white-space:nowrap">${fmtHolDay(h.date)}</td>
     <td style="padding:6px">${escHtml(h.name)}</td>
-    <td style="padding:6px">${escHtml(h.type||'Public')}</td>
+    <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.type||'Public')}</span></td>
+    <td style="padding:6px;font-size:11px;color:var(--gray-light)">${escHtml(h.applicableTo||'All')}</td>
     <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
-  </tr>`).join('');
+  </tr>`}).join('');
 }
 
 // ═══════════════════════════════════════════
