@@ -1061,7 +1061,7 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
     <div class="nav-item" data-tab="points" onclick="switchTab('points')"><span class="nav-icon">⭐</span>Points</div>
     <div class="nav-section">Payroll & Reports</div>
     <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')"><span class="nav-icon">💰</span>Payroll</div>
-    <div class="nav-item" data-tab="bonustracker" onclick="switchTab('bonustracker')"><span class="nav-icon">💎</span>Bonus Tracker</div>
+    <div class="nav-item" data-tab="bonustracker" onclick="switchTab('bonustracker')"><span class="nav-icon">💎</span>Loyalty Bonus Tracker</div>
     <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')"><span class="nav-icon">🤝</span>FnF / Exit</div>
     <div class="nav-item" data-tab="reports" onclick="switchTab('reports')"><span class="nav-icon">📈</span>Reports</div>
     <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')"><span class="nav-icon">⏱</span>Tracked Time</div>
@@ -1384,6 +1384,65 @@ function _holApplicableOpts(cur) {
   return ['All','L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(v=>
     `<option value="${v}"${sel.includes(v)?' selected':''}>${v==='All'?'All Levels':v}</option>`
   ).join('');
+}
+// FIX 2: Build toggle-button group HTML for Applicable To (replaces scrollable select)
+// idOrDate = null means "add form" (no auto-save); otherwise auto-saves on toggle
+function _holLevelBtnsHtml(containerId, cur, idOrDate) {
+  const sel = (cur||'All').split(',').map(s=>s.trim());
+  const isAll = sel.includes('All') || sel.length === 0;
+  return `<div id="${containerId}" class="hol-app-btns" style="display:flex;flex-wrap:wrap;gap:3px">
+    ${['All','L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(v=>{
+      const active = v==='All' ? isAll : (!isAll && sel.includes(v));
+      const bs = active ? 'border:1px solid var(--gold);background:var(--gold-dim);color:var(--white)' : 'border:1px solid var(--dark3);background:var(--dark3);color:var(--gray-light)';
+      const fn = idOrDate ? `toggleHolLevel('${containerId}','${v}','${idOrDate}')` : `toggleHolLevel('${containerId}','${v}',null)`;
+      return `<button type="button" class="hol-lvl-btn${active?' active':''}" data-level="${v}" style="padding:2px 7px;font-size:10px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:all 0.15s;${bs}" onclick="${fn}">${v==='All'?'All':v}</button>`;
+    }).join('')}
+  </div>`;
+}
+function setHolBtnActive(btn, active) {
+  if (active) { btn.classList.add('active'); btn.style.cssText=btn.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/,'border:1px solid var(--gold);background:var(--gold-dim);color:var(--white)'); }
+  else { btn.classList.remove('active'); btn.style.cssText=btn.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/,'border:1px solid var(--dark3);background:var(--dark3);color:var(--gray-light)'); }
+}
+function toggleHolLevel(containerId, level, idOrDate) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const allBtn = container.querySelector('[data-level="All"]');
+  const btn = container.querySelector('[data-level="'+level+'"]');
+  if (!btn) return;
+  if (level === 'All') {
+    container.querySelectorAll('.hol-lvl-btn').forEach(b => {
+      const isAllBtn = b.dataset.level === 'All';
+      b.classList.toggle('active', isAllBtn);
+      b.style.border = isAllBtn ? '1px solid var(--gold)' : '1px solid var(--dark3)';
+      b.style.background = isAllBtn ? 'var(--gold-dim)' : 'var(--dark3)';
+      b.style.color = isAllBtn ? 'var(--white)' : 'var(--gray-light)';
+    });
+  } else {
+    const nowActive = !btn.classList.contains('active');
+    btn.classList.toggle('active', nowActive);
+    btn.style.border = nowActive ? '1px solid var(--gold)' : '1px solid var(--dark3)';
+    btn.style.background = nowActive ? 'var(--gold-dim)' : 'var(--dark3)';
+    btn.style.color = nowActive ? 'var(--white)' : 'var(--gray-light)';
+    // If any specific level active, deselect All; if none, re-select All
+    const anySpec = Array.from(container.querySelectorAll('.hol-lvl-btn')).some(b=>b.dataset.level!=='All'&&b.classList.contains('active'));
+    if (allBtn) {
+      allBtn.classList.toggle('active', !anySpec);
+      allBtn.style.border = !anySpec ? '1px solid var(--gold)' : '1px solid var(--dark3)';
+      allBtn.style.background = !anySpec ? 'var(--gold-dim)' : 'var(--dark3)';
+      allBtn.style.color = !anySpec ? 'var(--white)' : 'var(--gray-light)';
+    }
+  }
+  if (idOrDate) {
+    const selected = Array.from(container.querySelectorAll('.hol-lvl-btn.active')).map(b=>b.dataset.level);
+    const applicableTo = selected.includes('All') || selected.length===0 ? 'All' : selected.join(',');
+    updateHolApplicableToValue(idOrDate, applicableTo);
+  }
+}
+async function updateHolApplicableToValue(idOrDate, applicableTo) {
+  const payload = idOrDate.startsWith('HOL_') ? {id: idOrDate, applicableTo} : {date: idOrDate, applicableTo};
+  const res = await API.call('updateHoliday', payload);
+  if (!res.ok) toast(res.error || 'Failed to update', 'error');
+  else toast('✓ Applicable To updated', 'success', 1500);
 }
 function fmtTime(ts) {
   if (!ts) return '—';
@@ -8743,13 +8802,13 @@ async function renderSettings() {
         </tr>
       </thead>
       <tbody id="holidays-table-body">
-    ${hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.type]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
+    ${hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.name]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
       <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
       <td style="padding:6px;white-space:nowrap">${fmtHolDate(h.date)}</td>
       <td style="padding:6px;white-space:nowrap">${fmtHolDay(h.date)}</td>
-      <td style="padding:6px">${escHtml(h.name)}</td>
-      <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.type||'Public')}</span></td>
-      <td style="padding:4px"><select multiple title="Ctrl+click to select multiple levels" style="width:100px;height:46px;font-size:10px;background:var(--dark2);color:#ccc;border:1px solid var(--dark3);border-radius:3px" onchange="updateHolApplicableTo('${escHtml(h.id||h.date)}',this)">${_holApplicableOpts(h.applicableTo)}</select></td>
+      <td style="padding:6px">${escHtml(h.type||'')}</td>
+      <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.name||'Public')}</span></td>
+      <td style="padding:4px">${_holLevelBtnsHtml('hol-app-'+escHtml(h.id||h.date), h.applicableTo, h.id||h.date)}</td>
       <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
     </tr>`}).join('')}
       </tbody>
@@ -8759,21 +8818,9 @@ async function renderSettings() {
       <input id="hol-date" class="form-input" type="date" value="${todayStr()}" style="width:160px">
       <input id="hol-name" class="form-input" placeholder="Holiday name…" style="flex:1;min-width:160px">
       <select id="hol-type" class="form-input" style="width:130px"><option value="National">National</option><option value="Regional">Regional</option><option value="Company">Company</option></select>
-      <div style="display:flex;flex-direction:column;gap:2px">
-        <label style="font-size:10px;color:var(--gray-light)">Applicable To <span class="info-tooltip" title="Hold Ctrl (Windows) or Cmd (Mac) to select multiple levels. Choose 'All' to apply to every employee.">ℹ</span></label>
-        <select id="hol-applicable" class="form-input" multiple style="width:130px;height:58px;font-size:11px">
-          <option value="All" selected>All Levels</option>
-          <option value="L1">L1</option>
-          <option value="L2">L2</option>
-          <option value="L3">L3</option>
-          <option value="L4">L4</option>
-          <option value="L5">L5</option>
-          <option value="L6">L6</option>
-          <option value="L7">L7</option>
-          <option value="L8">L8</option>
-          <option value="L9">L9</option>
-          <option value="L10">L10</option>
-        </select>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:10px;color:var(--gray-light)">Applicable To <span class="info-tooltip" title="Click to toggle levels. 'All' applies the holiday to every employee. Selecting specific levels restricts it to those groups.">ℹ</span></label>
+        ${_holLevelBtnsHtml('hol-add-app', 'All', null)}
       </div>
       <button class="btn btn-gold btn-sm" onclick="addHoliday()" style="align-self:flex-end">+ Add Holiday</button>
     </div>
@@ -9017,9 +9064,9 @@ async function renderSettings() {
       <thead>
         <tr style="background:var(--dark3)">
           <th style="padding:8px;text-align:left;color:var(--gold)">Level</th>
-          <th style="padding:8px;text-align:left;color:var(--gold)">Monthly Bonus (₹)</th>
-          <th style="padding:8px;text-align:left;color:var(--gold)">Vesting Schedule</th>
-          <th style="padding:8px;text-align:center;color:var(--gold)">Active</th>
+          <th style="padding:8px;text-align:left;color:var(--gold)">Monthly Bonus (₹) <span class="info-tooltip" title="Fixed amount added to this level's loyalty bonus account each month during the monthly accrual run. Set 0 to disable accrual for a level.">ℹ</span></th>
+          <th style="padding:8px;text-align:left;color:var(--gold)">Vesting Schedule <span class="info-tooltip" title="Milestones that unlock withdrawals. 'After X mo, Y%' means Y% of the accrued balance becomes withdrawable after X months of continuous service. Add multiple milestones for graduated vesting.">ℹ</span></th>
+          <th style="padding:8px;text-align:center;color:var(--gold)">Active <span class="info-tooltip" title="Uncheck to pause accrual for this level. Existing balances are preserved; no new bonus is added until re-enabled.">ℹ</span></th>
         </tr>
       </thead>
       <tbody>
@@ -9028,13 +9075,14 @@ async function renderSettings() {
           let sched = [];
           try { sched = JSON.parse(row.vesting_schedule_json||'[]'); } catch(e) {}
           if (!sched.length) sched = [{months:6,withdrawable_pct:20},{months:12,withdrawable_pct:40},{months:24,withdrawable_pct:100}];
+          const inputStyle = 'width:52px;background:var(--dark2);color:var(--white);border:1px solid var(--gold-dim);border-radius:4px;padding:3px 5px;font-size:11px;text-align:center';
           const schedHtml = sched.map((m,i)=>`
             <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px" id="lb-ms-${level}-${i}">
-              <span style="color:var(--gray-light);white-space:nowrap">After</span>
-              <input type="number" min="1" max="240" style="width:48px" class="form-input" id="lb-months-${level}-${i}" value="${m.months||6}">
-              <span style="color:var(--gray-light);white-space:nowrap">mo,</span>
-              <input type="number" min="1" max="100" style="width:48px" class="form-input" id="lb-pct-${level}-${i}" value="${m.withdrawable_pct||m.pct||20}">
-              <span style="color:var(--gray-light)">%</span>
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">After <span class="info-tooltip" title="Number of months of continuous service required before this vesting milestone unlocks.">ℹ</span></span>
+              <input type="number" min="1" max="240" style="${inputStyle}" class="form-input" id="lb-months-${level}-${i}" value="${m.months||6}" placeholder="Mo">
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo, <span class="info-tooltip" title="Percentage of total accrued balance that becomes withdrawable at this milestone.">ℹ</span></span>
+              <input type="number" min="1" max="100" style="${inputStyle}" class="form-input" id="lb-pct-${level}-${i}" value="${m.withdrawable_pct||m.pct||20}" placeholder="%">
+              <span style="color:var(--gray-light);font-size:11px">%</span>
               <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveMS('${level}',${i})">✕</button>
             </div>`).join('');
           const isActive = String(row.is_active).toLowerCase() !== 'false';
@@ -9043,7 +9091,7 @@ async function renderSettings() {
             <td style="padding:10px 8px">
               <div style="display:flex;align-items:center;gap:4px">
                 <span style="color:var(--gray-light)">₹</span>
-                <input type="number" min="0" step="50" class="form-input" id="lb-amt-${level}" value="${parseFloat(row.monthly_bonus_amount)||0}" style="width:80px">
+                <input type="number" min="0" step="50" class="form-input" id="lb-amt-${level}" value="${parseFloat(row.monthly_bonus_amount)||0}" placeholder="0" style="width:84px;background:var(--dark2);color:var(--white);border:1px solid var(--gold-dim);border-radius:4px;padding:4px 6px">
               </div>
             </td>
             <td style="padding:10px 8px">
@@ -9060,7 +9108,7 @@ async function renderSettings() {
     </div>
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-gold" onclick="saveLoyaltyBonusSettings()">💾 Save Loyalty Bonus Settings</button>
-      <button class="btn btn-dark btn-sm" onclick="switchTab('bonustracker')" style="margin-left:4px">📊 View Bonus Tracker →</button>
+      <button class="btn btn-dark btn-sm" onclick="switchTab('bonustracker')" style="margin-left:4px">📊 View Loyalty Bonus Tracker →</button>
     </div>
     <div id="lb-save-status" style="margin-top:8px;font-size:12px;min-height:16px"></div>
   </div>
@@ -9291,11 +9339,12 @@ function lbAddMS(level) {
   const div = document.createElement('div');
   div.id = `lb-ms-${level}-${idx}`;
   div.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px';
-  div.innerHTML = `<span style="color:var(--gray-light);white-space:nowrap">After</span>
-    <input type="number" min="1" max="240" style="width:48px" class="form-input" id="lb-months-${level}-${idx}" value="24">
-    <span style="color:var(--gray-light);white-space:nowrap">mo,</span>
-    <input type="number" min="1" max="100" style="width:48px" class="form-input" id="lb-pct-${level}-${idx}" value="100">
-    <span style="color:var(--gray-light)">%</span>
+  const iStyle = 'width:52px;background:var(--dark2);color:var(--white);border:1px solid var(--gold-dim);border-radius:4px;padding:3px 5px;font-size:11px;text-align:center';
+  div.innerHTML = `<span style="color:var(--gray-light);white-space:nowrap;font-size:11px">After <span class="info-tooltip" title="Number of months of continuous service required before this vesting milestone unlocks.">ℹ</span></span>
+    <input type="number" min="1" max="240" style="${iStyle}" class="form-input" id="lb-months-${level}-${idx}" value="24" placeholder="Mo">
+    <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo, <span class="info-tooltip" title="Percentage of total accrued balance that becomes withdrawable at this milestone.">ℹ</span></span>
+    <input type="number" min="1" max="100" style="${iStyle}" class="form-input" id="lb-pct-${level}-${idx}" value="100" placeholder="%">
+    <span style="color:var(--gray-light);font-size:11px">%</span>
     <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveMS('${level}',${idx})">✕</button>`;
   container.appendChild(div);
 }
@@ -9385,7 +9434,10 @@ async function renderBonusTracker() {
 
   const html = `
   <div class="section-hdr">
-    <div class="section-title">💎 Bonus Tracker</div>
+    <div>
+      <div class="section-title">💎 Loyalty Bonus Tracker</div>
+      <div style="font-size:12px;color:var(--gray-light);margin-top:2px">Accrued loyalty balances, vesting status, and pending withdrawal approvals across all employees.</div>
+    </div>
     <div class="section-actions">
       <button class="btn btn-gold btn-sm" onclick="runLBAccrualConfirm()">▶ Run Monthly Accrual</button>
       <button class="btn btn-dark btn-sm" onclick="exportCSV(${JSON.stringify(balances)},'loyalty_bonus_balances')">📤 Export CSV</button>
@@ -10725,9 +10777,9 @@ async function addHoliday() {
   const type = document.getElementById('hol-type')?.value || 'National';
   if (!date) { toast('Please pick a date', 'warning'); return; }
   if (!name) { toast('Please enter a holiday name', 'warning'); return; }
-  const appSel = document.getElementById('hol-applicable');
-  const selectedLevels = appSel ? Array.from(appSel.selectedOptions).map(o=>o.value) : [];
-  const applicableTo = selectedLevels.length === 0 || selectedLevels.includes('All') ? 'All' : selectedLevels.join(',');
+  const appContainer = document.getElementById('hol-add-app');
+  const activeBtns = appContainer ? Array.from(appContainer.querySelectorAll('.hol-lvl-btn.active')).map(b=>b.dataset.level) : [];
+  const applicableTo = activeBtns.length === 0 || activeBtns.includes('All') ? 'All' : activeBtns.join(',');
   const res = await API.call('addHoliday', {date, name, type, applicableTo});
   if (res.ok) {
     toast('✓ Holiday added', 'success');
@@ -10798,13 +10850,13 @@ async function refreshHolidayList() {
   if (!tbody) { await renderSettings(); return; }
   const res = await API.call('getHolidays', {});
   const hols = (res.holidays || []).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  tbody.innerHTML = hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.type]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
+  tbody.innerHTML = hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.name]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
     <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
     <td style="padding:6px;white-space:nowrap">${fmtHolDate(h.date)}</td>
     <td style="padding:6px;white-space:nowrap">${fmtHolDay(h.date)}</td>
-    <td style="padding:6px">${escHtml(h.name)}</td>
-    <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.type||'Public')}</span></td>
-    <td style="padding:4px"><select multiple title="Ctrl+click to select multiple levels" style="width:100px;height:46px;font-size:10px;background:var(--dark2);color:#ccc;border:1px solid var(--dark3);border-radius:3px" onchange="updateHolApplicableTo('${escHtml(h.id||h.date)}',this)">${_holApplicableOpts(h.applicableTo)}</select></td>
+    <td style="padding:6px">${escHtml(h.type||'')}</td>
+    <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.name||'Public')}</span></td>
+    <td style="padding:4px">${_holLevelBtnsHtml('hol-app-'+escHtml(h.id||h.date), h.applicableTo, h.id||h.date)}</td>
     <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
   </tr>`}).join('');
 }
