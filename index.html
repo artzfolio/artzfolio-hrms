@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v24 | May 2026 | FIX-17: ownerToken localStorage key mismatch fixed; FIX-18: Test Data Reset (employees/attendance/leaves/roster only, settings preserved) -->
+<!-- ArtzFolio HRMS v25 | May 2026 | FIX-17: owner token localStorage key mismatch fixed; FIX-18: Clear Test Data Only button added; info tooltips added to System Maintenance and Danger Zone sections -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v24</title>
+<title>ArtzFolio HRMS v25</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -8851,7 +8851,7 @@ async function renderSettings() {
     </div>
   </div>
 
-  <!-- FIX-13: System Maintenance / Cleaner -->
+  <!-- FIX-13: System Maintenance / Cleaner — FIX-25: added ⓘ tooltips to all options -->
   ${isOwner ? `
   <div class="settings-section">
     <div class="settings-section-title">🧹 System Maintenance</div>
@@ -8862,27 +8862,51 @@ async function renderSettings() {
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
       <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
         <input type="checkbox" id="sc-clearAudit" style="margin-top:3px;accent-color:var(--gold)">
-        <div><strong>Clear Old Audit Logs</strong><br><span style="font-size:11px;color:var(--gray-light)">Delete audit entries older than <input id="sc-auditMonths" type="number" value="3" min="1" max="24" style="width:40px;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);padding:2px 4px;border-radius:3px"> months. Keeps all recent entries.</span></div>
+        <div>
+          <strong>Clear Old Audit Logs</strong>
+          <span class="info-tooltip" title="Every action in the app (logins, attendance, changes) is written to an Audit Log sheet. Over time this grows large and slows down the app. This option deletes entries older than the number of months you set. Recent entries are always kept. Does not affect any employee data or settings.">ℹ</span>
+          <br><span style="font-size:11px;color:var(--gray-light)">Delete audit entries older than <input id="sc-auditMonths" type="number" value="3" min="1" max="24" style="width:40px;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);padding:2px 4px;border-radius:3px"> months. Keeps all recent entries.</span>
+        </div>
       </label>
       <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
         <input type="checkbox" id="sc-clearOrphaned" style="margin-top:3px;accent-color:var(--gold)">
-        <div><strong>Clear Orphaned Attendance</strong><br><span style="font-size:11px;color:var(--gray-light)">Delete attendance records whose employee ID no longer exists in the Employees sheet.</span></div>
+        <div>
+          <strong>Clear Orphaned Attendance</strong>
+          <span class="info-tooltip" title="If you have deleted employees from the system, their old clock-in/out records may still exist in the Attendance sheet. This cleans up those leftover records that no longer belong to any active employee. Run this after deleting test employees.">ℹ</span>
+          <br><span style="font-size:11px;color:var(--gray-light)">Delete attendance records whose employee ID no longer exists in the Employees sheet.</span>
+        </div>
       </label>
       <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
         <input type="checkbox" id="sc-clearOldTrans" style="margin-top:3px;accent-color:var(--gold)">
-        <div><strong>Clear Old Settled Transactions</strong><br><span style="font-size:11px;color:var(--gray-light)">Delete Settled or Cancelled transaction records older than 12 months.</span></div>
+        <div>
+          <strong>Clear Old Settled Transactions</strong>
+          <span class="info-tooltip" title="Transactions (advances, loans, bonuses, penalties) that are already marked as Settled or Cancelled AND are older than 12 months are deleted. All active, pending, or recent transactions are never touched.">ℹ</span>
+          <br><span style="font-size:11px;color:var(--gray-light)">Delete Settled or Cancelled transaction records older than 12 months.</span>
+        </div>
       </label>
       <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
         <input type="checkbox" id="sc-clearOldSalary" style="margin-top:3px;accent-color:var(--gold)">
-        <div><strong>Clear Old Salary Records</strong><br><span style="font-size:11px;color:var(--gray-light)">Delete salary records before year <input id="sc-salaryYear" type="number" value="${new Date().getFullYear()-2}" min="2020" style="width:60px;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);padding:2px 4px;border-radius:3px">. Current and last year are always kept.</span></div>
+        <div>
+          <strong>Clear Old Salary Records</strong>
+          <span class="info-tooltip" title="Deletes payroll calculation records from before the year you choose. The current year and the previous year are always kept regardless of what you enter. Useful for removing old test salary runs that were generated during setup.">ℹ</span>
+          <br><span style="font-size:11px;color:var(--gray-light)">Delete salary records before year <input id="sc-salaryYear" type="number" value="${new Date().getFullYear()-2}" min="2020" style="width:60px;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);padding:2px 4px;border-radius:3px">. Current and last year are always kept.</span>
+        </div>
       </label>
       <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
         <input type="checkbox" id="sc-archiveInactive" style="margin-top:3px;accent-color:var(--gold)">
-        <div><strong>Archive Inactive Employees</strong><br><span style="font-size:11px;color:var(--gray-light)">Move Inactive/Terminated employees (LWD older than 6 months) to an ArchivedEmployees sheet. Removes them from the active list.</span></div>
+        <div>
+          <strong>Archive Inactive Employees</strong>
+          <span class="info-tooltip" title="Employees marked as Inactive or Terminated whose last working day was more than 6 months ago are moved from the main Employees sheet to a separate ArchivedEmployees sheet. They disappear from the active list but their full history is preserved in the archive sheet.">ℹ</span>
+          <br><span style="font-size:11px;color:var(--gray-light)">Move Inactive/Terminated employees (LWD older than 6 months) to an ArchivedEmployees sheet. Removes them from the active list.</span>
+        </div>
       </label>
       <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;cursor:pointer">
         <input type="checkbox" id="sc-compressCache" style="margin-top:3px;accent-color:var(--gold)">
-        <div><strong>Compress Cache</strong><br><span style="font-size:11px;color:var(--gray-light)">Force-clear all backend cache keys so the next request fetches fresh data from the Sheet.</span></div>
+        <div>
+          <strong>Compress Cache</strong>
+          <span class="info-tooltip" title="The app temporarily stores recently read data (employee list, settings, holidays) in memory for up to 5 minutes so it does not have to read the Google Sheet every single time. Clicking this clears that temporary memory, forcing a fresh read on the very next request. Completely safe. Useful if you made manual edits directly in the Google Sheet and want the app to pick them up immediately.">ℹ</span>
+          <br><span style="font-size:11px;color:var(--gray-light)">Force-clear all backend cache keys so the next request fetches fresh data from the Sheet.</span>
+        </div>
       </label>
     </div>
     <button class="btn btn-red" onclick="runSystemClean()">🧹 Run Selected Actions</button>
@@ -8890,21 +8914,24 @@ async function renderSettings() {
   </div>` : ''}
 
   ${isOwner ? `
-  <!-- Danger Zone Token Config -->
+  <!-- Danger Zone Token Config — FIX-25: cleaner description + ⓘ tooltip -->
   <div class="settings-section">
-    <div class="settings-section-title">🔑 Danger Zone Token</div>
+    <div class="settings-section-title">🔑 Danger Zone Token
+      <span class="info-tooltip" title="This is a secret password that guards the most destructive buttons (Delete Employee, Clear Records, Full Reset, Clear Test Data). Without it those buttons will refuse to work. Generate one with Auto-Generate Token, click Save, and you are done — the app saves it automatically. Keep this value confidential.">ℹ</span>
+    </div>
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:12px;line-height:1.7">
-      This secret token protects destructive operations (Delete Employee, Clear Records, Full Reset).<br>
-      It must be set here AND match the <strong style="color:var(--gold)">ownerToken</strong> row in your Google Sheet → Config tab.<br>
-      If this is blank, Danger Zone actions will show a warning and refuse to run.
+      This secret token protects all Danger Zone operations (Delete Employee, Clear Records, Full Reset, Clear Test Data).<br>
+      If this is blank, Danger Zone actions will refuse to run. Click <strong style="color:var(--gold)">Auto-Generate Token</strong> then <strong style="color:var(--gold)">Save Danger Zone Token</strong> — the app saves it automatically.
     </div>
     <div class="settings-grid">
       <div class="form-group">
-        <label class="form-label">Owner Token (Danger Zone secret)</label>
+        <label class="form-label">Owner Token (Danger Zone secret)
+          <span class="info-tooltip" title="A random secret string that acts like a second password for destructive actions. You only need to set this once. Use Auto-Generate Token to create one, then click Save. Keep it confidential — do not share it with managers or supervisors.">ℹ</span>
+        </label>
         <input id="cfg-ownerToken" class="form-input" type="text" placeholder="e.g. ARTZFOLIO_DZ_2026"
           value="${escHtml(cfg['ownerToken']||'')}" autocomplete="off">
         <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
-          Keep this confidential. After setting it here, copy the same value into your Google Sheet → Config tab → key: <code>ownerToken</code>.
+          Keep this confidential. Clicking Save below saves it automatically — no need to edit the Google Sheet manually.
         </div>
       </div>
       <div class="form-group" style="display:flex;align-items:flex-end">
@@ -8919,56 +8946,68 @@ async function renderSettings() {
       <button class="btn btn-dark btn-sm" onclick="testDZToken()">🔑 Test Token</button>
     </div>
     <div id="dz-token-status" style="margin-top:8px;font-size:12px;color:${cfg['ownerToken']?'var(--green)':'var(--orange)'}">
-      ${cfg['ownerToken'] ? '✓ Token is configured' : '⚠ Token not set — Danger Zone actions are blocked'}
+      ${cfg['ownerToken'] ? '✓ Token is configured — Danger Zone actions are enabled' : '⚠ Token not set — Danger Zone actions are blocked'}
     </div>
   </div>
 
-  <!-- ⚠ DANGER ZONE -->
+  <!-- ⚠ DANGER ZONE — FIX-25: ⓘ tooltips + Clear Test Data Only button added -->
   <div class="settings-section" style="border-color:var(--red);border-width:2px">
     <div class="settings-section-title" style="color:var(--red)">⚠ Danger Zone — Owner Only</div>
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:16px;line-height:1.7">
       These actions are <strong style="color:var(--red)">permanent and irreversible</strong>. Always export a backup before proceeding.<br>
-      Each action requires you to type a confirmation phrase.
+      Each action requires you to enter your Owner password and type a confirmation phrase.
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--white)">🗑 Delete a Specific Employee</div>
+          <div style="font-size:13px;font-weight:600;color:var(--white)">🗑 Delete a Specific Employee
+            <span class="info-tooltip" title="Permanently removes one employee's record from the system. Their attendance and salary history are kept for record-keeping purposes. Use this when a test employee or an incorrectly added employee needs to be removed one at a time.">ℹ</span>
+          </div>
           <div style="font-size:11px;color:var(--gray-light)">Permanently removes the employee record. Attendance/salary records are retained for history.</div>
         </div>
         <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="dangerDeleteEmployee()">Delete Employee</button>
       </div>
       <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--white)">🧹 Clear Attendance Records</div>
+          <div style="font-size:13px;font-weight:600;color:var(--white)">🧹 Clear Attendance Records
+            <span class="info-tooltip" title="Deletes all clock-in and clock-out records for one specific month and year that you choose. Useful for wiping test attendance data month by month. Other months are not affected.">ℹ</span>
+          </div>
           <div style="font-size:11px;color:var(--gray-light)">Deletes all clock-in/out records for a selected month. Cannot be undone.</div>
         </div>
         <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="dangerClearAttendance()">Clear Attendance</button>
       </div>
       <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--white)">💸 Clear Salary Records</div>
+          <div style="font-size:13px;font-weight:600;color:var(--white)">💸 Clear Salary Records
+            <span class="info-tooltip" title="Deletes all payroll/salary calculation records for one specific month and year. Useful for removing test salary runs. Employee records and attendance are not affected.">ℹ</span>
+          </div>
           <div style="font-size:11px;color:var(--gray-light)">Deletes all payroll records for a selected month. Cannot be undone.</div>
         </div>
         <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="dangerClearSalaryRecords()">Clear Salary Records</button>
       </div>
-      <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--gold)">🔧 Repair Settings Data</div>
+          <div style="font-size:13px;font-weight:600;color:var(--gold)">🔧 Repair Settings Data
+            <span class="info-tooltip" title="If your Settings page shows blank salary bands, empty milestones, or missing org structure, this button restores all the default values for those sections. It does not touch employee records, attendance, or payroll data. Safe to run at any time.">ℹ</span>
+          </div>
           <div style="font-size:11px;color:var(--gray-light)">Fixes blank Settings tabs — restores missing headers, removes blank holiday rows, and force-reseeds Loyalty Milestones and Salary Bands if all values are empty/zero. Safe to run at any time; does not affect employee or attendance data.</div>
         </div>
         <button class="btn btn-sm" style="background:#3a3000;color:var(--gold);border:1px solid var(--gold)" onclick="repairSettingsData()">🔧 Repair Settings</button>
       </div>
       <div style="background:var(--dark3);border:1px solid #5a3000;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--orange)">🧪 Clear Test Data Only</div>
-          <div style="font-size:11px;color:var(--gray-light)">Deletes all employees, attendance, leaves, roster, pending attendance, and points — but keeps your settings, salary bands, milestones, org structure, holidays, salary records, and petty cash intact. Use this to wipe test/seed data before going live.</div>
+          <div style="font-size:13px;font-weight:600;color:var(--orange)">🧪 Clear Test Data Only
+            <span class="info-tooltip" title="Deletes all employees, attendance records, leave requests, roster entries, points, and pending attendance — but leaves all your settings completely untouched. Your salary bands, milestones, departments, holidays, org structure, salary records, and petty cash are all preserved. Use this when you have finished testing and want a clean start before going live with real employees.">ℹ</span>
+          </div>
+          <div style="font-size:11px;color:var(--gray-light)">Deletes all employees, attendance, leaves, roster, and points — but keeps your settings, salary bands, milestones, org structure, holidays, salary records, and petty cash intact.</div>
         </div>
         <button class="btn btn-sm" style="background:#5a3000;color:#fff;border:1px solid var(--orange)" onclick="dangerClearTestData()">🧪 Clear Test Data</button>
       </div>
       <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--red)">☢ Full HRMS Reset</div>
+          <div style="font-size:13px;font-weight:600;color:var(--red)">☢ Full HRMS Reset
+            <span class="info-tooltip" title="Wipes absolutely everything — all employees, attendance, leaves, salary records, transactions, petty cash, milestones, salary bands, org structure, and holidays. The Google Sheet is cleared and reset to factory default values. Use this only if you want to start completely from scratch. Cannot be undone.">ℹ</span>
+          </div>
           <div style="font-size:11px;color:var(--gray-light)">Wipes ALL data — employees, attendance, transactions, leaves, salary records, petty cash, everything. The Google Sheet will be cleared and reset to factory state. This cannot be undone.</div>
         </div>
         <button class="btn btn-sm" style="background:#7f0000;color:#fff;border:1px solid var(--red)" onclick="dangerFullReset()">☢ Full Reset</button>
@@ -9148,41 +9187,43 @@ async function dangerFullReset() {
   }); // end requireOwnerPin
 }
 
-// FIX-18: Clear Test Data — employees/attendance/leaves/roster only, settings preserved
+// FIX-18: Clear Test Data — deletes employees/attendance/leaves/roster only, all settings kept
 async function dangerClearTestData() {
   requireOwnerPin(() => {
-  showModal('🧪 Clear Test Data', `
+  showModal('🧪 Clear Test Data Only', `
     <div style="background:rgba(180,80,0,0.15);border:1px solid var(--orange);border-radius:8px;padding:14px;margin-bottom:14px">
       <strong style="color:var(--orange);font-size:14px">This will permanently delete:</strong>
       <ul style="font-size:12px;color:var(--white);margin:8px 0 0 16px;line-height:2">
-        <li>All employees and their PIN/face data</li>
-        <li>All attendance clock-in/out records</li>
+        <li>All employees and their PIN / face data</li>
+        <li>All attendance clock-in / clock-out records</li>
         <li>All leave requests</li>
-        <li>All roster/schedule entries</li>
+        <li>All roster / schedule entries</li>
         <li>All points tracker entries</li>
         <li>All pending attendance requests</li>
       </ul>
     </div>
     <div style="background:rgba(0,180,0,0.08);border:1px solid var(--green);border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px;color:var(--gray-light);line-height:1.8">
-      <strong style="color:var(--green)">✓ These will be KEPT:</strong><br>
-      Settings &amp; Config · Salary Bands · Loyalty Milestones · Org Structure · Holidays ·
-      Salary Records · Transactions · Petty Cash · Activities · Documents
+      <strong style="color:var(--green)">✓ These will be KEPT (untouched):</strong><br>
+      All Settings &amp; Config · Salary Bands · Loyalty Milestones · Org Structure (Departments / Zones) ·
+      Holidays · Salary Records · Transactions · Petty Cash · Activities · Documents
     </div>
     <div class="form-group">
       <label class="form-label">Type <strong style="color:var(--orange)">CLEAR TEST DATA</strong> to confirm</label>
-      <input id="test-reset-conf" class="form-input" placeholder="Type CLEAR TEST DATA">
+      <input id="test-reset-conf" class="form-input" placeholder="Type CLEAR TEST DATA here">
     </div>
   `, [
     {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
     {label:'🧪 Clear Test Data', cls:'btn-sm', cb: async()=>{
-      if (document.getElementById('test-reset-conf').value !== 'CLEAR TEST DATA') { toast('Type CLEAR TEST DATA exactly','error'); return; }
+      if ((document.getElementById('test-reset-conf')?.value||'') !== 'CLEAR TEST DATA') {
+        toast('Type CLEAR TEST DATA exactly to confirm','error'); return;
+      }
       closeModal();
-      toast('Clearing test data… do not close this tab','warning',8000);
-      const res = await API.call('testDataReset', {userId: State.adminUser || State.adminRole || 'owner', ownerToken: State._dzToken||''});
+      toast('Clearing test data… please wait','warning',8000);
+      const res = await API.call('testDataReset', {userId: State.adminUser||State.adminRole||'owner', ownerToken: State._dzToken||''});
       if (res.ok) {
         toast('✓ Test data cleared. Settings preserved. Reloading…','success',3000);
         setTimeout(()=>location.reload(), 3000);
-      } else toast(res.error||'Reset failed','error');
+      } else toast(res.error||'Clear failed','error');
     }, style:'background:#5a3000;color:#fff;border:1px solid var(--orange)'},
   ]);
   }); // end requireOwnerPin
@@ -9269,7 +9310,7 @@ async function saveDZToken() {
   if (!token) { toast('Enter a token value first','error'); return; }
   const res = await API.call('updateSettings', { updates: { ownerToken: token } });
   if (res.ok) {
-    // FIX-17: use LS.s() so key is 'az3_ownerToken', matching LS.g() reads in runSystemClean
+    // FIX-17: use LS.s() so key is stored as 'az3_ownerToken', matching LS.g() in runSystemClean
     LS.s('ownerToken', token);
     const sRes = await API.call('getSettings');
     if (sRes.ok) applySettingsArr(sRes.settings||[]);
