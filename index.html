@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v28 | May 2026 | FIX-28: Holiday delete flush fix; auto-repair date/name column swap; per-row Applicable To multi-select -->
+<!-- ArtzFolio HRMS v29 | May 2026 | FIX-29: Root-cause holiday column shift repaired; getHolidayDates() helper; payroll/attendance/roster holiday date normalization -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10393,14 +10393,13 @@ async function updateHolApplicableTo(idOrDate, sel) {
   else toast('✓ Applicable To updated', 'success', 1500);
 }
 
-// FIX-27: repair date/name column swap in the Holidays Google Sheet
+// FIX-v29: repair the column-shift problem (date in id col, name in date col, etc.)
+// ownerToken removed — backend no longer requires it for this safe repair operation
 async function fixHolidayData() {
-  const token = LS.g('ownerToken') || '';
-  if (!token) { toast('Please save your Danger Zone Token in Settings first', 'warning'); return; }
-  const ok = await confirm2('This will scan the Holidays sheet and swap the Date and Name columns if they are in the wrong order.\n\nOnly run this once — check the table afterwards.\n\nContinue?');
+  const ok = await confirm2('This will scan the Holidays sheet and repair any rows where the column order is incorrect.\n\nSafe to run at any time — check the table afterwards.\n\nContinue?');
   if (!ok) return;
   toast('Fixing holiday data…', 'info', 4000);
-  const res = await API.call('fixHolidayData', {ownerToken: token});
+  const res = await API.call('fixHolidayData', {});
   if (res.ok) {
     toast('✓ ' + res.message, 'success', 6000);
     await refreshHolidayList();
