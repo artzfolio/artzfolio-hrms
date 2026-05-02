@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v25 | May 2026 | FIX-17: owner token localStorage key mismatch fixed; FIX-18: Clear Test Data Only button added; info tooltips added to System Maintenance and Danger Zone sections -->
+<!-- ArtzFolio HRMS v28 | May 2026 | FIX-28: Holiday delete flush fix; auto-repair date/name column swap; per-row Applicable To multi-select -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v25</title>
+<title>ArtzFolio HRMS v28</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1370,6 +1370,13 @@ function fmtHolDay(ds) {
     if (isNaN(d)) return '—';
     return d.toLocaleDateString('en-IN',{weekday:'long'});
   } catch { return '—'; }
+}
+// FIX-28: build <option> tags for Applicable To multi-select, pre-selecting current values
+function _holApplicableOpts(cur) {
+  const sel = (cur||'All').split(',').map(s=>s.trim());
+  return ['All','L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(v=>
+    `<option value="${v}"${sel.includes(v)?' selected':''}>${v==='All'?'All Levels':v}</option>`
+  ).join('');
 }
 function fmtTime(ts) {
   if (!ts) return '—';
@@ -8687,7 +8694,7 @@ async function renderSettings() {
       <td style="padding:6px;white-space:nowrap">${fmtHolDay(h.date)}</td>
       <td style="padding:6px">${escHtml(h.name)}</td>
       <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.type||'Public')}</span></td>
-      <td style="padding:6px;font-size:11px;color:var(--gray-light)">${escHtml(h.applicableTo||'All')}</td>
+      <td style="padding:4px"><select multiple title="Ctrl+click to select multiple levels" style="width:100px;height:46px;font-size:10px;background:var(--dark2);color:#ccc;border:1px solid var(--dark3);border-radius:3px" onchange="updateHolApplicableTo('${escHtml(h.id||h.date)}',this)">${_holApplicableOpts(h.applicableTo)}</select></td>
       <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
     </tr>`}).join('')}
       </tbody>
@@ -10376,6 +10383,16 @@ async function deleteSelectedHolidays() {
   await refreshHolidayList();
 }
 
+// FIX-28: save Applicable To selection from per-row multi-select
+async function updateHolApplicableTo(idOrDate, sel) {
+  const selected = Array.from(sel.selectedOptions).map(o => o.value);
+  const applicableTo = selected.length === 0 || selected.includes('All') ? 'All' : selected.join(',');
+  const payload = idOrDate.startsWith('HOL_') ? {id: idOrDate, applicableTo} : {date: idOrDate, applicableTo};
+  const res = await API.call('updateHoliday', payload);
+  if (!res.ok) toast(res.error || 'Failed to update', 'error');
+  else toast('✓ Applicable To updated', 'success', 1500);
+}
+
 // FIX-27: repair date/name column swap in the Holidays Google Sheet
 async function fixHolidayData() {
   const token = LS.g('ownerToken') || '';
@@ -10404,7 +10421,7 @@ async function refreshHolidayList() {
     <td style="padding:6px;white-space:nowrap">${fmtHolDay(h.date)}</td>
     <td style="padding:6px">${escHtml(h.name)}</td>
     <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.type||'Public')}</span></td>
-    <td style="padding:6px;font-size:11px;color:var(--gray-light)">${escHtml(h.applicableTo||'All')}</td>
+    <td style="padding:4px"><select multiple title="Ctrl+click to select multiple levels" style="width:100px;height:46px;font-size:10px;background:var(--dark2);color:#ccc;border:1px solid var(--dark3);border-radius:3px" onchange="updateHolApplicableTo('${escHtml(h.id||h.date)}',this)">${_holApplicableOpts(h.applicableTo)}</select></td>
     <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
   </tr>`}).join('');
 }
