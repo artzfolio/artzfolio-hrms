@@ -8653,7 +8653,9 @@ async function renderSettings() {
   <!-- Holidays -->
   <div class="settings-section">
     <div class="settings-section-title">📅 Holidays Calendar
-      <span style="margin-left:auto;display:flex;gap:8px">
+      <span class="info-tooltip" title="Manage paid holidays for your organisation. Holidays marked here are treated as paid working days in attendance and salary calculations. Use 'Applicable To' to restrict a holiday to specific employee levels.">ℹ</span>
+      <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-dark btn-sm" onclick="fixHolidayData()" title="Run this once if dates are showing as names in the table — it auto-corrects the column order in your Google Sheet">🔧 Fix Holiday Data</button>
         <button class="btn btn-dark btn-sm" onclick="loadDefaultHolidays()" title="Load all major Indian 2026 holidays">🇮🇳 Load Indian Defaults</button>
         <button class="btn btn-dark btn-sm" onclick="bulkImportHolidays()">📥 Bulk Import</button>
         <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Holidays.xlsx','Holidays',['date','name','type','applicableTo'],${JSON.stringify(hols.map(h=>[h.date,h.name,h.type,h.applicableTo]))})">📤 Export</button>
@@ -8670,11 +8672,11 @@ async function renderSettings() {
       <thead>
         <tr style="border-bottom:1px solid var(--dark3)">
           <th style="padding:6px;text-align:left;width:30px"><input type="checkbox" id="hol-cb-all" onchange="document.querySelectorAll('.hol-cb').forEach(cb=>cb.checked=this.checked)" style="accent-color:var(--gold)"></th>
-          <th style="padding:6px;text-align:left">Date</th>
-          <th style="padding:6px;text-align:left">Day</th>
-          <th style="padding:6px;text-align:left">Holiday Name</th>
-          <th style="padding:6px;text-align:left">Type</th>
-          <th style="padding:6px;text-align:left">Applicable To</th>
+          <th style="padding:6px;text-align:left">Date <span class="info-tooltip" title="Calendar date of the holiday (Day Month Year).">ℹ</span></th>
+          <th style="padding:6px;text-align:left">Day <span class="info-tooltip" title="Day of the week on which this holiday falls.">ℹ</span></th>
+          <th style="padding:6px;text-align:left">Holiday Name <span class="info-tooltip" title="Name of the holiday (e.g. Republic Day, Diwali).">ℹ</span></th>
+          <th style="padding:6px;text-align:left">Type <span class="info-tooltip" title="National: gazetted holiday for all employees. Regional: applies to specific states or communities. Company: an ArtzFolio-specific paid day off.">ℹ</span></th>
+          <th style="padding:6px;text-align:left">Applicable To <span class="info-tooltip" title="Which employee levels get this holiday. 'All' means every employee. You can restrict to specific levels (L1, L2…) when adding a holiday.">ℹ</span></th>
           <th style="padding:6px;text-align:left">Action</th>
         </tr>
       </thead>
@@ -8695,7 +8697,23 @@ async function renderSettings() {
       <input id="hol-date" class="form-input" type="date" value="${todayStr()}" style="width:160px">
       <input id="hol-name" class="form-input" placeholder="Holiday name…" style="flex:1;min-width:160px">
       <select id="hol-type" class="form-input" style="width:130px"><option value="National">National</option><option value="Regional">Regional</option><option value="Company">Company</option></select>
-      <button class="btn btn-gold btn-sm" onclick="addHoliday()">+ Add Holiday</button>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <label style="font-size:10px;color:var(--gray-light)">Applicable To <span class="info-tooltip" title="Hold Ctrl (Windows) or Cmd (Mac) to select multiple levels. Choose 'All' to apply to every employee.">ℹ</span></label>
+        <select id="hol-applicable" class="form-input" multiple style="width:130px;height:58px;font-size:11px">
+          <option value="All" selected>All Levels</option>
+          <option value="L1">L1</option>
+          <option value="L2">L2</option>
+          <option value="L3">L3</option>
+          <option value="L4">L4</option>
+          <option value="L5">L5</option>
+          <option value="L6">L6</option>
+          <option value="L7">L7</option>
+          <option value="L8">L8</option>
+          <option value="L9">L9</option>
+          <option value="L10">L10</option>
+        </select>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="addHoliday()" style="align-self:flex-end">+ Add Holiday</button>
     </div>
   </div>
 
@@ -10316,7 +10334,10 @@ async function addHoliday() {
   const type = document.getElementById('hol-type')?.value || 'National';
   if (!date) { toast('Please pick a date', 'warning'); return; }
   if (!name) { toast('Please enter a holiday name', 'warning'); return; }
-  const res = await API.call('addHoliday', {date, name, type, applicableTo:'All'});
+  const appSel = document.getElementById('hol-applicable');
+  const selectedLevels = appSel ? Array.from(appSel.selectedOptions).map(o=>o.value) : [];
+  const applicableTo = selectedLevels.length === 0 || selectedLevels.includes('All') ? 'All' : selectedLevels.join(',');
+  const res = await API.call('addHoliday', {date, name, type, applicableTo});
   if (res.ok) {
     toast('✓ Holiday added', 'success');
     document.getElementById('hol-name').value = '';
@@ -10353,6 +10374,22 @@ async function deleteSelectedHolidays() {
   }
   toast(`✓ Removed ${done} holiday(s)`, 'success');
   await refreshHolidayList();
+}
+
+// FIX-27: repair date/name column swap in the Holidays Google Sheet
+async function fixHolidayData() {
+  const token = LS.g('ownerToken') || '';
+  if (!token) { toast('Please save your Danger Zone Token in Settings first', 'warning'); return; }
+  const ok = await confirm2('This will scan the Holidays sheet and swap the Date and Name columns if they are in the wrong order.\n\nOnly run this once — check the table afterwards.\n\nContinue?');
+  if (!ok) return;
+  toast('Fixing holiday data…', 'info', 4000);
+  const res = await API.call('fixHolidayData', {ownerToken: token});
+  if (res.ok) {
+    toast('✓ ' + res.message, 'success', 6000);
+    await refreshHolidayList();
+  } else {
+    toast(res.error || 'Fix failed', 'error');
+  }
 }
 
 // Bug 44: Refresh only the holiday table rows instead of reloading the full settings page
