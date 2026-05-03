@@ -3594,39 +3594,50 @@ async function showLeaveRequest() {
   resetKioskTimer();
   const empId = State.currentEmp?.id;
   const today = todayStr();
-  const html = `
-  <div style="font-size:13px">
-    <p style="margin-bottom:14px;color:var(--gray-light)">Submit a leave request to your supervisor.<br>सुपरवाइज़र को छुट्टी का अनुरोध भेजें।</p>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">From Date / शुरू</label>
-        <input id="lv-from" class="form-input" type="date" value="${today}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">To Date / अंत</label>
-        <input id="lv-to" class="form-input" type="date" value="${today}">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Leave Type / प्रकार</label>
-      <select id="lv-type" class="form-input">
-        <option value="IL">Informed Leave / सूचित छुट्टी</option>
-        <option value="IHL">Informed Half Day / सूचित आधा दिन</option>
-        <option value="SL">Sick Leave / बीमारी</option>
-        <option value="PL">Paid Leave / भुगतान छुट्टी</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Reason * (mandatory) / कारण (अनिवार्य)</label>
-      <input id="lv-note" class="form-input" type="text" placeholder="Brief reason…">
-    </div>
-    <div id="lv-msg" style="font-size:12px;color:var(--gray-light)"></div>
-    ${(()=>{
-      const supervisor = (State.employees||[]).find(e=>e.id===State.currentEmp?.supervisorId);
-      const approverText = supervisor ? `Will be sent to: <strong>${escHtml(supervisor.name)}</strong> (${escHtml(supervisor.id)}) for approval` : 'Will be sent to manager for approval';
-      return `<div style="font-size:11px;color:var(--gold-light);margin-top:6px">📋 ${approverText}</div>`;
-    })()}
-  </div>`;
+  // S3.6: load enabled leave types from GAS; LWP always present
+  let leaveTypeOpts = '<option value="LWP">LWP — Leave Without Pay</option>';
+  try {
+    const ltRes = await API.call('getLeaveTypes', {activeOnly: true});
+    const types = ltRes.leaveTypes || [];
+    if (types.length) {
+      leaveTypeOpts = types.map(lt => {
+        const code = lt['Code'] || lt.code || '';
+        const name = lt['Name'] || lt.name || code;
+        return '<option value="'+escHtml(code)+'">'+escHtml(code)+' — '+escHtml(name)+'</option>';
+      }).join('');
+      // Ensure LWP is always present
+      if (!types.some(lt => (lt['Code']||lt.code) === 'LWP')) {
+        leaveTypeOpts += '<option value="LWP">LWP — Leave Without Pay</option>';
+      }
+    } else {
+      // Fallback to defaults
+      leaveTypeOpts = '<option value="IL">IL — Informed Leave</option>'
+        + '<option value="IHL">IHL — Half Leave</option>'
+        + '<option value="SL">SL — Sick Leave</option>'
+        + '<option value="CL">CL — Casual Leave</option>'
+        + '<option value="EL">EL — Earned Leave</option>'
+        + '<option value="LWP">LWP — Leave Without Pay</option>';
+    }
+  } catch(e) {
+    leaveTypeOpts = '<option value="IL">IL — Informed Leave</option>'
+      + '<option value="SL">SL — Sick Leave</option>'
+      + '<option value="LWP">LWP — Leave Without Pay</option>';
+  }
+  const supervisor = (State.employees||[]).find(e=>e.id===State.currentEmp?.supervisorId);
+  const approverText = supervisor ? 'Will be sent to: <strong>'+escHtml(supervisor.name)+'</strong> ('+escHtml(supervisor.id)+') for approval' : 'Will be sent to manager for approval';
+  const html = '<div style="font-size:13px">'
+    + '<p style="margin-bottom:14px;color:var(--gray-light)">Submit a leave request to your supervisor.<br>सुपरवाइज़र को छुट्टी का अनुरोध भेजें।</p>'
+    + '<div class="form-row">'
+    + '<div class="form-group"><label class="form-label">From Date / शुरू</label><input id="lv-from" class="form-input" type="date" value="'+today+'"></div>'
+    + '<div class="form-group"><label class="form-label">To Date / अंत</label><input id="lv-to" class="form-input" type="date" value="'+today+'"></div>'
+    + '</div>'
+    + '<div class="form-group"><label class="form-label">Leave Type / प्रकार</label>'
+    + '<select id="lv-type" class="form-input">'+leaveTypeOpts+'</select></div>'
+    + '<div class="form-group"><label class="form-label">Reason * (mandatory) / कारण (अनिवार्य)</label>'
+    + '<input id="lv-note" class="form-input" type="text" placeholder="Brief reason…"></div>'
+    + '<div id="lv-msg" style="font-size:12px;color:var(--gray-light)"></div>'
+    + '<div style="font-size:11px;color:var(--gold-light);margin-top:6px">📋 '+approverText+'</div>'
+    + '</div>';
   showModal('📅 Request Leave / छुट्टी अनुरोध', html, [
     {label:'Submit Request / भेजें', cls:'btn-gold', cb: async()=>{
       const from=document.getElementById('lv-from')?.value;
@@ -3641,7 +3652,7 @@ async function showLeaveRequest() {
       if (res.ok) {
         closeModal();
         const msg = res.needsSeniorApproval ? 'Leave sent! Requires L5+ approval for 3+ days.' : 'Leave request sent to supervisor!';
-        toast(`✓ ${msg}`,'success',5000);
+        toast('✓ '+msg,'success',5000);
       } else toast(res.error||'Failed','error');
     }},
     {label:'Cancel / रद्द', cls:'btn-dark', cb:closeModal},
@@ -4952,6 +4963,7 @@ async function showEmpDetail(empId) {
   </div>`;
   showModal(`👤 ${e.name} — Employee Profile`, html,
     [{label:'📎 Documents', cls:'btn-dark', cb:()=>{closeModal();showDocumentVault(e.id,e.name);}},
+     {label:'📊 Leave Balance', cls:'btn-dark', cb:()=>{closeModal();showEmpLeaveBalance(e.id,e.name);}},
      {label:'Close', cls:'btn-dark', cb:closeModal}]);
   // Load loyalty bonus async after modal renders
   API.call('getEmployeeLoyaltyBonus', {employee_id: e.id}).then(lbRes => {
@@ -4980,6 +4992,62 @@ async function showEmpDetail(empId) {
     const loadEl = document.getElementById('emp-lb-loading');
     if (loadEl) loadEl.textContent = 'Could not load bonus data.';
   });
+}
+
+// ─── S3.5: Employee Leave Balance ────────────────────────────
+async function showEmpLeaveBalance(empId, empName) {
+  const yr = new Date().getFullYear();
+  const res = await API.call('getLeaveBalance', {empId, year: yr});
+  const balances = res.balances || [];
+  const leaveTypeNames = {CL:'Casual Leave',EL:'Earned Leave',SL:'Sick Leave',ML:'Maternity Leave',
+    PTL:'Paternity Leave',LWP:'Leave Without Pay',BL:'Bereavement Leave',COL:'Compensatory Off',
+    SOL:'Study Leave',IL:'Informed Leave',PL:'Paid Leave',IHL:'Half Leave'};
+  if (!balances.length) {
+    showModal('📊 Leave Balances — '+escHtml(empName||empId),
+      '<div style="text-align:center;padding:24px;color:var(--gray-light)">No leave balance records for '+yr+'. Use "Seed Leave Balances" in Settings.</div>',
+      [{label:'Back', cls:'btn-dark', cb:()=>{closeModal();showEmpDetail(empId);}}]);
+    return;
+  }
+  let hasWarning = false;
+  const rows = balances.map(b => {
+    const opening = parseFloat(b['Opening Balance'])||0;
+    const accrued = parseFloat(b['Accrued This Year'])||0;
+    const used     = parseFloat(b['Used'])||0;
+    const carried  = parseFloat(b['Carried Over From Previous Year'])||0;
+    const encashed = parseFloat(b['Encashed'])||0;
+    const lapsed   = parseFloat(b['Lapsed/Expired'])||0;
+    const closing  = parseFloat(b['Closing Balance'])||0;
+    const computed = Math.round((opening + accrued + carried - used - encashed - lapsed)*100)/100;
+    const balanced = Math.abs(computed - closing) < 0.01;
+    if (!balanced) hasWarning = true;
+    const code = b['Leave Type Code']||'';
+    return '<tr>'
+      + '<td style="font-size:11px;font-weight:700">'+escHtml(code)+'<br><span style="color:var(--gray-light);font-weight:400">'+escHtml(leaveTypeNames[code]||code)+'</span></td>'
+      + '<td style="text-align:center">'+opening+'</td>'
+      + '<td style="text-align:center">'+accrued+'</td>'
+      + '<td style="text-align:center">'+carried+'</td>'
+      + '<td style="text-align:center">'+used+'</td>'
+      + '<td style="text-align:center">'+encashed+'</td>'
+      + '<td style="text-align:center">'+lapsed+'</td>'
+      + '<td style="text-align:center;font-weight:700;color:var(--gold)">'+closing+'</td>'
+      + (balanced
+          ? '<td style="text-align:center;color:var(--green)">✓</td>'
+          : '<td style="text-align:center;color:var(--red)" title="Expected: '+computed+'">⚠ '+computed+'</td>')
+      + '</tr>';
+  }).join('');
+  const warningBanner = hasWarning
+    ? '<div style="background:rgba(183,28,28,0.15);border:1px solid rgba(229,57,53,0.5);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:12px">⚠ One or more leave types have a balance arithmetic mismatch. Check the "Balance Check" column.</div>'
+    : '';
+  const html = warningBanner
+    + '<div style="font-size:12px;color:var(--gray-light);margin-bottom:8px">Year: <strong style="color:var(--gold)">'+yr+'</strong> &nbsp; Formula: Opening + Accrued + Carried − Used − Encashed − Lapsed = Closing</div>'
+    + '<div class="table-wrap" style="max-height:420px;overflow-y:auto">'
+    + '<table class="az-table" style="font-size:11px"><thead><tr>'
+    + '<th>Leave Type</th><th>Opening</th><th>Accrued</th><th>Carried</th><th>Used</th><th>Encashed</th><th>Lapsed</th><th>Closing</th><th>Check</th>'
+    + '</tr></thead><tbody>'+rows+'</tbody></table>'
+    + '</div>';
+  showModal('📊 Leave Balances — '+escHtml(empName||empId), html,
+    [{label:'Back to Profile', cls:'btn-dark', cb:()=>{closeModal();showEmpDetail(empId);}},
+     {label:'Close', cls:'btn-dark', cb:closeModal}]);
 }
 
 // ─── Document Vault ──────────────────────────────────────────
@@ -5372,7 +5440,7 @@ async function showEditEmpModal(empId) {
   <div class="form-group"><label class="form-label">Leave Policy Group <span class="info-tooltip" title="Assign this employee to a leave policy group (e.g. Staff, Executive). The group's annual leave quotas will be used for this employee.">ℹ</span></label><input id="ee-lpgroup" class="form-input" value="${escHtml(e.leavePolicyGroup||'')}" placeholder="e.g. Staff, Executive, Managerial"></div>
   <!-- v31: Admin actions -->
   <div style="border-top:1px solid var(--gray);margin-top:14px;padding-top:14px">
-    <div style="font-size:12px;color:var(--gray-light);margin-bottom:10px;font-weight:600">Admin Actions (v31)</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:10px;font-weight:600">Admin Actions</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
       <button class="btn btn-dark btn-sm" onclick="closeModal();showPromotionModal('${escHtml(empId)}','${escHtml(e.name)}')">🎯 Initiate Promotion / Increment</button>
       <button class="btn btn-dark btn-sm" style="border-color:var(--red,#d32f2f);color:var(--red,#d32f2f)" onclick="closeModal();showInitiateNoticeModal('${escHtml(empId)}','${escHtml(e.name)}')">📋 Initiate Notice Period</button>
@@ -5572,34 +5640,125 @@ async function registerFace(empId, empName) {
 // ═══════════════════════════════════════════
 async function renderAttendance() {
   const now=new Date();
-  let selYear=now.getFullYear(), selMonth=now.getMonth()+1, selEmp='';
+  window._attEmps = [];
   const empsRes=await API.call('getEmployees',{status:'Active'});
   const emps=empsRes.employees||[];
+  window._attEmps = emps;
+  // Restore last date range from localStorage
+  const lastMo = parseInt(LS.g('att_filter_month')||now.getMonth()+1);
+  const lastYr = parseInt(LS.g('att_filter_year')||now.getFullYear());
   function getAttGrid() {
     const empSel=document.getElementById('att-emp-sel')?.value||'';
     const yrSel=parseInt(document.getElementById('att-yr-sel')?.value||now.getFullYear());
     const moSel=parseInt(document.getElementById('att-mo-sel')?.value||now.getMonth()+1);
+    LS.s('att_filter_month', moSel); LS.s('att_filter_year', yrSel);
     renderAttendanceGrid(empSel, yrSel, moSel, emps);
   }
-  const empOpts=emps.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
+  window._attGetGrid = getAttGrid;
+  const empOpts=emps.map(e=>'<option value="'+escHtml(e.id)+'">'+escHtml(e.name)+' ('+escHtml(e.id)+')</option>').join('');
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const yearOpts=Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('');
-  const monthOpts=months.map((m,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${m}</option>`).join('');
-  let html=`
+  const yearOpts=Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>'<option value="'+y+'"'+(y===lastYr?' selected':'')+'>'+y+'</option>').join('');
+  const monthOpts=months.map((m,i)=>'<option value="'+(i+1)+'"'+(i+1===lastMo?' selected':'')+'>'+m+'</option>').join('');
+  const depts=[...new Set(emps.map(e=>e.dept).filter(Boolean))];
+  const deptOpts=depts.map(d=>'<option value="'+escHtml(d)+'">'+escHtml(d)+'</option>').join('');
+  const isOwnerOrMgr = State.adminRole==='owner'||State.adminRole==='manager';
+  const emergencyPanel = isOwnerOrMgr ? `
+  <div style="background:rgba(229,57,53,0.08);border:1px solid var(--red);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:10px">⚡ Emergency Controls — ${State.adminRole==='owner'?'Owner':'Manager'} Only</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="emergencyBulkClockOut()">🔴 Bulk Clock-Out All Staff Now</button>
+      <button class="btn btn-sm" style="background:var(--orange);color:#fff" onclick="emergencyBulkClockIn()">🟡 Bulk Clock-In All Active Staff Now</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="ec-emp-sel" class="form-input" style="font-size:11px;padding:4px 8px;height:32px;min-width:180px">
+          <option value="">-- Select clocked-in employee --</option>
+        </select>
+        <button class="btn btn-dark btn-sm" onclick="clockOutSelectedEmployee()">Clock Out Now</button>
+      </div>
+    </div>
+  </div>` : '';
+  let html = `
   <div class="section-hdr">
     <div class="section-title">Attendance Management</div>
     <div class="section-actions">
-      <button class="btn btn-dark btn-sm" onclick="API.call('autoClockOut',{}).then(r=>toast('Auto clock-out done: '+r.affected?.length+' employees','success')).catch(e=>{toast('Network error. Please try again.','error');console.error(e);})">Auto Clock-Out</button>
+      ${isOwnerOrMgr?'<button class="btn btn-dark btn-sm" onclick="showBulkHoursModal()">📋 Bulk Hours Entry</button>':''}
+      <button class="btn btn-dark btn-sm" onclick="exportFilteredTimesheet()">⬇ Export CSV</button>
     </div>
   </div>
-  <div class="filters-bar">
-    <select id="att-emp-sel" class="filter-input" onchange="getAttGrid()"><option value="">-- All Employees --</option>${empOpts}</select>
-    <select id="att-mo-sel" class="filter-input" onchange="getAttGrid()">${monthOpts}</select>
-    <select id="att-yr-sel" class="filter-input" onchange="getAttGrid()">${yearOpts}</select>
-  </div>
-  <div id="att-grid-container"><div class="empty-state"><div class="empty-icon">📅</div><p>Select an employee to view attendance grid</p></div></div>`;
+  ${emergencyPanel}
+  <!-- S6.1 Filters Bar -->
+  <details id="att-filters-details" open style="margin-bottom:12px">
+    <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--gold);padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px">
+      ⚙ Filters <span style="font-size:10px;color:var(--gray-light)">(click to collapse)</span>
+    </summary>
+    <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius-sm);padding:12px;margin-top:6px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:10px">
+        <div>
+          <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Employee</div>
+          <select id="att-emp-sel" class="form-input" style="font-size:11px;padding:4px 8px">
+            <option value="">All Employees</option>${empOpts}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Month</div>
+          <select id="att-mo-sel" class="form-input" style="font-size:11px;padding:4px 8px">${monthOpts}</select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Year</div>
+          <select id="att-yr-sel" class="form-input" style="font-size:11px;padding:4px 8px">${yearOpts}</select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Department</div>
+          <select id="att-dept-sel" class="form-input" style="font-size:11px;padding:4px 8px">
+            <option value="">All Departments</option>${deptOpts}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Status</div>
+          <select id="att-status-sel" class="form-input" style="font-size:11px;padding:4px 8px">
+            <option value="">All Statuses</option>
+            <option value="P">Present</option><option value="UL">UL (Absent)</option>
+            <option value="IL">IL (Informed Leave)</option><option value="WO">Weekly Off</option>
+            <option value="H">Holiday</option><option value="EW">Extra Work</option>
+            <option value="LWP">LWP</option><option value="Late">Late</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">OT</div>
+          <select id="att-ot-sel" class="form-input" style="font-size:11px;padding:4px 8px">
+            <option value="">All</option><option value="yes">OT Present</option><option value="no">No OT</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Adjustment</div>
+          <select id="att-adj-sel" class="form-input" style="font-size:11px;padding:4px 8px">
+            <option value="">All</option><option value="yes">Adjusted Only</option><option value="no">Non-Adjusted Only</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Search Name/ID</div>
+          <input id="att-search-inp" class="form-input" style="font-size:11px;padding:4px 8px" placeholder="Name or code…">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gold btn-sm" onclick="applyTimesheetFilters()">Apply Filters</button>
+        <button class="btn btn-dark btn-sm" onclick="clearTimesheetFilters()">Clear Filters</button>
+      </div>
+    </div>
+  </details>
+  <div id="att-grid-container"><div class="empty-state"><div class="empty-icon">📅</div><p>Select an employee and click Apply Filters</p></div></div>`;
   document.getElementById('admin-tab-content').innerHTML = html;
-  document.getElementById('att-emp-sel').onchange = getAttGrid;
+  // Load clocked-in employees for emergency panel
+  if (isOwnerOrMgr) {
+    API.call('getClockedInEmployees', {}).then(r => {
+      if (!r || !r.ok) return;
+      const sel = document.getElementById('ec-emp-sel');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">-- Select clocked-in employee --</option>' +
+        (r.employees||[]).map(e => '<option value="'+escHtml(e.id)+'">'+escHtml(e.name)+' ('+escHtml(e.id)+') — In: '+fmtTime(e.clockIn||'')+'</option>').join('');
+    }).catch(()=>{});
+  }
+  // Auto-load grid if an employee is pre-selected
+  if (emps.length) getAttGrid();
 }
 
 async function renderAttendanceGrid(empId, year, month, emps) {
@@ -5608,7 +5767,10 @@ async function renderAttendanceGrid(empId, year, month, emps) {
   container.innerHTML='<div class="loading-spinner"></div>';
   const res=await API.call('getAttendanceEmployee',{empId,year,month});
   const records=res.records||[];
+  window._attCurrentRecords = records; // S5.2: expose for edit modal
+  window._attCurrentLeaves = res.approvedLeaves||[]; // S3.7: approved leaves for badge display
   const emp=emps.find(e=>e.id===empId)||{};
+  window._attCurrentEmp = emp;
   const daysInMonth=new Date(year,month,0).getDate();
   const recMap={};
   records.forEach(r=>recMap[r.date]=r);
@@ -5631,18 +5793,21 @@ async function renderAttendanceGrid(empId, year, month, emps) {
     const dowIdx=new Date(ds).getDay();
     const dayName=days[dowIdx];
     const dayNameFull=daysFull[dowIdx];
-    const status=rec?rec.status:(new Date(ds)<=new Date()?'—':'');
+    // S3.7: if no attendance record, check approved leaves for leave badge
+    const approvedLeaveForDay=(window._attCurrentLeaves||[]).find(l=>l.startDate<=ds&&l.endDate>=ds);
+    const status=rec?rec.status:(approvedLeaveForDay?approvedLeaveForDay.type:(new Date(ds)<=new Date()?'—':''));
     if(rec){if(rec.status==='P')P++;if(rec.status==='UL')UL++;if(rec.status==='IL')IL++;if(parseInt(rec.lateMinutes)>0)Late++;if(parseInt(rec.otMinutes)>0)OT++;}
     const isWO=(emp.weeklyOff1===dayNameFull)||(emp.weeklyOff2===dayNameFull);
+    const isLWP=status==='LWP';
     html+=`<tr class="${isWO?'text-gray':''}">
       <td>${d}</td><td>${dayName}</td>
       <td>${rec&&rec.clockIn?fmtTime(rec.clockIn):'—'}</td>
       <td>${rec&&rec.clockOut?fmtTime(rec.clockOut):'—'}</td>
-      <td class="att-${status}">${statusBadge(status||'—')}</td>
+      <td class="att-${status}"${isLWP?' style="background:rgba(183,28,28,0.18)"':''}>${statusBadge(status||'—')}</td>
       <td style="font-size:11px">${rec&&parseInt(rec.lateMinutes)>0?`<span style="color:var(--orange)">${rec.lateMinutes}m</span>`:'—'}</td>
       <td style="font-size:11px">${rec&&rec.workMinutes?`${Math.floor(rec.workMinutes/60)}h${rec.workMinutes%60}m`:'—'}${rec&&parseInt(rec.otMinutes)>0?` <span style="background:var(--orange);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;white-space:nowrap">OT ${rec.otMinutes}m</span>`:''}</td>
       <td style="font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis">${rec&&rec.locationNote?escHtml(rec.locationNote):'—'}</td>
-      <td><button class="btn btn-dark btn-sm" onclick="showManualAttModal('${escHtml(empId)}','${escHtml(ds)}','${escHtml(status)}')">✏</button></td>
+      <td><button class="btn btn-dark btn-sm" onclick="showAttendanceEditModal('${escHtml(empId)}','${escHtml(ds)}')">✏</button></td>
     </tr>`;
   }
   html+=`</tbody></table></div>
@@ -5753,6 +5918,307 @@ function toggleManualTimeMode(){
   const hours=document.getElementById('ma-hours-input');
   if(clockio) clockio.style.display=mode==='clockio'?'':'none';
   if(hours) hours.style.display=mode==='hours'?'':'none';
+}
+
+// ─── S4.5: Emergency Controls ───────────────
+async function emergencyBulkClockOut() {
+  if (!confirm('Clock out ALL currently clocked-in staff now? This cannot be undone.')) return;
+  const res = await API.call('emergencyBulkClockOut', {adminCode: State.adminUser});
+  if (!res || !res.ok) { toast(res?.error || 'Error', 'error'); return; }
+  toast('Bulk clock-out complete — ' + (res.count||0) + ' employees', 'success');
+  API.call('getClockedInEmployees', {}).then(r => {
+    if (!r || !r.ok) return;
+    const sel = document.getElementById('ec-emp-sel');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Select clocked-in employee --</option>' +
+      (r.employees||[]).map(e => '<option value="'+escHtml(e.id)+'">'+escHtml(e.name)+' ('+escHtml(e.id)+')</option>').join('');
+  }).catch(()=>{});
+}
+
+async function emergencyBulkClockIn() {
+  if (!confirm('Clock in ALL active employees now? Already clocked-in employees will be skipped.')) return;
+  const res = await API.call('emergencyBulkClockIn', {adminCode: State.adminUser});
+  if (!res || !res.ok) { toast(res?.error || 'Error', 'error'); return; }
+  toast('Bulk clock-in complete — ' + (res.count||0) + ' employees', 'success');
+}
+
+async function clockOutSelectedEmployee() {
+  const sel = document.getElementById('ec-emp-sel');
+  const empId = sel?.value || '';
+  if (!empId) { toast('Select an employee first', 'warning'); return; }
+  const empName = sel.options[sel.selectedIndex]?.text || empId;
+  if (!confirm('Clock out ' + empName + ' now?')) return;
+  const res = await API.call('manualClockOut', {empId, adminCode: State.adminUser});
+  if (!res || !res.ok) { toast(res?.error || 'Error', 'error'); return; }
+  toast(empName + ' clocked out', 'success');
+  API.call('getClockedInEmployees', {}).then(r => {
+    if (!r || !r.ok) return;
+    const s = document.getElementById('ec-emp-sel');
+    if (!s) return;
+    s.innerHTML = '<option value="">-- Select clocked-in employee --</option>' +
+      (r.employees||[]).map(e => '<option value="'+escHtml(e.id)+'">'+escHtml(e.name)+' ('+escHtml(e.id)+') — In: '+fmtTime(e.clockIn||'')+'</option>').join('');
+  }).catch(()=>{});
+}
+
+// ─── S5.2: Attendance Edit Modal ────────────
+function showAttendanceEditModal(empId, date) {
+  const records = window._attCurrentRecords || [];
+  const emp = window._attCurrentEmp || {};
+  const rec = records.find(r => r.date === date) || {};
+  const status = rec.status || 'P';
+  const statuses = ['P','IL','IHL','UL','H','WO','EW','SL','PL','CL','EL','ML','PTL','LWP','BL','COL','SOL'];
+  const statusLabels = {P:'P — Present',IL:'IL — Informed Leave',IHL:'IHL — Half Leave',UL:'UL — Uninformed Leave',H:'H — Holiday',WO:'WO — Weekly Off',EW:'EW — Extra Work',SL:'SL — Sick Leave',PL:'PL — Paid Leave',CL:'CL — Casual Leave',EL:'EL — Earned Leave',ML:'ML — Maternity Leave',PTL:'PTL — Paternity Leave',LWP:'LWP — Leave Without Pay',BL:'BL — Bereavement Leave',COL:'COL — Compensatory Off',SOL:'SOL — Study Leave'};
+  const statusOpts = statuses.map(s => '<option value="'+s+'"'+(s===status?' selected':'')+'>'+statusLabels[s]+'</option>').join('');
+  // Parse existing clock times into 12-hour selectors
+  function parseTimeTo12(tsStr) {
+    if (!tsStr) return {h:'09',m:'00',ap:'AM'};
+    const tp = tsStr.split(' ')[1] || tsStr;
+    const parts = (tp||'').split(':');
+    let h = parseInt(parts[0])||9, m = parts[1]||'00';
+    const ap = h >= 12 ? 'PM' : 'AM';
+    if (h > 12) h -= 12; if (h === 0) h = 12;
+    return {h:String(h).padStart(2,'0'), m, ap};
+  }
+  const ci12 = parseTimeTo12(rec.clockIn);
+  const co12 = parseTimeTo12(rec.clockOut || '');
+  if (!rec.clockOut) { co12.h='06'; co12.m='00'; co12.ap='PM'; }
+  const hrOpts = Array.from({length:12},(_,i)=>'<option value="'+String(i+1).padStart(2,'0')+'">'+(i+1)+'</option>').join('');
+  const minOpts = ['00','15','30','45'].map(m=>'<option value="'+m+'">'+m+'</option>').join('');
+  function selOpts(base, selected) { return base.replace('"'+selected+'"', '"'+selected+'" selected'); }
+  const otMins = parseInt(rec.otMinutes)||0;
+  const html = '<div style="font-size:13px">'
+    + '<div style="background:var(--dark3);border-radius:4px;padding:8px 12px;margin-bottom:10px;font-size:12px">'
+    +   '<strong>'+escHtml(emp.name||empId)+'</strong> &mdash; '+escHtml(date)
+    + (rec.status ? ' &nbsp; '+statusBadge(rec.status) : '')
+    + '</div>'
+    + '<div class="form-group"><label class="form-label">Status</label>'
+    + '<select id="ae-status" class="form-input" onchange="toggleAeTimeMode()">'+statusOpts+'</select></div>'
+    + '<div id="ae-time-section">'
+    + '<div style="display:flex;gap:10px;margin-bottom:8px;font-size:12px">'
+    + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ae-mode" value="clockio" checked onchange="toggleAeTimeMode()" style="accent-color:var(--gold)"> Clock-In / Clock-Out</label>'
+    + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ae-mode" value="hours" onchange="toggleAeTimeMode()" style="accent-color:var(--gold)"> Total Hours</label>'
+    + '</div>'
+    + '<div id="ae-clockio-inputs" class="form-row">'
+    + '<div class="form-group"><label class="form-label">Clock In</label><div style="display:flex;gap:6px">'
+    + '<select id="ae-ci-h" class="form-input" style="width:70px">'+selOpts(hrOpts,ci12.h)+'</select>'
+    + '<select id="ae-ci-m" class="form-input" style="width:70px">'+selOpts(minOpts,ci12.m)+'</select>'
+    + '<select id="ae-ci-ampm" class="form-input" style="width:70px"><option value="AM"'+(ci12.ap==='AM'?' selected':'')+'>AM</option><option value="PM"'+(ci12.ap==='PM'?' selected':'')+'>PM</option></select>'
+    + '</div></div>'
+    + '<div class="form-group"><label class="form-label">Clock Out</label><div style="display:flex;gap:6px">'
+    + '<select id="ae-co-h" class="form-input" style="width:70px">'+selOpts(hrOpts,co12.h)+'</select>'
+    + '<select id="ae-co-m" class="form-input" style="width:70px">'+selOpts(minOpts,co12.m)+'</select>'
+    + '<select id="ae-co-ampm" class="form-input" style="width:70px"><option value="AM"'+(co12.ap==='AM'?' selected':'')+'>AM</option><option value="PM"'+(co12.ap==='PM'?' selected':'')+'>PM</option></select>'
+    + '</div></div>'
+    + '</div>'
+    + '<div id="ae-hours-input" style="display:none" class="form-row">'
+    + '<div class="form-group"><label class="form-label">Total Hours</label>'
+    + '<input id="ae-total-hours" class="form-input" type="number" min="0" max="24" step="0.5" value="'+(rec.workMinutes?Math.round(rec.workMinutes/60*10)/10:'')+'"></div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="form-row"><div class="form-group"><label class="form-label">OT Hours (optional)</label>'
+    + '<input id="ae-ot-hours" class="form-input" type="number" min="0" max="12" step="0.5" value="'+(otMins?Math.round(otMins/60*10)/10:'')+'"></div></div>'
+    + '<div class="form-group"><label class="form-label" style="color:var(--red)">Reason / Remark * (mandatory)</label>'
+    + '<input id="ae-reason" class="form-input" placeholder="Reason for this adjustment…" autocomplete="off"></div>'
+    + '</div>';
+  showModal('✏ Edit Attendance — '+date, html, [
+    {label:'Save Adjustment', cls:'btn-gold', cb:()=>saveAttendanceAdjustment(empId, date)},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+  toggleAeTimeMode();
+}
+
+function toggleAeTimeMode() {
+  const mode = document.querySelector('[name="ae-mode"]:checked')?.value || 'clockio';
+  const status = document.getElementById('ae-status')?.value || 'P';
+  const showTime = ['P','EW'].includes(status);
+  const sec = document.getElementById('ae-time-section');
+  if (sec) sec.style.display = showTime ? '' : 'none';
+  const clockio = document.getElementById('ae-clockio-inputs');
+  const hours = document.getElementById('ae-hours-input');
+  if (clockio) clockio.style.display = mode === 'clockio' ? '' : 'none';
+  if (hours) hours.style.display = mode === 'hours' ? '' : 'none';
+}
+
+// ─── S5.3: Save Attendance Adjustment ───────
+async function saveAttendanceAdjustment(empId, date) {
+  const reason = document.getElementById('ae-reason')?.value?.trim() || '';
+  if (!reason) { toast('Reason is mandatory', 'warning'); return; }
+  const status = document.getElementById('ae-status')?.value || 'P';
+  const mode = document.querySelector('[name="ae-mode"]:checked')?.value || 'clockio';
+  let ciStr = '', coStr = '';
+  function to24(h,m,ampm){let hh=parseInt(h);if(ampm==='PM'&&hh!==12)hh+=12;if(ampm==='AM'&&hh===12)hh=0;return String(hh).padStart(2,'0')+':'+m+':00';}
+  if (['P','EW'].includes(status)) {
+    if (mode === 'clockio') {
+      const cih=document.getElementById('ae-ci-h')?.value||'09', cim=document.getElementById('ae-ci-m')?.value||'00', ciap=document.getElementById('ae-ci-ampm')?.value||'AM';
+      const coh=document.getElementById('ae-co-h')?.value||'06', com_=document.getElementById('ae-co-m')?.value||'00', coap=document.getElementById('ae-co-ampm')?.value||'PM';
+      ciStr = date+' '+to24(cih,cim,ciap);
+      coStr = date+' '+to24(coh,com_,coap);
+    } else {
+      const hrs = parseFloat(document.getElementById('ae-total-hours')?.value)||0;
+      const shiftStart = (window._attCurrentEmp||{}).shiftStart || '09:00';
+      const [sh,sm] = shiftStart.split(':').map(Number);
+      const startMins = sh*60+sm, endMins = startMins+Math.round(hrs*60);
+      function minsToTime(m){return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0')+':00';}
+      ciStr = date+' '+minsToTime(startMins);
+      coStr = date+' '+minsToTime(endMins);
+    }
+  }
+  const otMinutes = Math.round((parseFloat(document.getElementById('ae-ot-hours')?.value)||0)*60);
+  const res = await API.call('attendanceAdjustment', {
+    empId, date, status, clockIn:ciStr, clockOut:coStr,
+    otMinutes, reason, adminCode:State.adminUser
+  });
+  if (!res || !res.ok) { toast(res?.error||'Error','error'); return; }
+  closeModal();
+  toast('Attendance adjusted', 'success');
+  const yr = parseInt(document.getElementById('att-yr-sel')?.value||new Date().getFullYear());
+  const mo = parseInt(document.getElementById('att-mo-sel')?.value||new Date().getMonth()+1);
+  renderAttendanceGrid(empId, yr, mo, window._attEmps||State.employees||[]);
+}
+
+// ─── S5.4: Bulk Hours Entry Modal ───────────
+async function showBulkHoursModal() {
+  const emps = window._attEmps || State.employees || [];
+  if (!emps.length) { toast('No employees loaded', 'warning'); return; }
+  const now = new Date();
+  const todayStr_ = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const rows = emps.map((e,i) =>
+    '<tr>'
+    + '<td style="font-size:11px">'+escHtml(e.name||e.id)+'</td>'
+    + '<td style="font-size:11px">'+escHtml(e.id)+'</td>'
+    + '<td><input id="bhe-ci-'+i+'" class="form-input" style="font-size:11px;padding:3px 6px;width:80px" type="time" value="09:00"></td>'
+    + '<td><input id="bhe-co-'+i+'" class="form-input" style="font-size:11px;padding:3px 6px;width:80px" type="time" value="18:00"></td>'
+    + '<td><input id="bhe-st-'+i+'" class="form-input" style="font-size:11px;padding:3px 6px;width:70px" type="number" min="0" max="24" step="0.5" placeholder="Hrs"></td>'
+    + '<td><select id="bhe-stat-'+i+'" class="form-input" style="font-size:11px;padding:3px 6px">'
+    + '<option value="P" selected>P</option><option value="UL">UL</option><option value="IL">IL</option>'
+    + '<option value="WO">WO</option><option value="H">H</option><option value="LWP">LWP</option>'
+    + '</select></td>'
+    + '</tr>'
+  ).join('');
+  const html = '<div style="font-size:13px">'
+    + '<div class="form-row" style="margin-bottom:10px">'
+    + '<div class="form-group"><label class="form-label">Date</label>'
+    + '<input id="bhe-date" class="form-input" type="date" value="'+todayStr_+'"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+    + '<button class="btn btn-dark btn-sm" onclick="_bheSetAll(\'ci\',\'09:00\')">Set All CI 9AM</button>'
+    + '<button class="btn btn-dark btn-sm" onclick="_bheSetAll(\'co\',\'18:00\')">Set All CO 6PM</button>'
+    + '<button class="btn btn-dark btn-sm" onclick="_bheSetAll(\'st\',\'9\')">Fill 9h All</button>'
+    + '</div>'
+    + '<div style="max-height:350px;overflow-y:auto;border:1px solid var(--dark3);border-radius:4px">'
+    + '<table class="az-table" style="font-size:11px"><thead><tr>'
+    + '<th>Name</th><th>ID</th><th>Clock-In</th><th>Clock-Out</th><th>Hours</th><th>Status</th>'
+    + '</tr></thead><tbody>'+rows+'</tbody></table>'
+    + '</div>'
+    + '<div class="form-group" style="margin-top:10px"><label class="form-label" style="color:var(--red)">Reason * (mandatory)</label>'
+    + '<input id="bhe-reason" class="form-input" placeholder="Bulk entry reason…"></div>'
+    + '</div>';
+  showModal('📋 Bulk Hours Entry', html, [
+    {label:'Save All', cls:'btn-gold', cb:saveBulkHoursEntry},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+function _bheSetAll(field, val) {
+  const emps = window._attEmps || [];
+  emps.forEach((e,i) => { const el = document.getElementById('bhe-'+field+'-'+i); if(el) el.value=val; });
+}
+
+async function saveBulkHoursEntry() {
+  const date = document.getElementById('bhe-date')?.value || '';
+  const reason = document.getElementById('bhe-reason')?.value?.trim() || '';
+  if (!date) { toast('Select a date','warning'); return; }
+  if (!reason) { toast('Reason is mandatory','warning'); return; }
+  const emps = window._attEmps || [];
+  const records = emps.map((e,i) => {
+    const stat = document.getElementById('bhe-stat-'+i)?.value || 'P';
+    const ci = document.getElementById('bhe-ci-'+i)?.value || '';
+    const co = document.getElementById('bhe-co-'+i)?.value || '';
+    const hrs = parseFloat(document.getElementById('bhe-st-'+i)?.value||'0')||0;
+    return {
+      empId:e.id, date, status:stat,
+      clockIn:(['P','EW'].includes(stat)&&ci) ? date+' '+ci+':00' : '',
+      clockOut:(['P','EW'].includes(stat)&&co) ? date+' '+co+':00' : '',
+      hoursOverride: hrs||null, reason
+    };
+  });
+  const res = await API.call('bulkAttendanceEntry', {records, adminCode:State.adminUser, reason});
+  if (!res || !res.ok) { toast(res?.error||'Error','error'); return; }
+  closeModal();
+  toast('Bulk entry saved — '+(res.count||records.length)+' records','success');
+}
+
+// ─── S6.2: Timesheet Filters ────────────────
+async function applyTimesheetFilters() {
+  const empId = document.getElementById('att-emp-sel')?.value || '';
+  const yr = parseInt(document.getElementById('att-yr-sel')?.value || new Date().getFullYear());
+  const mo = parseInt(document.getElementById('att-mo-sel')?.value || (new Date().getMonth()+1));
+  await renderAttendanceGrid(empId, yr, mo, window._attEmps||State.employees||[]);
+  _filterAttRows();
+}
+
+function clearTimesheetFilters() {
+  ['att-status-sel','att-ot-sel','att-adj-sel'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const si = document.getElementById('att-search-inp'); if (si) si.value = '';
+  _filterAttRows();
+}
+
+function _filterAttRows() {
+  const statFilter = document.getElementById('att-status-sel')?.value || '';
+  const otFilter = document.getElementById('att-ot-sel')?.value || '';
+  const adjFilter = document.getElementById('att-adj-sel')?.value || '';
+  const records = window._attCurrentRecords || [];
+  const yr = parseInt(document.getElementById('att-yr-sel')?.value || new Date().getFullYear());
+  const mo = parseInt(document.getElementById('att-mo-sel')?.value || new Date().getMonth()+1);
+  const tbody = document.querySelector('.att-grid tbody');
+  if (!tbody) return;
+  Array.from(tbody.querySelectorAll('tr')).forEach((row, i) => {
+    const d = i+1;
+    const ds = yr+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const rec = records.find(r => r.date === ds) || null;
+    let show = true;
+    if (statFilter && rec?.status !== statFilter) show = false;
+    if (otFilter === 'yes' && !(rec && parseInt(rec.otMinutes||0) > 0)) show = false;
+    if (otFilter === 'no' && rec && parseInt(rec.otMinutes||0) > 0) show = false;
+    if (adjFilter === 'yes' && !(rec && rec.manualEdit)) show = false;
+    if (adjFilter === 'no' && rec && rec.manualEdit) show = false;
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+// ─── S6.3: Export Filtered Timesheet ────────
+function exportFilteredTimesheet() {
+  const emp = window._attCurrentEmp || {};
+  const records = window._attCurrentRecords || [];
+  const yr = document.getElementById('att-yr-sel')?.value || String(new Date().getFullYear());
+  const mo = document.getElementById('att-mo-sel')?.value || String(new Date().getMonth()+1);
+  if (!emp.id && !records.length) { toast('No data to export','warning'); return; }
+  const tbody = document.querySelector('.att-grid tbody');
+  const visibleDays = tbody
+    ? Array.from(tbody.querySelectorAll('tr')).filter(r=>r.style.display!=='none').map((_,i)=>i+1)
+    : null;
+  const daysInMonth = new Date(parseInt(yr), parseInt(mo), 0).getDate();
+  const rows = [['Employee','ID','Date','Day','Status','Clock In','Clock Out','Hours','OT Minutes','Late Minutes','Notes']];
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (visibleDays && !visibleDays.includes(d)) continue;
+    const ds = yr+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const rec = records.find(r=>r.date===ds);
+    const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(ds).getDay()];
+    rows.push([
+      emp.name||'', emp.id||'', ds, dayName,
+      rec?.status||'—', rec?.clockIn||'', rec?.clockOut||'',
+      rec?.workMinutes ? Math.floor(rec.workMinutes/60)+'h'+(rec.workMinutes%60)+'m' : '',
+      rec?.otMinutes||'', rec?.lateMinutes||'', rec?.locationNote||''
+    ]);
+  }
+  const csv = rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download = 'Attendance_'+(emp.id||'All')+'_'+yr+'-'+String(mo).padStart(2,'0')+'.csv';
+  a.click(); URL.revokeObjectURL(url);
 }
 
 // ═══════════════════════════════════════════
@@ -8948,6 +9414,72 @@ async function renderSettings() {
     </div>
   </div>
 
+  <!-- S4.1 Auto Clock-Out Policy (v32) -->
+  <div class="settings-section">
+    <div class="settings-section-title">⏹ Auto Clock-Out Policy</div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">Enable Auto Clock-Out
+          <span class="info-tooltip" title="Automatically clock out employees who exceed the maximum hours threshold or miss a fixed cut-off time. Recommended: Yes for factory environments.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-autoCoEnabled">
+          <option value="No" ${(cfg['autoCoEnabled']||'No')==='No'?'selected':''}>No</option>
+          <option value="Yes" ${cfg['autoCoEnabled']==='Yes'?'selected':''}>Yes</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Auto Clock-Out Method
+          <span class="info-tooltip" title="'After Fixed Hours': clock-out fires after N hours from clock-in. 'At Fixed Time': clock-out fires at a set daily time. 'Both': whichever trigger comes first.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-autoCoMethod">
+          <option value="After Fixed Hours" ${(cfg['autoCoMethod']||'After Fixed Hours')==='After Fixed Hours'?'selected':''}>After Fixed Hours</option>
+          <option value="At Fixed Time" ${cfg['autoCoMethod']==='At Fixed Time'?'selected':''}>At Fixed Time</option>
+          <option value="Both" ${cfg['autoCoMethod']==='Both'?'selected':''}>Both (whichever comes first)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Max Hours Before Auto Clock-Out
+          <span class="info-tooltip" title="Used when method is 'After Fixed Hours' or 'Both'. Employee is auto-clocked-out this many hours after their clock-in time. Range: 1–24, supports 0.5 increments.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-autoCoMaxHours" value="${cfg['autoCoMaxHours']||10}" min="1" max="24" step="0.5">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fixed Auto Clock-Out Time (HH:MM, 24-hr)
+          <span class="info-tooltip" title="Used when method is 'At Fixed Time' or 'Both'. All still-clocked-in employees are clocked out at this time daily. Format: HH:MM (e.g. 22:00).">ℹ</span>
+        </label>
+        <input class="form-input" type="time" id="cfg-autoCoFixedTime" value="${cfg['autoCoFixedTime']||'22:00'}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Apply To
+          <span class="info-tooltip" title="'All Employees': rule applies to every employee. 'By Zone/Department': only employees in selected zones/departments are affected (zone configuration pending).">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-autoCoApplyTo">
+          <option value="All Employees" ${(cfg['autoCoApplyTo']||'All Employees')==='All Employees'?'selected':''}>All Employees</option>
+          <option value="By Zone/Department" ${cfg['autoCoApplyTo']==='By Zone/Department'?'selected':''}>By Zone/Department</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Auto Clock-Out Note
+          <span class="info-tooltip" title="Text appended to the attendance record's Notes field whenever an automatic clock-out fires. Visible to managers in the timesheet.">ℹ</span>
+        </label>
+        <input class="form-input" type="text" id="cfg-autoCoNote" value="${escHtml(cfg['autoCoNote']||'Auto clock-out by system')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notify Manager on Auto Clock-Out
+          <span class="info-tooltip" title="If Yes, a notification is created for the employee's manager whenever an automatic clock-out fires, so they can review and correct if needed.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-autoCoNotifyManager">
+          <option value="Yes" ${(cfg['autoCoNotifyManager']||'Yes')==='Yes'?'selected':''}>Yes</option>
+          <option value="No" ${cfg['autoCoNotifyManager']==='No'?'selected':''}>No</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="saveAutoClockOutSettings()">💾 Save Auto Clock-Out Settings</button>
+      <button class="btn btn-dark btn-sm" onclick="API.call('runAutoClockOut',{}).then(r=>{if(!r||typeof r!=='object'){toast('Auto clock-out run. Refresh attendance to see results.','warning');return;}toast('Auto clock-out: '+r.clocked+' employees processed','success',4000);}).catch(e=>toast('Network error','error'))">▶ Run Now (Manual Trigger)</button>
+    </div>
+  </div>
+
   <!-- Role Permissions -->
   <div class="settings-section">
     <div class="settings-section-title">🔑 Role Access Permissions</div>
@@ -9499,7 +10031,7 @@ async function renderSettings() {
 
   <!-- v31: OT & Extra Day Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">⏱ OT & Extra Day Policy (v31)</div>
+    <div class="settings-section-title">⏱ OT & Extra Day Policy</div>
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Configure overtime and extra day pay multipliers. OT = hours beyond standard shift on a normal day.
       Extra Day = full day worked on a holiday or weekly off. These are two separate calculation types.
@@ -9565,7 +10097,7 @@ async function renderSettings() {
 
   <!-- v31: Promotion Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🎯 Promotion Policy (v31)</div>
+    <div class="settings-section-title">🎯 Promotion Policy</div>
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Minimum Advance Notice for Effective Date (days)
@@ -9597,7 +10129,7 @@ async function renderSettings() {
 
   <!-- v31: Bonus Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🎁 Bonus Policy (v31)</div>
+    <div class="settings-section-title">🎁 Bonus Policy</div>
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Perfect Attendance Bonus Amount (INR per month)
@@ -9620,7 +10152,7 @@ async function renderSettings() {
 
   <!-- v31: Referral Bonus Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🤝 Referral Bonus Settings (v31)</div>
+    <div class="settings-section-title">🤝 Referral Bonus Settings</div>
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Enable Referral Bonus
@@ -9653,7 +10185,7 @@ async function renderSettings() {
 
   <!-- v31: Notice Period & Exit Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">📋 Notice Period & Exit Policy (v31)</div>
+    <div class="settings-section-title">📋 Notice Period & Exit Policy</div>
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Default Notice Period Duration (days)
@@ -9734,7 +10266,7 @@ async function renderSettings() {
 
   <!-- v31: Leave Management Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">📅 Leave Management Policy (v31)</div>
+    <div class="settings-section-title">📅 Leave Management Policy</div>
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Leave Year Start Date
@@ -9765,19 +10297,24 @@ async function renderSettings() {
         <input class="form-input" type="number" id="cfg-ptlDuration" value="${cfg['ptlDuration']||15}" min="1">
       </div>
     </div>
-    <div style="margin-top:14px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Leave Types Configuration</div>
+    <div style="margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700">Leave Types Configuration
+          <span class="info-tooltip" title="Define all leave types available to employees. Code is a fixed identifier used in all records. Days Per Year = 0 means unlimited. Changes take effect from the next payroll cycle.">ℹ</span>
+        </div>
+        <button class="btn btn-dark btn-sm" onclick="addCustomLeaveTypeRow()">+ Add Custom Type</button>
+      </div>
       <div id="leave-types-settings-table" style="font-size:12px;overflow-x:auto">
         <div style="color:var(--gray-light)">Loading leave types…</div>
       </div>
     </div>
-    <div style="margin-top:14px">
-      <button class="btn btn-gold" onclick="saveV31LeaveSettings()">💾 Save Leave Settings</button>
-      <button class="btn btn-dark btn-sm" style="margin-left:8px" onclick="seedLeaveBalances()">🌱 Seed Leave Balances for All Active Employees</button>
+    <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-gold" onclick="saveAllLeaveSettings()">💾 Save Leave Settings</button>
+      <button class="btn btn-dark btn-sm" onclick="seedLeaveBalancesAdmin()">🌱 Seed Leave Balances for All Active Employees</button>
     </div>
   </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
-  // Post-render: load leave types into settings table
+  // Post-render: load editable leave types table
   setTimeout(() => loadLeaveTypesSettingsTable(), 100);
 }
 
@@ -10511,6 +11048,17 @@ async function saveAutomationSettings() {
   const res=await API.call('updateSettings',{updates});
   if(res.ok) toast('✓ Automation settings saved','success');
   else toast(res.error||'Error','error');
+}
+
+// S4.2 — Save Auto Clock-Out Policy settings
+async function saveAutoClockOutSettings() {
+  const keys = ['autoCoEnabled','autoCoMethod','autoCoMaxHours','autoCoFixedTime','autoCoApplyTo','autoCoNote','autoCoNotifyManager'];
+  const updates = {};
+  keys.forEach(k => { const el = document.getElementById('cfg-' + k); if (el) updates[k] = el.value; });
+  const res = await API.call('updateSettings', {settings: updates});
+  if (!res || typeof res !== 'object') { toast('Auto clock-out settings saved. Refresh to verify.', 'warning'); return; }
+  if (res.ok) toast('Auto clock-out settings saved', 'success');
+  else toast(res.error || 'Error', 'error');
 }
 
 // FIX-14: Org structure add/delete
@@ -12454,106 +13002,202 @@ async function seedLeaveBalancesAdmin() {
 // v31 — SETTINGS: Save functions for new settings sub-sections
 // ═══════════════════════════════════════════════════════════════════
 
+// S2 null-safety helper: read element value or return default
+function _cfgVal(id, def='') { const el = document.getElementById(id); return el ? el.value : def; }
+
 async function saveV31OTSettings() {
   const updates = {
-    otBaseHoursPolicy: document.getElementById('cfg-otBaseHoursPolicy').value,
-    otMultiplierRegular: document.getElementById('cfg-otMultiplierRegular').value,
-    otMultiplierCompanyHoliday: document.getElementById('cfg-otMultiplierCompanyHoliday').value,
-    otMultiplierWeeklyOff: document.getElementById('cfg-otMultiplierWeeklyOff').value,
-    otMultiplierNational: document.getElementById('cfg-otMultiplierNational').value,
-    otMaxHoursPerDay: document.getElementById('cfg-otMaxHoursPerDay').value,
-    otAllowInstant: document.getElementById('cfg-otAllowInstant').value,
-    otRequiresApproval: document.getElementById('cfg-otRequiresApproval').value,
+    otBaseHoursPolicy: _cfgVal('cfg-otBaseHoursPolicy','9'),
+    otMultiplierRegular: _cfgVal('cfg-otMultiplierRegular','1.5'),
+    otMultiplierCompanyHoliday: _cfgVal('cfg-otMultiplierCompanyHoliday','2'),
+    otMultiplierWeeklyOff: _cfgVal('cfg-otMultiplierWeeklyOff','2'),
+    otMultiplierNational: _cfgVal('cfg-otMultiplierNational','2'),
+    otMaxHoursPerDay: _cfgVal('cfg-otMaxHoursPerDay','12'),
+    otAllowInstant: _cfgVal('cfg-otAllowInstant','No'),
+    otRequiresApproval: _cfgVal('cfg-otRequiresApproval','Yes'),
   };
   const res = await API.call('updateSettings', {settings: updates});
+  if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
   if (res.ok) toast('OT settings saved', 'success');
   else toast(res.error||'Error','error');
 }
 
 async function saveV31PromotionSettings() {
   const updates = {
-    promotionMinAdvanceDays: document.getElementById('cfg-promotionMinAdvanceDays').value,
-    promotionShowEmployee: document.getElementById('cfg-promotionShowEmployee').value,
-    promotionProRate: document.getElementById('cfg-promotionProRate').value,
+    promotionMinAdvanceDays: _cfgVal('cfg-promotionMinAdvanceDays','30'),
+    promotionShowEmployee: _cfgVal('cfg-promotionShowEmployee','Yes'),
+    promotionProRate: _cfgVal('cfg-promotionProRate','Yes'),
   };
   const res = await API.call('updateSettings', {settings: updates});
+  if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
   if (res.ok) toast('Promotion settings saved', 'success');
   else toast(res.error||'Error','error');
 }
 
 async function saveV31BonusSettings() {
   const updates = {
-    perfectAttendanceBonusAmount: document.getElementById('cfg-perfectAttendanceBonusAmount').value,
-    bonusRequiresApproval: document.getElementById('cfg-bonusRequiresApproval').value,
+    perfectAttendanceBonusAmount: _cfgVal('cfg-perfectAttendanceBonusAmount','1000'),
+    bonusRequiresApproval: _cfgVal('cfg-bonusRequiresApproval','Yes'),
   };
   const res = await API.call('updateSettings', {settings: updates});
+  if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
   if (res.ok) toast('Bonus settings saved', 'success');
   else toast(res.error||'Error','error');
 }
 
 async function saveV31ReferralSettings() {
   const updates = {
-    referralBonusEnabled: document.getElementById('cfg-referralBonusEnabled').value,
-    referralBonusTenureMonths: document.getElementById('cfg-referralBonusTenureMonths').value,
+    referralBonusEnabled: _cfgVal('cfg-referralBonusEnabled','No'),
+    referralBonusTenureMonths: _cfgVal('cfg-referralBonusTenureMonths','6'),
   };
   const res = await API.call('updateSettings', {settings: updates});
+  if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
   if (res.ok) toast('Referral bonus settings saved', 'success');
   else toast(res.error||'Error','error');
 }
 
 async function saveV31ExitSettings() {
   const updates = {
-    noticePeriodDays: document.getElementById('cfg-noticePeriodDays').value,
-    loyaltyOnNotice: document.getElementById('cfg-loyaltyOnNotice').value,
-    perfBonusOnNotice: document.getElementById('cfg-perfBonusOnNotice').value,
-    attendBonusOnNotice: document.getElementById('cfg-attendBonusOnNotice').value,
-    festivalBonusOnNotice: document.getElementById('cfg-festivalBonusOnNotice').value,
-    referralBonusOnNotice: document.getElementById('cfg-referralBonusOnNotice').value,
-    abruptSalaryMode: document.getElementById('cfg-abruptSalaryMode').value,
+    noticePeriodDays: _cfgVal('cfg-noticePeriodDays','30'),
+    loyaltyOnNotice: _cfgVal('cfg-loyaltyOnNotice','Forfeited'),
+    perfBonusOnNotice: _cfgVal('cfg-perfBonusOnNotice','Forfeited'),
+    attendBonusOnNotice: _cfgVal('cfg-attendBonusOnNotice','Forfeited'),
+    festivalBonusOnNotice: _cfgVal('cfg-festivalBonusOnNotice','Forfeited'),
+    referralBonusOnNotice: _cfgVal('cfg-referralBonusOnNotice','Forfeited'),
+    abruptSalaryMode: _cfgVal('cfg-abruptSalaryMode','Days Worked Only'),
   };
   const res = await API.call('updateSettings', {settings: updates});
+  if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
   if (res.ok) toast('Exit policy settings saved', 'success');
   else toast(res.error||'Error','error');
 }
 
 async function saveV31LeaveSettings() {
   const updates = {
-    leaveYearStart: document.getElementById('cfg-leaveYearStart').value,
-    lateGracePeriodMins: document.getElementById('cfg-lateGracePeriodMins').value,
-    mlDuration: document.getElementById('cfg-mlDuration').value,
-    ptlDuration: document.getElementById('cfg-ptlDuration').value,
+    leaveYearStart: _cfgVal('cfg-leaveYearStart','January 1'),
+    lateGracePeriodMins: _cfgVal('cfg-lateGracePeriodMins','10'),
+    mlDuration: _cfgVal('cfg-mlDuration','182'),
+    ptlDuration: _cfgVal('cfg-ptlDuration','15'),
   };
   const res = await API.call('updateSettings', {settings: updates});
+  if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
   if (res.ok) toast('Leave settings saved', 'success');
   else toast(res.error||'Error','error');
 }
 
+// S3 — Default leave types shown when GAS has no data yet
+const _DEFAULT_LEAVE_TYPES = [
+  {Code:'CL', Name:'Casual Leave', AnnualQuota:12, Paid:'Yes', CarryOverAllowed:'No', MaxCarryOverDays:0, Active:'Yes', RequiresPriorApproval:'Yes'},
+  {Code:'EL', Name:'Earned Leave / PL', AnnualQuota:15, Paid:'Yes', CarryOverAllowed:'Yes', MaxCarryOverDays:10, Active:'Yes', RequiresPriorApproval:'Yes'},
+  {Code:'SL', Name:'Sick Leave', AnnualQuota:8, Paid:'Yes', CarryOverAllowed:'No', MaxCarryOverDays:0, Active:'Yes', RequiresPriorApproval:'No'},
+  {Code:'ML', Name:'Maternity Leave', AnnualQuota:182, Paid:'Yes', CarryOverAllowed:'No', MaxCarryOverDays:0, Active:'Yes', RequiresPriorApproval:'Yes'},
+  {Code:'PTL', Name:'Paternity Leave', AnnualQuota:15, Paid:'Yes', CarryOverAllowed:'No', MaxCarryOverDays:0, Active:'Yes', RequiresPriorApproval:'Yes'},
+  {Code:'LWP', Name:'Leave Without Pay', AnnualQuota:0, Paid:'No', CarryOverAllowed:'No', MaxCarryOverDays:0, Active:'Yes', RequiresPriorApproval:'No'},
+  {Code:'BL', Name:'Bereavement Leave', AnnualQuota:3, Paid:'Yes', CarryOverAllowed:'No', MaxCarryOverDays:0, Active:'Yes', RequiresPriorApproval:'No'},
+  {Code:'COL', Name:'Compensatory Off Leave', AnnualQuota:0, Paid:'Yes', CarryOverAllowed:'No', MaxCarryOverDays:30, Active:'Yes', RequiresPriorApproval:'Yes'},
+  {Code:'SOL', Name:'Study / Exam Leave', AnnualQuota:5, Paid:'Yes', CarryOverAllowed:'No', MaxCarryOverDays:0, Active:'Yes', RequiresPriorApproval:'Yes'},
+];
+
+function _ltInputStyle() { return 'background:var(--dark3);color:var(--white);border:1px solid var(--dark3);border-radius:4px;padding:2px 4px;font-size:11px'; }
+function _ltSelHtml(field, val, opts) {
+  return '<select data-lt-field="' + field + '" style="' + _ltInputStyle() + ';padding:2px">' +
+    opts.map(o => '<option value="' + o + '"' + (val === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>';
+}
+
+function _leaveTypeRowHtml(lt, idx, isDefault) {
+  const code = String(lt['Code'] || lt.Code || '');
+  const name = String(lt['Name'] || lt.Name || '');
+  const quota = lt['AnnualQuota'] !== undefined ? lt['AnnualQuota'] : (lt.AnnualQuota !== undefined ? lt.AnnualQuota : 0);
+  const paid = lt['Paid'] || lt.Paid || 'Yes';
+  const cf = lt['CarryOverAllowed'] || lt.CarryOverAllowed || 'No';
+  const maxCF = lt['MaxCarryOverDays'] !== undefined ? lt['MaxCarryOverDays'] : (lt.MaxCarryOverDays !== undefined ? lt.MaxCarryOverDays : 0);
+  const active = lt['Active'] || lt.Active || 'Yes';
+  const reqAppr = lt['RequiresPriorApproval'] || lt.RequiresPriorApproval || 'Yes';
+  const st = _ltInputStyle();
+  const codeCell = isDefault
+    ? '<span title="Fixed system code" style="font-weight:700;color:var(--gold)">' + escHtml(code) + '<input type="hidden" data-lt-field="Code" value="' + escHtml(code) + '"></span>'
+    : '<input type="text" data-lt-field="Code" value="' + escHtml(code) + '" maxlength="6" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,\'\')" style="width:55px;' + st + '">';
+  return '<tr id="lt-row-' + idx + '" style="border-bottom:1px solid var(--dark3)">' +
+    '<td style="padding:4px 6px">' + codeCell + '</td>' +
+    '<td style="padding:4px 6px"><input type="text" data-lt-field="Name" value="' + escHtml(name) + '" style="width:130px;' + st + '"></td>' +
+    '<td style="padding:4px 6px" title="0 = Unlimited"><input type="number" data-lt-field="AnnualQuota" value="' + quota + '" min="0" max="365" style="width:52px;' + st + '"></td>' +
+    '<td style="padding:4px 6px">' + _ltSelHtml('Paid', paid, ['Yes','No']) + '</td>' +
+    '<td style="padding:4px 6px">' + _ltSelHtml('CarryOverAllowed', cf, ['Yes','No']) + '</td>' +
+    '<td style="padding:4px 6px"><input type="number" id="lt-maxcf-' + idx + '" data-lt-field="MaxCarryOverDays" value="' + maxCF + '" min="0" max="365"' + (cf !== 'Yes' ? ' disabled style="width:52px;' + st + ';opacity:0.4"' : ' style="width:52px;' + st + '"') + '></td>' +
+    '<td style="padding:4px 6px">' + _ltSelHtml('Active', active, ['Yes','No']) + '</td>' +
+    '<td style="padding:4px 6px">' + _ltSelHtml('RequiresPriorApproval', reqAppr, ['Yes','No']) + '</td>' +
+    '<td style="padding:4px 6px">' + (!isDefault ? '<button onclick="document.getElementById(\'lt-row-' + idx + '\').remove()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px">✕</button>' : '') + '</td>' +
+    '</tr>';
+}
+
 async function loadLeaveTypesSettingsTable() {
+  const container = document.getElementById('leave-types-settings-table');
+  if (!container) return;
+  container.innerHTML = '<div style="color:var(--gray-light);font-size:12px">Loading…</div>';
+  let types = [];
   try {
     const res = await API.call('getLeaveTypes', {activeOnly: false});
-    const container = document.getElementById('leave-types-settings-table');
-    if (!container) return;
-    const types = res.leaveTypes || [];
-    if (!types.length) { container.innerHTML = '<div style="color:var(--gray-light)">No leave types found. Default types will be seeded on first sheet setup.</div>'; return; }
-    container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
-      <thead><tr style="background:var(--dark3)">
-        <th style="padding:5px">Code</th><th style="padding:5px">Name</th>
-        <th style="padding:5px">Paid</th><th style="padding:5px">Quota/yr</th>
-        <th style="padding:5px">Accrual</th><th style="padding:5px">Carry Over</th>
-        <th style="padding:5px">Encash</th><th style="padding:5px">Active</th>
-      </tr></thead>
-      <tbody>${types.map(lt => `<tr style="border-bottom:1px solid var(--dark3)">
-        <td style="padding:5px;font-weight:700">${escHtml(lt['Code']||'')}</td>
-        <td style="padding:5px">${escHtml(lt['Name']||'')}</td>
-        <td style="padding:5px"><span style="color:${lt['Paid']==='Yes'?'var(--green)':'var(--red)'}">${lt['Paid']||'No'}</span></td>
-        <td style="padding:5px">${lt['AnnualQuota']||0}</td>
-        <td style="padding:5px">${escHtml(lt['AccrualMethod']||'')}</td>
-        <td style="padding:5px">${lt['CarryOverAllowed']||'No'}</td>
-        <td style="padding:5px">${lt['EncashmentAllowed']||'No'}</td>
-        <td style="padding:5px"><span style="color:${lt['Active']==='Yes'?'var(--green)':'var(--gray-light)'}">${lt['Active']||'No'}</span></td>
-      </tr>`).join('')}</tbody>
-    </table></div>`;
+    types = (res && Array.isArray(res.leaveTypes)) ? res.leaveTypes : [];
   } catch(e) {}
+  if (!types.length) types = _DEFAULT_LEAVE_TYPES;
+  window._ltDefaultCodes = new Set(_DEFAULT_LEAVE_TYPES.map(t => t.Code));
+  const thS = 'padding:5px 6px;text-align:left;background:var(--dark3);font-size:11px;white-space:nowrap';
+  container.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px" id="lt-edit-table"><thead><tr>' +
+    '<th style="' + thS + '" title="Unique code — fixed for default types">Code</th>' +
+    '<th style="' + thS + '" title="Name shown to employees">Leave Name</th>' +
+    '<th style="' + thS + '" title="Annual entitlement in days (0 = unlimited)">Days/Yr</th>' +
+    '<th style="' + thS + '" title="Yes = paid leave, No = salary deduction (LWP only)">Is Paid</th>' +
+    '<th style="' + thS + '" title="Unused balance carries to next year">Carry Fwd</th>' +
+    '<th style="' + thS + '" title="Max days carried forward per year">Max CF</th>' +
+    '<th style="' + thS + '" title="If No, hidden from employee dropdowns">Enabled</th>' +
+    '<th style="' + thS + '" title="Manager approval needed before leave is confirmed">Req. Appr</th>' +
+    '<th style="' + thS + '"></th></tr></thead>' +
+    '<tbody id="lt-edit-tbody">' +
+    types.map((lt, i) => _leaveTypeRowHtml(lt, i, window._ltDefaultCodes.has(lt['Code'] || lt.Code || ''))).join('') +
+    '</tbody></table></div>';
+}
+
+function addCustomLeaveTypeRow() {
+  const tbody = document.getElementById('lt-edit-tbody');
+  if (!tbody) { toast('Open Settings → Leave Management first', 'warning'); return; }
+  const idx = tbody.rows.length;
+  const tmp = document.createElement('tbody');
+  tmp.innerHTML = _leaveTypeRowHtml({Code:'', Name:'', AnnualQuota:0, Paid:'Yes', CarryOverAllowed:'No', MaxCarryOverDays:0, Active:'Yes', RequiresPriorApproval:'Yes'}, idx, false);
+  tbody.appendChild(tmp.firstElementChild);
+}
+
+function _readLeaveTypesTable() {
+  const rows = document.querySelectorAll('#lt-edit-tbody tr');
+  const types = [];
+  rows.forEach(row => {
+    const fields = {};
+    row.querySelectorAll('[data-lt-field]').forEach(el => { fields[el.getAttribute('data-lt-field')] = el.value; });
+    if (fields.Code) types.push(fields);
+  });
+  return types;
+}
+
+async function saveLeaveTypesFull() {
+  const types = _readLeaveTypesTable();
+  if (!types.length) { toast('No leave types to save', 'warning'); return; }
+  const res = await API.call('saveLeaveTypes', {leaveTypes: types});
+  if (!res || typeof res !== 'object') { toast('Leave types saved. Refresh to verify.', 'warning'); return; }
+  if (res.ok) toast('Leave types saved (' + types.length + ' types)', 'success');
+  else toast(res.error || 'Error saving leave types', 'error');
+}
+
+async function saveAllLeaveSettings() {
+  await saveV31LeaveSettings();
+  await saveLeaveTypesFull();
+}
+
+async function seedLeaveBalancesAdmin() {
+  const ok = await confirm2('This will create Leave Balance rows for all active employees for all enabled leave types. Existing rows will NOT be overwritten. Continue?');
+  if (!ok) return;
+  const res = await API.call('seedLeaveBalances', {year: new Date().getFullYear()});
+  if (!res || typeof res !== 'object') { toast('Seeding complete. Refresh to verify.', 'warning'); return; }
+  if (res.ok) toast('Seeded ' + (res.seeded||0) + ' new balance rows for ' + (res.employees||0) + ' employees.', 'success', 5000);
+  else toast(res.error || 'Seeding failed', 'error');
 }
 
 // ═══════════════════════════════════════════════════════════════════
