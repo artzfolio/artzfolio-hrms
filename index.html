@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v30 | May 2026 | FIX-v30: Loyalty Bonus Vesting System — Settings section, Employee Profile panel, Kiosk card, Salary Slip integration, Bonus Tracker admin tab -->
+<!-- ArtzFolio HRMS v31 | May 2026 | v31: OT+ExtraDay Calculator, Promotion Management, Bonus Management, Bulk Bonus, Referral Bonus, Notice Period, FnF, Leave Management System -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v30</title>
+<title>ArtzFolio HRMS v31</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -794,6 +794,175 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
           <div id="ec-lb-content" style="font-size:13px"></div>
         </div>
 
+        <!-- v31: Notice Period Banner — shown when employee is on notice period -->
+        <div id="ec-notice-banner" style="display:none;background:linear-gradient(135deg,#b71c1c,#d32f2f);color:#fff;border-radius:8px;padding:12px 16px;margin-bottom:8px;font-size:13px;font-weight:600;border:2px solid #ef9a9a">
+          <div style="font-size:15px;margin-bottom:4px">⚠️ Notice Period Active</div>
+          <div id="ec-notice-lwd" style="font-size:12px;opacity:0.9"></div>
+          <div id="ec-notice-countdown" style="font-size:12px;opacity:0.9"></div>
+        </div>
+
+        <!-- v31: Upcoming Promotion Card -->
+        <div class="mini-card" id="ec-promotion-card" style="display:none;border:1px solid var(--gold-dim)">
+          <h4>🎯 Upcoming Promotion</h4>
+          <div id="ec-promotion-content" style="font-size:13px"></div>
+        </div>
+
+        <!-- v31: Pending Bonuses Card -->
+        <div class="mini-card" id="ec-pending-bonuses-card" style="display:none">
+          <h4>🎁 Pending Bonuses</h4>
+          <div id="ec-pending-bonuses-content" style="font-size:13px"></div>
+        </div>
+
+        <!-- v31: OT and Extra Day Calculator Card (Tab A + Tab B) -->
+        <div class="mini-card" id="ec-ot-calc-card" style="display:none">
+          <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-ot-calc-body')">
+            ⏱ OT &amp; Extra Day Calculator
+            <span id="ec-ot-calc-toggle" style="font-size:12px;color:var(--gray-light)">▼</span>
+          </h4>
+          <div id="ec-ot-calc-body" style="display:none">
+            <!-- Tab selector -->
+            <div style="display:flex;gap:6px;margin-bottom:12px">
+              <button id="ot-tab-a-btn" onclick="switchOTTab('A')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:12px">Tab A: Overtime Hours</button>
+              <button id="ot-tab-b-btn" onclick="switchOTTab('B')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:12px">Tab B: Extra Day</button>
+            </div>
+            <!-- TAB A: OT Hours Calculator -->
+            <div id="ot-tab-a">
+              <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">For working beyond your standard shift on a normal working day (arriving early or staying late)</div>
+              <label style="font-size:12px;color:var(--gray-light)">OT Hours Worked</label>
+              <input type="number" id="ot-hours-input" min="0.5" step="0.5" placeholder="e.g. 2.5"
+                style="width:100%;padding:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:14px;margin:4px 0 8px"
+                oninput="calcOTLive()">
+              <div id="ot-calc-breakdown" style="font-size:12px;background:var(--dark3);border-radius:6px;padding:10px;display:none;line-height:1.8"></div>
+              <div style="display:flex;gap:8px;margin-top:10px" id="ot-action-btns" style="display:none">
+                <button onclick="submitOTClaim('Instant')" style="flex:1;padding:8px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Claim Now</button>
+                <button onclick="submitOTClaim('Salary')" style="flex:1;padding:8px;background:var(--blue,#1976d2);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Add to Salary</button>
+              </div>
+            </div>
+            <!-- TAB B: Extra Day Calculator -->
+            <div id="ot-tab-b" style="display:none">
+              <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">For working a full day on a day you are officially not supposed to work (holiday or weekly off)</div>
+              <label style="font-size:12px;color:var(--gray-light)">Day Type</label>
+              <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 10px">
+                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="Company Holiday" onchange="calcExtraDayLive()" checked> Company Holiday</label>
+                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="Weekly Off" onchange="calcExtraDayLive()"> Weekly Off Day</label>
+                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="National Holiday" onchange="calcExtraDayLive()"> National / Gazetted Holiday</label>
+              </div>
+              <label style="font-size:12px;color:var(--gray-light)">Date of Extra Day Worked</label>
+              <input type="date" id="ed-date-input"
+                style="width:100%;padding:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:13px;margin:4px 0 8px"
+                oninput="calcExtraDayLive()">
+              <div id="ed-calc-breakdown" style="font-size:12px;background:var(--dark3);border-radius:6px;padding:10px;display:none;line-height:1.8"></div>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <button onclick="submitExtraDayClaim('Instant')" style="flex:1;padding:8px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Claim Now</button>
+                <button onclick="submitExtraDayClaim('Salary')" style="flex:1;padding:8px;background:var(--blue,#1976d2);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Add to Salary</button>
+              </div>
+            </div>
+            <!-- Confirmation receipt area -->
+            <div id="ot-claim-receipt" style="display:none;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:12px;margin-top:10px;font-size:12px"></div>
+          </div>
+        </div>
+
+        <!-- v31: My Leaves Card -->
+        <div class="mini-card" id="ec-leaves-card" style="display:none">
+          <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-leaves-body')">
+            📅 My Leaves
+            <span style="font-size:12px;color:var(--gray-light)">▼</span>
+          </h4>
+          <div id="ec-leaves-body" style="display:none">
+            <!-- Sub-tabs -->
+            <div style="display:flex;gap:6px;margin-bottom:12px">
+              <button onclick="switchLeaveTab('apply')" id="leave-apply-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:11px">Apply</button>
+              <button onclick="switchLeaveTab('status')" id="leave-status-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">My Status</button>
+              <button onclick="switchLeaveTab('encash')" id="leave-encash-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Encash</button>
+            </div>
+            <!-- Apply for Leave -->
+            <div id="leave-apply-section">
+              <div style="margin-bottom:8px">
+                <label style="font-size:12px;color:var(--gray-light)">Leave Type</label>
+                <select id="leave-type-select" onchange="onLeaveTypeChange()"
+                  style="width:100%;padding:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:13px;margin-top:4px">
+                  <option value="">-- Select Leave Type --</option>
+                </select>
+                <div id="leave-balance-display" style="font-size:11px;color:var(--gold-light);margin-top:4px"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                <div>
+                  <label style="font-size:12px;color:var(--gray-light)">From Date</label>
+                  <input type="date" id="leave-from-date" oninput="calcLeaveDays()"
+                    style="width:100%;padding:7px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px;margin-top:4px">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--gray-light)">To Date</label>
+                  <input type="date" id="leave-to-date" oninput="calcLeaveDays()"
+                    style="width:100%;padding:7px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px;margin-top:4px">
+                </div>
+              </div>
+              <div id="leave-days-display" style="font-size:12px;color:var(--gold-light);margin-bottom:8px"></div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <label style="font-size:12px;color:var(--gray-light)">Half Day?</label>
+                <select id="leave-half-day" onchange="toggleHalfDayPeriod()"
+                  style="padding:6px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px">
+                  <option value="No">No</option><option value="Yes">Yes</option>
+                </select>
+                <select id="leave-half-day-period" style="display:none;padding:6px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px">
+                  <option value="AM">AM (Morning)</option><option value="PM">PM (Afternoon)</option>
+                </select>
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="font-size:12px;color:var(--gray-light)">Reason</label>
+                <textarea id="leave-reason" rows="2"
+                  style="width:100%;padding:7px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px;margin-top:4px;resize:vertical"
+                  placeholder="Reason for leave..."></textarea>
+              </div>
+              <div id="leave-balance-warning" style="display:none;background:#b71c1c22;border:1px solid #ef9a9a;border-radius:6px;padding:8px;font-size:11px;color:#ef9a9a;margin-bottom:8px"></div>
+              <button onclick="submitLeaveRequest()"
+                style="width:100%;padding:10px;background:var(--gold);color:var(--dark);border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">
+                Submit Leave Request
+              </button>
+            </div>
+            <!-- My Leave Status -->
+            <div id="leave-status-section" style="display:none">
+              <div id="leave-status-list" style="font-size:12px"></div>
+            </div>
+            <!-- Leave Encashment -->
+            <div id="leave-encash-section" style="display:none">
+              <div style="font-size:12px;color:var(--gray-light);margin-bottom:8px">Encash unused eligible leave</div>
+              <select id="encash-leave-type"
+                style="width:100%;padding:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:13px;margin-bottom:8px">
+                <option value="">-- Select Encashable Leave --</option>
+              </select>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <label style="font-size:12px;color:var(--gray-light)">Days to Encash:</label>
+                <input type="number" id="encash-days" min="1" step="1"
+                  style="flex:1;padding:7px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:13px"
+                  oninput="calcEncashmentAmount()">
+              </div>
+              <div id="encash-amount-display" style="font-size:13px;color:var(--gold-light);margin-bottom:10px"></div>
+              <button onclick="submitLeaveEncashment()"
+                style="width:100%;padding:10px;background:var(--gold);color:var(--dark);border:none;border-radius:6px;font-weight:700;cursor:pointer">
+                Request Encashment
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- v31: Employment Status Card (Resignation / Notice Period) -->
+        <div class="mini-card" id="ec-employment-card" style="display:none">
+          <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-employment-body')">
+            🏢 Employment Status
+            <span style="font-size:12px;color:var(--gray-light)">▼</span>
+          </h4>
+          <div id="ec-employment-body" style="display:none;padding-top:8px">
+            <button onclick="initiateResignation()"
+              style="width:100%;padding:10px;background:var(--dark3);border:2px solid var(--red,#d32f2f);border-radius:6px;color:var(--red,#d32f2f);font-weight:700;cursor:pointer;font-size:13px">
+              ⚠️ Initiate Resignation / Notice Period
+            </button>
+            <div style="font-size:11px;color:var(--gray-light);margin-top:6px;text-align:center">
+              Warning: This will immediately forfeit your accrued Loyalty Bonus.
+            </div>
+          </div>
+        </div>
+
         <!-- Leave & Holidays Info Card -->
         <div class="mini-card" id="ec-leave-info-card">
           <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-leave-body')">
@@ -1062,6 +1231,10 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
     <div class="nav-section">Payroll & Reports</div>
     <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')"><span class="nav-icon">💰</span>Payroll</div>
     <div class="nav-item" data-tab="bonustracker" onclick="switchTab('bonustracker')"><span class="nav-icon">💎</span>Loyalty Bonus Tracker</div>
+    <div class="nav-item" data-tab="bonusmgmt" onclick="switchTab('bonusmgmt')"><span class="nav-icon">🎁</span>Bonus Management</div>
+    <div class="nav-item" data-tab="otclaims" onclick="switchTab('otclaims')"><span class="nav-icon">⏱</span>OT Claims</div>
+    <div class="nav-item" data-tab="promotions" onclick="switchTab('promotions')"><span class="nav-icon">🎯</span>Promotions</div>
+    <div class="nav-item" data-tab="leavemgmt" onclick="switchTab('leavemgmt')"><span class="nav-icon">📅</span>Leave Management</div>
     <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')"><span class="nav-icon">🤝</span>FnF / Exit</div>
     <div class="nav-item" data-tab="reports" onclick="switchTab('reports')"><span class="nav-icon">📈</span>Reports</div>
     <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')"><span class="nav-icon">⏱</span>Tracked Time</div>
@@ -1614,8 +1787,14 @@ function todayStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.
 function nowStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function statusBadge(s) {
-  const map = {P:'green',IL:'blue',IHL:'blue',UL:'red',UHL:'red',H:'gold',WO:'gray',EW:'orange',SL:'blue',PL:'blue',A:'red',Active:'green',Exited:'gray',Archived:'gray',Approved:'green',Pending:'orange',Rejected:'red',Auto:'red'};
-  return `<span class="badge badge-${map[s]||'gray'}">${escHtml(s)}</span>`;
+  const map = {P:'green',IL:'blue',IHL:'blue',UL:'red',UHL:'red',H:'gold',WO:'gray',EW:'orange',SL:'blue',PL:'blue',A:'red',Active:'green',Exited:'gray',Archived:'gray',Approved:'green',Pending:'orange',Rejected:'red',Auto:'red',
+    // v31 leave type codes
+    CL:'blue',EL:'green',ML:'red',PTL:'green',LWP:'red',BL:'orange',SOL:'gray',COL:'blue'};
+  // v31 leave codes get distinct inline color overrides for quick visual distinction
+  const v31Color = {ML:'#AD1457',PTL:'#558B2F',LWP:'#B71C1C',BL:'#E65100',SOL:'#546E7A',COL:'#4527A0',EL:'#2E7D32',CL:'#1565C0'};
+  const cls = map[s] || 'gray';
+  const style = v31Color[s] ? ` style="background:${v31Color[s]};color:#fff"` : '';
+  return `<span class="badge badge-${cls}"${style}>${escHtml(s)}</span>`;
 }
 function confirm2(msg) { return new Promise(res => { showModal('Confirm / पुष्टि करें', `<p style="font-size:14px">${msg}</p>`, [{label:'Yes / हाँ', cls:'btn-gold', cb:()=>{closeModal();res(true);}},{label:'No / नहीं', cls:'btn-dark', cb:()=>{closeModal();res(false);}}]); }); }
 function showScreen(id) {
@@ -2287,6 +2466,8 @@ async function showEmployeeCard(res, pos) {
   showPointsCard(res.pointsInfo, emp);
   // v30: Loyalty Bonus card — load async, non-blocking
   showLoyaltyBonusCard(emp.id, emp.status);
+  // v31: OT calculator, leaves card, pending bonuses, notice banner, promotion card
+  loadV31KioskCards(emp);
   // Leave & Holiday info panel
   buildLeaveInfoCard(res, emp);
   // My Info & Rules panel
@@ -3938,6 +4119,11 @@ async function switchTab(tab) {
       case 'settings':    await renderSettings(); break;
       case 'pettycash':   await renderPettyCash(); break;
       case 'bonustracker': await renderBonusTracker(); break;
+      // v31 new tabs
+      case 'bonusmgmt':   await renderBonusManagement(); break;
+      case 'otclaims':    await renderOTClaims(); break;
+      case 'promotions':  await renderPromotions(); break;
+      case 'leavemgmt':   await renderLeaveManagement(); break;
     }
   } catch(e) {
     document.getElementById('admin-tab-content').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>Error loading tab: ${escHtml(e.message)}</p></div>`;
@@ -5031,6 +5217,25 @@ async function showAddEmpModal() {
     <div class="form-group"><label class="form-label">OT Base Hours (per extra day)</label><input id="e-otbase" class="form-input" type="number" value="9" placeholder="9"></div>
   </div>
   <div class="form-group"><label class="form-label">Notes</label><input id="e-notes" class="form-input" placeholder="Any notes…"></div>
+  <!-- v31: Referral Information -->
+  <div style="border-top:1px solid var(--gray);margin-top:12px;padding-top:12px">
+    <div style="font-size:12px;font-weight:700;color:var(--gold-light);margin-bottom:8px">Referral Information (optional)</div>
+    <datalist id="emp-datalist-ref">${empDatalistOpts}</datalist>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Referred By <span class="info-tooltip" title="The existing employee who referred this new hire. Set once and cannot change. Referral bonus (if enabled) will be paid to this person after the referred employee completes the required tenure.">ℹ</span></label>
+        <input id="e-refby" class="form-input" list="emp-datalist-ref" placeholder="Type name or ID… (Name (EMP-CODE))" autocomplete="off">
+      </div>
+    </div>
+  </div>
+  <!-- v31: Leave Policy -->
+  <div style="border-top:1px solid var(--gray);margin-top:12px;padding-top:12px">
+    <div style="font-size:12px;font-weight:700;color:var(--gold-light);margin-bottom:8px">Leave Policy</div>
+    <div class="form-group">
+      <label class="form-label">Leave Policy Group <span class="info-tooltip" title="Assign this employee to a leave policy group (e.g. Staff, Executive). The group's annual quotas will be used to seed their leave balance.">ℹ</span></label>
+      <input id="e-lpgroup" class="form-input" placeholder="e.g. Staff, Executive, Managerial">
+    </div>
+  </div>
   </div>`;
   // Init static 12h pickers after DOM renders
   setTimeout(()=>{
@@ -5077,6 +5282,15 @@ async function showAddEmpModal() {
         nightShiftAllowance:document.getElementById('e-nsa').value,
         travelAllowance:document.getElementById('e-travel').value,
         otBaseHours:document.getElementById('e-otbase').value,
+        // v31 fields
+        leavePolicyGroup:document.getElementById('e-lpgroup').value,
+        ...(() => {
+          const refVal = (document.getElementById('e-refby')||{}).value||'';
+          const m = refVal.match(/\(([^)]+)\)\s*$/);
+          const refCode = m ? m[1].trim() : '';
+          const refName = refVal.replace(/\s*\([^)]*\)\s*$/, '').trim();
+          return refCode ? {referredByName:refName, referredByCode:refCode} : {};
+        })(),
         notes:document.getElementById('e-notes').value,
       };
       if(!payload.name||!payload.salary){toast('Name and Salary are required','warning');return;}
@@ -5150,6 +5364,20 @@ async function showEditEmpModal(empId) {
   </div>
   <div class="form-group"><label class="form-label">Address</label><input id="ee-addr" class="form-input" value="${escHtml(e.address||'')}"></div>
   <div class="form-group"><label class="form-label">Notes</label><input id="ee-notes" class="form-input" value="${escHtml(e.notes||'')}"></div>
+  <!-- v31: Referral and Leave Policy fields -->
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Referred By Name <span class="info-tooltip" title="Name of the existing employee who referred this person. Shows alongside their employee code.">ℹ</span></label><input id="ee-refname" class="form-input" value="${escHtml(e.referredByName||'')}" placeholder="Referring employee name"></div>
+    <div class="form-group"><label class="form-label">Referred By Code</label><input id="ee-refcode" class="form-input" value="${escHtml(e.referredByCode||'')}" placeholder="e.g. AZ_EMP_0001"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Leave Policy Group <span class="info-tooltip" title="Assign this employee to a leave policy group (e.g. Staff, Executive). The group's annual leave quotas will be used for this employee.">ℹ</span></label><input id="ee-lpgroup" class="form-input" value="${escHtml(e.leavePolicyGroup||'')}" placeholder="e.g. Staff, Executive, Managerial"></div>
+  <!-- v31: Admin actions -->
+  <div style="border-top:1px solid var(--gray);margin-top:14px;padding-top:14px">
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:10px;font-weight:600">Admin Actions (v31)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-dark btn-sm" onclick="closeModal();showPromotionModal('${escHtml(empId)}','${escHtml(e.name)}')">🎯 Initiate Promotion / Increment</button>
+      <button class="btn btn-dark btn-sm" style="border-color:var(--red,#d32f2f);color:var(--red,#d32f2f)" onclick="closeModal();showInitiateNoticeModal('${escHtml(empId)}','${escHtml(e.name)}')">📋 Initiate Notice Period</button>
+    </div>
+  </div>
   </div>`;
   showModal(`✏ Edit: ${e.name}`, html, [
     {label:'Save Changes / सहेजें', cls:'btn-gold', cb:async()=>{
@@ -5168,6 +5396,10 @@ async function showEditEmpModal(empId) {
         travelAllowance:document.getElementById('ee-travel').value,
         otBaseHours:document.getElementById('ee-otbase').value,
         dailyHours:document.getElementById('ee-dh').value,
+        // v31 fields
+        referredByName:document.getElementById('ee-refname').value,
+        referredByCode:document.getElementById('ee-refcode').value,
+        leavePolicyGroup:document.getElementById('ee-lpgroup').value,
       };
       const newPin=document.getElementById('ee-pin').value;
       if(newPin){payload.pin=newPin;}
@@ -5408,7 +5640,7 @@ async function renderAttendanceGrid(empId, year, month, emps) {
       <td>${rec&&rec.clockOut?fmtTime(rec.clockOut):'—'}</td>
       <td class="att-${status}">${statusBadge(status||'—')}</td>
       <td style="font-size:11px">${rec&&parseInt(rec.lateMinutes)>0?`<span style="color:var(--orange)">${rec.lateMinutes}m</span>`:'—'}</td>
-      <td style="font-size:11px">${rec&&rec.workMinutes?`${Math.floor(rec.workMinutes/60)}h${rec.workMinutes%60}m`:'—'}</td>
+      <td style="font-size:11px">${rec&&rec.workMinutes?`${Math.floor(rec.workMinutes/60)}h${rec.workMinutes%60}m`:'—'}${rec&&parseInt(rec.otMinutes)>0?` <span style="background:var(--orange);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;white-space:nowrap">OT ${rec.otMinutes}m</span>`:''}</td>
       <td style="font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis">${rec&&rec.locationNote?escHtml(rec.locationNote):'—'}</td>
       <td><button class="btn btn-dark btn-sm" onclick="showManualAttModal('${escHtml(empId)}','${escHtml(ds)}','${escHtml(status)}')">✏</button></td>
     </tr>`;
@@ -6681,6 +6913,7 @@ function printSlip(data) {
       <tr><td>Travel Allowance${data.travelRatePerDay?` (₹${Math.round(data.travelRatePerDay)}/day × ${(data.presentDays||0)}d)`:''}</td><td>₹${Math.round(data.travelEarnings||0).toLocaleString('en-IN')}</td><td>Loans / Other</td><td>₹${Math.round((data.loans||0)+(data.penalties||0)).toLocaleString('en-IN')}</td></tr>
       <tr><td>Bonus / Incentive</td><td>₹${Math.round(data.bonuses||0).toLocaleString('en-IN')}</td><td></td><td></td></tr>
       ${(data.loyaltyBonusWithdrawal||0)>0?`<tr><td style="color:#1565C0;font-weight:600">💎 Loyalty Bonus Withdrawal</td><td style="color:#1565C0;font-weight:600">₹${Math.round(data.loyaltyBonusWithdrawal).toLocaleString('en-IN')}</td><td></td><td></td></tr>`:''}
+      ${appendV31ToSlipHTML(data)}
     </tbody>
   </table>
   ${(data.loyaltyBonusBalance!==undefined)?`<div style="margin-top:6px;padding:6px 10px;background:#e8f4fd;border-left:3px solid #1565C0;border-radius:4px;font-size:11px;color:#1565C0">💎 Loyalty Bonus Balance as of ${todayStr()}: ₹${Math.round(data.loyaltyBonusBalance||0).toLocaleString('en-IN')} | Eligible to Withdraw: ₹${Math.round(data.loyaltyBonusEligible||0).toLocaleString('en-IN')}</div>`:''}
@@ -7282,9 +7515,58 @@ async function renderFnF() {
     </div>
     <button class="btn btn-gold" onclick="calculateFnF()">▶ Calculate Complete F&F</button>
   </div>
-  <div id="fnf-result" style="margin-top:20px"></div>`;
+  <div id="fnf-result" style="margin-top:20px"></div>
+  <div id="fnf-records-section" style="margin-top:28px"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
   if(emps.length) loadFnFEmployee(emps[0].id);
+  loadFnFRecords();
+}
+
+async function loadFnFRecords() {
+  const sec = document.getElementById('fnf-records-section');
+  if (!sec) return;
+  sec.innerHTML = '<div class="loading-spinner"></div>';
+  const res = await API.call('getFnFRecords', {});
+  const records = res.records || [];
+  const isOwner = State.adminRole === 'owner';
+  if (!records.length) { sec.innerHTML = '<div class="section-hdr"><div class="section-title">📋 FnF Settlement Records</div></div><div class="empty-state" style="margin-top:0"><div class="empty-icon">🤝</div><p>No F&F records yet</p></div>'; return; }
+  const rows = records.map(r => {
+    const isPending = (r['Status'] || 'Pending') === 'Pending';
+    return `<tr>
+      <td style="font-size:11px">${escHtml(r['Record ID'] || '—')}</td>
+      <td>${escHtml(r['Employee Name'] || r['Employee ID'] || '—')}</td>
+      <td style="font-size:11px">${escHtml(r['Dept'] || '—')} / ${escHtml(r['Level'] || '—')}</td>
+      <td style="font-size:11px">${fmtDate(r['LWD'] || '')}</td>
+      <td style="font-weight:700;color:var(--gold)">${fmtMoney(parseFloat(r['Net FnF'] || 0))}</td>
+      <td>${statusBadge(r['Status'] || 'Pending')}</td>
+      <td style="font-size:11px">${escHtml(r['Approved By'] || '—')}</td>
+      <td>
+        ${isOwner && isPending ? `<button class="btn btn-gold btn-sm" onclick="handleFnFApproval('${escHtml(r['Record ID'])}','approve')">✓ Approve</button>
+        <button class="btn btn-dark btn-sm" style="margin-left:4px" onclick="handleFnFApproval('${escHtml(r['Record ID'])}','reject')">✗ Reject</button>` : '—'}
+        <button class="btn btn-dark btn-sm" style="margin-left:4px" onclick="printFnFRecord(${JSON.stringify(r).replace(/'/g,'&#39;')})">📄</button>
+      </td>
+    </tr>`;
+  }).join('');
+  sec.innerHTML = `
+  <div class="section-hdr"><div class="section-title">📋 FnF Settlement Records${!isOwner?` <span style="font-size:11px;color:var(--gray-light)">(Approval: Owner only)</span>`:''}
+  </div><div class="section-actions"><button class="btn btn-dark btn-sm" onclick="loadFnFRecords()">↻ Refresh</button></div></div>
+  <div class="table-wrap"><table class="az-table">
+    <thead><tr><th>Record ID</th><th>Employee</th><th>Dept/Level</th><th>LWD</th><th>Net F&F</th><th>Status</th><th>Approved By</th><th>Actions</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+async function handleFnFApproval(recordId, action) {
+  const ok = await confirm2(`${action === 'approve' ? 'Approve' : 'Reject'} this F&F settlement?`);
+  if (!ok) return;
+  const res = await API.call('approveFnF', {recordId, action});
+  if (res.ok) { toast(`FnF ${action}d successfully`, 'success'); loadFnFRecords(); }
+  else toast(res.error || 'Action failed', 'error');
+}
+
+function printFnFRecord(r) {
+  window._lastFnF = r;
+  downloadFnFPDF();
 }
 
 async function loadFnFEmployee(empId) {
@@ -9213,8 +9495,290 @@ async function renderSettings() {
         <button class="btn btn-sm" style="background:#7f0000;color:#fff;border:1px solid var(--red)" onclick="dangerFullReset()">☢ Full Reset</button>
       </div>
     </div>
-  </div>` : ''}`;
+  </div>` : ''}
+
+  <!-- v31: OT & Extra Day Policy Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">⏱ OT & Extra Day Policy (v31)</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      Configure overtime and extra day pay multipliers. OT = hours beyond standard shift on a normal day.
+      Extra Day = full day worked on a holiday or weekly off. These are two separate calculation types.
+    </div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">OT Base Hours Per Day
+          <span class="info-tooltip" title="Number of OT hours that equals 1 full day's salary. This is the OT divisor for all OT calculations regardless of the employee's standard shift length. Default: 9.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-otBaseHoursPolicy" value="${cfg['otBaseHoursPolicy']||9}" step="0.5" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Regular OT Multiplier
+          <span class="info-tooltip" title="Pay multiplier applied to each OT hour on a standard working day. Formula: Basic/26/OTBase × Multiplier × Hours. Default: 1.5">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-otMultiplierRegular" value="${cfg['otMultiplierRegular']||1.5}" step="0.1" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company Holiday Extra Day Multiplier
+          <span class="info-tooltip" title="Pay multiplier for working a full day on a declared company holiday. Formula: Basic/26 × Multiplier. Default: 1.5">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-otMultiplierCompanyHoliday" value="${cfg['otMultiplierCompanyHoliday']||1.5}" step="0.1" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Weekly Off Extra Day Multiplier
+          <span class="info-tooltip" title="Pay multiplier for working a full day on the employee's weekly off day (e.g. Sunday). Formula: Basic/26 × Multiplier. Default: 2.0">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-otMultiplierWeeklyOff" value="${cfg['otMultiplierWeeklyOff']||2.0}" step="0.1" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">National / Gazetted Holiday Multiplier
+          <span class="info-tooltip" title="Pay multiplier for working a full day on a gazetted national holiday. Formula: Basic/26 × Multiplier. Default: 2.5">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-otMultiplierNational" value="${cfg['otMultiplierNational']||2.5}" step="0.1" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Maximum OT Hours Claimable Per Day
+          <span class="info-tooltip" title="Upper limit on OT hours an employee can claim in a single day. Default: 12.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-otMaxHoursPerDay" value="${cfg['otMaxHoursPerDay']||12}" step="0.5" min="0.5">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Allow Instant OT / Extra Day Claim
+          <span class="info-tooltip" title="If Yes, employees can request immediate payment instead of waiting for monthly salary.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-otAllowInstant">
+          <option value="true" ${cfg['otAllowInstant']==='true'?'selected':''}>Yes</option>
+          <option value="false" ${cfg['otAllowInstant']!=='true'?'selected':''}>No</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Claim Requires Manager Approval
+          <span class="info-tooltip" title="If Yes, all instant claims must be approved by a manager or owner before payment is processed.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-otRequiresApproval">
+          <option value="true" ${cfg['otRequiresApproval']==='true'?'selected':''}>Yes</option>
+          <option value="false" ${cfg['otRequiresApproval']!=='true'?'selected':''}>No</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31OTSettings()">💾 Save OT & Extra Day Settings</button>
+  </div>
+
+  <!-- v31: Promotion Policy Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">🎯 Promotion Policy (v31)</div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">Minimum Advance Notice for Effective Date (days)
+          <span class="info-tooltip" title="Minimum number of days from today a promotion effective date must be set to. Prevents backdating promotions.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-promotionMinAdvanceDays" value="${cfg['promotionMinAdvanceDays']||1}" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Show Promotion to Employee Before Effective Date
+          <span class="info-tooltip" title="If Yes, the employee sees their upcoming promotion details in their kiosk before the effective date.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-promotionShowEmployee">
+          <option value="true" ${cfg['promotionShowEmployee']!=='false'?'selected':''}>Yes</option>
+          <option value="false" ${cfg['promotionShowEmployee']==='false'?'selected':''}>No</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pro-rate Salary for Mid-Month Promotions
+          <span class="info-tooltip" title="If Yes, salary is split: days before effective date use old rate, days from effective date use new rate. If No, new salary applies from the 1st of the following month only.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-promotionProRate">
+          <option value="true" ${cfg['promotionProRate']!=='false'?'selected':''}>Yes</option>
+          <option value="false" ${cfg['promotionProRate']==='false'?'selected':''}>No</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31PromotionSettings()">💾 Save Promotion Settings</button>
+  </div>
+
+  <!-- v31: Bonus Policy Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">🎁 Bonus Policy (v31)</div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">Perfect Attendance Bonus Amount (INR per month)
+          <span class="info-tooltip" title="Auto-awarded to employees who have zero unapproved absences, zero LWP days, and zero unapproved late arrivals in a calendar month. Approved paid leave does NOT disqualify. Set to 0 to disable.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-perfectAttendanceBonusAmount" value="${cfg['perfectAttendanceBonusAmount']||0}" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Instant Bonus Claims Require Approval
+          <span class="info-tooltip" title="If Yes, employee instant bonus claims must be approved by a manager or owner before payment.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-bonusRequiresApproval">
+          <option value="true" ${cfg['bonusRequiresApproval']==='true'?'selected':''}>Yes</option>
+          <option value="false" ${cfg['bonusRequiresApproval']!=='true'?'selected':''}>No</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31BonusSettings()">💾 Save Bonus Settings</button>
+  </div>
+
+  <!-- v31: Referral Bonus Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">🤝 Referral Bonus Settings (v31)</div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">Enable Referral Bonus
+          <span class="info-tooltip" title="Master toggle. When Yes, the referral bonus system is active and checkReferralBonusDue() runs every month.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-referralBonusEnabled">
+          <option value="true" ${cfg['referralBonusEnabled']==='true'?'selected':''}>Yes</option>
+          <option value="false" ${cfg['referralBonusEnabled']!=='true'?'selected':''}>No</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Referral Bonus Tenure Requirement (months)
+          <span class="info-tooltip" title="The referrer receives the bonus only after the referred employee completes this many months of service.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-referralBonusTenureMonths" value="${cfg['referralBonusTenureMonths']||6}" min="1">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label">Payment Method
+          <span class="info-tooltip" title="Referral bonus is always paid in the referrer's monthly salary when due. Instant claim is not permitted for this bonus type.">ℹ</span>
+        </label>
+        <div style="padding:8px;background:var(--dark3);border-radius:6px;font-size:12px;color:var(--gray-light)">Always Add to Salary (non-configurable)</div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <div style="font-size:12px;color:var(--gray-light);margin-bottom:8px;font-weight:600">Referral Bonus by Level (INR per referral)</div>
+      <div id="referral-bonus-by-level-table" style="font-size:13px"></div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31ReferralSettings()">💾 Save Referral Bonus Settings</button>
+  </div>
+
+  <!-- v31: Notice Period & Exit Policy Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">📋 Notice Period & Exit Policy (v31)</div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">Default Notice Period Duration (days)
+          <span class="info-tooltip" title="Number of days an employee must serve as notice before their last working day. Can be overridden per employee when initiating notice.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-noticePeriodDays" value="${cfg['noticePeriodDays']||30}" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Loyalty Bonus on Notice Period Start
+          <span class="info-tooltip" title="What happens to the employee's accrued loyalty bonus when notice period begins.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-loyaltyOnNotice">
+          <option value="Forfeited" ${(cfg['loyaltyOnNotice']||'Forfeited')==='Forfeited'?'selected':''}>Forfeited</option>
+          <option value="Partial" ${cfg['loyaltyOnNotice']==='Partial'?'selected':''}>Partial Percentage</option>
+          <option value="Full" ${cfg['loyaltyOnNotice']==='Full'?'selected':''}>Full (paid in FnF)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Performance Bonus on Notice Period
+          <span class="info-tooltip" title="Whether the performance bonus accrued is paid out, forfeited, or partially paid in FnF.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-perfBonusOnNotice">
+          <option value="Forfeited" ${(cfg['perfBonusOnNotice']||'Forfeited')==='Forfeited'?'selected':''}>Forfeited</option>
+          <option value="FnF" ${cfg['perfBonusOnNotice']==='FnF'?'selected':''}>Paid in FnF</option>
+          <option value="Partial" ${cfg['perfBonusOnNotice']==='Partial'?'selected':''}>Partial %</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Attendance Bonus on Notice Period
+          <span class="info-tooltip" title="Whether the perfect attendance bonus is paid, forfeited, or partially paid when employee is on notice.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-attendBonusOnNotice">
+          <option value="Forfeited" ${(cfg['attendBonusOnNotice']||'Forfeited')==='Forfeited'?'selected':''}>Forfeited</option>
+          <option value="FnF" ${cfg['attendBonusOnNotice']==='FnF'?'selected':''}>Paid in FnF</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Festival Bonus on Notice Period
+          <span class="info-tooltip" title="Whether festival/Diwali bonuses already credited are paid out or forfeited when employee is on notice.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-festivalBonusOnNotice">
+          <option value="Forfeited" ${(cfg['festivalBonusOnNotice']||'Forfeited')==='Forfeited'?'selected':''}>Forfeited</option>
+          <option value="FnF" ${cfg['festivalBonusOnNotice']==='FnF'?'selected':''}>Paid in FnF</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Referral Bonus on Notice Period
+          <span class="info-tooltip" title="Referral bonus is only paid in FnF if the referred employee's tenure was already completed before notice start. Otherwise forfeited.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-referralBonusOnNotice">
+          <option value="Forfeited" ${(cfg['referralBonusOnNotice']||'Forfeited')==='Forfeited'?'selected':''}>Forfeited</option>
+          <option value="FnF" ${cfg['referralBonusOnNotice']==='FnF'?'selected':''}>Paid in FnF (if tenure met)</option>
+        </select>
+      </div>
+    </div>
+    <div style="background:var(--dark3);border-radius:8px;padding:12px;margin-top:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px">⚠️ Abrupt Quit Policy (No Notice Served)</div>
+      <div class="settings-grid">
+        <div class="form-group">
+          <label class="form-label">Salary on Abrupt Quit
+            <span class="info-tooltip" title="Whether to pay only the days actually worked (no notice pay) or a configured amount.">ℹ</span>
+          </label>
+          <select class="form-input" id="cfg-abruptSalaryMode">
+            <option value="DaysWorked" ${(cfg['abruptSalaryMode']||'DaysWorked')==='DaysWorked'?'selected':''}>Days Worked Only (no notice pay)</option>
+            <option value="Full" ${cfg['abruptSalaryMode']==='Full'?'selected':''}>Full Month Salary</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">All Bonuses on Abrupt Quit
+            <span class="info-tooltip" title="All bonus types default to Forfeited on abrupt quit. Overrides per bonus type can be configured here.">ℹ</span>
+          </label>
+          <div style="font-size:12px;color:var(--gray-light);padding:8px;background:var(--dark2);border-radius:6px">All bonuses forfeited (default). Configurable per type below.</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31ExitSettings()">💾 Save Exit Policy Settings</button>
+  </div>
+
+  <!-- v31: Leave Management Policy Settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">📅 Leave Management Policy (v31)</div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">Leave Year Start Date
+          <span class="info-tooltip" title="When the annual leave year begins. Carry-over and accrual resets on this date. Jan 1 = calendar year, Apr 1 = Indian financial year.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-leaveYearStart">
+          <option value="Jan1" ${(cfg['leaveYearStart']||'Jan1')==='Jan1'?'selected':''}>January 1 (Calendar Year)</option>
+          <option value="Apr1" ${cfg['leaveYearStart']==='Apr1'?'selected':''}>April 1 (Financial Year)</option>
+          <option value="Anniversary" ${cfg['leaveYearStart']==='Anniversary'?'selected':''}>Employee Joining Anniversary</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Grace Period for Late Arrival (minutes)
+          <span class="info-tooltip" title="How many minutes after the standard start time is allowed before a clock-in is counted as Late. Set to 0 to count any late arrival.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-lateGracePeriodMins" value="${cfg['lateGracePeriodMins']||10}" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Maternity Leave Duration (days)
+          <span class="info-tooltip" title="Total days of Maternity Leave (ML) entitled per pregnancy. Statutory minimum is 182 days (26 weeks) under the Maternity Benefit Act.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-mlDuration" value="${cfg['mlDuration']||182}" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Paternity Leave Duration (days)
+          <span class="info-tooltip" title="Total days of Paternity Leave (PTL) entitled per event. Common practice is 15 days.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-ptlDuration" value="${cfg['ptlDuration']||15}" min="1">
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Leave Types Configuration</div>
+      <div id="leave-types-settings-table" style="font-size:12px;overflow-x:auto">
+        <div style="color:var(--gray-light)">Loading leave types…</div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <button class="btn btn-gold" onclick="saveV31LeaveSettings()">💾 Save Leave Settings</button>
+      <button class="btn btn-dark btn-sm" style="margin-left:8px" onclick="seedLeaveBalances()">🌱 Seed Leave Balances for All Active Employees</button>
+    </div>
+  </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
+  // Post-render: load leave types into settings table
+  setTimeout(() => loadLeaveTypesSettingsTable(), 100);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -10870,6 +11434,1176 @@ document.addEventListener('DOMContentLoaded', function() {
   // Boot the app — always shows kiosk; CFG.gasUrl is hardcoded so setup screen is never needed
   init();
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// v31 — KIOSK: OT and Extra Day Calculator Functions (S1.1, S1.2)
+// ═══════════════════════════════════════════════════════════════════
+
+function switchOTTab(tab) {
+  document.getElementById('ot-tab-a').style.display = tab === 'A' ? '' : 'none';
+  document.getElementById('ot-tab-b').style.display = tab === 'B' ? '' : 'none';
+  document.getElementById('ot-tab-a-btn').style.background = tab === 'A' ? 'var(--gold)' : 'var(--dark3)';
+  document.getElementById('ot-tab-a-btn').style.color = tab === 'A' ? 'var(--dark)' : 'var(--white)';
+  document.getElementById('ot-tab-b-btn').style.background = tab === 'B' ? 'var(--gold)' : 'var(--dark3)';
+  document.getElementById('ot-tab-b-btn').style.color = tab === 'B' ? 'var(--dark)' : 'var(--white)';
+}
+
+function calcOTLive() {
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const basic = parseFloat(emp.salary) || 0;
+  const otBase = parseFloat(State.settings && State.settings['otBaseHoursPolicy'] || 9);
+  const multiplier = parseFloat(State.settings && State.settings['otMultiplierRegular'] || 1.5);
+  const hours = parseFloat(document.getElementById('ot-hours-input').value) || 0;
+  const maxHours = parseFloat(State.settings && State.settings['otMaxHoursPerDay'] || 12);
+  const bd = document.getElementById('ot-calc-breakdown');
+  const btns = document.getElementById('ot-action-btns');
+  if (hours <= 0 || hours > maxHours) { bd.style.display = 'none'; btns.style.display = 'none'; return; }
+  // OT formula: Basic / 26 / otBase × multiplier × hours
+  const hourlyRate = basic / 26 / otBase;
+  const otAmount = hourlyRate * multiplier * hours;
+  bd.style.display = '';
+  bd.innerHTML = `
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Your Monthly Basic:</span><span>Rs ${basic.toLocaleString('en-IN')}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Base Hours (per day):</span><span>${otBase} hours</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Hourly Rate:</span><span>Rs ${hourlyRate.toFixed(2)}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Multiplier:</span><span>${multiplier}x</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Hours Entered:</span><span>${hours}</span></div>
+    <div style="border-top:1px solid var(--gray);margin:6px 0;padding-top:6px;display:flex;justify-content:space-between;font-weight:700"><span>OT Amount Due:</span><span style="color:var(--gold)">Rs ${Math.round(otAmount)}</span></div>`;
+  btns.style.display = 'flex';
+}
+
+function calcExtraDayLive() {
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const basic = parseFloat(emp.salary) || 0;
+  const dayType = (document.querySelector('input[name="ed-day-type"]:checked') || {}).value || 'Company Holiday';
+  const multiplierMap = {
+    'Company Holiday':  parseFloat(State.settings && State.settings['otMultiplierCompanyHoliday'] || 1.5),
+    'Weekly Off':       parseFloat(State.settings && State.settings['otMultiplierWeeklyOff'] || 2.0),
+    'National Holiday': parseFloat(State.settings && State.settings['otMultiplierNational'] || 2.5),
+  };
+  const multiplier = multiplierMap[dayType] || 1.5;
+  // Extra Day formula: Basic / 26 × day-type multiplier (NOT the 9-hour OT base)
+  const dailyRate = basic / 26;
+  const amount = dailyRate * multiplier;
+  const bd = document.getElementById('ed-calc-breakdown');
+  bd.style.display = '';
+  bd.innerHTML = `
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Your Monthly Basic:</span><span>Rs ${basic.toLocaleString('en-IN')}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Working Days Base:</span><span>26</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Daily Rate:</span><span>Rs ${dailyRate.toFixed(2)}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Day Type Selected:</span><span>${escHtml(dayType)}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Extra Day Multiplier:</span><span>${multiplier}x</span></div>
+    <div style="border-top:1px solid var(--gray);margin:6px 0;padding-top:6px;display:flex;justify-content:space-between;font-weight:700"><span>Extra Day Amount Due:</span><span style="color:var(--gold)">Rs ${Math.round(amount)}</span></div>`;
+}
+
+async function submitOTClaim(claimMethod) {
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const hours = parseFloat(document.getElementById('ot-hours-input').value) || 0;
+  if (hours <= 0) { toast('Enter valid OT hours', 'error'); return; }
+  const ok = await confirm2(`Submit OT claim for ${hours} hours?\nClaim Method: ${claimMethod === 'Instant' ? 'Claim Now (Instant Payment)' : 'Add to Monthly Salary'}`);
+  if (!ok) return;
+  const res = await API.call('submitOTClaim', {empId: emp.id, otHours: hours, claimMethod, date: todayStr()});
+  if (res.ok) {
+    const receipt = document.getElementById('ot-claim-receipt');
+    receipt.style.display = '';
+    receipt.innerHTML = `<div style="font-weight:700;margin-bottom:6px;color:var(--gold)">OT Claim Submitted</div>
+      <div>Employee: <strong>${escHtml(emp.name)} (${escHtml(emp.id)})</strong></div>
+      <div>Claim Type: OT Hours</div><div>Hours: ${hours}</div>
+      <div>Amount: Rs ${res.amount}</div><div>Method: ${escHtml(claimMethod)}</div>
+      <div>Date: ${todayStr()}</div><div>Submitted: ${new Date().toLocaleString('en-IN')}</div>`;
+    toast('OT claim submitted', 'success');
+  } else toast(res.error || 'Error', 'error');
+}
+
+async function submitExtraDayClaim(claimMethod) {
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const dayType = (document.querySelector('input[name="ed-day-type"]:checked') || {}).value || 'Company Holiday';
+  const workDate = document.getElementById('ed-date-input').value;
+  if (!workDate) { toast('Select date of extra day worked', 'error'); return; }
+  const ok = await confirm2(`Submit Extra Day claim?\nDay Type: ${dayType}\nDate: ${workDate}\nMethod: ${claimMethod === 'Instant' ? 'Claim Now' : 'Add to Monthly Salary'}`);
+  if (!ok) return;
+  const res = await API.call('submitExtraDayClaim', {empId: emp.id, dayType, workDate, claimMethod});
+  if (res.ok) {
+    const receipt = document.getElementById('ot-claim-receipt');
+    receipt.style.display = '';
+    receipt.innerHTML = `<div style="font-weight:700;margin-bottom:6px;color:var(--gold)">Extra Day Claim Submitted</div>
+      <div>Employee: <strong>${escHtml(emp.name)} (${escHtml(emp.id)})</strong></div>
+      <div>Claim Type: Extra Day — ${escHtml(dayType)}</div>
+      <div>Date: ${escHtml(workDate)}</div><div>Amount: Rs ${res.amount}</div>
+      <div>Method: ${escHtml(claimMethod)}</div><div>Submitted: ${new Date().toLocaleString('en-IN')}</div>`;
+    toast('Extra Day claim submitted', 'success');
+  } else toast(res.error || 'Error', 'error');
+}
+
+// Load OT calculator and other v31 kiosk cards when employee card opens
+async function loadV31KioskCards(emp) {
+  const empId = emp.id;
+  // Notice Period Banner
+  if (emp.status === 'Notice Period' && emp.lwd) {
+    const banner = document.getElementById('ec-notice-banner');
+    banner.style.display = '';
+    const lwd = new Date(emp.lwd);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const daysLeft = Math.ceil((lwd - today) / 86400000);
+    document.getElementById('ec-notice-lwd').textContent = 'Last Working Day: ' + emp.lwd;
+    document.getElementById('ec-notice-countdown').textContent = 'Days Remaining: ' + Math.max(0, daysLeft);
+  }
+  // OT Calculator (show always when on dashboard)
+  const otCard = document.getElementById('ec-ot-calc-card');
+  if (otCard) otCard.style.display = '';
+  // Leaves card
+  const leavesCard = document.getElementById('ec-leaves-card');
+  if (leavesCard) leavesCard.style.display = '';
+  // Employment Status card
+  const empStatusCard = document.getElementById('ec-employment-card');
+  if (empStatusCard && emp.status !== 'Notice Period') empStatusCard.style.display = '';
+  // Load pending bonuses
+  try {
+    const now = new Date();
+    const res = await API.call('getPendingBonuses', {empId, month: now.getMonth()+1, year: now.getFullYear()});
+    if (res.ok && res.bonuses && res.bonuses.length > 0) {
+      const card = document.getElementById('ec-pending-bonuses-card');
+      card.style.display = '';
+      document.getElementById('ec-pending-bonuses-content').innerHTML = res.bonuses.map(b =>
+        `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--dark3)">
+          <span>${escHtml(b['Bonus Type'])} — ${escHtml(b['Applicable Month'])}</span>
+          <span style="color:var(--gold);font-weight:700">Rs ${parseFloat(b['Bonus Amount']).toLocaleString('en-IN')}</span>
+        </div>`
+      ).join('') +
+      `<button onclick="claimAllInstantBonuses()" style="width:100%;margin-top:10px;padding:8px;background:var(--green);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px">
+        Claim Now (Instant)
+      </button>`;
+    }
+  } catch(e) {}
+  // Load upcoming promotion
+  if (State.settings && State.settings['promotionShowEmployee'] !== 'false') {
+    try {
+      const res = await API.call('getPromotionHistory', {empId});
+      if (res.ok) {
+        const scheduled = (res.history||[]).find(r => r['Status'] === 'Scheduled');
+        if (scheduled) {
+          const card = document.getElementById('ec-promotion-card');
+          card.style.display = '';
+          document.getElementById('ec-promotion-content').innerHTML =
+            `Upcoming Promotion effective <strong>${escHtml(scheduled['Effective Date'])}</strong><br>
+            New Designation: <strong>${escHtml(scheduled['New Designation'])}</strong><br>
+            New Salary: <strong>Rs ${parseFloat(scheduled['New Basic']).toLocaleString('en-IN')}</strong>`;
+        }
+      }
+    } catch(e) {}
+  }
+  // Load leave types for the apply form
+  try {
+    const ltRes = await API.call('getLeaveTypes', {activeOnly: true});
+    if (ltRes.ok) {
+      const sel = document.getElementById('leave-type-select');
+      if (sel) {
+        sel.innerHTML = '<option value="">-- Select Leave Type --</option>' +
+          (ltRes.leaveTypes||[]).map(lt =>
+            `<option value="${escHtml(lt['Code'])}">${escHtml(lt['Name'])} (${escHtml(lt['Code'])})</option>`
+          ).join('');
+      }
+      // Encashable types
+      const encSel = document.getElementById('encash-leave-type');
+      if (encSel) {
+        const encashable = (ltRes.leaveTypes||[]).filter(lt => lt['EncashmentAllowed'] === 'Yes');
+        encSel.innerHTML = '<option value="">-- Select Encashable Leave --</option>' +
+          encashable.map(lt => `<option value="${escHtml(lt['Code'])}">${escHtml(lt['Name'])}</option>`).join('');
+      }
+    }
+  } catch(e) {}
+  // Load leave balance
+  try {
+    const lbRes = await API.call('getLeaveBalance', {empId, year: new Date().getFullYear()});
+    if (lbRes.ok && lbRes.balances) {
+      State.leaveBalances = {};
+      lbRes.balances.forEach(b => { State.leaveBalances[b['Leave Type Code']] = b; });
+    }
+  } catch(e) {}
+  // Load leave status list
+  await loadLeaveStatus(empId);
+}
+
+function onLeaveTypeChange() {
+  const code = document.getElementById('leave-type-select').value;
+  const display = document.getElementById('leave-balance-display');
+  if (!code || !State.leaveBalances) { display.textContent = ''; return; }
+  const bal = State.leaveBalances[code];
+  if (bal) {
+    display.textContent = 'Balance: ' + (parseFloat(bal['Closing Balance'])||0) + ' days remaining';
+  }
+}
+
+function calcLeaveDays() {
+  const from = document.getElementById('leave-from-date').value;
+  const to = document.getElementById('leave-to-date').value;
+  const disp = document.getElementById('leave-days-display');
+  if (!from || !to) { disp.textContent = ''; return; }
+  const d1 = new Date(from), d2 = new Date(to);
+  if (d2 < d1) { disp.textContent = 'To date must be after From date'; return; }
+  const days = Math.ceil((d2 - d1) / 86400000) + 1;
+  disp.textContent = 'Approximately ' + days + ' calendar day(s). Working days may be fewer (weekends/holidays excluded at submission).';
+  // Check balance warning
+  const code = document.getElementById('leave-type-select').value;
+  const bal = State.leaveBalances && code ? (State.leaveBalances[code] || null) : null;
+  const warn = document.getElementById('leave-balance-warning');
+  if (bal && days > (parseFloat(bal['Closing Balance'])||0)) {
+    warn.style.display = '';
+    warn.textContent = 'Warning: You are applying for more days than your current balance. Your request may be rejected or may create an LWP deduction.';
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function toggleHalfDayPeriod() {
+  const isHalf = document.getElementById('leave-half-day').value === 'Yes';
+  document.getElementById('leave-half-day-period').style.display = isHalf ? '' : 'none';
+}
+
+async function submitLeaveRequest() {
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const leaveCode = document.getElementById('leave-type-select').value;
+  const fromDate = document.getElementById('leave-from-date').value;
+  const toDate = document.getElementById('leave-to-date').value;
+  const reason = document.getElementById('leave-reason').value;
+  const halfDay = document.getElementById('leave-half-day').value;
+  const halfDayPeriod = document.getElementById('leave-half-day-period').value;
+  if (!leaveCode) { toast('Select a leave type', 'error'); return; }
+  if (!fromDate || !toDate) { toast('Select from and to dates', 'error'); return; }
+  const ok = await confirm2('Submit leave request for ' + leaveCode + ' from ' + fromDate + ' to ' + toDate + '?');
+  if (!ok) return;
+  const res = await API.call('submitLeaveRequest', {empId: emp.id, leaveCode, fromDate, toDate, reason, halfDay, halfDayPeriod});
+  if (res.ok) {
+    toast('Leave request submitted. Status: ' + res.status, 'success');
+    document.getElementById('leave-type-select').value = '';
+    document.getElementById('leave-from-date').value = '';
+    document.getElementById('leave-to-date').value = '';
+    document.getElementById('leave-reason').value = '';
+    document.getElementById('leave-days-display').textContent = '';
+    await loadLeaveStatus(emp.id);
+  } else toast(res.error || 'Error submitting leave', 'error');
+}
+
+async function loadLeaveStatus(empId) {
+  try {
+    const res = await API.call('getLeaveRequests', {empId});
+    const list = document.getElementById('leave-status-list');
+    if (!list) return;
+    if (!res.ok || !(res.requests||[]).length) {
+      list.innerHTML = '<div style="color:var(--gray-light);text-align:center;padding:12px">No leave requests found</div>';
+      return;
+    }
+    const colorMap = {Pending:'#f9a825',Approved:'#43a047',Rejected:'#d32f2f',Cancelled:'#757575'};
+    list.innerHTML = res.requests.slice().reverse().map(r =>
+      `<div style="border:1px solid var(--dark3);border-radius:6px;padding:8px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600">${escHtml(r['Leave Type Name']||r['Leave Type Code'])} — ${escHtml(r['From Date'])} to ${escHtml(r['To Date'])}</span>
+          <span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${colorMap[r['Status']]||'#757575'}22;color:${colorMap[r['Status']]||'#fff'}">${escHtml(r['Status'])}</span>
+        </div>
+        <div style="font-size:11px;color:var(--gray-light);margin-top:3px">${r['Number of Days']} day(s) · ${escHtml(r['Reason']||'')}</div>
+        ${(r['Status']==='Pending' || (r['Status']==='Approved' && r['From Date'] > todayStr())) ?
+          `<button onclick="cancelLeaveRequest('${escHtml(r['Request ID'])}','${escHtml(empId)}')" style="margin-top:6px;padding:4px 10px;background:var(--dark3);border:1px solid var(--gray);border-radius:4px;color:var(--white);font-size:11px;cursor:pointer">Cancel</button>` : ''}
+      </div>`
+    ).join('');
+  } catch(e) { }
+}
+
+async function cancelLeaveRequest(reqId, empId) {
+  const ok = await confirm2('Cancel this leave request?');
+  if (!ok) return;
+  const res = await API.call('cancelLeaveRequest', {reqId, empId});
+  if (res.ok) { toast('Leave request cancelled', 'success'); await loadLeaveStatus(empId); }
+  else toast(res.error || 'Error', 'error');
+}
+
+function switchLeaveTab(tab) {
+  ['apply','status','encash'].forEach(t => {
+    const sec = document.getElementById('leave-' + t + '-section');
+    const btn = document.getElementById('leave-' + t + '-tab-btn');
+    if (sec) sec.style.display = t === tab ? '' : 'none';
+    if (btn) { btn.style.background = t === tab ? 'var(--gold)' : 'var(--dark3)'; btn.style.color = t === tab ? 'var(--dark)' : 'var(--white)'; }
+  });
+  if (tab === 'status' && State.currentEmp) loadLeaveStatus(State.currentEmp.id);
+}
+
+function calcEncashmentAmount() {
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const days = parseFloat(document.getElementById('encash-days').value) || 0;
+  const basic = parseFloat(emp.salary) || 0;
+  const rate = basic / 26;
+  const amount = rate * days;
+  document.getElementById('encash-amount-display').textContent = days > 0 ?
+    'Encashment Amount: Rs ' + Math.round(amount).toLocaleString('en-IN') + ' (' + days + ' days × Rs ' + rate.toFixed(2) + '/day)' : '';
+}
+
+async function submitLeaveEncashment() {
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const leaveCode = document.getElementById('encash-leave-type').value;
+  const days = parseFloat(document.getElementById('encash-days').value) || 0;
+  if (!leaveCode) { toast('Select leave type', 'error'); return; }
+  if (days <= 0) { toast('Enter days to encash', 'error'); return; }
+  const ok = await confirm2('Request encashment of ' + days + ' day(s) of ' + leaveCode + '?');
+  if (!ok) return;
+  const res = await API.call('requestLeaveEncashment', {empId: emp.id, leaveCode, days, leaveYear: new Date().getFullYear()});
+  if (res.ok) toast('Encashment request submitted. Amount: Rs ' + res.amount, 'success');
+  else toast(res.error || 'Error', 'error');
+}
+
+async function initiateResignation() {
+  const emp = State.currentEmp;
+  if (!emp) return;
+  const conf = await new Promise(resolve => {
+    const txt = prompt('WARNING: Initiating a notice period will IMMEDIATELY forfeit your accrued Loyalty Bonus. This action cannot be undone.\n\nType CONFIRM to proceed:');
+    resolve(txt === 'CONFIRM');
+  });
+  if (!conf) { toast('Resignation not initiated', 'info'); return; }
+  const res = await API.call('initiateNotice', {empId: emp.id, source: 'Self', triggeredBy: emp.id, noticeType: 'Resignation'});
+  if (res.ok) {
+    toast('Notice period initiated. Last Working Day: ' + res.lastWorkingDate, 'success');
+    // Refresh card to show banner
+    document.getElementById('ec-notice-banner').style.display = '';
+    document.getElementById('ec-notice-lwd').textContent = 'Last Working Day: ' + res.lastWorkingDate;
+    document.getElementById('ec-notice-countdown').textContent = 'Days Remaining: ' + res.noticeDays;
+    document.getElementById('ec-employment-card').style.display = 'none';
+  } else toast(res.error || 'Error', 'error');
+}
+
+async function claimAllInstantBonuses() {
+  toast('Instant bonus claim sent for approval', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v31 — ADMIN: Promotion Modal (S2.1)
+// ═══════════════════════════════════════════════════════════════════
+
+function showPromotionModal(empId, empName) {
+  const minDays = (State.settings && parseInt(State.settings['promotionMinAdvanceDays'])) || 1;
+  const minDate = new Date(); minDate.setDate(minDate.getDate() + minDays);
+  const minDateStr = minDate.toISOString().split('T')[0];
+  const html = `<div style="font-size:13px;max-height:60vh;overflow-y:auto;padding-right:4px">
+    <div style="background:var(--dark3);border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px;color:var(--gray-light)">
+      Promotion for: <strong style="color:var(--gold)">${escHtml(empName)} (${escHtml(empId)})</strong><br>
+      All changes apply from the Effective Date only. Past records are not affected.
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">New Designation <span class="info-tooltip" title="The employee's new job title/level after promotion.">ℹ</span></label><input id="pm-designation" class="form-input" placeholder="e.g. Senior Supervisor"></div>
+      <div class="form-group"><label class="form-label">New Basic Salary (Rs) <span class="info-tooltip" title="New monthly basic salary from the effective date.">ℹ</span></label><input id="pm-basic" class="form-input" type="number" placeholder="e.g. 25000"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">New Standard Hours/Day <span class="info-tooltip" title="Revised daily standard hours. Affects OT calculation from effective date onwards.">ℹ</span></label><input id="pm-hours" class="form-input" type="number" placeholder="e.g. 10"></div>
+      <div class="form-group"><label class="form-label">One-Time Bonus (Rs, optional) <span class="info-tooltip" title="A one-time promotional bonus credited to Bonus Ledger on the effective date.">ℹ</span></label><input id="pm-bonus" class="form-input" type="number" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">New Performance Bonus % <span class="info-tooltip" title="Ongoing monthly performance bonus percentage from effective date.">ℹ</span></label><input id="pm-perfpct" class="form-input" type="number" placeholder="e.g. 5"></div>
+      <div class="form-group"><label class="form-label">Effective Date (MANDATORY) <span class="info-tooltip" title="The date from which promotion takes effect. Cannot be today or a past date. Minimum ${minDays} day(s) from today.">ℹ</span></label><input id="pm-effdate" class="form-input" type="date" min="${minDateStr}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Promotion Notes</label><textarea id="pm-notes" class="form-input" rows="2" placeholder="HR notes for records…"></textarea></div>
+  </div>`;
+  showModal('🎯 Initiate Promotion — ' + empName, html, [
+    {label:'Save Promotion', cls:'btn-gold', cb: async () => {
+      const effDate = document.getElementById('pm-effdate').value;
+      if (!effDate) { toast('Effective Date is mandatory', 'error'); return; }
+      const res = await API.call('initiatePromotion', {
+        empId, effectiveDate: effDate,
+        newDesignation: document.getElementById('pm-designation').value,
+        newBasic: document.getElementById('pm-basic').value,
+        newHours: document.getElementById('pm-hours').value,
+        oneTimeBonus: document.getElementById('pm-bonus').value || 0,
+        newBonusPct: document.getElementById('pm-perfpct').value || 0,
+        recordedBy: State.adminRole || 'Admin',
+        notes: document.getElementById('pm-notes').value,
+      });
+      if (res.ok) { closeModal(); toast(res.message, 'success'); }
+      else toast(res.error || 'Error', 'error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v31 — ADMIN: Notice Period Modal (S6.2)
+// ═══════════════════════════════════════════════════════════════════
+
+function showInitiateNoticeModal(empId, empName) {
+  const html = `<div style="background:rgba(200,0,0,0.1);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px">
+    <strong style="color:var(--red)">⚠ This action is irreversible.</strong>
+    Employee: <strong>${escHtml(empName)} (${escHtml(empId)})</strong><br>
+    Loyalty Bonus will be immediately forfeited on confirmation.
+  </div>
+  <div class="form-group"><label class="form-label">Notice Type</label>
+    <select id="ni-type" class="form-input"><option>Resignation</option><option>Termination</option><option>Mutual Separation</option></select></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Notice Start Date</label><input id="ni-start" class="form-input" type="date" value="${todayStr()}"></div>
+    <div class="form-group"><label class="form-label">Override Duration (days, optional)</label><input id="ni-dur" class="form-input" type="number" placeholder="Leave blank = default from Settings"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Reason / Notes</label><textarea id="ni-reason" class="form-input" rows="2"></textarea></div>`;
+  showModal('📋 Initiate Notice Period — ' + empName, html, [
+    {label:'Confirm Notice Period', cls:'btn-sm', cb: async () => {
+      const ok = await confirm2('Initiate notice period for ' + empName + '? This will forfeit their loyalty bonus immediately.');
+      if (!ok) return;
+      const res = await API.call('initiateNotice', {
+        empId, source: 'Admin', triggeredBy: State.adminRole,
+        noticeType: document.getElementById('ni-type').value,
+        noticeStartDate: document.getElementById('ni-start').value,
+        overrideDuration: document.getElementById('ni-dur').value || '',
+        reason: document.getElementById('ni-reason').value,
+      });
+      if (res.ok) { closeModal(); toast('Notice period initiated. LWD: ' + res.lastWorkingDate, 'success'); await renderEmployees(); }
+      else toast(res.error || 'Error', 'error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v31 — ADMIN TABS: OT Claims (S1.8), Bonus Management (S3.2, S4.1),
+//        Promotions (S2.1), Leave Management (S10.7, S10.8)
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderOTClaims() {
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const res = await API.call('getOTClaims', {});
+  const claims = res.claims || [];
+  let html = `<div style="max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:700">⏱ OT &amp; Extra Day Claims</h2>
+      <div style="display:flex;gap:8px">
+        <select id="otc-filter-type" class="form-input" style="width:140px" onchange="filterOTClaims()">
+          <option value="">All Types</option><option value="OT">OT</option><option value="Extra Day">Extra Day</option>
+        </select>
+        <select id="otc-filter-status" class="form-input" style="width:140px" onchange="filterOTClaims()">
+          <option value="">All Statuses</option><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Added to Payroll">Added to Payroll</option>
+        </select>
+      </div>
+    </div>
+    ${claims.length === 0 ? '<div class="empty-state"><div class="empty-icon">⏱</div><p>No OT or Extra Day claims found</p></div>' :
+    `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:var(--dark3)">
+        <th style="padding:8px;text-align:left">Timestamp</th>
+        <th style="padding:8px;text-align:left">Employee (Code)</th>
+        <th style="padding:8px;text-align:left">Type</th>
+        <th style="padding:8px;text-align:left">Date</th>
+        <th style="padding:8px;text-align:left">Details</th>
+        <th style="padding:8px;text-align:right">Amount</th>
+        <th style="padding:8px;text-align:left">Method</th>
+        <th style="padding:8px;text-align:left">Status</th>
+        <th style="padding:8px;text-align:left">Actions</th>
+      </tr></thead>
+      <tbody id="otc-table-body">
+        ${claims.map((c,i) => `<tr style="border-bottom:1px solid var(--dark3)">
+          <td style="padding:8px">${escHtml((c['Timestamp']||'').substring(0,16))}</td>
+          <td style="padding:8px"><strong>${escHtml(c['Employee Name'])}</strong><br><span style="color:var(--gray-light);font-size:11px">${escHtml(c['Employee Code'])}</span></td>
+          <td style="padding:8px"><span style="background:${c['Claim Type']==='OT'?'#1976d244':'#43a04744'};padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(c['Claim Type'])}</span></td>
+          <td style="padding:8px">${escHtml(c['Claim Date']||'')}</td>
+          <td style="padding:8px">${c['Claim Type']==='OT' ? escHtml(c['OT Hours']||'') + ' hrs' : escHtml(c['Day Type']||'')}</td>
+          <td style="padding:8px;text-align:right;font-weight:700;color:var(--gold)">Rs ${parseFloat(c['Calculated Amount']||0).toLocaleString('en-IN')}</td>
+          <td style="padding:8px">${escHtml(c['Claim Method']||'')}</td>
+          <td style="padding:8px"><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:${c['Status']==='Pending'?'#f9a82522':'#43a04722'};color:${c['Status']==='Pending'?'#f9a825':'#43a047'}">${escHtml(c['Status']||'')}</span></td>
+          <td style="padding:8px">
+            ${c['Status']==='Pending' && c['Claim Method']==='Instant' ?
+              `<button class="btn btn-sm" style="background:var(--green);color:#fff;font-size:10px;padding:3px 8px" onclick="approveOTClaim(${i})">Approve</button>
+               <button class="btn btn-sm" style="background:var(--dark3);color:var(--red);font-size:10px;padding:3px 8px;margin-left:4px" onclick="rejectOTClaim(${i})">Reject</button>` : '—'}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`}
+  </div>`;
+  State._otClaims = claims;
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+
+function filterOTClaims() { renderOTClaims(); }
+
+async function approveOTClaim(idx) {
+  const c = (State._otClaims||[])[idx];
+  if (!c) return;
+  const res = await API.call('updateOTClaimStatus', {claimId: c['Employee Code'], rowIndex: idx+2, status:'Approved', approvedBy: State.adminRole});
+  if (res.ok) { toast('Claim approved', 'success'); await renderOTClaims(); }
+  else toast(res.error||'Error','error');
+}
+
+async function rejectOTClaim(idx) {
+  const c = (State._otClaims||[])[idx];
+  if (!c) return;
+  const res = await API.call('updateOTClaimStatus', {claimId: c['Employee Code'], rowIndex: idx+2, status:'Rejected', approvedBy: State.adminRole});
+  if (res.ok) { toast('Claim rejected', 'success'); await renderOTClaims(); }
+  else toast(res.error||'Error','error');
+}
+
+async function renderBonusManagement() {
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const [bonusRes, empRes] = await Promise.all([
+    API.call('getBonuses', {}),
+    API.call('getEmployees', {status:'Active'}),
+  ]);
+  const bonuses = bonusRes.bonuses || [];
+  const employees = empRes.employees || [];
+  const empOpts = employees.map(e => `<option value="${escHtml(e.id)}">${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
+  const pendingBonuses = bonuses.filter(b => b['Status'] === 'Scheduled' && b['Claim Method'] === 'Instant');
+  let html = `<div style="max-width:1100px">
+    <h2 style="font-size:18px;font-weight:700;margin-bottom:16px">🎁 Bonus Management</h2>
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+      <button id="bm-tab-add" onclick="switchBonusMgmtTab('add')" class="btn btn-gold btn-sm">+ Add Bonus</button>
+      <button id="bm-tab-bulk" onclick="switchBonusMgmtTab('bulk')" class="btn btn-dark btn-sm">Bulk Bonus</button>
+      <button id="bm-tab-all" onclick="switchBonusMgmtTab('all')" class="btn btn-dark btn-sm">All Bonuses (${bonuses.length})</button>
+      <button id="bm-tab-pending" onclick="switchBonusMgmtTab('pending')" class="btn btn-dark btn-sm">Pending Approvals (${pendingBonuses.length})</button>
+    </div>
+    <!-- Add Individual Bonus -->
+    <div id="bm-section-add">
+      <div style="background:var(--dark2);border-radius:10px;padding:20px;max-width:600px">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Employee <span class="info-tooltip" title="Search employee by name or code. Both Name and Code are displayed for all employees.">ℹ</span></label>
+            <select id="bm-emp" class="form-input"><option value="">-- Select Employee --</option>${empOpts}</select></div>
+          <div class="form-group"><label class="form-label">Bonus Type <span class="info-tooltip" title="Category of bonus. Each type appears as a separate named line item on the salary slip.">ℹ</span></label>
+            <select id="bm-type" class="form-input">
+              <option>Sales Incentive Bonus</option><option>Performance Bonus</option><option>Custom One-Time Bonus</option>
+              <option>Festival Bonus</option><option>Referral Bonus</option>
+            </select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Amount (Rs) <span class="info-tooltip" title="Bonus amount in Indian Rupees.">ℹ</span></label><input id="bm-amount" class="form-input" type="number" placeholder="e.g. 5000"></div>
+          <div class="form-group"><label class="form-label">Applicable Month (MM/YYYY) <span class="info-tooltip" title="The payroll month in which this bonus should be included.">ℹ</span></label><input id="bm-month" class="form-input" placeholder="e.g. 05/2026"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Claim Method <span class="info-tooltip" title="Instant: employee can claim now. Add to Salary: auto-added to payroll for the applicable month.">ℹ</span></label>
+            <select id="bm-method" class="form-input"><option value="Salary">Add to Salary</option><option value="Instant">Instant Claim</option></select></div>
+          <div class="form-group"><label class="form-label">Effective Date <span class="info-tooltip" title="Date from which this bonus applies. Defaults to today.">ℹ</span></label>
+            <input id="bm-effdate" class="form-input" type="date" value="${todayStr()}"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Reason / Notes <span class="info-tooltip" title="Internal notes visible to admin. Also shown on salary slip as the bonus label.">ℹ</span></label><input id="bm-reason" class="form-input" placeholder="Reason for bonus…"></div>
+        <button class="btn btn-gold" style="margin-top:14px" onclick="submitAddBonus()">Add Bonus</button>
+      </div>
+    </div>
+    <!-- Bulk Bonus -->
+    <div id="bm-section-bulk" style="display:none">
+      ${renderBulkBonusWizardHTML(empOpts, employees)}
+    </div>
+    <!-- All Bonuses -->
+    <div id="bm-section-all" style="display:none">
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--dark3)">
+            <th style="padding:8px">Employee (Code)</th><th style="padding:8px">Type</th>
+            <th style="padding:8px">Amount</th><th style="padding:8px">Month</th>
+            <th style="padding:8px">Method</th><th style="padding:8px">Status</th>
+            <th style="padding:8px">Added By</th>
+          </tr></thead>
+          <tbody>${bonuses.map(b => `<tr style="border-bottom:1px solid var(--dark3)">
+            <td style="padding:8px"><strong>${escHtml(b['Employee Name'])}</strong><br><span style="font-size:11px;color:var(--gray-light)">${escHtml(b['Employee Code'])}</span></td>
+            <td style="padding:8px">${escHtml(b['Bonus Type'])}</td>
+            <td style="padding:8px;font-weight:700;color:var(--gold)">Rs ${parseFloat(b['Bonus Amount']||0).toLocaleString('en-IN')}</td>
+            <td style="padding:8px">${escHtml(b['Applicable Month']||'')}</td>
+            <td style="padding:8px">${escHtml(b['Claim Method']||'')}</td>
+            <td style="padding:8px">${escHtml(b['Status']||'')}</td>
+            <td style="padding:8px;font-size:11px">${escHtml(b['Added By']||'')}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Pending Approvals -->
+    <div id="bm-section-pending" style="display:none">
+      ${pendingBonuses.length === 0 ? '<div class="empty-state"><div class="empty-icon">✓</div><p>No pending instant bonus claims</p></div>' :
+      pendingBonuses.map((b,i) => `<div style="background:var(--dark2);border-radius:8px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:600">${escHtml(b['Employee Name'])} (${escHtml(b['Employee Code'])})</div>
+          <div style="font-size:12px;color:var(--gray-light)">${escHtml(b['Bonus Type'])} — Rs ${parseFloat(b['Bonus Amount']||0).toLocaleString('en-IN')} — ${escHtml(b['Applicable Month']||'')}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" style="background:var(--green);color:#fff" onclick="approveBonus('${escHtml(b['Bonus ID'])}')">Approve</button>
+          <button class="btn btn-sm" style="background:var(--dark3);color:var(--red)" onclick="rejectBonus('${escHtml(b['Bonus ID'])}')">Reject</button>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+
+function switchBonusMgmtTab(tab) {
+  ['add','bulk','all','pending'].forEach(t => {
+    const sec = document.getElementById('bm-section-' + t);
+    const btn = document.getElementById('bm-tab-' + t);
+    if (sec) sec.style.display = t === tab ? '' : 'none';
+    if (btn) { btn.className = t === tab ? 'btn btn-gold btn-sm' : 'btn btn-dark btn-sm'; }
+  });
+}
+
+async function submitAddBonus() {
+  const empId = document.getElementById('bm-emp').value;
+  const amount = document.getElementById('bm-amount').value;
+  if (!empId) { toast('Select an employee', 'error'); return; }
+  if (!amount || parseFloat(amount) <= 0) { toast('Enter a valid amount', 'error'); return; }
+  const res = await API.call('addBonus', {
+    empId, bonusType: document.getElementById('bm-type').value,
+    amount, applicableMonth: document.getElementById('bm-month').value,
+    claimMethod: document.getElementById('bm-method').value,
+    effectiveDate: document.getElementById('bm-effdate').value,
+    reason: document.getElementById('bm-reason').value,
+    addedBy: State.adminRole || 'Admin',
+  });
+  if (res.ok) { toast('Bonus added: ' + res.bonusId, 'success'); await renderBonusManagement(); }
+  else toast(res.error||'Error','error');
+}
+
+async function approveBonus(bonusId) {
+  const res = await API.call('approveBonus', {bonusId, approvedBy: State.adminRole});
+  if (res.ok) { toast('Bonus approved', 'success'); await renderBonusManagement(); }
+  else toast(res.error||'Error','error');
+}
+
+async function rejectBonus(bonusId) {
+  const res = await API.call('approveBonus', {bonusId: bonusId, approvedBy: State.adminRole, status:'Rejected'});
+  if (res.ok) { toast('Bonus rejected', 'success'); await renderBonusManagement(); }
+  else toast(res.error||'Error','error');
+}
+
+// Bulk Bonus 5-step wizard HTML
+function renderBulkBonusWizardHTML(empOpts, employees) {
+  return `<div id="bulk-bonus-wizard" style="max-width:700px">
+    <!-- Step 1 -->
+    <div id="bb-step1" class="settings-section">
+      <div class="settings-section-title">Step 1: Name &amp; Type</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Bonus Name <span class="info-tooltip" title="e.g. Diwali Bonus 2025. Used as the identifier for this bulk bonus.">ℹ</span></label><input id="bb-name" class="form-input" placeholder="e.g. Diwali Bonus 2025"></div>
+        <div class="form-group"><label class="form-label">Applicable Month (MM/YYYY) <span class="info-tooltip" title="The payroll month this bonus applies to.">ℹ</span></label><input id="bb-month" class="form-input" placeholder="10/2025"></div>
+      </div>
+      <button class="btn btn-gold" onclick="bbNext(1)">Next →</button>
+    </div>
+    <!-- Step 2 -->
+    <div id="bb-step2" style="display:none" class="settings-section">
+      <div class="settings-section-title">Step 2: Scope</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <label><input type="radio" name="bb-scope" value="all" checked> All Active Employees</label>
+        <label><input type="radio" name="bb-scope" value="dept"> By Department</label>
+        <label><input type="radio" name="bb-scope" value="individual"> Individual Selection</label>
+      </div>
+      <div id="bb-individual-list" style="display:none;max-height:200px;overflow-y:auto;border:1px solid var(--dark3);border-radius:6px;padding:8px">
+        ${employees.map(e => `<label style="display:block;padding:4px 0;font-size:12px"><input type="checkbox" class="bb-emp-chk" value="${escHtml(e.id)}" data-name="${escHtml(e.name)}"> ${escHtml(e.name)} (${escHtml(e.id)})</label>`).join('')}
+      </div>
+      <button class="btn btn-dark btn-sm" style="margin-top:8px" onclick="bbBack(2)">← Back</button>
+      <button class="btn btn-gold btn-sm" style="margin-left:8px" onclick="bbNext(2)">Next →</button>
+    </div>
+    <!-- Step 3 -->
+    <div id="bb-step3" style="display:none" class="settings-section">
+      <div class="settings-section-title">Step 3: Amount</div>
+      <div style="margin-bottom:12px">
+        <label><input type="radio" name="bb-amount-mode" value="same" checked onchange="toggleBBAmountMode()"> Same Amount for All</label>
+        <label style="margin-left:16px"><input type="radio" name="bb-amount-mode" value="different" onchange="toggleBBAmountMode()"> Different Amounts</label>
+      </div>
+      <div id="bb-amount-same"><label class="form-label">Amount (Rs) for All</label><input id="bb-amount-val" class="form-input" type="number" placeholder="e.g. 5000"></div>
+      <div id="bb-amount-diff" style="display:none" id="bb-amounts-table"></div>
+      <div style="margin-top:12px"><button class="btn btn-dark btn-sm" onclick="bbBack(3)">← Back</button><button class="btn btn-gold btn-sm" style="margin-left:8px" onclick="bbNext(3)">Next →</button></div>
+    </div>
+    <!-- Step 4 -->
+    <div id="bb-step4" style="display:none" class="settings-section">
+      <div class="settings-section-title">Step 4: Claim Method</div>
+      <select id="bb-method" class="form-input" style="max-width:200px">
+        <option value="Salary">Add to Salary</option>
+        <option value="Instant">Instant Claim</option>
+      </select>
+      <div style="margin-top:12px"><button class="btn btn-dark btn-sm" onclick="bbBack(4)">← Back</button><button class="btn btn-gold btn-sm" style="margin-left:8px" onclick="bbNext(4)">Next: Preview →</button></div>
+    </div>
+    <!-- Step 5 Preview -->
+    <div id="bb-step5" style="display:none" class="settings-section">
+      <div class="settings-section-title">Step 5: Preview &amp; Confirm</div>
+      <div id="bb-preview-table" style="margin-bottom:14px;max-height:300px;overflow-y:auto"></div>
+      <button class="btn btn-dark btn-sm" onclick="bbBack(5)">← Back</button>
+      <button class="btn btn-gold" style="margin-left:8px" onclick="submitBulkBonus()">Confirm &amp; Credit All Employees</button>
+      <div id="bb-result" style="margin-top:12px;font-size:13px"></div>
+    </div>
+  </div>`;
+}
+
+let _bbStep = 1;
+let _bbEmployeeList = [];
+
+function bbNext(step) {
+  if (step === 1) {
+    if (!document.getElementById('bb-name').value) { toast('Enter bonus name','error'); return; }
+    if (!document.getElementById('bb-month').value) { toast('Enter applicable month','error'); return; }
+  }
+  if (step === 2) {
+    const scope = document.querySelector('input[name="bb-scope"]:checked').value;
+    // Build employee list based on scope
+    if (scope === 'all') {
+      // Will be resolved server-side; pass empty = all
+      _bbEmployeeList = null;
+    } else if (scope === 'individual') {
+      const checked = document.querySelectorAll('.bb-emp-chk:checked');
+      _bbEmployeeList = Array.from(checked).map(c => ({employeeCode: c.value, name: c.dataset.name}));
+      if (!_bbEmployeeList.length) { toast('Select at least one employee','error'); return; }
+    }
+  }
+  if (step === 5) {
+    // Build preview table
+    const previewContainer = document.getElementById('bb-preview-table');
+    const name = document.getElementById('bb-name').value;
+    const month = document.getElementById('bb-month').value;
+    const amtMode = document.querySelector('input[name="bb-amount-mode"]:checked').value;
+    const sameAmt = parseFloat(document.getElementById('bb-amount-val').value) || 0;
+    const empList = _bbEmployeeList || [];
+    let total = 0;
+    previewContainer.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:var(--dark3)"><th style="padding:6px">Employee (Code)</th><th style="padding:6px">Amount</th><th style="padding:6px">Month</th></tr></thead>
+      <tbody>${empList.map(e => {
+        const amt = amtMode === 'same' ? sameAmt : (parseFloat((document.getElementById('bb-diff-' + e.employeeCode) || {}).value) || sameAmt);
+        total += amt;
+        return `<tr style="border-bottom:1px solid var(--dark3)"><td style="padding:6px"><strong>${escHtml(e.name||'')}</strong> (${escHtml(e.employeeCode)})</td><td style="padding:6px;color:var(--gold)">Rs ${amt.toLocaleString('en-IN')}</td><td style="padding:6px">${escHtml(month)}</td></tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr><td style="padding:6px;font-weight:700">Total (${empList.length} employees)</td><td style="padding:6px;font-weight:700;color:var(--gold)" colspan="2">Rs ${total.toLocaleString('en-IN')}</td></tr></tfoot>
+    </table>`;
+  }
+  document.getElementById('bb-step' + step).style.display = 'none';
+  document.getElementById('bb-step' + (step+1)).style.display = '';
+  // Show individual list toggle
+  if (step === 1) {
+    document.querySelectorAll('input[name="bb-scope"]').forEach(r => r.addEventListener('change', () => {
+      document.getElementById('bb-individual-list').style.display = r.value === 'individual' ? '' : 'none';
+    }));
+  }
+}
+
+function bbBack(step) {
+  document.getElementById('bb-step' + step).style.display = 'none';
+  document.getElementById('bb-step' + (step-1)).style.display = '';
+}
+
+function toggleBBAmountMode() {
+  const mode = document.querySelector('input[name="bb-amount-mode"]:checked').value;
+  document.getElementById('bb-amount-same').style.display = mode === 'same' ? '' : 'none';
+  document.getElementById('bb-amount-diff').style.display = mode === 'different' ? '' : 'none';
+}
+
+async function submitBulkBonus() {
+  const bonusName = document.getElementById('bb-name').value;
+  const applicableMonth = document.getElementById('bb-month').value;
+  const claimMethod = document.getElementById('bb-method').value;
+  const amtMode = document.querySelector('input[name="bb-amount-mode"]:checked').value;
+  const sameAmt = parseFloat(document.getElementById('bb-amount-val').value) || 0;
+  const employeeList = (_bbEmployeeList || []).map(e => ({
+    employeeCode: e.employeeCode,
+    amount: amtMode === 'same' ? sameAmt : (parseFloat((document.getElementById('bb-diff-' + e.employeeCode)||{}).value) || sameAmt)
+  }));
+  if (!employeeList.length) { toast('No employees selected', 'error'); return; }
+  const res = await API.call('addBulkBonus', {bonusName, bonusType:'Festival Bonus', applicableMonth, employeeList, claimMethod, addedBy: State.adminRole});
+  const resultEl = document.getElementById('bb-result');
+  if (res.ok) {
+    resultEl.style.color = 'var(--green)';
+    resultEl.textContent = res.message;
+    toast(res.message, 'success');
+  } else {
+    resultEl.style.color = 'var(--red)';
+    resultEl.textContent = res.error || 'Error';
+  }
+}
+
+async function renderPromotions() {
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const res = await API.call('getPromotionHistory', {});
+  const history = res.history || [];
+  const html = `<div style="max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:700">🎯 Promotion Management</h2>
+      <button class="btn btn-gold btn-sm" onclick="API.call('applyPromotions',{}).then(r=>{if(r.ok){toast('Scheduled promotions applied','success');renderPromotions();}})">▶ Apply Scheduled Promotions Now</button>
+    </div>
+    ${history.length === 0 ? '<div class="empty-state"><div class="empty-icon">🎯</div><p>No promotion records found</p></div>' :
+    `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:var(--dark3)">
+        <th style="padding:8px">Employee (Code)</th><th style="padding:8px">Old → New Designation</th>
+        <th style="padding:8px">Old → New Basic</th><th style="padding:8px">Effective Date</th>
+        <th style="padding:8px">One-Time Bonus</th><th style="padding:8px">Status</th>
+        <th style="padding:8px">Recorded By</th>
+      </tr></thead>
+      <tbody>${history.map(r => `<tr style="border-bottom:1px solid var(--dark3)">
+        <td style="padding:8px"><strong>${escHtml(r['Employee Name'])}</strong><br><span style="font-size:11px;color:var(--gray-light)">${escHtml(r['Employee Code'])}</span></td>
+        <td style="padding:8px">${escHtml(r['Old Designation']||'—')} → <strong>${escHtml(r['New Designation']||'—')}</strong></td>
+        <td style="padding:8px">Rs ${parseFloat(r['Old Basic']||0).toLocaleString('en-IN')} → <strong style="color:var(--gold)">Rs ${parseFloat(r['New Basic']||0).toLocaleString('en-IN')}</strong></td>
+        <td style="padding:8px">${escHtml(r['Effective Date']||'')}</td>
+        <td style="padding:8px">${parseFloat(r['One-Time Bonus Amount']||0) > 0 ? 'Rs ' + parseFloat(r['One-Time Bonus Amount']).toLocaleString('en-IN') : '—'}</td>
+        <td style="padding:8px"><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:${r['Status']==='Active'?'#43a04722':'#f9a82522'};color:${r['Status']==='Active'?'#43a047':'#f9a825'}">${escHtml(r['Status']||'')}</span></td>
+        <td style="padding:8px;font-size:11px">${escHtml(r['Recorded By']||'')}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`}
+  </div>`;
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+
+async function renderLeaveManagement() {
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const [reqRes, empRes] = await Promise.all([
+    API.call('getLeaveRequests', {}),
+    API.call('getEmployees', {status:'Active'}),
+  ]);
+  const requests = reqRes.requests || [];
+  const pending = requests.filter(r => r['Status'] === 'Pending');
+  const colorMap = {Pending:'#f9a825',Approved:'#43a047',Rejected:'#d32f2f',Cancelled:'#757575'};
+  let html = `<div style="max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <h2 style="font-size:18px;font-weight:700">📅 Leave Management</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-dark btn-sm" onclick="exportLeaveCSV()">📥 Export CSV</button>
+        <button class="btn btn-dark btn-sm" onclick="showLeaveImportModal()">📤 Bulk Import</button>
+        <button class="btn btn-gold btn-sm" onclick="seedLeaveBalancesAdmin()">🌱 Seed Leave Balances</button>
+      </div>
+    </div>
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-gold btn-sm" id="lm-tab-all" onclick="switchLMTab('all')">All Requests (${requests.length})</button>
+      <button class="btn btn-dark btn-sm" id="lm-tab-pending" onclick="switchLMTab('pending')">Pending (${pending.length})</button>
+      <button class="btn btn-dark btn-sm" id="lm-tab-balances" onclick="switchLMTab('balances')">Leave Balances</button>
+    </div>
+    <!-- All requests table -->
+    <div id="lm-section-all">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="lm-filter-status" class="form-input" style="width:140px" onchange="filterLeaveRequests()">
+          <option value="">All Statuses</option><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option><option value="Cancelled">Cancelled</option>
+        </select>
+        <select id="lm-filter-type" class="form-input" style="width:140px" onchange="filterLeaveRequests()">
+          <option value="">All Leave Types</option><option value="CL">CL</option><option value="SL">SL</option><option value="EL">EL</option><option value="PL">PL</option><option value="ML">ML</option><option value="PTL">PTL</option><option value="LWP">LWP</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--dark3)">
+            <th style="padding:6px"><input type="checkbox" id="lm-select-all" onchange="toggleAllLeaveCheckboxes(this.checked)"></th>
+            <th style="padding:6px">Req ID</th><th style="padding:6px">Employee</th>
+            <th style="padding:6px">Leave Type</th><th style="padding:6px">Dates</th>
+            <th style="padding:6px">Days</th><th style="padding:6px">Status</th>
+            <th style="padding:6px">Actions</th>
+          </tr></thead>
+          <tbody id="lm-table-body">
+            ${requests.map((r,i) => `<tr style="border-bottom:1px solid var(--dark3)" class="lm-row" data-status="${escHtml(r['Status'])}" data-type="${escHtml(r['Leave Type Code'])}">
+              <td style="padding:6px"><input type="checkbox" class="lm-chk" value="${escHtml(r['Request ID'])}"></td>
+              <td style="padding:6px;font-size:11px">${escHtml((r['Request ID']||'').substring(0,12))}…</td>
+              <td style="padding:6px"><strong>${escHtml(r['Employee Name'])}</strong><br><span style="font-size:11px;color:var(--gray-light)">${escHtml(r['Employee Code'])}</span></td>
+              <td style="padding:6px"><span style="background:var(--dark3);padding:2px 6px;border-radius:10px;font-size:11px">${escHtml(r['Leave Type Code'])}</span></td>
+              <td style="padding:6px">${escHtml(r['From Date'])} → ${escHtml(r['To Date'])}</td>
+              <td style="padding:6px;text-align:center">${r['Number of Days']}</td>
+              <td style="padding:6px"><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:${colorMap[r['Status']]||'#757'}22;color:${colorMap[r['Status']]||'#fff'}">${escHtml(r['Status'])}</span></td>
+              <td style="padding:6px">
+                ${r['Status']==='Pending' ? `
+                  <button class="btn btn-sm" style="background:var(--green);color:#fff;font-size:10px;padding:3px 8px" onclick="adminLeaveAction('${escHtml(r['Request ID'])}','approve')">Approve</button>
+                  <button class="btn btn-sm" style="background:var(--dark3);color:var(--red);font-size:10px;padding:3px 8px;margin-left:4px" onclick="adminLeaveAction('${escHtml(r['Request ID'])}','reject')">Reject</button>
+                ` : '—'}
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-dark btn-sm" onclick="bulkLeaveAction('approve')">Bulk Approve Selected</button>
+        <button class="btn btn-dark btn-sm" onclick="bulkLeaveAction('reject')">Bulk Reject Selected</button>
+      </div>
+    </div>
+    <!-- Pending sub-section -->
+    <div id="lm-section-pending" style="display:none">
+      ${pending.length === 0 ? '<div class="empty-state"><div class="empty-icon">✓</div><p>No pending leave requests</p></div>' :
+      pending.map(r => `<div style="background:var(--dark2);border-radius:8px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:600">${escHtml(r['Employee Name'])} (${escHtml(r['Employee Code'])})</div>
+          <div style="font-size:12px;color:var(--gray-light)">${escHtml(r['Leave Type Name']||r['Leave Type Code'])} — ${escHtml(r['From Date'])} to ${escHtml(r['To Date'])} (${r['Number of Days']} days)</div>
+          <div style="font-size:11px;color:var(--gray-light)">${escHtml(r['Reason']||'')}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" style="background:var(--green);color:#fff" onclick="adminLeaveAction('${escHtml(r['Request ID'])}','approve')">Approve</button>
+          <button class="btn btn-sm" style="background:var(--dark3);color:var(--red)" onclick="adminLeaveAction('${escHtml(r['Request ID'])}','reject')">Reject</button>
+        </div>
+      </div>`).join('')}
+    </div>
+    <!-- Balances sub-section -->
+    <div id="lm-section-balances" style="display:none">
+      <div style="color:var(--gray-light);font-size:12px">Click "Seed Leave Balances" to generate balance records for all active employees. Then filter by employee.</div>
+      <button class="btn btn-gold btn-sm" style="margin-top:10px" onclick="loadAllLeaveBalances()">Load All Leave Balances</button>
+      <div id="lm-balances-table" style="margin-top:12px"></div>
+    </div>
+  </div>`;
+  State._lmRequests = requests;
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+
+function switchLMTab(tab) {
+  ['all','pending','balances'].forEach(t => {
+    const sec = document.getElementById('lm-section-' + t);
+    const btn = document.getElementById('lm-tab-' + t);
+    if (sec) sec.style.display = t === tab ? '' : 'none';
+    if (btn) btn.className = t === tab ? 'btn btn-gold btn-sm' : 'btn btn-dark btn-sm';
+  });
+}
+
+function filterLeaveRequests() {
+  const statusFilter = document.getElementById('lm-filter-status').value;
+  const typeFilter = document.getElementById('lm-filter-type').value;
+  document.querySelectorAll('.lm-row').forEach(row => {
+    const status = row.dataset.status;
+    const type = row.dataset.type;
+    const show = (!statusFilter || status === statusFilter) && (!typeFilter || type === typeFilter);
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+function toggleAllLeaveCheckboxes(checked) {
+  document.querySelectorAll('.lm-chk').forEach(c => c.checked = checked);
+}
+
+async function adminLeaveAction(reqId, action) {
+  const notes = action === 'reject' ? (prompt('Rejection reason (required):') || '') : '';
+  if (action === 'reject' && !notes) { toast('Rejection reason is required', 'error'); return; }
+  const res = await API.call('adminLeaveAction', {reqId, action, reviewedBy: State.adminRole, notes});
+  if (res.ok) { toast(action === 'approve' ? 'Leave approved' : 'Leave rejected', 'success'); await renderLeaveManagement(); }
+  else toast(res.error||'Error','error');
+}
+
+async function bulkLeaveAction(action) {
+  const checked = Array.from(document.querySelectorAll('.lm-chk:checked')).map(c => c.value);
+  if (!checked.length) { toast('Select at least one request', 'error'); return; }
+  const notes = action === 'reject' ? (prompt('Rejection reason for all selected:') || '') : '';
+  const res = await API.call('bulkLeaveAction', {reqIds: checked, action, reviewedBy: State.adminRole, notes});
+  if (res.ok) { toast(res.processed + ' request(s) ' + action + 'd', 'success'); await renderLeaveManagement(); }
+  else toast(res.error||'Error','error');
+}
+
+function exportLeaveCSV() {
+  const requests = State._lmRequests || [];
+  if (!requests.length) { toast('No data to export','error'); return; }
+  const headers = Object.keys(requests[0]);
+  const csv = [headers.join(','), ...requests.map(r => headers.map(h => '"' + String(r[h]||'').replace(/"/g,'""') + '"').join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'leave_requests_' + todayStr() + '.csv';
+  a.click();
+}
+
+function showLeaveImportModal() {
+  const html = `<div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:12px">
+      Upload a CSV file with columns: <strong>Employee Code, Leave Type Code, From Date (DD/MM/YYYY), To Date, Reason, Half Day (Y/N), Half Day Period (AM/PM)</strong>
+    </div>
+    <input type="file" id="lm-import-file" accept=".csv" style="margin-bottom:10px">
+    <div id="lm-import-preview" style="font-size:12px;max-height:200px;overflow-y:auto"></div>
+  </div>`;
+  showModal('📤 Bulk Import Leave Requests', html, [
+    {label:'Upload & Validate', cls:'btn-gold', cb: async () => {
+      const file = document.getElementById('lm-import-file').files[0];
+      if (!file) { toast('Select a CSV file','error'); return; }
+      const text = await file.text();
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim());
+      const rows = lines.slice(1).map(line => {
+        const vals = line.split(',').map(v => v.replace(/"/g,'').trim());
+        const obj = {};
+        headers.forEach((h,i) => obj[h] = vals[i]||'');
+        return obj;
+      });
+      const res = await API.call('importLeaveRequests', {rows});
+      const preview = document.getElementById('lm-import-preview');
+      preview.innerHTML = `<div style="color:var(--green);font-weight:700">Processed: ${res.processed}</div>` +
+        (res.errors||[]).map(e => `<div style="color:var(--red)">Row ${e.row}: ${escHtml(e.error)}</div>`).join('');
+      toast(res.processed + ' rows imported', 'success');
+    }},
+    {label:'Close', cls:'btn-dark', cb:closeModal},
+  ]);
+}
+
+async function loadAllLeaveBalances() {
+  const res = await API.call('getLeaveBalance', {});
+  const balances = res.balances || [];
+  const container = document.getElementById('lm-balances-table');
+  if (!balances.length) { container.innerHTML = '<div style="color:var(--gray-light)">No balance records found. Click "Seed Leave Balances" to generate.</div>'; return; }
+  container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
+    <thead><tr style="background:var(--dark3)">
+      <th style="padding:6px">Employee</th><th style="padding:6px">Leave Type</th>
+      <th style="padding:6px">Year</th><th style="padding:6px">Opening</th>
+      <th style="padding:6px">Accrued</th><th style="padding:6px">Carry Over</th>
+      <th style="padding:6px">Used</th><th style="padding:6px">Encashed</th>
+      <th style="padding:6px">Lapsed</th><th style="padding:6px">Closing</th>
+    </tr></thead>
+    <tbody>${balances.map(b => `<tr style="border-bottom:1px solid var(--dark3)">
+      <td style="padding:6px"><strong>${escHtml(b['Employee Name'])}</strong><br><span style="font-size:10px;color:var(--gray-light)">${escHtml(b['Employee Code'])}</span></td>
+      <td style="padding:6px">${escHtml(b['Leave Type Code'])}</td>
+      <td style="padding:6px">${escHtml(String(b['Leave Year']||''))}</td>
+      <td style="padding:6px">${b['Opening Balance']||0}</td>
+      <td style="padding:6px">${b['Accrued This Year']||0}</td>
+      <td style="padding:6px">${b['Carried Over From Previous Year']||0}</td>
+      <td style="padding:6px">${b['Used']||0}</td>
+      <td style="padding:6px">${b['Encashed']||0}</td>
+      <td style="padding:6px">${b['Lapsed/Expired']||0}</td>
+      <td style="padding:6px;font-weight:700;color:var(--gold)">${b['Closing Balance']||0}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+async function seedLeaveBalances() {
+  const res = await API.call('seedLeaveBalances', {year: new Date().getFullYear()});
+  if (res.ok) toast('Seeded ' + res.seeded + ' balance records', 'success');
+  else toast(res.error||'Error','error');
+}
+
+async function seedLeaveBalancesAdmin() {
+  await seedLeaveBalances();
+  await loadAllLeaveBalances();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v31 — SETTINGS: Save functions for new settings sub-sections
+// ═══════════════════════════════════════════════════════════════════
+
+async function saveV31OTSettings() {
+  const updates = {
+    otBaseHoursPolicy: document.getElementById('cfg-otBaseHoursPolicy').value,
+    otMultiplierRegular: document.getElementById('cfg-otMultiplierRegular').value,
+    otMultiplierCompanyHoliday: document.getElementById('cfg-otMultiplierCompanyHoliday').value,
+    otMultiplierWeeklyOff: document.getElementById('cfg-otMultiplierWeeklyOff').value,
+    otMultiplierNational: document.getElementById('cfg-otMultiplierNational').value,
+    otMaxHoursPerDay: document.getElementById('cfg-otMaxHoursPerDay').value,
+    otAllowInstant: document.getElementById('cfg-otAllowInstant').value,
+    otRequiresApproval: document.getElementById('cfg-otRequiresApproval').value,
+  };
+  const res = await API.call('updateSettings', {settings: updates});
+  if (res.ok) toast('OT settings saved', 'success');
+  else toast(res.error||'Error','error');
+}
+
+async function saveV31PromotionSettings() {
+  const updates = {
+    promotionMinAdvanceDays: document.getElementById('cfg-promotionMinAdvanceDays').value,
+    promotionShowEmployee: document.getElementById('cfg-promotionShowEmployee').value,
+    promotionProRate: document.getElementById('cfg-promotionProRate').value,
+  };
+  const res = await API.call('updateSettings', {settings: updates});
+  if (res.ok) toast('Promotion settings saved', 'success');
+  else toast(res.error||'Error','error');
+}
+
+async function saveV31BonusSettings() {
+  const updates = {
+    perfectAttendanceBonusAmount: document.getElementById('cfg-perfectAttendanceBonusAmount').value,
+    bonusRequiresApproval: document.getElementById('cfg-bonusRequiresApproval').value,
+  };
+  const res = await API.call('updateSettings', {settings: updates});
+  if (res.ok) toast('Bonus settings saved', 'success');
+  else toast(res.error||'Error','error');
+}
+
+async function saveV31ReferralSettings() {
+  const updates = {
+    referralBonusEnabled: document.getElementById('cfg-referralBonusEnabled').value,
+    referralBonusTenureMonths: document.getElementById('cfg-referralBonusTenureMonths').value,
+  };
+  const res = await API.call('updateSettings', {settings: updates});
+  if (res.ok) toast('Referral bonus settings saved', 'success');
+  else toast(res.error||'Error','error');
+}
+
+async function saveV31ExitSettings() {
+  const updates = {
+    noticePeriodDays: document.getElementById('cfg-noticePeriodDays').value,
+    loyaltyOnNotice: document.getElementById('cfg-loyaltyOnNotice').value,
+    perfBonusOnNotice: document.getElementById('cfg-perfBonusOnNotice').value,
+    attendBonusOnNotice: document.getElementById('cfg-attendBonusOnNotice').value,
+    festivalBonusOnNotice: document.getElementById('cfg-festivalBonusOnNotice').value,
+    referralBonusOnNotice: document.getElementById('cfg-referralBonusOnNotice').value,
+    abruptSalaryMode: document.getElementById('cfg-abruptSalaryMode').value,
+  };
+  const res = await API.call('updateSettings', {settings: updates});
+  if (res.ok) toast('Exit policy settings saved', 'success');
+  else toast(res.error||'Error','error');
+}
+
+async function saveV31LeaveSettings() {
+  const updates = {
+    leaveYearStart: document.getElementById('cfg-leaveYearStart').value,
+    lateGracePeriodMins: document.getElementById('cfg-lateGracePeriodMins').value,
+    mlDuration: document.getElementById('cfg-mlDuration').value,
+    ptlDuration: document.getElementById('cfg-ptlDuration').value,
+  };
+  const res = await API.call('updateSettings', {settings: updates});
+  if (res.ok) toast('Leave settings saved', 'success');
+  else toast(res.error||'Error','error');
+}
+
+async function loadLeaveTypesSettingsTable() {
+  try {
+    const res = await API.call('getLeaveTypes', {activeOnly: false});
+    const container = document.getElementById('leave-types-settings-table');
+    if (!container) return;
+    const types = res.leaveTypes || [];
+    if (!types.length) { container.innerHTML = '<div style="color:var(--gray-light)">No leave types found. Default types will be seeded on first sheet setup.</div>'; return; }
+    container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:var(--dark3)">
+        <th style="padding:5px">Code</th><th style="padding:5px">Name</th>
+        <th style="padding:5px">Paid</th><th style="padding:5px">Quota/yr</th>
+        <th style="padding:5px">Accrual</th><th style="padding:5px">Carry Over</th>
+        <th style="padding:5px">Encash</th><th style="padding:5px">Active</th>
+      </tr></thead>
+      <tbody>${types.map(lt => `<tr style="border-bottom:1px solid var(--dark3)">
+        <td style="padding:5px;font-weight:700">${escHtml(lt['Code']||'')}</td>
+        <td style="padding:5px">${escHtml(lt['Name']||'')}</td>
+        <td style="padding:5px"><span style="color:${lt['Paid']==='Yes'?'var(--green)':'var(--red)'}">${lt['Paid']||'No'}</span></td>
+        <td style="padding:5px">${lt['AnnualQuota']||0}</td>
+        <td style="padding:5px">${escHtml(lt['AccrualMethod']||'')}</td>
+        <td style="padding:5px">${lt['CarryOverAllowed']||'No'}</td>
+        <td style="padding:5px">${lt['EncashmentAllowed']||'No'}</td>
+        <td style="padding:5px"><span style="color:${lt['Active']==='Yes'?'var(--green)':'var(--gray-light)'}">${lt['Active']||'No'}</span></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v31 — SALARY SLIP INTEGRATION (adds new line items to existing slip)
+// The existing salary slip function is in the payroll section.
+// v31 additions: OT lines, ExtraDay lines, LWP, bonus named lines,
+// promotion pro-rate note. These are read from the salaryData object
+// returned by calcMonthlySalary() which now includes v31 fields.
+// ═══════════════════════════════════════════════════════════════════
+
+// Hook into existing slip render — append v31 line items after gross
+// This function is called from the existing salary slip generation when available
+function buildV31SlipLines(salaryData) {
+  const lines = [];
+  // OT line items
+  if (parseFloat(salaryData.v31OTTotal || 0) > 0) {
+    lines.push({label:'Overtime / Extra Day Pay', amount: Math.round(salaryData.v31OTTotal), type:'earning'});
+  }
+  // Bonus named line items (fetched separately by caller)
+  if (Array.isArray(salaryData.v31Bonuses)) {
+    salaryData.v31Bonuses.forEach(b => {
+      lines.push({label: (b['Bonus Type']||'Bonus') + ' — ' + (b['Applicable Month']||''), amount: Math.round(parseFloat(b['Bonus Amount']||0)), type:'earning'});
+    });
+  }
+  // LWP deduction
+  if (parseFloat(salaryData.lwpDays || 0) > 0) {
+    lines.push({label:'LWP Deduction (' + salaryData.lwpDays + ' day(s))', amount: -Math.round(salaryData.lwpDeduction || 0), type:'deduction'});
+  }
+  // Promotion pro-rate note
+  if (salaryData.v31PromoNote) {
+    lines.push({label: 'Salary Split (Promotion): ' + salaryData.v31PromoNote, amount: Math.round(salaryData.v31PromoSalaryAdj || 0), type:'note'});
+  }
+  return lines;
+}
+
+// Attach v31 salary slip lines to the existing HTML generation
+// Called by the existing printSlip / renderSalarySlip function if it passes salaryData
+function appendV31ToSlipHTML(salaryData) {
+  if (!salaryData) return '';
+  const lines = buildV31SlipLines(salaryData);
+  if (!lines.length) return '';
+  return lines.map(l => `<tr>
+    <td style="padding:4px 8px;font-size:12px">${escHtml(l.label)}</td>
+    <td style="padding:4px 8px;font-size:12px;text-align:right;color:${l.type==='deduction'?'var(--red)':l.type==='note'?'var(--gray-light)':'var(--green)'}">
+      ${l.amount >= 0 ? '' : '(−)'} Rs ${Math.abs(l.amount).toLocaleString('en-IN')}
+    </td>
+  </tr>`).join('');
+}
+
+// v31 kiosk integration is wired directly in showEmployeeCard() above.
 </script>
 </body>
 </html>
