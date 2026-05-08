@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v31 | May 2026 | v31: OT+ExtraDay Calculator, Promotion Management, Bonus Management, Bulk Bonus, Referral Bonus, Notice Period, FnF, Leave Management System -->
+<!-- ArtzFolio HRMS v36 | May 2026 | v36: 92-bug audit pass — server-side 2FA, removed hardcoded passwords, exportCSV/exportFullBackup/importBackup defined, JSON-injection in onclick fixed, LockService across ~25 handlers, F&F correctness, PII/PIN/audit-log redaction, IST filenames, in-app rejection modal, SW cache versioning, etc. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v31</title>
+<title>ArtzFolio HRMS v36</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -553,6 +553,29 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
 .settings-section{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:20px;margin-bottom:20px}
 .settings-section-title{font-size:13px;font-weight:700;color:var(--gold);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--dark3);display:flex;align-items:center;gap:6px}
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+/* v34: Compensation Module */
+.comp-card{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.comp-card h4{font-size:13px;font-weight:700;color:var(--gold);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--dark3)}
+.comp-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700}
+.comp-badge-pending{background:rgba(150,150,150,0.2);color:#9e9e9e}
+.comp-badge-released{background:rgba(67,160,71,0.2);color:#43a047}
+.comp-badge-forfeited{background:rgba(229,57,53,0.2);color:#e53935}
+.comp-badge-onhold{background:rgba(251,140,0,0.2);color:#fb8c00}
+.comp-badge-inwindow{background:rgba(201,168,76,0.2);color:var(--gold);padding:4px 12px;border-radius:20px;font-size:12px}
+.comp-timeline-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--dark3);font-size:12px}
+.comp-timeline-row.current{background:rgba(201,168,76,0.08);border-radius:4px;padding:6px 8px}
+.comp-timeline-row .proj{color:var(--gold-dim);font-style:italic}
+.comp-stat-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+.comp-sub-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.comp-sub-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--dark3);background:var(--dark3);color:var(--gray-light)}
+.comp-sub-tab.active{background:var(--gold);color:var(--dark);border-color:var(--gold)}
+.comp-disclaimer{font-size:11px;color:var(--gray-light);border:1px solid var(--dark3);border-radius:6px;padding:8px 12px;margin-top:12px;line-height:1.6}
+.comp-ladder-table{width:100%;border-collapse:collapse;font-size:12px}
+.comp-ladder-table th{background:var(--dark3);color:var(--gold);padding:6px 10px;text-align:left;font-size:11px;white-space:nowrap}
+.comp-ladder-table td{padding:6px 10px;border-bottom:1px solid var(--dark3)}
+.comp-settings-subtitle{font-size:12px;color:var(--gray-light);margin-bottom:10px}
+.comp-sub-panel{display:none}.comp-sub-panel.active{display:block}
+.inr-display{font-size:18px;font-weight:900;color:var(--gold)}
 
 /* milestone editor */
 .milestone-row{background:var(--dark3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px}
@@ -629,7 +652,7 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
 ═══════════════════════════════════════════ -->
 <div class="screen" id="screen-setup">
   <div class="setup-box">
-    <div class="setup-logo">⚙ ArtzFolio HRMS v10</div>
+    <div class="setup-logo">⚙ ArtzFolio HRMS v36</div>
     <div class="setup-sub">One-time setup required before first use</div>
     <div class="setup-step">
       <strong>Step 1 — Google Apps Script URL</strong><br>
@@ -811,6 +834,25 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
         <div class="mini-card" id="ec-pending-bonuses-card" style="display:none">
           <h4>🎁 Pending Bonuses</h4>
           <div id="ec-pending-bonuses-content" style="font-size:13px"></div>
+        </div>
+
+        <!-- v34: My Compensation Card -->
+        <div class="mini-card" id="ec-comp-card" style="display:none">
+          <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-comp-body')">
+            💼 My Compensation
+            <span id="ec-comp-toggle" style="font-size:12px;color:var(--gray-light)">▼</span>
+          </h4>
+          <div id="ec-comp-body" style="display:none">
+            <!-- Sub-tab nav -->
+            <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+              <button id="ec-comp-tab-salary-btn" onclick="switchCompTab('salary')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:11px">Salary</button>
+              <button id="ec-comp-tab-timeline-btn" onclick="switchCompTab('timeline')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Timeline</button>
+              <button id="ec-comp-tab-promo-btn" onclick="switchCompTab('promo')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Promotion</button>
+              <button id="ec-comp-tab-bonus-btn" onclick="switchCompTab('bonus')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Joining Bonus</button>
+              <button id="ec-comp-tab-wallet-btn" onclick="switchCompTab('wallet')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Wallet</button>
+            </div>
+            <div id="ec-comp-content" style="min-height:80px"></div>
+          </div>
         </div>
 
         <!-- v31: OT and Extra Day Calculator Card (Tab A + Tab B) -->
@@ -1100,7 +1142,7 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:var(--gray-light)">
         <input type="checkbox" id="admin-remember-me" style="accent-color:var(--gold)">
-        <label for="admin-remember-me" style="cursor:pointer">Remember my role &amp; password</label>
+        <label for="admin-remember-me" style="cursor:pointer">Remember my role (password is never stored)</label>
       </div>
       <div id="admin-login-err" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none"></div>
       <button class="btn btn-gold" style="width:100%" onclick="doAdminLogin()">Next →</button>
@@ -1232,6 +1274,7 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
     <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')"><span class="nav-icon">💰</span>Payroll</div>
     <div class="nav-item" data-tab="bonustracker" onclick="switchTab('bonustracker')"><span class="nav-icon">💎</span>Loyalty Bonus Tracker</div>
     <div class="nav-item" data-tab="bonusmgmt" onclick="switchTab('bonusmgmt')"><span class="nav-icon">🎁</span>Bonus Management</div>
+    <div class="nav-item" data-tab="compmgmt" onclick="switchTab('compmgmt')"><span class="nav-icon">💼</span>Compensation</div>
     <div class="nav-item" data-tab="otclaims" onclick="switchTab('otclaims')"><span class="nav-icon">⏱</span>OT Claims</div>
     <div class="nav-item" data-tab="promotions" onclick="switchTab('promotions')"><span class="nav-icon">🎯</span>Promotions</div>
     <div class="nav-item" data-tab="leavemgmt" onclick="switchTab('leavemgmt')"><span class="nav-icon">📅</span>Leave Management</div>
@@ -1295,14 +1338,14 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
       ].join(';');
       banner.innerHTML = [
         '<div style="font-size:2.5rem;margin-bottom:16px">⚙</div>',
-        '<div style="font-size:1.3rem;font-weight:800;color:#C9A84C;margin-bottom:12px">ArtzFolio HRMS v3</div>',
+        '<div style="font-size:1.3rem;font-weight:800;color:#C9A84C;margin-bottom:12px">ArtzFolio HRMS v36</div>',
         '<div style="font-size:1rem;font-weight:700;color:#E53935;margin-bottom:16px">',
         '  Cannot preview this file locally.',
         '</div>',
         '<div style="font-size:13px;color:#CCCCCC;max-width:460px;line-height:1.7;margin-bottom:20px">',
         '  Open this app from a web server (GitHub Pages, GAS, or any HTTPS host).<br><br>',
         '  <strong style="color:#F0D080">To deploy on GitHub Pages:</strong><br>',
-        '  1. Upload <em>ArtzFolio_HRMS_v2.html</em> as <em>index.html</em> to your repo<br>',
+        '  1. Upload <em>ArtzFolio_HRMS_v36.html</em> as <em>index.html</em> to your repo<br>',
         '  2. Enable GitHub Pages (Settings → Pages → main branch / root)<br>',
         '  3. Open the Pages URL — the app will guide you through GAS setup<br>',
         '</div>',
@@ -1375,22 +1418,42 @@ const LS = {
   if (manifestEl) manifestEl.href = URL.createObjectURL(blob);
   // Service Worker for offline caching
   if ('serviceWorker' in navigator) {
+    // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
+    // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v2026-04'; // Bug VV: update this date string on each redeployment
+const CACHE = 'artzfolio-hrms-v37-2026-05'; // v37 fix H-02
+const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))); });
+self.addEventListener('activate', e => {
+  e.waitUntil(Promise.all([
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))),
+    self.clients.claim()
+  ]));
+});
+self.addEventListener('message', e => { if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting(); });
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('script.google.com')) return; // Never cache GAS API
-  e.respondWith(caches.open(CACHE).then(cache=>
-    cache.match(e.request).then(cached => {
-      const fresh = fetch(e.request).then(r=>{ if(r.ok) cache.put(e.request, r.clone()); return r; }).catch(()=>cached);
-      return cached || fresh;
-    })
-  ));
+  const url = e.request.url;
+  if (url.includes('script.google.com')) return;     // Never cache GAS API
+  const isCdn = NETWORK_FIRST_HOSTS.some(h => url.includes(h));
+  e.respondWith(caches.open(CACHE).then(async cache => {
+    const cached = await cache.match(e.request);
+    const fetchPromise = fetch(e.request).then(r => {
+      // Only cache successful, opaque-safe responses
+      if (r && r.ok && (r.type === 'basic' || r.type === 'cors')) {
+        cache.put(e.request, r.clone()).catch(()=>{});
+      }
+      return r;
+    }).catch(() => cached);
+    // CDN: prefer fresh; HTML/CSS/local: stale-while-revalidate
+    return isCdn ? (await fetchPromise || cached) : (cached || fetchPromise);
+  }));
 });`;
     const swBlob = new Blob([swCode], {type:'text/javascript'});
     const swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).catch(()=>{});
+    navigator.serviceWorker.register(swUrl).then(reg => {
+      // v36 fix BUG-17: nudge waiting SW to activate immediately on next page load
+      if (reg && reg.waiting) try { reg.waiting.postMessage({type:'SKIP_WAITING'}); } catch (e) {}
+    }).catch(()=>{});
   }
   // Add install banner
   window._pwaInstallEvent = null;
@@ -1628,7 +1691,7 @@ function fmtTime(ts) {
       d = new Date(typeof ts === 'string' ? ts.replace(' ','T') : ts);
     }
     if (isNaN(d)) return ts;
-    return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+    return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true,timeZone:'Asia/Kolkata'});
   } catch { return ts; }
 }
 function fmtTimeSS(ts) {
@@ -1642,15 +1705,14 @@ function fmtDT(ts) {
     clean = clean.replace(/\s+GMT[+-]\d{4}\s*\(.*?\)$/, '').replace(/\s+GMT[+-]\d{4}$/, '');
     const d = new Date(clean.replace(' ','T'));
     if (isNaN(d)) return ts;
-    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const MON_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const dd = String(d.getDate()).padStart(2,'0');
-    const hh = d.getHours();
-    const mm = String(d.getMinutes()).padStart(2,'0');
-    const ss = String(d.getSeconds()).padStart(2,'0');
-    const ampm = hh >= 12 ? 'pm' : 'am';
-    const hh12 = hh % 12 || 12;
-    return `${DAY_NAMES[d.getDay()]} ${MON_NAMES[d.getMonth()]} ${dd} ${d.getFullYear()} ${String(hh12).padStart(2,'0')}:${mm}:${ss} ${ampm}`;
+    const fmt = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      weekday: 'short', month: 'short', day: '2-digit',
+      year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+    });
+    const parts = fmt.formatToParts(d);
+    const get = t => (parts.find(p => p.type === t) || {value:''}).value;
+    return `${get('weekday')} ${get('month')} ${get('day')} ${get('year')} ${get('hour')}:${get('minute')}:${get('second')} ${get('dayPeriod').toLowerCase()}`;
   } catch { return ts; }
 }
 function fmtDuration(mins, fmt) {
@@ -1884,13 +1946,31 @@ const API = {
     if (!silent) LoadingOverlay.show();
     for (let i=0; i<=retries; i++) {
       try {
+        // v36 fix BUG-57 + BUG-75: include ownerToken when owner-authenticated (in-memory only) so handlers
+        // can selectively un-redact PII / accept owner-only operations. userId tagged from kiosk vs admin context.
+        const _isAdminCtx = !!State.isAdmin || !!State.adminRole;
+        const _userIdForCall = _isAdminCtx ? (State.adminUser || State.adminRole || 'admin') : 'kiosk';
+        const _autoBody = {...params, action, token:CFG.token, userId: params.userId || _userIdForCall};
+        if (State._dzToken && _autoBody.ownerToken === undefined) _autoBody.ownerToken = State._dzToken;
         const res = await fetch(CFG.gasUrl, {
           method: 'POST',
           headers: {'Content-Type':'text/plain'},
-          body: JSON.stringify({...params, action, token:CFG.token, userId: State.adminUser||'kiosk'}),
+          body: JSON.stringify(_autoBody),
         });
         const data = await res.json();
         if (!silent) LoadingOverlay.hide();
+        // v37 fix H-01: detect server/frontend version mismatch and prompt for hard-refresh once.
+        if (data && data.serverVersion && data.serverVersion !== window.HRMS_VERSION) {
+          if (!window._versionMismatchPrompted) {
+            window._versionMismatchPrompted = true;
+            try {
+              if (typeof toast === 'function') {
+                toast('⚠ App update available (server ' + data.serverVersion + ', client ' + window.HRMS_VERSION + '). Hard-refresh (Ctrl-Shift-R) to load the new build.', 'warning', 12000);
+              }
+              console.warn('[HRMS] Version mismatch — server:', data.serverVersion, 'client:', window.HRMS_VERSION);
+            } catch (e) {}
+          }
+        }
         return data;
       } catch(e) {
         if (i===retries) {
@@ -1903,6 +1983,10 @@ const API = {
   },
   async ping() { try { const r=await this.call('getSettings',{}); return r.ok; } catch { return false; } }
 };
+
+// v37 fix H-01: client version constant. Server emits serverVersion on every response;
+// API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
+window.HRMS_VERSION = 'v37';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -1991,7 +2075,7 @@ async function finishSetup() {
   if (ok) {
     LS.s('gasUrl', url); LS.s('token', token);
     // Show share link + download options so all employee devices work without re-entering URL
-    const _shareUrl = location.href.split('#')[0].split('?')[0] + '#gasUrl=' + encodeURIComponent(url) + '&token=' + encodeURIComponent(token||'AZ_TOKEN_2026');
+    const _shareUrl = location.href.split('#')[0].split('?')[0] + '#gasUrl=' + encodeURIComponent(url);
     status.innerHTML = `✓ Connected!
       <div style="margin-top:12px;padding:14px;background:rgba(201,168,76,0.12);border:1px solid var(--gold-dim);border-radius:8px;text-align:left">
         <div style="font-weight:700;color:var(--gold);margin-bottom:8px">📤 Share with employees</div>
@@ -2025,7 +2109,7 @@ async function downloadConfiguredApp(gasUrl, token) {
     URL.revokeObjectURL(a.href);
   } catch(e) {
     // Fallback: show the URL for manual copy-paste into the CFG line
-    openModal('Manual Configuration', `<div style="font-size:13px;line-height:1.7">
+    showModal('Manual Configuration', `<div style="font-size:13px;line-height:1.7">
       <p>Could not auto-fetch the source file (CORS restriction). Manually replace line in the HTML:</p>
       <code style="display:block;background:var(--dark3);padding:10px;border-radius:6px;font-size:11px;word-break:break-all;margin:10px 0">return 'PASTE_GAS_DEPLOY_URL_HERE';</code>
       <p>→ with:</p>
@@ -2054,33 +2138,41 @@ async function init() {
   // If no URL is configured yet, show the kiosk with a "Server unavailable" banner.
   // The setup screen is only accessible via admin panel Settings tab.
 
-  // Load settings and employees in background
-  try {
-    const [settingsRes, empsRes, activitiesRes] = await Promise.all([
-      API.call('getSettings'),
-      API.call('getEmployees', {status:'Active'}),
-      API.call('getActivities', {}),
-    ]);
-    if (settingsRes.ok) {
-      applySettingsArr(settingsRes.settings||[]);
-      document.getElementById('kiosk-company').textContent = State.settings.companyName||'';
-      document.getElementById('kiosk-brand').textContent = State.settings.brandName||'ArtzFolio';
-      applyBranding();
-      if (State.settings.kioskTimeout) CFG.kioskTimeout = parseInt(State.settings.kioskTimeout)*1000;
-      if (State.settings.kioskLogoutSeconds) CFG.kioskLogoutSeconds = parseInt(State.settings.kioskLogoutSeconds)||60;
-    }
-    if (empsRes.ok) {
-      State.employees = empsRes.employees||[];
-      State.empsFetched = Date.now();
-    }
-    if (activitiesRes && activitiesRes.ok) {
-      const allActs = activitiesRes.activities||[];
-      State.activities = allActs.filter(a=>a.type==='activity');
-      State.projects = allActs.filter(a=>a.type==='project');
-      State.clients = allActs.filter(a=>a.type==='client');
-    }
-  } catch(e) {
-    // Show connection recovery UI directly on kiosk — visible BEFORE login
+  // v36 fix BUG-64: resilient boot — partial failures no longer collapse the entire startup.
+  // Use Promise.allSettled so one bad endpoint doesn't sink settings + employees + activities.
+  const settled = await Promise.allSettled([
+    API.call('getSettings'),
+    API.call('getEmployees', {status:'Active'}),
+    API.call('getActivities', {}),
+  ]);
+  const [settingsR, empsR, actR] = settled;
+  let anyOk = false;
+  const settingsRes  = settingsR.status === 'fulfilled' ? settingsR.value : null;
+  const empsRes      = empsR.status     === 'fulfilled' ? empsR.value     : null;
+  const activitiesRes= actR.status      === 'fulfilled' ? actR.value      : null;
+  if (settingsRes && settingsRes.ok) {
+    anyOk = true;
+    applySettingsArr(settingsRes.settings||[]);
+    document.getElementById('kiosk-company').textContent = State.settings.companyName||'';
+    document.getElementById('kiosk-brand').textContent = State.settings.brandName||'ArtzFolio';
+    applyBranding();
+    if (State.settings.kioskTimeout) CFG.kioskTimeout = parseInt(State.settings.kioskTimeout)*1000;
+    if (State.settings.kioskLogoutSeconds) CFG.kioskLogoutSeconds = parseInt(State.settings.kioskLogoutSeconds)||60;
+  }
+  if (empsRes && empsRes.ok) {
+    anyOk = true;
+    State.employees = empsRes.employees||[];
+    State.empsFetched = Date.now();
+  }
+  if (activitiesRes && activitiesRes.ok) {
+    anyOk = true;
+    const allActs = activitiesRes.activities||[];
+    State.activities = allActs.filter(a=>a.type==='activity');
+    State.projects = allActs.filter(a=>a.type==='project');
+    State.clients = allActs.filter(a=>a.type==='client');
+  }
+  if (!anyOk) {
+    // All three failed — show connection recovery UI on kiosk
     removeSplash();
     setInterval(updateClock, 1000); updateClock();
     showScreen('kiosk');
@@ -2089,6 +2181,11 @@ async function init() {
     if (connBanner) connBanner.style.display = 'block';
     return;
   }
+  // Partial failures: log to console for diagnosis but allow the app to keep running
+  settled.forEach((r, i) => {
+    if (r.status === 'rejected') console.warn('init() partial failure on call ' + i + ':', r.reason);
+    else if (r.value && !r.value.ok) console.warn('init() endpoint returned not-ok:', r.value);
+  });
   // Start clock
   removeSplash();
   setInterval(updateClock, 1000); updateClock();
@@ -2149,6 +2246,7 @@ function globalSearch(q) {
     {label:'Leaves',tab:'leaves'},{label:'Payroll',tab:'payroll'},{label:'Timesheets',tab:'timesheets'},
     {label:'Roster',tab:'roster'},{label:'Points Tracker',tab:'points'},{label:'Petty Cash',tab:'pettycash'},
     {label:'Reports',tab:'reports'},{label:'Audit Log',tab:'auditlog'},{label:'Settings',tab:'settings'},
+    {label:'Compensation Management',tab:'compmgmt'},
   ];
   SECTIONS.forEach(s=>{ if(s.label.toLowerCase().includes(q)) sectionHits.push(s); });
 
@@ -2194,6 +2292,30 @@ document.addEventListener('click', e => {
   const res = document.getElementById('global-search-results');
   if (res && !res.contains(e.target) && e.target.id !== 'globalSearch') {
     res.style.display = 'none';
+  }
+  // v37 fix BUG-72 + BUG-78: delegated password-toggle handler.
+  // Replaces the inline IIFE that string-concat'd config keys into onclick
+  // (broke on keys containing single-quote/ampersand). Auto-rehides on blur
+  // and after 5 s for shoulder-surf protection.
+  const tgt = e.target && (e.target.closest && e.target.closest('[data-pw-toggle-target]'));
+  if (tgt) {
+    const inputId = tgt.getAttribute('data-pw-toggle-target');
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    tgt.textContent = showing ? '👁' : '🙈';
+    if (!showing) {
+      // Schedule auto-rehide; clear any prior timer
+      if (tgt._pwToggleTimer) clearTimeout(tgt._pwToggleTimer);
+      tgt._pwToggleTimer = setTimeout(() => {
+        try { inp.type = 'password'; tgt.textContent = '👁'; } catch (e) {}
+      }, 5000);
+      inp.addEventListener('blur', function _onBlur() {
+        try { inp.type = 'password'; tgt.textContent = '👁'; } catch (e) {}
+        inp.removeEventListener('blur', _onBlur);
+      }, {once:true});
+    }
   }
 });
 
@@ -2468,6 +2590,8 @@ async function showEmployeeCard(res, pos) {
   showLoyaltyBonusCard(emp.id, emp.status);
   // v31: OT calculator, leaves card, pending bonuses, notice banner, promotion card
   loadV31KioskCards(emp);
+  // v34: Compensation card
+  loadCompKiosk(emp.id);
   // Leave & Holiday info panel
   buildLeaveInfoCard(res, emp);
   // My Info & Rules panel
@@ -2723,7 +2847,7 @@ function buildMyInfoCard(emp) {
   const row = (icon, label, value, valueClass='') => `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--dark3)">
       <span style="color:var(--gray-light);font-size:12px">${icon} ${label}</span>
-      <span style="font-weight:600;font-size:12px;text-align:right;max-width:55%;${valueClass?('color:var(--'+valueClass+')'):''}}">${value}</span>
+      <span style="font-weight:600;font-size:12px;text-align:right;max-width:55%;${valueClass?('color:var(--'+valueClass+')'):''}">${value}</span>
     </div>`;
 
   el.innerHTML = `
@@ -3691,7 +3815,13 @@ async function doApplyExit() {
       let res;
       try { res=await API.call('updateEmployee',{empId:emp.id, status:'Notice', notes:`Exit applied ${todayStr()} - ${exitType} - ${reason}`}); }
       catch(e) { toast('Network error — exit not submitted','error'); return; }
-      if(res.ok){closeModal();toast('Exit application submitted. Salary put on hold until notice completion.','success',6000);API.call('getEmployees').then(r=>{if(r.ok)State.employees=r.employees||[];}).catch(e=>{toast('Network error. Please try again.','error');console.error(e);});}
+      if(res.ok){
+        // v37 fix BUG-77: do not show error toast after success toast for the same action.
+        // Background refetch failure must NOT visibly contradict the success message.
+        closeModal();
+        toast('Exit application submitted. Salary put on hold until notice completion.','success',6000);
+        API.call('getEmployees').then(r=>{if(r&&r.ok)State.employees=r.employees||[];}).catch(e=>{console.warn('Background employee refetch failed:', e);});
+      }
       else toast('Error','error');
     }},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
@@ -3793,14 +3923,19 @@ async function doAdminLogin() {
   const errEl = document.getElementById('admin-login-err');
   errEl.style.display='none';
   const r = await API.call('adminLogin', {pin:pw, role:selectedRole});
+  // v36 fix BUG-02: backend signals first-run when role password is empty
+  if (r && r.firstRun) {
+    await firstRunSetupModal(selectedRole);
+    return;
+  }
   if (r.ok) {
     // Save remember-me (role only — never password)
     const rememberCb = document.getElementById('admin-remember-me');
     if (rememberCb?.checked) { LS.s('adminRememberRole', selectedRole); }
     else { LS.d('adminRememberRole'); }
-    // Check if 2FA step is required
-    const twoFAEnabled = LS.g('twoFAEnabled') === true;
-    const twoFASecret  = State.settings?.twoFASecret || LS.g('twoFASecret') || '';
+    // Check if 2FA step is required (server-side flag is source of truth)
+    const twoFAEnabled = (State.settings?.twoFAEnabled === 'true' || State.settings?.twoFAEnabled === true) || LS.g('twoFAEnabled') === true;
+    const twoFASecret  = State.settings?.twoFASecret || '';
     if (twoFAEnabled && twoFASecret) {
       window._pendingLoginRole = selectedRole;
       document.getElementById('login-step-1').style.display='none';
@@ -3821,25 +3956,94 @@ async function verify2FA() {
   const code  = (document.getElementById('admin-2fa-input')?.value||'').trim();
   const errEl = document.getElementById('admin-2fa-err');
   if (!code) { errEl.textContent='Enter your 2FA PIN.'; errEl.style.display='block'; return; }
-  // FIX: compare against the 2FA secret stored in localStorage, NOT via adminLogin
-  // (adminLogin checks the role password, not the 2FA PIN — they are different things)
-  const stored2FA = String(LS.g('twoFASecret')||'').trim();
-  if (!stored2FA) {
-    // If no secret is stored, 2FA config is broken — skip and let user in
-    errEl.style.display='none';
-    await completeAdminLogin(window._pendingLoginRole || selectedRole);
-    window._pendingLoginRole = null;
-    return;
-  }
-  if (code === stored2FA) {
-    errEl.style.display='none';
-    await completeAdminLogin(window._pendingLoginRole || selectedRole);
-    window._pendingLoginRole = null;
-  } else {
-    errEl.textContent='Wrong 2FA PIN. Try again.';
+  // v36 fix BUG-01 + BUG-08: validate 2FA server-side (no localStorage trust); fail-closed on missing secret
+  const role = window._pendingLoginRole || selectedRole;
+  try {
+    const r = await API.call('verify2FA', {pin: code, role});
+    if (r && r.ok) {
+      errEl.style.display='none';
+      await completeAdminLogin(role);
+      window._pendingLoginRole = null;
+    } else {
+      errEl.textContent = (r && r.error) || 'Wrong 2FA PIN. Try again.';
+      errEl.style.display='block';
+      document.getElementById('admin-2fa-input').value='';
+    }
+  } catch (e) {
+    errEl.textContent = 'Network error verifying 2FA. Retry or use Emergency 2FA Reset.';
     errEl.style.display='block';
-    document.getElementById('admin-2fa-input').value='';
   }
+}
+
+// v36 fix BUG-63: clearing 2FA must reverify owner password to defeat shoulder-surfing on shared kiosk
+async function clearTwoFASettingsConfirmed() {
+  return new Promise(resolve => {
+    showModal('🔓 Clear 2FA — Owner Reverify Required', `
+      <div style="font-size:13px;color:var(--gray-light);margin-bottom:10px">Enter your Owner password to disable 2FA. This action cannot be undone without re-setting it.</div>
+      <div class="form-group">
+        <label class="form-label">Owner Password</label>
+        <input id="c2fa-pw" class="form-input" type="password" autocomplete="current-password">
+      </div>
+      <div id="c2fa-err" style="color:var(--red);font-size:12px;margin-top:6px;display:none"></div>`, [
+      {label:'Disable 2FA', cls:'btn-red', cb: async () => {
+        const pw = (document.getElementById('c2fa-pw')?.value||'').trim();
+        const errE = document.getElementById('c2fa-err');
+        if (!pw) { errE.textContent='Password required.'; errE.style.display='block'; return; }
+        const r = await API.call('adminLogin', {pin: pw, role: 'owner'});
+        if (!r || !r.ok) { errE.textContent='Wrong owner password.'; errE.style.display='block'; return; }
+        // Persist disable server-side too (BUG-01 path)
+        await API.call('set2FASecret', {role:'owner', secret:'', enabled:false, ownerToken: r.ownerToken || State._dzToken || ''});
+        LS.d('twoFAEnabled'); LS.d('twoFASecret');
+        closeModal();
+        toast('2FA cleared — reload and log in with your password.', 'success');
+        renderSettings();
+        resolve();
+      }},
+      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
+    ]);
+    setTimeout(() => document.getElementById('c2fa-pw')?.focus(), 100);
+  });
+}
+
+// v36 fix BUG-02: First-run password setup modal shown when backend reports empty role password.
+async function firstRunSetupModal(role) {
+  return new Promise(resolve => {
+    showModal('🔐 First-run Setup — Set ' + (role.charAt(0).toUpperCase()+role.slice(1)) + ' Password', `
+      <div style="font-size:13px;color:var(--gray-light);margin-bottom:12px;line-height:1.6">
+        No password is configured for the <strong>${escHtml(role)}</strong> role yet. Set a strong password now (minimum 6 characters). After this, the default credentials are no longer accepted.
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input id="frs-new" class="form-input" type="password" placeholder="Min 6 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input id="frs-confirm" class="form-input" type="password" placeholder="Re-type password" autocomplete="new-password">
+      </div>
+      <div id="frs-err" style="color:var(--red);font-size:12px;margin-top:6px;display:none"></div>`, [
+      {label:'Set Password & Sign In', cls:'btn-gold', cb: async () => {
+        const a = (document.getElementById('frs-new')?.value||'').trim();
+        const b = (document.getElementById('frs-confirm')?.value||'').trim();
+        const errE = document.getElementById('frs-err');
+        if (!a || a.length < 6) { errE.textContent='Password must be at least 6 characters.'; errE.style.display='block'; return; }
+        if (a !== b)            { errE.textContent='Passwords do not match.'; errE.style.display='block'; return; }
+        const r = await API.call('setInitialPassword', {role, newPin:a});
+        if (r && r.ok) {
+          closeModal();
+          toast('✓ Password set. Signing in…', 'success');
+          // Replay login with the freshly set password
+          document.getElementById('admin-pw-input').value = a;
+          await doAdminLogin();
+          resolve();
+        } else {
+          errE.textContent = (r && r.error) || 'Could not save password.';
+          errE.style.display='block';
+        }
+      }},
+      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
+    ]);
+    setTimeout(()=>document.getElementById('frs-new')?.focus(), 100);
+  });
 }
 
 // Emergency 2FA reset — asks for master password via in-app modal (Bug fix: native prompt/alert are blocked in fullscreen/kiosk)
@@ -4035,7 +4239,23 @@ async function completeAdminLogin(role) {
   API.call('getSearchIndex').then(r=>{ if(r.ok) State.searchIndex = r.index||{}; }).catch(()=>{});
 }
 
-function adminLogout() { State.adminRole=null; State.adminUser=null; State.isAdmin=false; showScreen('kiosk'); }
+function adminLogout() {
+  // v36 fix BUG-62: wipe sensitive admin-context state so it does not leak across role switches on a shared kiosk
+  State.adminRole=null; State.adminUser=null; State.isAdmin=false;
+  State._dzToken=null;            // owner token (was BUG-09 vector)
+  State._lastPin=null;
+  State._pendingLoginRole=null;
+  State._v34CompData=null;
+  State._lmRequests=null;
+  State._bulkRows=null;
+  State._lastPayroll=null;
+  window._lbBalancesCache=null;
+  window._pendingLoginRole=null;
+  window._lastFnF=null;
+  // v36 fix BUG-80: refresh kiosk card so resigned employees no longer show as Active
+  if (typeof refreshEmpCard === 'function') { try { refreshEmpCard(); } catch (e) {} }
+  showScreen('kiosk');
+}
 function goBackToKiosk() { showScreen('kiosk'); }
 // ─── Theme Toggle ──────────────────────────────────────────────────────────
 function toggleTheme() {
@@ -4132,6 +4352,7 @@ async function switchTab(tab) {
       case 'bonustracker': await renderBonusTracker(); break;
       // v31 new tabs
       case 'bonusmgmt':   await renderBonusManagement(); break;
+      case 'compmgmt':    await renderCompMgmt(); break;
       case 'otclaims':    await renderOTClaims(); break;
       case 'promotions':  await renderPromotions(); break;
       case 'leavemgmt':   await renderLeaveManagement(); break;
@@ -4343,12 +4564,13 @@ async function approvalsApproveOT(otId, approved) {
 // Also update the approvals badge count during dashboard load
 async function refreshApprovalsBadge() {
   try {
-    const [leaveRes, transRes, otRes] = await Promise.all([
+    const [leaveRes, transRes, otRes, attRes] = await Promise.all([
       API.call('getPendingLeaves'),
       API.call('getTransactions', {status:'Pending'}),
       API.call('getOTRequests', {status:'Pending'}),
+      API.call('getPendingAttendance'),
     ]);
-    const total = (leaveRes.leaves||[]).length + (transRes.transactions||[]).length + (otRes.requests||[]).length;
+    const total = (leaveRes.leaves||[]).length + (transRes.transactions||[]).length + (otRes.requests||[]).length + (attRes.pending||[]).length;
     const badge = document.getElementById('badge-approvals');
     if (badge) { badge.textContent = total; badge.style.display = total ? 'inline-block' : 'none'; }
   } catch {}
@@ -4427,7 +4649,7 @@ function showWioOverflow(listKey) {
   const titleMap = {in:'🟢 Clocked In — Full List', break:'☕ On Break — Full List', out:'⬜ Not Clocked In — Full List'};
   const list = listMap[listKey] || [];
   const title = titleMap[listKey] || 'All Employees';
-  openModal(title,
+  showModal(title,
     `<div style="max-height:60vh;overflow-y:auto">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:var(--dark3)">
@@ -4643,7 +4865,7 @@ function exportTimesheetCSV() {
   const blob=new Blob([csv],{type:'text/csv'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`ArtzFolio_Timesheets_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download=`ArtzFolio_Timesheets_${fmtDateForFile()}.csv`; // v36 fix BUG-79: IST date
   a.click();
   toast('CSV downloaded','success');
 }
@@ -5324,10 +5546,12 @@ async function showAddEmpModal() {
       let pin = document.getElementById('e-pin').value.trim();
       let autoPin = false;
       if (!pin) { pin = String(Math.floor(1000 + Math.random() * 9000)); autoPin = true; }
+      // v36 fix BUG-15: collapse duplicate department keys. Prefer dropdown (e-depar), fall back to free-text (e-dept).
+      const _deptVal = ((document.getElementById('e-depar')?.value || '').trim()) || ((document.getElementById('e-dept')?.value || '').trim());
       const payload={
         name:document.getElementById('e-name').value.trim(), level:document.getElementById('e-level').value,
-        dept:document.getElementById('e-dept').value,
-        department:document.getElementById('e-dept').value,
+        dept:_deptVal,
+        department:_deptVal,
         category:document.getElementById('e-cat').value, salary:document.getElementById('e-sal').value,
         employmentType:document.getElementById('e-emptype').value,
         group:document.getElementById('e-group').value.trim(),
@@ -5343,7 +5567,7 @@ async function showAddEmpModal() {
         uan:document.getElementById('e-uan').value.trim(),
         esiNumber:document.getElementById('e-esino').value.trim(),
         address:document.getElementById('e-addr').value, factory:document.getElementById('e-fact').value,
-        zone:document.getElementById('e-zone').value, department:document.getElementById('e-depar').value,
+        zone:document.getElementById('e-zone').value, // v36 fix BUG-15: department key removed here (already set above as _deptVal)
         project:document.getElementById('e-proj').value,
         supervisorId:extractEmpId(document.getElementById('e-sup').value),
         managerId:extractEmpId(document.getElementById('e-mgr').value),
@@ -5381,7 +5605,8 @@ async function showAddEmpModal() {
 }
 
 async function showEditEmpModal(empId) {
-  const res = await API.call('getEmployee',{empId});
+  // v36 fix BUG-12: pass ownerToken so backend will return currentPin for the admin edit modal
+  const res = await API.call('getEmployee',{empId, ownerToken: State._dzToken||''});
   if (!res.ok) { toast('Not found','error'); return; }
   const e=res.employee;
   const hasPIN=res.hasPIN;
@@ -5922,7 +6147,7 @@ function toggleManualTimeMode(){
 
 // ─── S4.5: Emergency Controls ───────────────
 async function emergencyBulkClockOut() {
-  if (!confirm('Clock out ALL currently clocked-in staff now? This cannot be undone.')) return;
+  if (!await confirm2('Clock out ALL currently clocked-in staff now? This cannot be undone.')) return;
   const res = await API.call('emergencyBulkClockOut', {adminCode: State.adminUser});
   if (!res || !res.ok) { toast(res?.error || 'Error', 'error'); return; }
   toast('Bulk clock-out complete — ' + (res.count||0) + ' employees', 'success');
@@ -5936,7 +6161,7 @@ async function emergencyBulkClockOut() {
 }
 
 async function emergencyBulkClockIn() {
-  if (!confirm('Clock in ALL active employees now? Already clocked-in employees will be skipped.')) return;
+  if (!await confirm2('Clock in ALL active employees now? Already clocked-in employees will be skipped.')) return;
   const res = await API.call('emergencyBulkClockIn', {adminCode: State.adminUser});
   if (!res || !res.ok) { toast(res?.error || 'Error', 'error'); return; }
   toast('Bulk clock-in complete — ' + (res.count||0) + ' employees', 'success');
@@ -6266,8 +6491,8 @@ async function renderLeaves() {
   </div>
   <div id="leave-bulk-bar" style="display:none;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;gap:10px;flex-wrap:wrap">
     <span id="leave-bulk-count" style="font-size:13px;color:var(--gold);font-weight:600">0 selected</span>
-    <button class="btn btn-green btn-sm" onclick="bulkLeaveAction(true)">✓ Approve Selected</button>
-    <button class="btn btn-red btn-sm" onclick="bulkLeaveAction(false)">✗ Reject Selected</button>
+    <button class="btn btn-green btn-sm" onclick="bulkLeaveAction('approve')">✓ Approve Selected</button>
+    <button class="btn btn-red btn-sm" onclick="bulkLeaveAction('reject')">✗ Reject Selected</button>
     <button class="btn btn-dark btn-sm" onclick="clearLeaveSelection()">✕ Clear</button>
   </div>
   <div class="table-wrap">
@@ -6344,23 +6569,6 @@ function clearLeaveSelection() {
   if(allCb) allCb.checked=false;
   updateLeaveBulkBar();
 }
-async function bulkLeaveAction(approved) {
-  const selected=[...document.querySelectorAll('.leave-cb:checked')].map(cb=>cb.value);
-  if(!selected.length){toast('No leaves selected','info');return;}
-  const action=approved?'Approve':'Reject';
-  const ok=await confirm2(`${action} ${selected.length} leave(s)?`);
-  if(!ok) return;
-  const approverRole=State.adminRole==='owner'?'owner':State.adminRole==='manager'?'manager':'supervisor';
-  const note=approved?`Bulk approved by ${State.adminUser}`:`Bulk rejected by ${State.adminUser}`;
-  let done=0,failed=0;
-  for(const leaveId of selected){
-    const res=await API.call('approveLeave',{leaveId,approved,approvedBy:State.adminUser,note,approverRole});
-    if(res.ok) done++; else failed++;
-  }
-  toast(`${action}d ${done} leave(s)${failed?` (${failed} failed)`:''}`,approved?'success':'info');
-  await renderLeaves();
-}
-
 async function approveLeave(leaveId, approved) {
   // Bug CC: must send approverRole so multi-stage approval chain is respected
   const approverRole = State.adminRole==='owner'?'owner':State.adminRole==='manager'?'manager':'supervisor';
@@ -7261,7 +7469,8 @@ async function generateAllSalaries() {
       <td><strong>${escHtml(s.name||s.empName)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(s.empId||'')}</span></td>
       <td>${escHtml(s.dept)}<br><span class="badge badge-${s.level&&s.level.startsWith('L')&&parseInt(s.level.slice(1))<=5?'blue':'orange'}">${escHtml(s.level)}</span></td>
       <td>${fmtMoney(s.baseSalary)}</td>
-      <td>${s.presentDays}/${s.workingDays}</td>
+      <!-- v36 fix BUG-71: guard against undefined presentDays/workingDays -->
+      <td>${s.presentDays ?? '—'}/${s.workingDays ?? '—'}</td>
       <td style="color:var(--red)">${s.ulDeduction?'- '+fmtMoney(s.ulDeduction):''}</td>
       <td style="color:var(--orange)">${s.lateDeduction?'- '+fmtMoney(s.lateDeduction):''}</td>
       <td style="color:var(--red)">${advTotal?`<span title="Advance: ₹${Math.round(s.advances||0).toLocaleString('en-IN')}${s.loans?'\nLoans: ₹'+Math.round(s.loans||0).toLocaleString('en-IN'):''}${s.penalties?'\nPenalties: ₹'+Math.round(s.penalties||0).toLocaleString('en-IN'):''}">- ${fmtMoney(advTotal)}</span>`:''}</td>
@@ -8061,7 +8270,8 @@ async function calculateFnF() {
   if(!empId){toast('Select an employee','warning');return;}
   const result=document.getElementById('fnf-result');
   result.innerHTML='<div class="loading-spinner"></div>';
-  const res=await API.call('calcFnF',{empId,lwd,noticeDaysServed,damageRecovery,additionalDeductions,additionalDues,elDays,gratuityEligible});
+  // v36 fix BUG-32: pass ownerToken — F&F is now owner-token-gated server-side
+  const res=await API.call('calcFnF',{empId,lwd,noticeDaysServed,damageRecovery,additionalDeductions,additionalDues,elDays,gratuityEligible,elType:'EL',ownerToken:State._dzToken||''});
   if(!res.ok){result.innerHTML=`<div style="color:var(--red);padding:16px">${escHtml(res.error||'Calculation failed')}</div>`;return;}
   const emp=State.employees.find(e=>e.id===empId)||res.emp||{};
   window._lastFnF={...res,emp,empId};
@@ -8992,7 +9202,7 @@ async function exportAuditCSV() {
   const blob = new Blob([csvRows], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `AuditLog_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `AuditLog_${fmtDateForFile()}.csv`; // v36 fix BUG-79: IST date
   a.click();
 }
 
@@ -9039,11 +9249,13 @@ async function renderSettings() {
   const hols=(holRes.holidays||[]).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   function cfgField(key,label,type='text',extra=''){
     if (type === 'password') {
+      // v37 fix BUG-72: addEventListener (not inline string-concat IIFE) — survives keys with quotes/ampersands.
+      // v37 fix BUG-78: auto-rehide on blur and after 5 s timeout (no shoulder-surfing risk).
       const toggleId = `cfg-toggle-${escHtml(key)}`;
       return `<div class="form-group"><label class="form-label">${escHtml(label)}</label>
       <div style="position:relative;display:flex;align-items:center">
-        <input id="cfg-${escHtml(key)}" class="form-input" type="password" value="${escHtml(cfg[key]||'')}" style="padding-right:36px" autocomplete="new-password" ${extra}>
-        <button type="button" id="${toggleId}" onclick="(function(){const inp=document.getElementById('cfg-${escHtml(key)}');const btn=document.getElementById('${toggleId}');inp.type=inp.type==='password'?'text':'password';btn.textContent=inp.type==='password'?'👁':'🙈';})()" style="position:absolute;right:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--gray-light);padding:0">👁</button>
+        <input id="cfg-${escHtml(key)}" class="form-input" type="password" value="${escHtml(cfg[key]||'')}" style="padding-right:36px" autocomplete="new-password" data-pw-toggle-key="${escHtml(key)}" ${extra}>
+        <button type="button" id="${toggleId}" data-pw-toggle-target="cfg-${escHtml(key)}" style="position:absolute;right:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--gray-light);padding:0">👁</button>
       </div></div>`;
     }
     return `<div class="form-group"><label class="form-label">${escHtml(label)}</label>
@@ -9365,7 +9577,7 @@ async function renderSettings() {
         <b style="color:var(--white)">Option 3 — Google Sheet:</b> Config sheet → row <i>adminPassword</i> = your master credential.
       </div>
       <div style="margin-top:10px">
-        <button class="btn btn-dark btn-sm" onclick="confirm2('Clear 2FA from this browser now?').then(ok=>{if(ok){LS.d('twoFAEnabled');LS.d('twoFASecret');toast('2FA cleared — reload and log in with your password.','success');renderSettings();}})">
+        <button class="btn btn-dark btn-sm" onclick="clearTwoFASettingsConfirmed()">
           🔓 Emergency: Clear 2FA Now
         </button>
       </div>
@@ -9616,12 +9828,12 @@ async function renderSettings() {
         </tr>
       </thead>
       <tbody id="holidays-table-body">
-    ${hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.name]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
+    ${hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.type]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
       <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
       <td style="padding:6px;white-space:nowrap">${fmtHolDate(h.date)}</td>
       <td style="padding:6px;white-space:nowrap">${fmtHolDay(h.date)}</td>
-      <td style="padding:6px">${escHtml(h.type||'')}</td>
-      <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.name||'Public')}</span></td>
+      <td style="padding:6px">${escHtml(h.name||'')}</td>
+      <td style="padding:6px"><span style="background:${tc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(h.type||'Public')}</span></td>
       <td style="padding:4px">${_holLevelBtnsHtml('hol-app-'+escHtml(h.id||h.date), h.applicableTo, h.id||h.date)}</td>
       <td style="padding:6px"><button class="btn btn-red btn-sm" onclick="deleteHoliday('${escHtml(h.id||h.date)}')">Remove</button></td>
     </tr>`}).join('')}
@@ -9942,8 +10154,8 @@ async function renderSettings() {
         <label class="form-label">Owner Token (Danger Zone secret)
           <span class="info-tooltip" title="A random secret string that acts like a second password for destructive actions. You only need to set this once. Use Auto-Generate Token to create one, then click Save. Keep it confidential — do not share it with managers or supervisors.">ℹ</span>
         </label>
-        <input id="cfg-ownerToken" class="form-input" type="text" placeholder="e.g. ARTZFOLIO_DZ_2026"
-          value="${escHtml(cfg['ownerToken']||'')}" autocomplete="off">
+        <input id="cfg-ownerToken" class="form-input" type="password" placeholder="e.g. ARTZFOLIO_DZ_2026"
+          value="${escHtml(cfg['ownerToken']||'')}" autocomplete="new-password">
         <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
           Keep this confidential. Clicking Save below saves it automatically — no need to edit the Google Sheet manually.
         </div>
@@ -10183,6 +10395,170 @@ async function renderSettings() {
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31ReferralSettings()">💾 Save Referral Bonus Settings</button>
   </div>
 
+  <!-- v34: Compensation & Promotion Policy Settings -->
+  <div class="settings-section" id="comp-settings-section">
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('comp-settings-body')">
+      💼 Compensation &amp; Promotion Policy <span style="float:right;font-size:12px;color:var(--gray-light)">▼</span>
+    </div>
+    <div id="comp-settings-body" style="display:none">
+      <div class="comp-sub-tabs" id="comp-settings-tabs">
+        <button class="comp-sub-tab active" onclick="switchCompSettingsTab('ladder')">Salary Ladder</button>
+        <button class="comp-sub-tab" onclick="switchCompSettingsTab('increment')">Increments</button>
+        <button class="comp-sub-tab" onclick="switchCompSettingsTab('promo')">Promotion Windows</button>
+        <button class="comp-sub-tab" onclick="switchCompSettingsTab('ot')">OT Policy</button>
+        <button class="comp-sub-tab" onclick="switchCompSettingsTab('jbonus')">Joining Bonus</button>
+        <button class="comp-sub-tab" onclick="switchCompSettingsTab('wallet')">Loyalty Wallet</button>
+      </div>
+      <!-- Salary Ladder sub-panel -->
+      <div class="comp-sub-panel active" id="comp-sp-ladder">
+        <p class="comp-settings-subtitle">Edit base 9-hour morning salaries. 11hr and 12hr values auto-compute when you change any 9hr value.</p>
+        <div id="comp-ladder-editor">Loading…</div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompLadder()">💾 Save Salary Ladder</button>
+      </div>
+      <!-- Increment sub-panel -->
+      <div class="comp-sub-panel" id="comp-sp-increment">
+        <div class="settings-grid">
+          <div class="form-group">
+            <label class="form-label">Increment Period (months)</label>
+            <input class="form-input" type="number" id="cfg-INCREMENT_PERIOD_MONTHS" min="1" placeholder="6">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Increment Type</label>
+            <select class="form-input" id="cfg-INCREMENT_TYPE">
+              <option value="Flat">Flat Amount</option>
+              <option value="Percentage">Percentage</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Percentage Rate (e.g. 0.05 = 5%)</label>
+            <input class="form-input" type="number" id="cfg-INCREMENT_PERCENTAGE" step="0.01" min="0" max="1" placeholder="0.05">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Max Increment Cycles per Level</label>
+            <input class="form-input" type="number" id="cfg-MAX_INCREMENT_CYCLES" min="1" max="8" placeholder="4">
+          </div>
+        </div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['INCREMENT_PERIOD_MONTHS','INCREMENT_TYPE','INCREMENT_PERCENTAGE','MAX_INCREMENT_CYCLES'])">💾 Save Increment Settings</button>
+      </div>
+      <!-- Promotion Windows sub-panel -->
+      <div class="comp-sub-panel" id="comp-sp-promo">
+        <p class="comp-settings-subtitle">Minimum and maximum months before promotion eligibility per level.</p>
+        <table class="comp-ladder-table" style="margin-bottom:12px">
+          <tr><th>From Level</th><th>Min Months</th><th>Max Months</th></tr>
+          <tr><td>L10 → L9</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L10" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L10" min="1"></td></tr>
+          <tr><td>L9 → L8</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L9" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L9" min="1"></td></tr>
+          <tr><td>L8 → L7</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L8" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L8" min="1"></td></tr>
+          <tr><td>L7 → L6</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L7" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L7" min="1"></td></tr>
+        </table>
+        <button class="btn btn-gold" onclick="saveCompSettings(['PROMO_MIN_L10','PROMO_MAX_L10','PROMO_MIN_L9','PROMO_MAX_L9','PROMO_MIN_L8','PROMO_MAX_L8','PROMO_MIN_L7','PROMO_MAX_L7'])">💾 Save Promotion Windows</button>
+      </div>
+      <!-- OT Policy sub-panel -->
+      <div class="comp-sub-panel" id="comp-sp-ot">
+        <div class="settings-grid">
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label" style="color:var(--red)">9-Hour Shift Minimum OT Hours — HARD MINIMUM — System will block OT entries below this value for 9-hour shift employees.</label>
+            <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_9HR" min="0.5" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">11-Hour Shift Minimum OT Hours</label>
+            <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_11HR" min="0.5" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">12-Hour Shift Minimum OT Hours</label>
+            <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_12HR" min="0.5" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">OT Working Days Divisor</label>
+            <input class="form-input" type="number" id="cfg-OT_WORKING_DAYS_DIVISOR" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Shift Ratio 11hr ÷ 9hr × 90%</label>
+            <input class="form-input" type="number" id="cfg-SHIFT_RATIO_11HR" step="0.01" min="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Shift Ratio 12hr ÷ 9hr × 90%</label>
+            <input class="form-input" type="number" id="cfg-SHIFT_RATIO_12HR" step="0.01" min="0.1">
+          </div>
+        </div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['OT_MIN_HOURS_9HR','OT_MIN_HOURS_11HR','OT_MIN_HOURS_12HR','OT_WORKING_DAYS_DIVISOR','SHIFT_RATIO_11HR','SHIFT_RATIO_12HR'])">💾 Save OT Policy</button>
+      </div>
+      <!-- Joining Bonus sub-panel -->
+      <div class="comp-sub-panel" id="comp-sp-jbonus">
+        <div class="settings-grid">
+          <div class="form-group">
+            <label class="form-label">Enable Joining Bonus</label>
+            <select class="form-input" id="cfg-JOINING_BONUS_ENABLED">
+              <option value="true">Yes</option><option value="false">No</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Total Bonus Amount (₹)</label>
+            <input class="form-input" type="number" id="cfg-JOINING_BONUS_TOTAL" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Number of Installments</label>
+            <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENTS" min="1" max="12">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount per Installment (₹)</label>
+            <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_AMOUNT" min="0" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Installment 1 — After (months)</label>
+            <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_1_MONTHS" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Installment 2 — After (months)</label>
+            <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_2_MONTHS" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Installment 3 — After (months)</label>
+            <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_3_MONTHS" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Installment 4 — After (months)</label>
+            <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_4_MONTHS" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Max Leaves Threshold for Eligibility Check</label>
+            <input class="form-input" type="number" id="cfg-JOINING_BONUS_MAX_LEAVES_THRESHOLD" min="0">
+          </div>
+        </div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['JOINING_BONUS_ENABLED','JOINING_BONUS_TOTAL','JOINING_BONUS_INSTALLMENTS','JOINING_BONUS_INSTALLMENT_AMOUNT','JOINING_BONUS_INSTALLMENT_1_MONTHS','JOINING_BONUS_INSTALLMENT_2_MONTHS','JOINING_BONUS_INSTALLMENT_3_MONTHS','JOINING_BONUS_INSTALLMENT_4_MONTHS','JOINING_BONUS_MAX_LEAVES_THRESHOLD'])">💾 Save Joining Bonus Policy</button>
+      </div>
+      <!-- Loyalty Wallet sub-panel -->
+      <div class="comp-sub-panel" id="comp-sp-wallet">
+        <div class="settings-grid">
+          <div class="form-group">
+            <label class="form-label">Enable Loyalty Wallet</label>
+            <select class="form-input" id="cfg-LOYALTY_WALLET_ENABLED">
+              <option value="true">Yes</option><option value="false">No</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Year 1 Monthly Credit (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR1_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 2 Monthly Credit (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR2_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 3 Monthly Credit (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR3_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 4 Monthly Credit (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR4_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 5+ Monthly Credit Cap (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR5PLUS_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Max Leaves Threshold</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MAX_LEAVES_THRESHOLD" min="0"></div>
+          <div class="form-group"><label class="form-label">Min Tenure Before First Withdrawal (months)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MIN_TENURE_MONTHS" min="1"></div>
+          <div class="form-group"><label class="form-label">Withdrawal % after 6-Month Wait</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT" min="0" max="100"></div>
+          <div class="form-group"><label class="form-label">Withdrawal % after 12-Month Wait</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT" min="0" max="100"></div>
+        </div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['LOYALTY_WALLET_ENABLED','LOYALTY_WALLET_YR1_MONTHLY','LOYALTY_WALLET_YR2_MONTHLY','LOYALTY_WALLET_YR3_MONTHLY','LOYALTY_WALLET_YR4_MONTHLY','LOYALTY_WALLET_YR5PLUS_MONTHLY','LOYALTY_WALLET_MAX_LEAVES_THRESHOLD','LOYALTY_WALLET_MIN_TENURE_MONTHS','LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT','LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT'])">💾 Save Loyalty Wallet Policy</button>
+      </div>
+      <!-- v34: Initialize Compensation Sheets (owner only) -->
+      <div style="margin-top:18px;padding:12px;border:1px solid var(--red);border-radius:8px;background:rgba(229,57,53,0.06)">
+        <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">⚠ First-Time Setup — Owner Only</div>
+        <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px;line-height:1.6">
+          Run once when setting up Compensation for the first time. Creates SalaryLadder, JoiningBonus, LoyaltyWallet, and CompensationConfig sheets with default values.<br>
+          <strong style="color:var(--orange)">Warning:</strong> Existing data in those sheets will be overwritten.
+        </div>
+        <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="initCompSheets()">🏗 Initialize Compensation Sheets</button>
+      </div>
+    </div>
+  </div>
+
   <!-- v31: Notice Period & Exit Policy Settings -->
   <div class="settings-section">
     <div class="settings-section-title">📋 Notice Period & Exit Policy</div>
@@ -10316,6 +10692,8 @@ async function renderSettings() {
   document.getElementById('admin-tab-content').innerHTML=html;
   // Post-render: load editable leave types table
   setTimeout(() => loadLeaveTypesSettingsTable(), 100);
+  // v34: load comp config into settings inputs
+  loadCompSettings();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -10496,6 +10874,8 @@ async function renderBonusTracker() {
   ]);
   const balances = balRes.balances || [];
   const pending  = pendRes.pending  || [];
+  // v36 fix BUG-06: stash on window for the Export CSV button (avoids JSON injection in onclick attribute)
+  window._lbBalancesCache = balances;
 
   const totalLiability  = balances.reduce((s,b)=>s+parseFloat(b.current_balance||0),0);
   const totalEligible   = balances.reduce((s,b)=>s+parseFloat(b.eligible_to_withdraw||0),0);
@@ -10541,7 +10921,7 @@ async function renderBonusTracker() {
     </div>
     <div class="section-actions">
       <button class="btn btn-gold btn-sm" onclick="runLBAccrualConfirm()">▶ Run Monthly Accrual</button>
-      <button class="btn btn-dark btn-sm" onclick="exportCSV(${JSON.stringify(balances)},'loyalty_bonus_balances')">📤 Export CSV</button>
+      <button class="btn btn-dark btn-sm" onclick="exportCSV(window._lbBalancesCache||[],'loyalty_bonus_balances')">📤 Export CSV</button>
       <button class="btn btn-dark btn-sm" onclick="renderBonusTracker()">↻ Refresh</button>
     </div>
   </div>
@@ -10885,18 +11265,20 @@ async function saveDZToken() {
   if (!token) { toast('Enter a token value first','error'); return; }
   const res = await API.call('updateSettings', { updates: { ownerToken: token } });
   if (res.ok) {
-    // FIX-17: use LS.s() so key is stored as 'az3_ownerToken', matching LS.g() in runSystemClean
-    LS.s('ownerToken', token);
+    // v36 fix BUG-09: do NOT persist ownerToken to localStorage. Hold only in memory (State._dzToken),
+    // and require fresh adminLogin to retrieve it after page reload. Defeats XSS exfiltration vector.
+    State._dzToken = token;
+    try { LS.d('ownerToken'); } catch (e) {} // remove any legacy persisted copy
     const sRes = await API.call('getSettings');
     if (sRes.ok) applySettingsArr(sRes.settings||[]);
-    toast('✓ Danger Zone token saved to both Config sheet and local storage.','success');
+    toast('✓ Danger Zone token saved. (Token is held in memory only — re-login retrieves it.)','success');
     await renderSettings(); // refresh to show green status
   } else toast(res.error||'Error saving token','error');
 }
 
 // Issue 12: test token without triggering any destructive action
 async function testDZToken() {
-  const token = (document.getElementById('cfg-ownerToken')?.value||(LS.g('ownerToken')||'')).trim();
+  const token = (document.getElementById('cfg-ownerToken')?.value||State._dzToken||'').trim();
   if (!token) { toast('No token to test — enter or load a token first','warning'); return; }
   const res = await API.call('testOwnerToken', { ownerToken: token });
   if (res.valid) toast('Token valid ✓ — Danger Zone access will be granted','success');
@@ -11001,12 +11383,16 @@ async function save2FASettings() {
   if (enabled && secret !== confirmVal) {
     statusEl.textContent='✗ PINs do not match. Try again.'; statusEl.style.color='var(--red)'; return;
   }
-  LS.s('twoFAEnabled', enabled === true);
-  if (enabled && secret) { LS.s('twoFASecret', secret); }
-  else if (!enabled) { LS.d('twoFASecret'); }
-  // Bug V: also persist secret to GAS Config so it survives browser data clear
-  const updates = { twoFASecret: (enabled && secret) ? secret : '' };
-  await API.call('updateSettings', {updates}).catch(()=>{});
+  // v36 fix BUG-01: persist 2FA secret server-side via owner-token-gated handler.
+  // localStorage is kept only as a UI hint (NOT a source of truth for verification).
+  const r = await API.call('set2FASecret', {role:'owner', secret, enabled, ownerToken: State._dzToken||''});
+  if (!r || !r.ok) {
+    statusEl.textContent = '✗ ' + ((r && r.error) || 'Could not save 2FA settings — verify Owner Token.');
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  LS.s('twoFAEnabled', enabled === true); // UI-only hint
+  LS.d('twoFASecret');                    // never store secret client-side
   statusEl.textContent = enabled ? '✓ 2FA ENABLED — login will now require PIN after password' : '2FA disabled.';
   statusEl.style.color = enabled ? 'var(--green)' : 'var(--gray-light)';
   toast(enabled ? '✓ 2FA enabled successfully!' : '2FA disabled', enabled ? 'success' : 'info');
@@ -11107,7 +11493,9 @@ async function runSystemClean() {
     auditMonths: parseInt(document.getElementById('sc-auditMonths')?.value)||3,
     salaryYearBefore: parseInt(document.getElementById('sc-salaryYear')?.value)||(new Date().getFullYear()-2),
   };
-  const token = LS.g('ownerToken') || '';
+  // v36 fix BUG-09: read token from in-memory State, NOT localStorage
+  const token = State._dzToken || '';
+  if (!token) { toast('Owner token unavailable — re-login as Owner first.', 'error'); return; }
   const res = await API.call('systemClean', {actions, params, ownerToken: token});
   const statusEl = document.getElementById('sc-result');
   if (!res.ok) { toast(res.error||'Error running cleaner','error'); if(statusEl) statusEl.textContent = 'Error: '+(res.error||'Unknown'); return; }
@@ -11188,8 +11576,8 @@ async function saveOTSettings() {
 }
 
 async function runAutoClockOut() {
-  const res=await API.call('autoClockOut',{});
-  toast(`Auto clock-out done: ${res.affected?.length||0} employees clocked out`,'success',4000);
+  const res=await API.call('runAutoClockOut',{});
+  toast(`Auto clock-out done: ${res.clocked||res.affected?.length||0} employees clocked out`,'success',4000);
 }
 
 async function runAutoMarkPresent() {
@@ -11215,6 +11603,137 @@ function toggleLevelChip(chip, hiddenId) {
 const ALL_LEVELS = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
 
 // Generate and download an Excel workbook with one sheet (headers + optional data rows)
+// v36 fix BUG-79: IST-aware date string for filenames (no UTC off-by-one near midnight)
+function fmtDateForFile(d) {
+  d = d || new Date();
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Kolkata', year:'numeric', month:'2-digit', day:'2-digit'});
+    return fmt.format(d); // YYYY-MM-DD in IST
+  } catch (e) {
+    return d.toISOString().split('T')[0];
+  }
+}
+
+// v36 fix BUG-03/BUG-06: Generic CSV exporter — used by Employees and Loyalty Bonus tabs
+function exportCSV(rows, filename) {
+  try {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      toast('No data to export', 'warn', 3000);
+      return;
+    }
+    // Collect headers from union of keys to handle sparse rows
+    const headerSet = new Set();
+    rows.forEach(r => { if (r && typeof r === 'object') Object.keys(r).forEach(k => headerSet.add(k)); });
+    const headers = Array.from(headerSet);
+    const esc = v => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    };
+    const lines = [headers.join(',')];
+    rows.forEach(r => lines.push(headers.map(h => esc(r ? r[h] : '')).join(',')));
+    // BOM so Excel reads UTF-8 correctly
+    const blob = new Blob(['﻿' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (filename || 'export') + '_' + fmtDateForFile() + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 100);
+    toast('✅ CSV downloaded', 'success', 2500);
+  } catch (e) {
+    toast('CSV export failed: ' + (e.message || e), 'error', 4000);
+  }
+}
+
+// v36 fix BUG-04: Export complete data backup as JSON (frontend orchestrates parallel reads)
+async function exportFullBackup() {
+  if (!(await confirm2('Download a complete data backup as JSON? This may take up to a minute on large datasets.'))) return;
+  toast('⏳ Building backup…', 'info', 6000);
+  try {
+    const calls = await Promise.allSettled([
+      API.call('getEmployees'),
+      API.call('getAttendance'),
+      API.call('getTransactions'),
+      API.call('getPoints'),
+      API.call('getLeaves'),
+      API.call('getLeaveRequests'),
+      API.call('getLeaveBalances'),
+      API.call('getBonusLedger'),
+      API.call('getOTRequests'),
+      API.call('getHolidays'),
+      API.call('getSettings'),
+      API.call('getOrgs'),
+      API.call('getMilestones'),
+      API.call('getSalaryBands'),
+      API.call('getPettyCash'),
+      API.call('getDocuments'),
+    ]);
+    const pick = (r, key) => (r.status === 'fulfilled' && r.value && (r.value[key] || r.value)) || null;
+    const backup = {
+      meta: {version:'v36', exportedAt:new Date().toISOString(), exportedAtIST:fmtDateForFile()+' '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})},
+      employees:     pick(calls[0],  'employees'),
+      attendance:    pick(calls[1],  'records'),
+      transactions:  pick(calls[2],  'transactions'),
+      points:        pick(calls[3],  'points'),
+      leaves:        pick(calls[4],  'leaves'),
+      leaveRequests: pick(calls[5],  'requests'),
+      leaveBalances: pick(calls[6],  'balances'),
+      bonusLedger:   pick(calls[7],  'entries'),
+      otRequests:    pick(calls[8],  'requests'),
+      holidays:      pick(calls[9],  'holidays'),
+      settings:      pick(calls[10], 'settings'),
+      orgs:          pick(calls[11], 'orgs'),
+      milestones:    pick(calls[12], 'milestones'),
+      salaryBands:   pick(calls[13], 'bands'),
+      pettyCash:     pick(calls[14], 'records'),
+      documents:     pick(calls[15], 'documents'),
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ArtzFolio_HRMS_Backup_' + fmtDateForFile() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 100);
+    toast('✅ Backup downloaded — keep it safe.', 'success', 4000);
+  } catch (e) {
+    toast('Backup failed: ' + (e.message || e), 'error', 6000);
+  }
+}
+
+// v36 fix BUG-05: Import JSON backup — sends to backend restoreBackup handler with double-confirmation
+async function importBackup(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const reset = () => { try { input.value = ''; } catch (e) {} };
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || typeof data !== 'object') { toast('File is not a valid backup', 'error'); reset(); return; }
+    if (!(await confirm2('⚠ Importing a backup will OVERWRITE existing employee, attendance, transaction, and leave data. Are you absolutely sure?'))) {
+      reset(); return;
+    }
+    if (!(await confirm2('Final confirmation: REPLACE current data with backup file ' + (file.name || '') + '?'))) {
+      reset(); return;
+    }
+    toast('⏳ Restoring backup… do not close this window.', 'info', 8000);
+    const r = await API.call('restoreBackup', {backup: data});
+    if (r && r.ok) {
+      toast('✅ Restore complete. Reloading…', 'success', 3500);
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      toast('Restore failed: ' + ((r && r.error) || 'unknown error'), 'error', 6000);
+    }
+  } catch (e) {
+    toast('Invalid backup file: ' + (e.message || e), 'error', 5000);
+  }
+  reset();
+}
+
 function downloadXLSX(filename, sheetName, headers, rows=[]) {
   // Bug 51: Guard against XLSX library not loaded (CDN failure)
   if (typeof XLSX === 'undefined') {
@@ -11587,14 +12106,21 @@ function showBulkImportReport(log, ok, fail, total) {
 
 // Refresh whatever tab is currently active after bulk import
 async function refreshCurrentTab() {
+  // v36 fix BUG-60: refresh holidays, transactions, petty cash, points, OT after bulk imports
   const active = document.querySelector('.nav-item.active');
   if (!active) return;
   const tab = active.getAttribute('data-tab');
-  if (tab === 'employees') await renderEmployees();
-  else if (tab === 'attendance') { /* no-op */ }
-  else if (tab === 'leaves') await renderLeaves();
-  else if (tab === 'settings') await renderSettings();
-  else if (tab === 'payroll') { /* no-op */ }
+  if (tab === 'employees')         await renderEmployees();
+  else if (tab === 'attendance')   { /* no-op */ }
+  else if (tab === 'leaves')       await renderLeaves();
+  else if (tab === 'settings')     await renderSettings();
+  else if (tab === 'payroll')      { /* no-op */ }
+  else if (tab === 'holidays'      && typeof renderHolidays === 'function')      await renderHolidays();
+  else if (tab === 'transactions'  && typeof renderTransactions === 'function')  await renderTransactions();
+  else if (tab === 'petty-cash'    && typeof renderPettyCash === 'function')     await renderPettyCash();
+  else if (tab === 'points'        && typeof renderPoints === 'function')        await renderPoints();
+  else if (tab === 'ot'            && typeof renderOTRequests === 'function')    await renderOTRequests();
+  else if (tab === 'leave-management' && typeof renderLeaveManagement === 'function') await renderLeaveManagement();
 }
 
 // ─── Bulk Import launchers ───────────────────────────────────────────────────
@@ -11721,8 +12247,9 @@ function bulkImportEmployees() {
     if (emp && !VALID_EMPT.includes(emp)) throw new Error(`Invalid employmentType "${emp}"`);
     const wo1 = String(row['weeklyOff1']||'Sunday').trim();
     if (wo1 && !VALID_DAYS.includes(wo1)) throw new Error(`Invalid weeklyOff1 "${wo1}"`);
-    const pinStr = String(row['pin *']).trim();
-    if (!/^\d{4}$/.test(pinStr)) throw new Error(`PIN must be exactly 4 digits, got "${pinStr}"`);
+    // v36 fix BUG-59: align frontend with backend — accept blank PIN (backend auto-generates)
+    const pinStr = String(row['pin *']||'').trim();
+    if (pinStr && !/^\d{4}$/.test(pinStr)) throw new Error(`PIN must be exactly 4 digits, got "${pinStr}" — leave blank to auto-generate`);
     const defaultShiftStart = (State.settings&&State.settings.defaultShiftStart)||'09:00';
     const defaultShiftEnd   = (State.settings&&State.settings.defaultShiftEnd)||'19:00';
     return {
@@ -11962,7 +12489,7 @@ async function refreshHolidayList() {
   if (!tbody) { await renderSettings(); return; }
   const res = await API.call('getHolidays', {});
   const hols = (res.holidays || []).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  tbody.innerHTML = hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.name]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
+  tbody.innerHTML = hols.map(h=>{const tc={'National':'#1565C0','Regional':'#6A1B9A','Company':'#b8960c'}[h.type]||'#555';return`<tr style="border-bottom:1px solid var(--dark3)">
     <td style="padding:6px;width:30px"><input type="checkbox" class="hol-cb" value="${escHtml(h.id||h.date)}" style="accent-color:var(--gold)"></td>
     <td style="padding:6px;white-space:nowrap">${fmtHolDate(h.date)}</td>
     <td style="padding:6px;white-space:nowrap">${fmtHolDay(h.date)}</td>
@@ -12007,6 +12534,14 @@ function calcOTLive() {
   const bd = document.getElementById('ot-calc-breakdown');
   const btns = document.getElementById('ot-action-btns');
   if (hours <= 0 || hours > maxHours) { bd.style.display = 'none'; btns.style.display = 'none'; return; }
+  // v34: 9-hour shift hard block — minimum 4.5 OT hours
+  const shiftHrs = parseFloat(emp.dailyHours) || 9;
+  if (shiftHrs <= 9 && hours < 4.5) {
+    bd.style.display = '';
+    bd.innerHTML = '<div style="color:var(--red);font-weight:700">⚠ Minimum OT for 9-hour shift is 4.5 hours. Cannot submit less.</div>';
+    btns.style.display = 'none';
+    return;
+  }
   // OT formula: Basic / 26 / otBase × multiplier × hours
   const hourlyRate = basic / 26 / otBase;
   const otAmount = hourlyRate * multiplier * hours;
@@ -12051,6 +12586,9 @@ async function submitOTClaim(claimMethod) {
   if (!emp) return;
   const hours = parseFloat(document.getElementById('ot-hours-input').value) || 0;
   if (hours <= 0) { toast('Enter valid OT hours', 'error'); return; }
+  // v34: 9-hour shift hard block
+  const shiftHrs = parseFloat(emp.dailyHours) || 9;
+  if (shiftHrs <= 9 && hours < 4.5) { toast('Minimum OT for 9-hour shift employees is 4.5 hours', 'error'); return; }
   const ok = await confirm2(`Submit OT claim for ${hours} hours?\nClaim Method: ${claimMethod === 'Instant' ? 'Claim Now (Instant Payment)' : 'Add to Monthly Salary'}`);
   if (!ok) return;
   const res = await API.call('submitOTClaim', {empId: emp.id, otHours: hours, claimMethod, date: todayStr()});
@@ -12308,8 +12846,26 @@ async function initiateResignation() {
   const emp = State.currentEmp;
   if (!emp) return;
   const conf = await new Promise(resolve => {
-    const txt = prompt('WARNING: Initiating a notice period will IMMEDIATELY forfeit your accrued Loyalty Bonus. This action cannot be undone.\n\nType CONFIRM to proceed:');
-    resolve(txt === 'CONFIRM');
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active';
+    overlay.innerHTML = `<div class="modal" style="max-width:420px">
+      <h3 style="color:#c62828">Confirm Resignation</h3>
+      <p style="font-size:13px">WARNING: Initiating a notice period will <strong>IMMEDIATELY forfeit</strong> your accrued Loyalty Bonus. This action cannot be undone.</p>
+      <p style="font-size:13px">Type <strong>CONFIRM</strong> to proceed:</p>
+      <input id="resign-confirm-input" type="text" class="form-control" placeholder="Type CONFIRM" autocomplete="off">
+      <div class="modal-footer" style="margin-top:1rem;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-dark" id="resign-cancel-btn">Cancel</button>
+        <button class="btn btn-danger" id="resign-ok-btn" style="background:#c62828;color:#fff">Proceed</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#resign-cancel-btn').onclick = () => { overlay.remove(); resolve(false); };
+    overlay.querySelector('#resign-ok-btn').onclick = () => {
+      const val = (overlay.querySelector('#resign-confirm-input').value || '').trim();
+      overlay.remove();
+      resolve(val === 'CONFIRM');
+    };
+    setTimeout(() => overlay.querySelector('#resign-confirm-input')?.focus(), 100);
   });
   if (!conf) { toast('Resignation not initiated', 'info'); return; }
   const res = await API.call('initiateNotice', {empId: emp.id, source: 'Self', triggeredBy: emp.id, noticeType: 'Resignation'});
@@ -12900,21 +13456,65 @@ function toggleAllLeaveCheckboxes(checked) {
   document.querySelectorAll('.lm-chk').forEach(c => c.checked = checked);
 }
 
+// v36 fix BUG-16: in-app reason modal — native prompt() is blocked in fullscreen/PWA/kiosk
+function _askRejectionReason(title) {
+  return new Promise(resolve => {
+    showModal(title || 'Rejection Reason', `
+      <div style="font-size:13px;color:var(--gray-light);margin-bottom:10px">Provide a reason for rejection (required).</div>
+      <textarea id="rj-reason" class="form-input" rows="3" placeholder="Reason…" style="resize:vertical"></textarea>
+      <div id="rj-err" style="color:var(--red);font-size:12px;margin-top:6px;display:none"></div>`, [
+      {label:'Submit Reject', cls:'btn-red', cb: () => {
+        const v = (document.getElementById('rj-reason')?.value||'').trim();
+        if (!v) { const e = document.getElementById('rj-err'); if (e) { e.textContent='Reason is required.'; e.style.display='block'; } return; }
+        closeModal(); resolve(v);
+      }},
+      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(null); }},
+    ]);
+    setTimeout(() => document.getElementById('rj-reason')?.focus(), 100);
+  });
+}
+
 async function adminLeaveAction(reqId, action) {
-  const notes = action === 'reject' ? (prompt('Rejection reason (required):') || '') : '';
-  if (action === 'reject' && !notes) { toast('Rejection reason is required', 'error'); return; }
+  let notes = '';
+  if (action === 'reject') {
+    notes = await _askRejectionReason('Reject Leave Request');
+    if (notes === null) return; // user cancelled
+  }
   const res = await API.call('adminLeaveAction', {reqId, action, reviewedBy: State.adminRole, notes});
-  if (res.ok) { toast(action === 'approve' ? 'Leave approved' : 'Leave rejected', 'success'); await renderLeaveManagement(); }
-  else toast(res.error||'Error','error');
+  if (res.ok) {
+    toast(action === 'approve' ? 'Leave approved' : 'Leave rejected', 'success');
+    await renderLeaveManagement();
+    if (typeof refreshApprovalsBadge === 'function') refreshApprovalsBadge(); // v36 fix BUG-73
+  } else {
+    toast(res.error||'Error','error');
+  }
 }
 
 async function bulkLeaveAction(action) {
-  const checked = Array.from(document.querySelectorAll('.lm-chk:checked')).map(c => c.value);
+  const checked = [
+    ...Array.from(document.querySelectorAll('.lm-chk:checked')).map(c => c.value),
+    ...Array.from(document.querySelectorAll('.leave-cb:checked')).map(c => c.value)
+  ].filter((v, i, arr) => arr.indexOf(v) === i); // deduplicate
   if (!checked.length) { toast('Select at least one request', 'error'); return; }
-  const notes = action === 'reject' ? (prompt('Rejection reason for all selected:') || '') : '';
+  let notes = '';
+  if (action === 'reject') {
+    notes = await _askRejectionReason('Reject ' + checked.length + ' Selected');
+    if (notes === null) return;
+  }
   const res = await API.call('bulkLeaveAction', {reqIds: checked, action, reviewedBy: State.adminRole, notes});
-  if (res.ok) { toast(res.processed + ' request(s) ' + action + 'd', 'success'); await renderLeaveManagement(); }
-  else toast(res.error||'Error','error');
+  if (res.ok) {
+    // v36 fix BUG-19 surface: show success/failure split if backend returns aggregated counts
+    const ok = res.processed || 0;
+    const fail = res.failed || 0;
+    const msg = fail > 0 ? `${ok} ${action}d, ${fail} failed` : `${ok} request(s) ${action}d`;
+    toast(msg, fail > 0 ? 'warning' : 'success');
+    // v36 fix BUG-74: render only the active tab to avoid double flicker
+    if (State.currentTab === 'leave-management') await renderLeaveManagement();
+    else await renderLeaves();
+    if (typeof refreshApprovalsBadge === 'function') refreshApprovalsBadge();
+  } else {
+    toast(res.error||'Error','error');
+  }
 }
 
 function exportLeaveCSV() {
@@ -12991,11 +13591,6 @@ async function seedLeaveBalances() {
   const res = await API.call('seedLeaveBalances', {year: new Date().getFullYear()});
   if (res.ok) toast('Seeded ' + res.seeded + ' balance records', 'success');
   else toast(res.error||'Error','error');
-}
-
-async function seedLeaveBalancesAdmin() {
-  await seedLeaveBalances();
-  await loadAllLeaveBalances();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -13196,7 +13791,7 @@ async function seedLeaveBalancesAdmin() {
   if (!ok) return;
   const res = await API.call('seedLeaveBalances', {year: new Date().getFullYear()});
   if (!res || typeof res !== 'object') { toast('Seeding complete. Refresh to verify.', 'warning'); return; }
-  if (res.ok) toast('Seeded ' + (res.seeded||0) + ' new balance rows for ' + (res.employees||0) + ' employees.', 'success', 5000);
+  if (res.ok) { toast('Seeded ' + (res.seeded||0) + ' new balance rows for ' + (res.employees||0) + ' employees.', 'success', 5000); await loadAllLeaveBalances(); }
   else toast(res.error || 'Seeding failed', 'error');
 }
 
@@ -13248,6 +13843,462 @@ function appendV31ToSlipHTML(salaryData) {
 }
 
 // v31 kiosk integration is wired directly in showEmployeeCard() above.
+
+/* ═══════════════════════════════════════════════════════════════════════
+   v34: Compensation Module — Frontend JavaScript
+   ═══════════════════════════════════════════════════════════════════════ */
+
+// ── Formatters ─────────────────────────────────────────────────────────
+function fmtINR(amount) {
+  const n = Math.round(parseFloat(amount) || 0);
+  return '₹' + n.toLocaleString('en-IN');
+}
+
+function fmtDMY(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return String(dateStr).substring(0, 10);
+  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return String(d.getDate()).padStart(2,'0') + '-' + M[d.getMonth()] + '-' + d.getFullYear();
+}
+
+// ── Kiosk: Compensation Sub-Tab Switcher ──────────────────────────────
+function switchCompTab(tab) {
+  var tabs = ['salary','timeline','promo','bonus','wallet'];
+  tabs.forEach(function(t) {
+    var btn = document.getElementById('ec-comp-tab-' + t + '-btn');
+    if (btn) {
+      btn.style.background = (t === tab) ? 'var(--gold)' : 'var(--dark3)';
+      btn.style.color = (t === tab) ? 'var(--dark)' : 'var(--white)';
+    }
+  });
+  if (window._v34CompData) _renderCompTab(tab, window._v34CompData);
+}
+
+function _renderCompTab(tab, data) {
+  var el = document.getElementById('ec-comp-content');
+  if (!el) return;
+  var html = '';
+  if (tab === 'salary') {
+    var sal = data.salary || {};
+    html = '<div class="comp-stat-row"><span style="color:var(--gray-light)">Current Level</span><span style="font-weight:700">' + escHtml(sal.level || '—') + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Shift</span><span>' + escHtml(sal.shiftHours ? sal.shiftHours + 'hr ' + (sal.shiftType || '') : '—') + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Current Salary</span><span class="inr-display">' + fmtINR(sal.currentSalary) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Increment Cycle</span><span>' + (sal.cycleNumber != null ? sal.cycleNumber + ' of ' + (sal.maxCycles || '—') : '—') + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Next Increment</span><span>' + fmtDMY(sal.nextIncrementDate) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Max at Level</span><span>' + fmtINR(sal.maxSalaryAtLevel) + '</span></div>' +
+      '<div class="comp-disclaimer">Salary is calculated from your level and shift as per ArtzFolio compensation policy.</div>';
+  } else if (tab === 'timeline') {
+    var proj = data.projection || {};
+    var rows = proj.timeline || [];
+    if (!rows.length) { el.innerHTML = '<div style="color:var(--gray-light);font-size:12px;padding:12px">No timeline data available.</div>'; return; }
+    html = rows.map(function(r) {
+      var cls = r.isCurrent ? ' current' : '';
+      return '<div class="comp-timeline-row' + cls + '">' +
+        '<span>' + escHtml(r.label || '') + (r.isCurrent ? ' <span class="comp-badge comp-badge-released">Now</span>' : '') + '</span>' +
+        '<span class="' + (r.isProjected ? 'proj' : '') + '">' + fmtINR(r.salary) + '</span>' +
+      '</div>';
+    }).join('') + '<div class="comp-disclaimer" style="margin-top:10px">Projected salaries assume consistent performance. No level changes assumed.</div>';
+  } else if (tab === 'promo') {
+    // getPromotionEligibility returns: {ok, level, monthsAtLevel, earliestPromoDate, latestPromoDate, isEligibleNow}
+    var elig = data.eligibility || {};
+    var eligible = elig.isEligibleNow;
+    var PLEVELS = ['L10','L9','L8','L7','L6'];
+    var currIdx = PLEVELS.indexOf(elig.level);
+    var nextLvl = currIdx > 0 ? PLEVELS[currIdx - 1] : '—';
+    html = '<div class="comp-stat-row"><span style="color:var(--gray-light)">Current Level</span><span style="font-weight:700">' + escHtml(elig.level || '—') + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Next Level</span><span>' + escHtml(nextLvl) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Tenure at Level</span><span>' + (elig.monthsAtLevel != null ? elig.monthsAtLevel + ' months' : '—') + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Window Opens</span><span>' + fmtDMY(elig.earliestPromoDate) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Window Closes</span><span>' + fmtDMY(elig.latestPromoDate) + '</span></div>' +
+      '<div style="margin-top:12px;padding:10px;border-radius:8px;background:' + (eligible ? 'rgba(67,160,71,0.1)' : 'rgba(136,136,136,0.1)') + '">' +
+        '<span class="comp-badge ' + (eligible ? 'comp-badge-inwindow' : 'comp-badge-pending') + '">' + (eligible ? '✓ In Promotion Window' : '⏳ Not Yet Eligible') + '</span>' +
+      '</div>' +
+      '<div class="comp-disclaimer">Being in the promotion window does not guarantee promotion. Approved by manager.</div>';
+  } else if (tab === 'bonus') {
+    var jb = data.joiningBonus || {};
+    // getJoiningBonusStatus returns: {ok, eligible, installments, totalPaid, totalPending, totalForfeited}
+    if (!jb.ok || !jb.eligible) { el.innerHTML = '<div style="color:var(--gray-light);font-size:12px;text-align:center;padding:20px">Joining Bonus is not set up for your account. Contact admin.</div>'; return; }
+    var installments = jb.installments || [];
+    var totalBonus = (jb.totalPaid || 0) + (jb.totalPending || 0) + (jb.totalForfeited || 0);
+    html = '<div class="comp-stat-row"><span style="color:var(--gray-light)">Total Bonus</span><span class="inr-display">' + fmtINR(totalBonus) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Released</span><span style="color:var(--green);font-weight:700">' + fmtINR(jb.totalPaid) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Pending</span><span style="color:var(--orange);font-weight:700">' + fmtINR(jb.totalPending) + '</span></div>';
+    if (installments.length) {
+      html += '<div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--gold)">Installments</div>';
+      installments.forEach(function(inst, i) {
+        var statusCls = 'comp-badge-' + (inst.status || 'Pending').toLowerCase().replace(/\s+/g, '-');
+        html += '<div class="comp-timeline-row"><span>Installment ' + (i+1) + ' — ' + fmtDMY(inst.dueDate) + '</span>' +
+          '<span><span class="comp-badge ' + statusCls + '">' + escHtml(inst.status || 'Pending') + '</span> ' + fmtINR(inst.amount) + '</span></div>';
+      });
+    }
+    html += '<div class="comp-disclaimer">Installments released on schedule if conditions are met. Forfeited on early exit.</div>';
+  } else if (tab === 'wallet') {
+    var w = data.wallet || {};
+    // getLoyaltyWalletStatus returns: {ok, balance, totalAccumulated, totalWithdrawn, withdrawableAmount, currentMonthlyCredit, monthsOfService}
+    if (!w.ok) { el.innerHTML = '<div style="color:var(--gray-light);font-size:12px;text-align:center;padding:20px">Loyalty Wallet data unavailable. Contact admin.</div>'; return; }
+    html = '<div class="comp-stat-row"><span style="color:var(--gray-light)">Total Credited</span><span class="inr-display">' + fmtINR(w.totalAccumulated) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Total Withdrawn</span><span>' + fmtINR(w.totalWithdrawn) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Balance</span><span style="font-weight:700;color:var(--gold)">' + fmtINR(w.balance) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Withdrawal Eligible</span><span>' + fmtINR(w.withdrawableAmount) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Monthly Credit</span><span>' + fmtINR(w.currentMonthlyCredit) + '</span></div>' +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Tenure</span><span>' + (w.monthsOfService != null ? w.monthsOfService + ' months' : '—') + '</span></div>' +
+      '<div class="comp-disclaimer">Wallet builds over time. Withdrawals permitted after minimum tenure. Forfeited on abrupt exit.</div>';
+  }
+  el.innerHTML = html;
+}
+
+// ── Kiosk: Load Compensation Data ─────────────────────────────────────
+async function loadCompKiosk(empId) {
+  var card = document.getElementById('ec-comp-card');
+  if (!card) return;
+  card.style.display = '';
+  window._v34CompData = {};
+  try {
+    var results = await Promise.all([
+      API.call('getSalaryForEmployee', {employeeId: empId}),
+      API.call('getSalaryProjection', {employeeId: empId}),
+      API.call('getPromotionEligibility', {employeeId: empId}),
+      API.call('getJoiningBonusStatus', {employeeId: empId}),
+      API.call('getLoyaltyWalletStatus', {employeeId: empId})
+    ]);
+    window._v34CompData = {
+      salary: results[0].ok ? results[0] : {},
+      projection: results[1].ok ? results[1] : {},
+      eligibility: results[2].ok ? results[2] : {},
+      joiningBonus: results[3].ok ? results[3] : {},
+      wallet: results[4].ok ? results[4] : {}
+    };
+  } catch(e) {}
+  _renderCompTab('salary', window._v34CompData);
+}
+
+// ── Settings: Comp Sub-Tab Switcher ───────────────────────────────────
+function switchCompSettingsTab(panel) {
+  document.querySelectorAll('#comp-settings-tabs .comp-sub-tab').forEach(function(btn) {
+    btn.classList.remove('active');
+  });
+  document.querySelectorAll('.comp-sub-panel').forEach(function(p) {
+    p.classList.remove('active');
+  });
+  var tabs = document.querySelectorAll('#comp-settings-tabs .comp-sub-tab');
+  tabs.forEach(function(btn) {
+    if (btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf(panel) !== -1) btn.classList.add('active');
+  });
+  var activePanel = document.getElementById('comp-sp-' + panel);
+  if (activePanel) activePanel.classList.add('active');
+  if (panel === 'ladder') initCompLadderEditor();
+}
+
+// ── Settings: Load Compensation Config ───────────────────────────────
+async function loadCompSettings() {
+  try {
+    var res = await API.call('getAllCompensationConfig');
+    if (!res.ok) return;
+    var cfg = res.config || {};
+    Object.keys(cfg).forEach(function(key) {
+      var el = document.getElementById('cfg-' + key);
+      if (!el) return;
+      if (el.tagName === 'SELECT') {
+        var found = false;
+        el.querySelectorAll('option').forEach(function(o) {
+          if (o.value === cfg[key]) { o.selected = true; found = true; }
+          else o.selected = false;
+        });
+      } else {
+        el.value = cfg[key];
+      }
+    });
+    // Auto-compute installment amount display
+    var totalEl = document.getElementById('cfg-JOINING_BONUS_TOTAL');
+    var instEl = document.getElementById('cfg-JOINING_BONUS_INSTALLMENTS');
+    var instAmtEl = document.getElementById('cfg-JOINING_BONUS_INSTALLMENT_AMOUNT');
+    if (totalEl && instEl && instAmtEl) {
+      var n = parseInt(instEl.value) || 1;
+      instAmtEl.value = n > 0 ? Math.round(parseFloat(totalEl.value || 0) / n) : 0;
+    }
+    initCompLadderEditor();
+  } catch(e) {}
+}
+
+// ── Settings: Initialize Salary Ladder Editor ────────────────────────
+async function initCompLadderEditor() {
+  var container = document.getElementById('comp-ladder-editor');
+  if (!container) return;
+  container.innerHTML = '<div style="color:var(--gray-light);font-size:12px;padding:8px">Loading…</div>';
+  try {
+    var res = await API.call('getSalaryLadder');
+    if (!res.ok) { container.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load ladder data.</div>'; return; }
+    var rows = res.rows || [];
+    var levels = ['L10','L9','L8','L7','L6'];
+    var html = '<table class="comp-ladder-table"><thead><tr>' +
+      '<th>Level</th><th>9hr Base (₹)</th><th>11hr (auto-computed)</th><th>12hr (auto-computed)</th>' +
+      '</tr></thead><tbody>';
+    levels.forEach(function(level) {
+      // SalaryLadder sheet columns: level, shiftHours, morningSalary (all lowercase from sheetToObjects)
+      var r9  = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 9; }) || {};
+      var r11 = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 11; }) || {};
+      var r12 = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 12; }) || {};
+      html += '<tr>' +
+        '<td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
+        '<td><input type="number" class="form-input" id="ladder-' + level + '-9" value="' + (r9.morningSalary || '') +
+          '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:110px;padding:4px 6px"></td>' +
+        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-11-disp">' + fmtINR(r11.morningSalary || 0) + '</span></td>' +
+        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-12-disp">' + fmtINR(r12.morningSalary || 0) + '</span></td>' +
+      '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--red);font-size:12px">Error: ' + escHtml(String(e)) + '</div>';
+  }
+}
+
+function autoRecomputeShifts(level) {
+  var base9El = document.getElementById('ladder-' + level + '-9');
+  if (!base9El) return;
+  var base9 = parseFloat(base9El.value) || 0;
+  var sal11 = Math.round(base9 * 1.10 / 100) * 100;
+  var sal12 = Math.round(base9 * 1.20 / 100) * 100;
+  var disp11 = document.getElementById('ladder-' + level + '-11-disp');
+  var disp12 = document.getElementById('ladder-' + level + '-12-disp');
+  if (disp11) disp11.textContent = fmtINR(sal11);
+  if (disp12) disp12.textContent = fmtINR(sal12);
+}
+
+// ── Settings: Save Compensation Config ───────────────────────────────
+async function saveCompSettings(keys) {
+  var updates = {};
+  keys.forEach(function(key) {
+    var el = document.getElementById('cfg-' + key);
+    if (el) updates[key] = el.value;
+  });
+  if (!Object.keys(updates).length) return;
+  var res = await API.call('setCompensationConfig', {updates: updates});
+  if (res.ok) toast('✓ Compensation settings saved', 'success');
+  else toast(res.error || 'Save failed', 'error');
+}
+
+// ── Settings: Save Salary Ladder ──────────────────────────────────────
+async function saveCompLadder() {
+  var levels = ['L10','L9','L8','L7','L6'];
+  var rows = [];
+  var valid = true;
+  levels.forEach(function(level) {
+    var el = document.getElementById('ladder-' + level + '-9');
+    if (!el) return;
+    var base9 = Math.round(parseFloat(el.value) || 0);
+    if (base9 <= 0) { toast('Enter valid salary for ' + level, 'error'); valid = false; return; }
+    var sal11 = Math.round(base9 * 1.10 / 100) * 100;
+    var sal12 = Math.round(base9 * 1.20 / 100) * 100;
+    rows.push({level: level, shiftHours: 9, baseSalary: base9});
+    rows.push({level: level, shiftHours: 11, baseSalary: sal11});
+    rows.push({level: level, shiftHours: 12, baseSalary: sal12});
+  });
+  if (!valid) return;
+  var res = await API.call('saveSalaryLadder', {rows: rows});
+  if (res.ok) { toast('✓ Salary ladder saved', 'success'); initCompLadderEditor(); }
+  else toast(res.error || 'Save failed', 'error');
+}
+
+// ── Settings: Initialize Compensation Sheets (Danger Zone) ───────────
+async function initCompSheets() {
+  if (State.adminRole !== 'owner') { toast('Owner access required', 'error'); return; }
+  var ok = await confirm2('Initialize all Compensation Sheets?\n\nThis creates SalaryLadder, JoiningBonus, LoyaltyWallet, and CompensationConfig sheets with default data.\nExisting data in those sheets will be OVERWRITTEN.\n\nProceed?');
+  if (!ok) return;
+  toast('Initializing compensation sheets…', 'info');
+  var res = await API.call('initCompensationSheets', {userId: State.adminUser || State.adminRole || 'owner'});
+  if (res.ok) { toast('✓ Compensation sheets initialized successfully', 'success'); setTimeout(loadCompSettings, 800); }
+  else toast(res.error || 'Initialization failed', 'error');
+}
+
+// ── Admin: Compensation Management Tab ───────────────────────────────
+var _compMgmtTab = 'joining';
+async function renderCompMgmt() {
+  var el = document.getElementById('admin-tab-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  var subTabs = [
+    {id:'joining', label:'Joining Bonus'},
+    {id:'wallet', label:'Loyalty Wallet'},
+    {id:'promo', label:'Promotion'},
+    {id:'ladder', label:'Salary Ladder'}
+  ];
+  var tabBtns = subTabs.map(function(t) {
+    var active = (t.id === _compMgmtTab) ? ' active' : '';
+    return '<button class="comp-sub-tab' + active + '" onclick="switchCompMgmtTab(\'' + t.id + '\')">' + t.label + '</button>';
+  }).join('');
+  el.innerHTML = '<div style="padding:4px 0 0">' +
+    '<div style="font-size:16px;font-weight:700;margin-bottom:14px">💼 Compensation Management</div>' +
+    '<div class="comp-sub-tabs" id="comp-mgmt-tabs">' + tabBtns + '</div>' +
+    '<div id="comp-mgmt-content" style="min-height:120px"><div class="loading-spinner"></div></div>' +
+  '</div>';
+  await switchCompMgmtTab(_compMgmtTab);
+}
+
+async function switchCompMgmtTab(tab) {
+  _compMgmtTab = tab;
+  var tabLabels = {joining:'Joining Bonus', wallet:'Loyalty Wallet', promo:'Promotion', ladder:'Salary Ladder'};
+  document.querySelectorAll('#comp-mgmt-tabs .comp-sub-tab').forEach(function(btn) {
+    btn.classList.toggle('active', btn.textContent.trim() === (tabLabels[tab] || ''));
+  });
+  if (tab === 'joining') await renderJoiningBonusDashboard();
+  else if (tab === 'wallet') await renderLoyaltyWalletDashboard();
+  else if (tab === 'promo') await renderCompPromotionManagement();
+  else if (tab === 'ladder') await renderSalaryLadderViewer();
+}
+
+async function renderJoiningBonusDashboard() {
+  var el = document.getElementById('comp-mgmt-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  try {
+    var res = await API.call('getCompMgmtDashboard');
+    if (!res.ok) { el.innerHTML = '<div style="color:var(--red);padding:16px">Failed: ' + escHtml(res.error || 'Error') + '</div>'; return; }
+    var data = (res.joiningBonus) || {};
+    var rows = data.employees || [];
+    if (!rows.length) { el.innerHTML = '<div style="color:var(--gray-light);padding:20px;text-align:center">No joining bonus records found. Initialize compensation sheets if this is a new setup.</div>'; return; }
+    el.innerHTML = '<div style="font-size:12px;color:var(--gray-light);margin-bottom:10px">Total: ' + rows.length + ' employee(s)</div>' +
+      '<div class="table-wrap"><table class="az-table"><thead><tr>' +
+      '<th>Emp ID</th><th>Name</th><th>Total</th><th>Released</th><th>Pending</th><th>Status</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function(r) {
+        var statusCls = 'comp-badge-' + (r.status || 'pending').toLowerCase().replace(/\s+/g, '-');
+        return '<tr><td>' + escHtml(r.employeeId || '') + '</td><td>' + escHtml(r.name || '') + '</td>' +
+          '<td>' + fmtINR(r.totalBonus) + '</td>' +
+          '<td style="color:var(--green)">' + fmtINR(r.releasedAmount) + '</td>' +
+          '<td style="color:var(--orange)">' + fmtINR(r.pendingAmount) + '</td>' +
+          '<td><span class="comp-badge ' + statusCls + '">' + escHtml(r.status || '') + '</span></td></tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
+  }
+}
+
+async function renderLoyaltyWalletDashboard() {
+  var el = document.getElementById('comp-mgmt-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  try {
+    var res = await API.call('getCompMgmtDashboard');
+    if (!res.ok) { el.innerHTML = '<div style="color:var(--red);padding:16px">Failed: ' + escHtml(res.error || 'Error') + '</div>'; return; }
+    var data = (res.loyaltyWallet) || {};
+    var rows = data.employees || [];
+    var runBtn = '<button class="btn btn-gold btn-sm" style="margin-bottom:12px" onclick="runMonthlyWalletBatch()">▶ Run Monthly Wallet Credit</button>';
+    if (!rows.length) { el.innerHTML = runBtn + '<div style="color:var(--gray-light);padding:20px;text-align:center">No wallet records found.</div>'; return; }
+    el.innerHTML = runBtn +
+      '<div class="table-wrap"><table class="az-table"><thead><tr>' +
+      '<th>Emp ID</th><th>Name</th><th>Total Credited</th><th>Balance</th><th>Withdrawn</th><th>Monthly Credit</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function(r) {
+        return '<tr><td>' + escHtml(r.employeeId || '') + '</td><td>' + escHtml(r.name || '') + '</td>' +
+          '<td>' + fmtINR(r.totalCredited) + '</td>' +
+          '<td style="color:var(--gold);font-weight:700">' + fmtINR(r.balance) + '</td>' +
+          '<td>' + fmtINR(r.totalWithdrawn) + '</td>' +
+          '<td>' + fmtINR(r.monthlyCredit) + '</td></tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
+  }
+}
+
+async function runMonthlyWalletBatch() {
+  var now = new Date();
+  var month = (now.getMonth() + 1) + '-' + now.getFullYear();
+  var ok = await confirm2('Run monthly loyalty wallet credit for ' + month + '?\nThis will credit all eligible active employees.');
+  if (!ok) return;
+  var res = await API.call('runMonthlyLoyaltyWalletBatch', {month: month});
+  if (res.ok) { toast('✓ Wallet batch complete: ' + (res.processed || 0) + ' processed', 'success'); renderLoyaltyWalletDashboard(); }
+  else toast(res.error || 'Batch failed', 'error');
+}
+
+async function renderCompPromotionManagement() {
+  var el = document.getElementById('comp-mgmt-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  try {
+    var res = await API.call('getCompMgmtDashboard');
+    if (!res.ok) { el.innerHTML = '<div style="color:var(--red);padding:16px">Failed: ' + escHtml(res.error || 'Error') + '</div>'; return; }
+    var data = (res.promotions) || {};
+    var rows = data.eligible || [];
+    if (!rows.length) { el.innerHTML = '<div style="color:var(--gray-light);padding:20px;text-align:center">No employees currently in a promotion window.</div>'; return; }
+    el.innerHTML = '<div style="font-size:12px;color:var(--gold);margin-bottom:10px">' + rows.length + ' employee(s) currently in promotion window</div>' +
+      '<div class="table-wrap"><table class="az-table"><thead><tr>' +
+      '<th>Emp ID</th><th>Name</th><th>Level</th><th>Next Level</th><th>Tenure</th><th>Window</th><th>Action</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function(r) {
+        return '<tr><td>' + escHtml(r.employeeId || '') + '</td><td>' + escHtml(r.name || '') + '</td>' +
+          '<td>' + escHtml(r.currentLevel || '') + '</td>' +
+          '<td style="color:var(--gold)">' + escHtml(r.nextLevel || '') + '</td>' +
+          '<td>' + (r.tenureMonths != null ? r.tenureMonths + 'm' : '—') + '</td>' +
+          '<td style="font-size:11px">' + fmtDMY(r.windowStartDate) + ' – ' + fmtDMY(r.windowEndDate) + '</td>' +
+          '<td><button class="btn btn-gold btn-sm" onclick="approveCompPromotion(\'' + r.employeeId + '\')">Approve</button></td></tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
+  }
+}
+
+function approveCompPromotion(empId) {
+  showModal('Approve Promotion',
+    '<div>' +
+    '<label style="font-size:12px;color:var(--gray-light);display:block;margin-bottom:4px">New Level (e.g. L9)</label>' +
+    '<input id="cp-lvl" class="form-input" type="text" placeholder="L9" style="width:100%;margin-bottom:12px" maxlength="4">' +
+    '<label style="font-size:12px;color:var(--gray-light);display:block;margin-bottom:4px">Effective Date</label>' +
+    '<input id="cp-eff" class="form-input" type="date" style="width:100%;margin-bottom:4px">' +
+    '</div>',
+    [{label:'Confirm', cls:'btn-gold', cb:()=>_confirmCompPromo(empId)},
+     {label:'Cancel', cls:'btn-dark', cb:closeModal}]
+  );
+}
+
+async function _confirmCompPromo(empId) {
+  var lvl = (document.getElementById('cp-lvl').value||'').trim().toUpperCase();
+  var dt  = (document.getElementById('cp-eff').value||'').trim();
+  if (!lvl || !dt) { toast('Level and date are required', 'error'); return; }
+  if (!/^L\d+$/.test(lvl)) { toast('Invalid level — use format like L9', 'error'); return; }
+  closeModal();
+  var res = await API.call('approvePromotion', {
+    employeeId: empId, newLevel: lvl, effectiveDate: dt,
+    approvedBy: State.adminUser || State.adminRole || 'admin'
+  });
+  if (res.ok) { toast('✓ Promotion approved for ' + empId, 'success'); renderCompPromotionManagement(); }
+  else toast(res.error || 'Promotion approval failed', 'error');
+}
+
+async function renderSalaryLadderViewer() {
+  var el = document.getElementById('comp-mgmt-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  try {
+    var res = await API.call('getSalaryLadder');
+    if (!res.ok) { el.innerHTML = '<div style="color:var(--red);padding:16px">Failed: ' + escHtml(res.error || 'Error') + '</div>'; return; }
+    var rows = res.rows || [];
+    var levels = ['L10','L9','L8','L7','L6'];
+    var html = '<div style="font-size:12px;color:var(--gray-light);margin-bottom:10px">Read-only view. Edit in Settings → Compensation.</div>' +
+      '<table class="comp-ladder-table"><thead><tr>' +
+      '<th>Level</th><th>9hr Morning</th><th>11hr Evening</th><th>12hr Night</th>' +
+      '</tr></thead><tbody>';
+    levels.forEach(function(level) {
+      function getBase(sh) { var r = rows.find(function(x) { return String(x.level) === level && parseInt(x.shiftHours) === sh; }); return (r && r.morningSalary) ? r.morningSalary : 0; }
+      html += '<tr>' +
+        '<td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
+        '<td>' + fmtINR(getBase(9)) + '</td>' +
+        '<td>' + fmtINR(getBase(11)) + '</td>' +
+        '<td>' + fmtINR(getBase(12)) + '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table>' +
+      '<div class="comp-disclaimer" style="margin-top:12px">11hr = 9hr × 1.10 &nbsp;|&nbsp; 12hr = 9hr × 1.20 (rounded to nearest ₹100)</div>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
+  }
+}
+
 </script>
 </body>
 </html>
