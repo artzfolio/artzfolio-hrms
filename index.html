@@ -1402,7 +1402,7 @@ const CFG = {
     } catch(e) {}
     // Priority 3: saved in localStorage by owner on this device
     try { const ls = JSON.parse(localStorage.getItem('az3_gasUrl')); if (ls) return ls; } catch(e) {}
-    return 'PASTE_GAS_DEPLOY_URL_HERE'; // ← replace with your actual GAS web app URL
+    return ''; // config.json is the source of truth — no hardcoding needed
   })(),
   token:  (function(){ try{ return JSON.parse(localStorage.getItem('az3_token'))||''; }catch(e){return '';} })(),
   modelPath: 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
@@ -1410,7 +1410,7 @@ const CFG = {
   pinMaxLen: 4,
   kioskTimeout: 60000,
   kioskLogoutSeconds: 60,
-  version: '13.0',
+  version: '13.1',
 };
 const LS = {
   g: k => { try { return JSON.parse(localStorage.getItem('az3_'+k)); } catch { return null; } },
@@ -2142,7 +2142,28 @@ async function downloadConfiguredApp(gasUrl, token) {
   }
 }
 
+  // REMOTE CONFIG: Fetches config.json from GitHub Pages on every load.
+  // Auto-configures all staff devices. Admin updates config.json on GitHub when GAS URL changes.
+  async function fetchRemoteConfig() {
+    try {
+      const resp = await fetch('./config.json?_=' + Date.now(), { cache: 'no-store' });
+      if (!resp.ok) return;
+      const remote = await resp.json();
+      if (remote.gasUrl && remote.gasUrl.startsWith('https://script.google.com/')) {
+        CFG.gasUrl = remote.gasUrl;
+        try { localStorage.setItem('az3_gasUrl', JSON.stringify(remote.gasUrl)); } catch(e) {}
+      }
+      if (remote.apiToken) {
+        CFG.token = remote.apiToken;
+        try { localStorage.setItem('az3_token', JSON.stringify(remote.apiToken)); } catch(e) {}
+      }
+    } catch(e) {
+      // Silent fail — app falls back to cached localStorage values
+    }
+  }
+
 async function init() {
+  await fetchRemoteConfig();
   // Bug fix v10: show a loading splash immediately so the screen is never blank
   const splashId = 'az-init-splash';
   if (!document.getElementById(splashId)) {
