@@ -1243,6 +1243,28 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
   </div>
 </div>
 
+<!-- v38 H3: mustChangePassword modal -->
+<div id="modal-change-password" class="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center">
+  <div class="modal-content" style="max-width:420px;background:var(--card,#1a1a1a);padding:24px;border-radius:12px;border:1px solid var(--gold,#d4af37)">
+    <h3 style="color:var(--red);margin-bottom:16px">⚠ Password Change Required</h3>
+    <p style="margin-bottom:16px;font-size:14px">An administrator has flagged this account for a mandatory password change. You must set a new password before continuing.</p>
+    <div class="form-group">
+      <label class="form-label">Current Password</label>
+      <input id="chpw-current" class="form-input" type="password" placeholder="Current password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">New Password</label>
+      <input id="chpw-new" class="form-input" type="password" placeholder="New password (min 8 chars)">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm New Password</label>
+      <input id="chpw-confirm" class="form-input" type="password" placeholder="Repeat new password">
+    </div>
+    <div id="chpw-err" style="color:var(--red);font-size:13px;margin-bottom:8px;display:none"></div>
+    <button class="btn btn-gold" style="width:100%" onclick="submitChangePassword()">Change Password &amp; Continue</button>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════
      ADMIN PANEL SCREEN
 ═══════════════════════════════════════════ -->
@@ -1558,6 +1580,7 @@ function applySettingsArr(arr) {
   delete State.settings.adminPassword;
   delete State.settings.managerPassword;
   delete State.settings.supervisorPassword;
+  delete State.settings.twoFASecret; // v38 H8: ensure 2FA secret never lives in client state
   delete State.settings.ownerToken;
 }
 
@@ -2398,7 +2421,7 @@ async function submitPin() {
   try {
     // retries=0: one attempt only — PIN lookup either works or it doesn't
     const res = await API.call('auth', {pin, empId:null}, 0);
-    handleAuthResult(res);
+    await handleAuthResult(res);
   } catch(e) { toast('Connection error. Try again.','error'); }
   finally {
     State._pinSubmitting = false;
@@ -3035,6 +3058,11 @@ async function showLeaveEncashRequest() {
   resetKioskTimer();
   if (!State.currentEmp) return;
   const emp = State.currentEmp;
+  // v38 H7: salary guard
+  if (!emp.salary || parseFloat(emp.salary) <= 0) {
+    toast('Employee salary is not configured. Set a monthly salary before processing encashment.', 'error');
+    return;
+  }
   const lb = State.currentEmpRecord?.leaveBalance || {};
   const bal = State.currentEmpRecord?.balance || {};
   const _supEmp = emp.supervisorId ? (State.employees||[]).find(e=>e.id===emp.supervisorId) : null;
@@ -3933,10 +3961,16 @@ async function doAdminLogin() {
     const rememberCb = document.getElementById('admin-remember-me');
     if (rememberCb?.checked) { LS.s('adminRememberRole', selectedRole); }
     else { LS.d('adminRememberRole'); }
+    // v38 H3: mandatory password change gate
+    if (r.mustChangePassword) {
+      State._postLoginRole = selectedRole;
+      document.getElementById('modal-change-password').style.display = 'flex';
+      return;
+    }
     // Check if 2FA step is required (server-side flag is source of truth)
     const twoFAEnabled = (State.settings?.twoFAEnabled === 'true' || State.settings?.twoFAEnabled === true) || LS.g('twoFAEnabled') === true;
-    const twoFASecret  = State.settings?.twoFASecret || '';
-    if (twoFAEnabled && twoFASecret) {
+    const twoFASecretSet = State.settings?.twoFASecretSet === 'true';
+    if (twoFAEnabled && twoFASecretSet) {
       window._pendingLoginRole = selectedRole;
       document.getElementById('login-step-1').style.display='none';
       document.getElementById('login-step-2').style.display='block';
@@ -3949,6 +3983,32 @@ async function doAdminLogin() {
   } else {
     errEl.textContent='Incorrect password. Try again.';
     errEl.style.display='block';
+  }
+}
+
+// v38 H3: handles mandatory password change after login
+async function submitChangePassword() {
+  const role = State._postLoginRole || State.adminRole || 'owner';
+  const oldPw = document.getElementById('chpw-current').value;
+  const newPw = document.getElementById('chpw-new').value;
+  const confirmPw = document.getElementById('chpw-confirm').value;
+  const errEl = document.getElementById('chpw-err');
+  errEl.style.display = 'none';
+  if (!oldPw || !newPw || !confirmPw) { errEl.textContent = 'All fields required.'; errEl.style.display = 'block'; return; }
+  if (newPw.length < 8) { errEl.textContent = 'New password must be at least 8 characters.'; errEl.style.display = 'block'; return; }
+  if (newPw !== confirmPw) { errEl.textContent = 'Passwords do not match.'; errEl.style.display = 'block'; return; }
+  const r = await API.call('changePassword', {role, oldPin: oldPw, newPin: newPw});
+  if (r && r.ok) {
+    document.getElementById('modal-change-password').style.display = 'none';
+    document.getElementById('chpw-current').value = '';
+    document.getElementById('chpw-new').value = '';
+    document.getElementById('chpw-confirm').value = '';
+    toast('✓ Password changed successfully. Welcome.', 'success');
+    await completeAdminLogin(role);
+    State._postLoginRole = null;
+  } else {
+    errEl.textContent = (r && r.error) || 'Password change failed. Check current password.';
+    errEl.style.display = 'block';
   }
 }
 
@@ -5093,6 +5153,8 @@ async function renderEmployees(filter='') {
         ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="archiveEmp('${escHtml(e.id)}')">Archive</button>`:''}
         ${canEdit&&e.status==='Archived'?`<button class="btn btn-green btn-sm" onclick="unarchiveEmp('${escHtml(e.id)}')">Unarchive</button>`:''}
         ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="registerFace('${escHtml(e.id)}','${escHtml(e.name)}')">📷 Face</button>`:''}
+        ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="adminResetEmployeePIN('${escHtml(e.id)}')" title="Generate a new PIN for this employee">🔑 Reset PIN</button>`:''}
+        ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="adminUnblockEmployeePIN('${escHtml(e.id)}')" title="Unblock a PIN-locked employee">🔓 Unblock PIN</button>`:''}
         ${isOwner&&e.status==='Archived'?`<button class="btn btn-red btn-sm" onclick="permanentDeleteEmp('${escHtml(e.id)}','${escHtml(e.name)}')" title="Owner only: permanently delete">🗑 Delete</button>`:''}
       </td>
     </tr>`;
@@ -5136,6 +5198,8 @@ async function applyEmpFilters() {
       ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="archiveEmp('${escHtml(e.id)}')">Archive</button>`:''}
       ${canEdit&&e.status==='Archived'?`<button class="btn btn-green btn-sm" onclick="unarchiveEmp('${escHtml(e.id)}')">Unarchive</button>`:''}
       ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="registerFace('${escHtml(e.id)}','${escHtml(e.name)}')">📷 Face</button>`:''}
+      ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="adminResetEmployeePIN('${escHtml(e.id)}')" title="Generate a new PIN for this employee">🔑 Reset PIN</button>`:''}
+      ${canEdit&&e.status==='Active'?`<button class="btn btn-dark btn-sm" onclick="adminUnblockEmployeePIN('${escHtml(e.id)}')" title="Unblock a PIN-locked employee">🔓 Unblock PIN</button>`:''}
       ${isOwner&&e.status==='Archived'?`<button class="btn btn-red btn-sm" onclick="permanentDeleteEmp('${escHtml(e.id)}','${escHtml(e.name)}')" title="Owner only: permanently delete">🗑 Delete</button>`:''}
     </td></tr>`).join('') : `<tr><td colspan="10" style="text-align:center;color:var(--gray-light);padding:20px">No employees match the current filters.</td></tr>`;
 }
@@ -5711,6 +5775,20 @@ async function archiveEmp(empId) {
   if(res.ok){toast('Employee archived','success');await renderEmployees();}
   else toast(res.error||'Error','error');
 }
+
+// v38 H4: admin PIN management
+async function adminResetEmployeePIN(empId) {
+  if (!confirm('Reset PIN for ' + empId + '? The employee will receive a new auto-generated PIN.')) return;
+  const r = await API.call('resetPIN', {empId, ownerToken: State._dzToken||''});
+  if (r && r.ok) toast('✓ PIN reset. New PIN: ' + (r.newPin||'(see sheet)'), 'success');
+  else toast('Error: ' + ((r && r.error) || 'Could not reset PIN'), 'error');
+}
+
+async function adminUnblockEmployeePIN(empId) {
+  const r = await API.call('unblockPIN', {empId, ownerToken: State._dzToken||''});
+  if (r && r.ok) toast('✓ PIN unblocked for ' + empId, 'success');
+  else toast('Error: ' + ((r && r.error) || 'Could not unblock PIN'), 'error');
+}
 async function unarchiveEmp(empId) {
   const res = await API.call('updateEmployee', {empId, status:'Active'});
   if(res.ok){toast('✓ Employee reactivated','success'); await renderEmployees();}
@@ -5980,7 +6058,7 @@ async function renderAttendance() {
       if (!sel) return;
       sel.innerHTML = '<option value="">-- Select clocked-in employee --</option>' +
         (r.employees||[]).map(e => '<option value="'+escHtml(e.id)+'">'+escHtml(e.name)+' ('+escHtml(e.id)+') — In: '+fmtTime(e.clockIn||'')+'</option>').join('');
-    }).catch(()=>{});
+    }).catch(e => { console.warn('[HRMS] getClockedInEmployees failed:', e); });
   }
   // Auto-load grid if an employee is pre-selected
   if (emps.length) getAttGrid();
@@ -6157,7 +6235,7 @@ async function emergencyBulkClockOut() {
     if (!sel) return;
     sel.innerHTML = '<option value="">-- Select clocked-in employee --</option>' +
       (r.employees||[]).map(e => '<option value="'+escHtml(e.id)+'">'+escHtml(e.name)+' ('+escHtml(e.id)+')</option>').join('');
-  }).catch(()=>{});
+  }).catch(e => { console.warn('[HRMS] getClockedInEmployees failed:', e); });
 }
 
 async function emergencyBulkClockIn() {
@@ -6182,7 +6260,7 @@ async function clockOutSelectedEmployee() {
     if (!s) return;
     s.innerHTML = '<option value="">-- Select clocked-in employee --</option>' +
       (r.employees||[]).map(e => '<option value="'+escHtml(e.id)+'">'+escHtml(e.name)+' ('+escHtml(e.id)+') — In: '+fmtTime(e.clockIn||'')+'</option>').join('');
-  }).catch(()=>{});
+  }).catch(e => { console.warn('[HRMS] getClockedInEmployees failed:', e); });
 }
 
 // ─── S5.2: Attendance Edit Modal ────────────
@@ -9254,7 +9332,7 @@ async function renderSettings() {
       const toggleId = `cfg-toggle-${escHtml(key)}`;
       return `<div class="form-group"><label class="form-label">${escHtml(label)}</label>
       <div style="position:relative;display:flex;align-items:center">
-        <input id="cfg-${escHtml(key)}" class="form-input" type="password" value="${escHtml(cfg[key]||'')}" style="padding-right:36px" autocomplete="new-password" data-pw-toggle-key="${escHtml(key)}" ${extra}>
+        <input id="cfg-${escHtml(key)}" class="form-input" type="password" value="${escHtml(cfg[key]||'')}" placeholder="Leave blank to keep current password" style="padding-right:36px" autocomplete="new-password" data-pw-toggle-key="${escHtml(key)}" ${extra}>
         <button type="button" id="${toggleId}" data-pw-toggle-target="cfg-${escHtml(key)}" style="position:absolute;right:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--gray-light);padding:0">👁</button>
       </div></div>`;
     }
@@ -9549,7 +9627,7 @@ async function renderSettings() {
       <div class="form-group">
         <label class="form-label">2FA Secret PIN (4–8 digits)</label>
         <input id="cfg-2fa-secret" class="form-input" type="password" maxlength="8"
-          value="${escHtml(LS.g('twoFASecret')||'')}"
+          value=""
           placeholder="Set a new secret PIN…" autocomplete="new-password">
         <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
           This PIN is required after entering the password. Keep it different from your login password.
@@ -11224,6 +11302,12 @@ async function savePolicySettings() {
   const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','lateMultiplier','monthlyLateBlockThreshold','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day','ownerRecoveryEmail','managerRecoveryEmail','supervisorRecoveryEmail'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
+  // v38 H5: warn if all three password fields are blank (accidental wipe guard)
+  const _pwKeys = ['adminPassword','managerPassword','supervisorPassword'];
+  const _allPwBlank = _pwKeys.every(k => !updates[k] || !String(updates[k]).trim());
+  if (_allPwBlank) {
+    if (!confirm('All three password fields are blank. This will leave passwords unchanged (server-side guard is active). Continue?')) return;
+  }
   const res=await API.call('updateSettings',{updates});
   if(res.ok){
     // Refresh settings so any non-password changes take effect in the same session
@@ -14234,7 +14318,7 @@ async function renderCompPromotionManagement() {
           '<td style="color:var(--gold)">' + escHtml(r.nextLevel || '') + '</td>' +
           '<td>' + (r.tenureMonths != null ? r.tenureMonths + 'm' : '—') + '</td>' +
           '<td style="font-size:11px">' + fmtDMY(r.windowStartDate) + ' – ' + fmtDMY(r.windowEndDate) + '</td>' +
-          '<td><button class="btn btn-gold btn-sm" onclick="approveCompPromotion(\'' + r.employeeId + '\')">Approve</button></td></tr>';
+          '<td><button class="btn btn-gold btn-sm" onclick="approveCompPromotion(\'' + escHtml(r.employeeId) + '\')">Approve</button></td></tr>';
       }).join('') +
       '</tbody></table></div>';
   } catch(e) {
