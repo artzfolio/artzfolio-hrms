@@ -597,8 +597,12 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
 .bulk-import-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;padding:10px;background:var(--dark3);border-radius:var(--radius-sm)}
 
 /* salary bands */
-.band-row{background:var(--dark3);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:grid;grid-template-columns:80px repeat(4,1fr);gap:10px;align-items:center}
+.band-row{background:var(--dark3);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:grid;grid-template-columns:80px repeat(4,1fr) auto;gap:10px;align-items:center}
 .band-level{font-weight:700;color:var(--gold)}
+/* v40 §2a: scoped input visibility — distinct background, subtle border, gold focus.
+   Uses existing colour variables; no new styles introduced. */
+.band-row .form-input{background:var(--dark2);border:1px solid var(--gold-dim);color:var(--white);transition:border-color 0.15s, box-shadow 0.15s}
+.band-row .form-input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(184,150,12,0.25)}
 
 /* ───────────────────────────────────────────
    MISC
@@ -1410,8 +1414,35 @@ const CFG = {
   pinMaxLen: 4,
   kioskTimeout: 60000,
   kioskLogoutSeconds: 60,
-  version: '13.1',
+  version: '14.0',
 };
+// v40 §7a/7b: client-side mirror of GAS getPerDayDivisor(year, month).
+// Reads State.settings.perDayDivisor (loaded from Config sheet on init) and
+// returns 26 / 30 / 31 / actual-days-in-given-month based on the setting.
+// `monthYear` may be {year, month} (1-indexed), a Date, a 'YYYY-MM' string, or undefined.
+function getPerDayDivisor(monthYear) {
+  try {
+    const mode = String((window.State && State.settings && State.settings.perDayDivisor) || 'Actual');
+    if (mode === '26') return 26;
+    if (mode === '30') return 30;
+    if (mode === '31') return 31;
+    let y, m;
+    if (!monthYear) { const d = new Date(); y = d.getFullYear(); m = d.getMonth() + 1; }
+    else if (monthYear instanceof Date) { y = monthYear.getFullYear(); m = monthYear.getMonth() + 1; }
+    else if (typeof monthYear === 'string') {
+      const parts = monthYear.split('-'); y = parseInt(parts[0]); m = parseInt(parts[1]) || (new Date().getMonth()+1);
+    } else { y = parseInt(monthYear.year); m = parseInt(monthYear.month); }
+    if (!y || !m) { const d = new Date(); y = y || d.getFullYear(); m = m || (d.getMonth() + 1); }
+    return new Date(y, m, 0).getDate();
+  } catch(e) { return 30; }
+}
+// v40 §7d: OT hours equivalent to one day's pay (default 9 — ArtzFolio policy).
+function getOTHoursPerDayPay() {
+  try { return parseFloat((State.settings && State.settings.otHoursPerDayPay)) || 9; }
+  catch(e) { return 9; }
+}
+// v40: tooltip helper. Reuses the existing `.info-tooltip` CSS class — no new styles introduced.
+function infoTip(text) { return ' <span class="info-tooltip" title="' + String(text||'').replace(/"/g, '&quot;') + '">ℹ</span>'; }
 const LS = {
   g: k => { try { return JSON.parse(localStorage.getItem('az3_'+k)); } catch { return null; } },
   s: (k,v) => localStorage.setItem('az3_'+k, JSON.stringify(v)),
@@ -2747,25 +2778,53 @@ function showPointsCard(info, emp) {
   content.innerHTML = html;
 }
 
+// v40 §3c: helper to render every non-empty reward field for a milestone row.
+// Single source of truth = the Settings → Loyalty Milestones row. The kiosk
+// reads them dynamically; one edit in Settings reflects here automatically.
+function _renderMilestoneRewards(m) {
+  if (!m) return '';
+  const rows = [];
+  if (parseFloat(m.cashBonus)  > 0) rows.push(['💰 Cash Bonus', '₹' + Math.round(m.cashBonus).toLocaleString('en-IN')]);
+  if (parseFloat(m.leaveBonus) > 0) rows.push(['🌴 Extra Leaves', m.leaveBonus + ' day(s)']);
+  if (parseFloat(m.paidLeaves) > 0) rows.push(['🏖 Paid Leaves',  m.paidLeaves + ' day(s)']);
+  if (m.giftVoucher)          rows.push(['🎁 Gift Voucher',         escHtml(m.giftVoucher)]);
+  if (m.trophy)               rows.push(['🏆 Trophy / Award',        escHtml(m.trophy)]);
+  if (m.certification)        rows.push(['🎓 Certification Sponsor', escHtml(m.certification)]);
+  if (m.entertainmentCoupons) rows.push(['🎬 Entertainment',         escHtml(m.entertainmentCoupons)]);
+  if (m.cashCoupons)          rows.push(['💳 Cash Coupons',          escHtml(m.cashCoupons)]);
+  if (m.customReward)         rows.push(['✨ Custom Reward',          escHtml(m.customReward)]);
+  if (!rows.length) return '<div style="font-size:12px;color:var(--gray-light)">No reward details configured for this milestone.</div>';
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:8px;font-size:12px">' +
+    rows.map(r=>`<div style="color:var(--gray-light)">${r[0]}</div><div style="color:var(--white);font-weight:600">${r[1]}</div>`).join('') +
+    '</div>';
+}
+
 function showMilestoneDetail() {
   const info = State.currentEmpRecord?.milestoneInfo;
   if (!info) return;
   let html = '<div style="font-size:14px">';
   if (info.completedMilestones?.length) {
-    html += '<div style="margin-bottom:12px"><strong style="color:var(--green)">✓ Completed Milestones:</strong><br>';
-    info.completedMilestones.forEach(m => { html+=`• <strong>${m.years} Years</strong>: ${escHtml(m.reward)}<br>`; });
-    html += '</div>';
+    html += '<div style="margin-bottom:12px"><strong style="color:var(--green)">✓ Completed Milestones:</strong></div>';
+    info.completedMilestones.forEach(m => {
+      html += `<div style="padding:10px;background:rgba(67,160,71,0.08);border-left:3px solid var(--green);border-radius:6px;margin-bottom:8px">
+        <strong>${escHtml(m.years)} Years</strong> — ${escHtml(m.reward||'')}<br>
+        <span style="font-size:12px;color:var(--gray-light)">${escHtml(m.description||'')}</span>
+        ${_renderMilestoneRewards(m)}
+      </div>`;
+    });
   }
   if (info.nextMilestone) {
     const ms=info.nextMilestone;
     html+=`<div style="padding:12px;background:var(--dark3);border-radius:8px;border-left:4px solid var(--gold);margin-bottom:12px">
-      <strong style="color:var(--gold)">⭐ Next: ${ms.years} Year Milestone</strong><br>
-      <span style="font-size:16px;font-weight:700">${escHtml(ms.reward)}</span><br>
-      <span style="font-size:12px;color:var(--gray-light)">${escHtml(ms.description||'')}</span><br>
+      <strong style="color:var(--gold)">⭐ Next: ${escHtml(ms.years)} Year Milestone</strong><br>
+      <span style="font-size:16px;font-weight:700">${escHtml(ms.reward||'')}</span><br>
+      <span style="font-size:12px;color:var(--gray-light)">${escHtml(ms.description||'')}</span>
+      ${info.nextEligibleDate?`<br><span style="font-size:11px;color:var(--gray-light)">Eligibility date: <strong style="color:var(--white)">${escHtml(info.nextEligibleDate)}</strong></span>`:''}
       <div style="margin-top:8px"><span style="color:var(--gold);font-size:1.2rem">${info.daysToNext}</span> days remaining • ${info.progressPct}% complete</div>
       <div style="height:6px;background:var(--dark2);border-radius:4px;margin-top:8px;overflow:hidden">
         <div style="height:100%;width:${info.progressPct}%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));border-radius:4px"></div>
       </div>
+      ${_renderMilestoneRewards(ms)}
     </div>`;
   }
   html += '</div>';
@@ -5742,10 +5801,10 @@ async function showEditEmpModal(empId) {
   </div>
   <div class="form-group"><label class="form-label">Address</label><input id="ee-addr" class="form-input" value="${escHtml(e.address||'')}"></div>
   <div class="form-group"><label class="form-label">Notes</label><input id="ee-notes" class="form-input" value="${escHtml(e.notes||'')}"></div>
-  <!-- v31: Referral and Leave Policy fields -->
+  <!-- v31: Referral and Leave Policy fields (v40 §6c: read-only once a non-blank value is saved) -->
   <div class="form-row">
-    <div class="form-group"><label class="form-label">Referred By Name <span class="info-tooltip" title="Name of the existing employee who referred this person. Shows alongside their employee code.">ℹ</span></label><input id="ee-refname" class="form-input" value="${escHtml(e.referredByName||'')}" placeholder="Referring employee name"></div>
-    <div class="form-group"><label class="form-label">Referred By Code</label><input id="ee-refcode" class="form-input" value="${escHtml(e.referredByCode||'')}" placeholder="e.g. AZ_EMP_0001"></div>
+    <div class="form-group"><label class="form-label">Referred By Name <span class="info-tooltip" title="Name of the existing employee who referred this person. This can only be set once and cannot be changed after saving. Choose carefully.">ℹ</span></label><input id="ee-refname" class="form-input" value="${escHtml(e.referredByName||'')}" placeholder="Referring employee name" ${e.referredByName?'readonly style="opacity:0.6;cursor:not-allowed"':''}></div>
+    <div class="form-group"><label class="form-label">Referred By Code <span class="info-tooltip" title="Employee code of the referrer. This can only be set once and cannot be changed after saving. Choose carefully.">ℹ</span></label><input id="ee-refcode" class="form-input" value="${escHtml(e.referredByCode||'')}" placeholder="e.g. AZ_EMP_0001" ${e.referredByCode?'readonly style="opacity:0.6;cursor:not-allowed"':''}></div>
   </div>
   <div class="form-group"><label class="form-label">Leave Policy Group <span class="info-tooltip" title="Assign this employee to a leave policy group (e.g. Staff, Executive). The group's annual leave quotas will be used for this employee.">ℹ</span></label><input id="ee-lpgroup" class="form-input" value="${escHtml(e.leavePolicyGroup||'')}" placeholder="e.g. Staff, Executive, Managerial"></div>
   <!-- v31: Admin actions -->
@@ -9460,7 +9519,13 @@ async function renderSettings() {
       ${cfgFieldTip('otMinHoursThreshold','Min OT Hours Per Day (minimum to count toward OT bank)','A daily shift must exceed this many hours of overtime before it contributes to the OT bank. E.g. value 2 means only days with ≥2 hours of OT are counted. Prevents tiny overruns from accumulating.')}
       ${levelPickerField('otEligibleLevels','OT Pay Eligible Levels',cfg['otEligibleLevels']||'L6,L7,L8,L9,L10')}
       ${levelPickerField('nightShiftEligibleLevels','Night Shift Pay Eligible Levels',cfg['nightShiftEligibleLevels']||'L6,L7,L8,L9,L10')}
-      ${cfgFieldTip('otMultiplier','OT Pay Multiplier (1.5 = 1.5× daily rate per OT day)','Every accumulated OT day (= otBaseHours hours) is paid at this multiple of the daily rate. E.g. 1.5 means 1 OT day = 1.5 × daily rate. Set to 1.0 for flat extra day pay.')}
+      <!-- v40 §7d: legacy otMultiplier deprecated — kept read-only for slip-history compatibility -->
+      <div class="form-group">
+        <label class="form-label">OT Pay Multiplier <span style="color:var(--orange);font-size:10px;font-weight:600">(DEPRECATED in v40)</span>
+          <span class="info-tooltip" title="Legacy multiplier — superseded by 'OT Hours Equivalent to One Day's Pay' in the OT &amp; Extra Day Policy card. Retained only for backward compatibility with v39 and earlier records. Does NOT drive any active calculation in v40.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-otMultiplier" value="${cfg['otMultiplier']||1.5}" step="0.1" readonly style="opacity:0.6;cursor:not-allowed">
+      </div>
       ${cfgFieldTip('nightShiftMultiplier','Night Shift Allowance Multiplier (per-employee base × this rate)','Each eligible employee has a "Night Shift Allowance" set in their profile (₹/month). This multiplier is applied to that base amount at month-end. E.g. employee base ₹500, multiplier 1.5 → ₹750 added to salary.')}
     </div>
     <div style="margin-top:14px">
@@ -9851,51 +9916,87 @@ async function renderSettings() {
     <button class="btn btn-gold" style="margin-top:14px" onclick="savePointsSettings()">💾 Save Points Settings</button>
   </div>
 
+  <!-- v40 §9: visible group chips show each card's logical group without reordering DOM nodes -->
   <!-- Milestones Editor -->
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🎁 BONUS & REWARDS</div>
   <div class="settings-section">
     <div class="settings-section-title">🏆 Loyalty Milestones</div>
+
+    <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">v40 §3: each milestone supports any combination of reward types below. Whatever you fill in here is shown automatically on the employee's kiosk when they reach the milestone.</div>
     <div id="milestones-list">
       ${ms.map(m=>`
-      <div class="milestone-row" id="ms-row-${m.years}">
-        <div class="ms-yr">${escHtml(m.years)}yr</div>
-        <div class="ms-detail flex-1">
-          <input class="form-input" id="ms-rw-${m.years}" value="${escHtml(m.reward)}" placeholder="Reward description">
-          <input class="form-input" id="ms-ds-${m.years}" value="${escHtml(m.description||'')}" placeholder="Details…" style="margin-top:6px">
+      <div class="milestone-row" id="ms-row-${m.years}" style="background:var(--dark3);border-radius:8px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+          <div class="ms-yr">${escHtml(m.years)}yr</div>
+          <div class="ms-detail" style="flex:1 1 240px">
+            <input class="form-input" id="ms-rw-${m.years}" value="${escHtml(m.reward)}" placeholder="Reward description" title="Display text shown to employees on the milestone card.">
+            <input class="form-input" id="ms-ds-${m.years}" value="${escHtml(m.description||'')}" placeholder="Details…" style="margin-top:6px" title="Optional longer description shown when the employee opens the milestone detail modal.">
+          </div>
+          <button class="btn btn-gold btn-sm" onclick="saveMilestone(${m.years})" title="Save all reward fields for this milestone.">Save</button>
         </div>
-        <div style="display:flex;flex-direction:column;gap:6px;min-width:130px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px">
           <div>
-            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">💰 Cash Bonus (₹)</div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">💰 Cash Bonus (₹) <span class="info-tooltip" title="One-time cash bonus paid to the employee on reaching this milestone.">ℹ</span></div>
             <input class="form-input" id="ms-cb-${m.years}" type="number" value="${m.cashBonus||0}" placeholder="0">
           </div>
           <div>
-            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">🌴 Extra Leaves (days)</div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">🌴 Extra Leaves (days) <span class="info-tooltip" title="Additional leave days credited to the employee's balance on reaching this milestone.">ℹ</span></div>
             <input class="form-input" id="ms-lb-${m.years}" type="number" value="${m.leaveBonus||0}" placeholder="0">
           </div>
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">🏖 Paid Leaves (days) <span class="info-tooltip" title="Fully-paid leave days unlocked at this milestone, regardless of leave-type rules. Separate from Extra Leaves.">ℹ</span></div>
+            <input class="form-input" id="ms-pl-${m.years}" type="number" value="${m.paidLeaves||0}" placeholder="0">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">🎁 Gift Voucher Details <span class="info-tooltip" title="Free-text. Example: Amazon ₹5000 voucher; Big Bazaar ₹2000.">ℹ</span></div>
+            <input class="form-input" id="ms-gv-${m.years}" value="${escHtml(m.giftVoucher||'')}" placeholder="e.g. Amazon ₹5000 voucher">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">🏆 Trophy / Award <span class="info-tooltip" title="Free-text. Example: Crystal Loyalty Trophy; Gold Pin.">ℹ</span></div>
+            <input class="form-input" id="ms-tr-${m.years}" value="${escHtml(m.trophy||'')}" placeholder="e.g. Crystal Loyalty Trophy">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">🎓 Skill Certification Sponsorship <span class="info-tooltip" title="Free-text. Example: Up to ₹25,000 reimbursement for any approved certification course.">ℹ</span></div>
+            <input class="form-input" id="ms-cert-${m.years}" value="${escHtml(m.certification||'')}" placeholder="e.g. Up to ₹25,000 cert reimbursement">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">🎬 Movie / Entertainment Coupons <span class="info-tooltip" title="Free-text. Example: PVR couple pass × 2.">ℹ</span></div>
+            <input class="form-input" id="ms-ent-${m.years}" value="${escHtml(m.entertainmentCoupons||'')}" placeholder="e.g. PVR couple pass × 2">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">💳 Cash Coupons / Other Vouchers <span class="info-tooltip" title="Free-text catch-all for cash coupons or other voucher types not listed above.">ℹ</span></div>
+            <input class="form-input" id="ms-cc-${m.years}" value="${escHtml(m.cashCoupons||'')}" placeholder="e.g. ₹3000 lifestyle coupon">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">✨ Custom Reward <span class="info-tooltip" title="Anything not covered by the other fields. Free-text — written verbatim on the employee's milestone card.">ℹ</span></div>
+            <input class="form-input" id="ms-cust-${m.years}" value="${escHtml(m.customReward||'')}" placeholder="e.g. Foreign trip, sabbatical week">
+          </div>
         </div>
-        <button class="btn btn-gold btn-sm" onclick="saveMilestone(${m.years})">Save</button>
       </div>`).join('')}
       <div style="margin-top:10px;display:flex;gap:8px">
-        <input id="ms-new-yr" class="form-input" type="number" placeholder="Years (e.g. 3)" style="width:120px">
+        <input id="ms-new-yr" class="form-input" type="number" placeholder="Years (e.g. 3)" style="width:120px" title="Number of years of tenure at which this milestone unlocks.">
         <button class="btn btn-dark btn-sm" onclick="addMilestone()">+ Add Milestone Year</button>
       </div>
     </div>
   </div>
 
-  <!-- Salary Bands -->
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">💰 SALARY & PAYROLL</div>
+  <!-- Salary Bands (v40 §2: input visibility + tooltips) -->
   <div class="settings-section">
     <div class="settings-section-title">💰 Salary Bands by Level</div>
     <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">These are reference ranges. Employees can have any salary within or outside these bands.</div>
     ${bands.map(b=>`
     <div class="band-row">
-      <div class="band-level">${escHtml(b.level)}</div>
-      <div><label class="form-label" style="font-size:10px">Male Min</label><input class="form-input" id="b-mm-${b.level}" type="number" value="${b.maleMin||0}"></div>
-      <div><label class="form-label" style="font-size:10px">Male Max</label><input class="form-input" id="b-mx-${b.level}" type="number" value="${b.maleMax||0}"></div>
-      <div><label class="form-label" style="font-size:10px">Female Min</label><input class="form-input" id="b-fm-${b.level}" type="number" value="${b.femaleMin||0}"></div>
-      <div><label class="form-label" style="font-size:10px">Female Max</label><input class="form-input" id="b-fx-${b.level}" type="number" value="${b.femaleMax||0}"></div>
-      <button class="btn btn-dark btn-sm" onclick="saveBand('${escHtml(b.level)}')">Save</button>
+      <div class="band-level" title="Employee level. L1 is the highest (e.g., Founder/Director), increasing numbers indicate junior roles.">${escHtml(b.level)}<span class="info-tooltip" title="Employee level. L1 is the highest (e.g., Founder/Director), increasing numbers indicate junior roles." style="margin-left:4px">ℹ</span></div>
+      <div><label class="form-label" style="font-size:10px">Male Min <span class="info-tooltip" title="Lower bound of the suggested monthly CTC range for this level for male employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-mm-${b.level}" type="number" value="${b.maleMin||0}"></div>
+      <div><label class="form-label" style="font-size:10px">Male Max <span class="info-tooltip" title="Upper bound of the suggested monthly CTC range for this level for male employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-mx-${b.level}" type="number" value="${b.maleMax||0}"></div>
+      <div><label class="form-label" style="font-size:10px">Female Min <span class="info-tooltip" title="Lower bound of the suggested monthly CTC range for this level for female employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-fm-${b.level}" type="number" value="${b.femaleMin||0}"></div>
+      <div><label class="form-label" style="font-size:10px">Female Max <span class="info-tooltip" title="Upper bound of the suggested monthly CTC range for this level for female employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-fx-${b.level}" type="number" value="${b.femaleMax||0}"></div>
+      <button class="btn btn-dark btn-sm" title="Saves only this level's band to the database." onclick="saveBand('${escHtml(b.level)}')">Save</button>
     </div>`).join('')}
   </div>
 
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🕒 TIME & ATTENDANCE</div>
   <!-- Holidays -->
   <div class="settings-section">
     <div class="settings-section-title">📅 Holidays Calendar
@@ -9968,6 +10069,7 @@ async function renderSettings() {
     </div>
   </div>
 
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">💰 SALARY & PAYROLL</div>
   <!-- Statutory Compliance Settings -->
   <div class="settings-section">
     <div class="settings-section-title">📋 Statutory Compliance (PF / ESI / PT / TDS)</div>
@@ -9977,38 +10079,38 @@ async function renderSettings() {
     </div>
     <div class="settings-grid">
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-pfEnabled" ${cfg['pfEnabled']==='true'?'checked':''}> Enable PF Deductions</label>
+        <label class="form-label"><input type="checkbox" id="cfg-pfEnabled" ${cfg['pfEnabled']==='true'?'checked':''}> Enable PF Deductions <span class="info-tooltip" title="Master toggle for Provident Fund. Mandatory in India for establishments with 20+ employees (10+ in some states). When enabled, PF is auto-calculated and deducted in every monthly payroll.">ℹ</span></label>
       </div>
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-esiEnabled" ${cfg['esiEnabled']==='true'?'checked':''}> Enable ESI Deductions</label>
+        <label class="form-label"><input type="checkbox" id="cfg-esiEnabled" ${cfg['esiEnabled']==='true'?'checked':''}> Enable ESI Deductions <span class="info-tooltip" title="Master toggle for Employee State Insurance. Mandatory for employees earning ≤ ₹21,000/month in covered establishments.">ℹ</span></label>
       </div>
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-ptEnabled" ${cfg['ptEnabled']==='true'?'checked':''}> Enable Professional Tax (PT)</label>
+        <label class="form-label"><input type="checkbox" id="cfg-ptEnabled" ${cfg['ptEnabled']==='true'?'checked':''}> Enable Professional Tax (PT) <span class="info-tooltip" title="State-level tax. Rates vary by state. UP currently has ₹0 PT. Enable only if your state levies PT.">ℹ</span></label>
       </div>
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-tdsEnabled" ${cfg['tdsEnabled']==='true'?'checked':''}> Enable TDS Deductions (Sec 192)</label>
+        <label class="form-label"><input type="checkbox" id="cfg-tdsEnabled" ${cfg['tdsEnabled']==='true'?'checked':''}> Enable TDS Deductions (Sec 192) <span class="info-tooltip" title="Tax Deducted at Source on salary income under Section 192 of the Income Tax Act. Applies if employee's annual income exceeds the basic exemption limit.">ℹ</span></label>
       </div>
-      ${cfgField('pfWageCeiling','PF Wage Ceiling (₹)','number')}
-      ${cfgField('pfEmployeeRate','Employee PF Rate (%)','number')}
-      ${cfgField('pfEmployerRate','Employer PF Rate (%)','number')}
-      ${cfgField('esiWageCeiling','ESI Applicability Ceiling (₹)','number')}
-      ${cfgField('esiEmployeeRate','Employee ESI Rate (%)','number')}
-      ${cfgField('esiEmployerRate','Employer ESI Rate (%)','number')}
+      <div class="form-group"><label class="form-label">PF Wage Ceiling (₹) <span class="info-tooltip" title="Maximum monthly basic salary on which PF is calculated. Statutory ceiling is ₹15,000. Salary above this is exempt from PF unless voluntary.">ℹ</span></label><input id="cfg-pfWageCeiling" class="form-input" type="number" value="${escHtml(cfg['pfWageCeiling']||'')}"></div>
+      <div class="form-group"><label class="form-label">Employee PF Rate (%) <span class="info-tooltip" title="Percentage of basic salary deducted from employee. Statutory: 12%.">ℹ</span></label><input id="cfg-pfEmployeeRate" class="form-input" type="number" value="${escHtml(cfg['pfEmployeeRate']||'')}"></div>
+      <div class="form-group"><label class="form-label">Employer PF Rate (%) <span class="info-tooltip" title="Percentage of basic salary contributed by employer. Statutory: 12% (split into 8.33% EPS + 3.67% EPF).">ℹ</span></label><input id="cfg-pfEmployerRate" class="form-input" type="number" value="${escHtml(cfg['pfEmployerRate']||'')}"></div>
+      <div class="form-group"><label class="form-label">ESI Applicability Ceiling (₹) <span class="info-tooltip" title="Employees with gross salary at or below this amount are covered under ESI. Statutory: ₹21,000/month.">ℹ</span></label><input id="cfg-esiWageCeiling" class="form-input" type="number" value="${escHtml(cfg['esiWageCeiling']||'')}"></div>
+      <div class="form-group"><label class="form-label">Employee ESI Rate (%) <span class="info-tooltip" title="Percentage of gross salary deducted from employee. Statutory: 0.75%.">ℹ</span></label><input id="cfg-esiEmployeeRate" class="form-input" type="number" value="${escHtml(cfg['esiEmployeeRate']||'')}"></div>
+      <div class="form-group"><label class="form-label">Employer ESI Rate (%) <span class="info-tooltip" title="Percentage of gross salary contributed by employer. Statutory: 3.25%.">ℹ</span></label><input id="cfg-esiEmployerRate" class="form-input" type="number" value="${escHtml(cfg['esiEmployerRate']||'')}"></div>
       <div class="form-group">
-        <label class="form-label">Professional Tax State</label>
+        <label class="form-label">Professional Tax State <span class="info-tooltip" title="Your state of operation. Determines PT slabs. Showing UP (₹0) means no PT applies.">ℹ</span></label>
         <select id="cfg-ptState" class="form-input">
           ${['UP','DL','HR','RJ','MH','KA','TN','WB'].map(s=>`<option value="${s}" ${(cfg['ptState']||'UP')===s?'selected':''}>${s}${s==='UP'||s==='DL'||s==='HR'?'(₹0)':''}</option>`).join('')}
         </select>
       </div>
-      ${cfgField('tdsRate','TDS Rate (%)','number')}
-      ${cfgField('tdsAnnualExemption','TDS Annual Exemption (₹)','number')}
+      <div class="form-group"><label class="form-label">TDS Rate (%) <span class="info-tooltip" title="Default TDS rate applied to taxable salary. Actual TDS should follow income tax slab; this is a flat fallback.">ℹ</span></label><input id="cfg-tdsRate" class="form-input" type="number" value="${escHtml(cfg['tdsRate']||'')}"></div>
+      <div class="form-group"><label class="form-label">TDS Annual Exemption (₹) <span class="info-tooltip" title="Annual income below which no TDS is deducted. Currently ₹5,00,000 per old regime.">ℹ</span></label><input id="cfg-tdsAnnualExemption" class="form-input" type="number" value="${escHtml(cfg['tdsAnnualExemption']||'')}"></div>
     </div>
     <div class="settings-grid" style="margin-top:10px">
       <div class="settings-section-title" style="grid-column:span 2;font-size:12px;color:var(--gray-light);margin:0 0 8px">Challan Account Numbers (printed on challans)</div>
-      ${cfgField('pfAccNumber','PF Account Number')}
-      ${cfgField('esiAccNumber','ESI Account Number')}
-      ${cfgField('ptRegNumber','PT Registration Number')}
-      ${cfgField('tanNumber','TAN Number (for TDS)')}
+      <div class="form-group"><label class="form-label">PF Account Number <span class="info-tooltip" title="Your establishment's PF code. Printed on every PF challan. Format: XXX/XXXXX/XXXXXXX.">ℹ</span></label><input id="cfg-pfAccNumber" class="form-input" value="${escHtml(cfg['pfAccNumber']||'')}"></div>
+      <div class="form-group"><label class="form-label">ESI Account Number <span class="info-tooltip" title="Your establishment's ESI code. 17-digit number printed on ESI challans.">ℹ</span></label><input id="cfg-esiAccNumber" class="form-input" value="${escHtml(cfg['esiAccNumber']||'')}"></div>
+      <div class="form-group"><label class="form-label">PT Registration Number <span class="info-tooltip" title="Your state PT registration number. Leave blank if PT is not applicable in your state.">ℹ</span></label><input id="cfg-ptRegNumber" class="form-input" value="${escHtml(cfg['ptRegNumber']||'')}"></div>
+      <div class="form-group"><label class="form-label">TAN Number (for TDS) <span class="info-tooltip" title="Your 10-character Tax Deduction Account Number issued by Income Tax Department. Mandatory for filing TDS returns.">ℹ</span></label><input id="cfg-tanNumber" class="form-input" value="${escHtml(cfg['tanNumber']||'')}"></div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveStatutorySettings()">💾 Save Statutory Settings</button>
   </div>
@@ -10035,6 +10137,7 @@ async function renderSettings() {
     <button class="btn btn-gold" style="margin-top:14px" onclick="savePCSettings()">💾 Save Petty Cash Settings</button>
   </div>
 
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">📢 NOTIFICATIONS</div>
   <!-- WhatsApp / SMS Notifications Settings -->
   <div class="settings-section">
     <div class="settings-section-title">📱 WhatsApp / SMS Notifications</div>
@@ -10044,41 +10147,41 @@ async function renderSettings() {
     </div>
     <div class="settings-grid">
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-whatsappEnabled" ${cfg['whatsappEnabled']==='true'?'checked':''}> Enable WhatsApp Notifications</label>
+        <label class="form-label" title="Master toggle. When off, no WhatsApp/SMS messages are sent regardless of trigger settings below."><input type="checkbox" id="cfg-whatsappEnabled" ${cfg['whatsappEnabled']==='true'?'checked':''}> Enable WhatsApp Notifications <span class="info-tooltip" title="Master toggle. When off, no WhatsApp/SMS messages are sent regardless of trigger settings below.">ℹ</span></label>
       </div>
       <div class="form-group">
-        <label class="form-label">Provider</label>
+        <label class="form-label">Provider <span class="info-tooltip" title="Choose your messaging gateway. Gupshup and AiSensy are popular Indian providers; Twilio is global; Custom REST API for any other provider with a webhook URL.">ℹ</span></label>
         <select id="cfg-whatsappProvider" class="form-input">
           ${['gupshup','aisensy','twilio','custom'].map(p=>`<option value="${p}" ${(cfg['whatsappProvider']||'gupshup')===p?'selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
         </select>
       </div>
-      ${cfgField('whatsappApiKey','API Key / Auth Token')}
-      ${cfgField('whatsappFrom','Sender Number / App Name')}
-      ${cfgField('whatsappApiUrl','API URL (AiSensy / Custom)')}
-      ${cfgField('twilioAccountSid','Twilio Account SID')}
-      ${cfgField('twilioAuthToken','Twilio Auth Token')}
-      ${cfgField('otManagerNotifyMobile','Manager Mobile for OT Alerts (10 digits)')}
+      <div class="form-group"><label class="form-label">API Key / Auth Token <span class="info-tooltip" title="The API key issued by your provider. Get this from your provider's dashboard. Never share this key publicly.">ℹ</span></label><input id="cfg-whatsappApiKey" class="form-input" value="${escHtml(cfg['whatsappApiKey']||'')}"></div>
+      <div class="form-group"><label class="form-label">Sender Number / App Name <span class="info-tooltip" title="For Gupshup/AiSensy: your registered WhatsApp Business sender number. For Twilio: your Twilio WhatsApp number.">ℹ</span></label><input id="cfg-whatsappFrom" class="form-input" value="${escHtml(cfg['whatsappFrom']||'')}"></div>
+      <div class="form-group"><label class="form-label">API URL (AiSensy / Custom) <span class="info-tooltip" title="Full webhook URL. For AiSensy, copy from their campaign settings. For Custom REST, your endpoint that accepts POST with phone+message.">ℹ</span></label><input id="cfg-whatsappApiUrl" class="form-input" value="${escHtml(cfg['whatsappApiUrl']||'')}"></div>
+      <div class="form-group"><label class="form-label">Twilio Account SID <span class="info-tooltip" title="Only for Twilio. Found in your Twilio console dashboard.">ℹ</span></label><input id="cfg-twilioAccountSid" class="form-input" value="${escHtml(cfg['twilioAccountSid']||'')}"></div>
+      <div class="form-group"><label class="form-label">Twilio Auth Token <span class="info-tooltip" title="Only for Twilio. Found in your Twilio console dashboard.">ℹ</span></label><input id="cfg-twilioAuthToken" class="form-input" value="${escHtml(cfg['twilioAuthToken']||'')}"></div>
+      <div class="form-group"><label class="form-label">Manager Mobile for OT Alerts (10 digits) <span class="info-tooltip" title="10-digit number that receives WhatsApp alerts every time any employee submits an OT or Extra Day claim for approval.">ℹ</span></label><input id="cfg-otManagerNotifyMobile" class="form-input" value="${escHtml(cfg['otManagerNotifyMobile']||'')}"></div>
     </div>
     <div class="settings-grid" style="margin-top:10px">
       <div class="settings-section-title" style="grid-column:span 2;font-size:12px;color:var(--gray-light);margin:0 0 8px">Notification Triggers</div>
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-notifyLeaveApproval" ${cfg['notifyLeaveApproval']!=='false'?'checked':''}> Notify on leave approval / rejection</label>
+        <label class="form-label"><input type="checkbox" id="cfg-notifyLeaveApproval" ${cfg['notifyLeaveApproval']!=='false'?'checked':''}> Notify on leave approval / rejection <span class="info-tooltip" title="Sends WhatsApp to the employee when their leave application is approved or rejected by the manager.">ℹ</span></label>
       </div>
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-notifyPayslip" ${cfg['notifyPayslip']!=='false'?'checked':''}> Notify when salary is calculated</label>
+        <label class="form-label"><input type="checkbox" id="cfg-notifyPayslip" ${cfg['notifyPayslip']!=='false'?'checked':''}> Notify when salary is calculated <span class="info-tooltip" title="Sends WhatsApp to every employee when monthly payroll is finalised, with their net pay summary.">ℹ</span></label>
       </div>
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-notifyAdvance" ${cfg['notifyAdvance']!=='false'?'checked':''}> Notify on advance / bonus credit</label>
+        <label class="form-label"><input type="checkbox" id="cfg-notifyAdvance" ${cfg['notifyAdvance']!=='false'?'checked':''}> Notify on advance / bonus credit <span class="info-tooltip" title="Sends WhatsApp to the employee when an advance, bonus, or referral bonus is credited to their account.">ℹ</span></label>
       </div>
       <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-notifyOTApproval" ${cfg['notifyOTApproval']!=='false'?'checked':''}> Notify on OT approval / rejection</label>
+        <label class="form-label"><input type="checkbox" id="cfg-notifyOTApproval" ${cfg['notifyOTApproval']!=='false'?'checked':''}> Notify on OT approval / rejection <span class="info-tooltip" title="Sends WhatsApp to the employee when their OT/Extra Day claim is approved or rejected.">ℹ</span></label>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-gold" onclick="saveWhatsAppSettings()">💾 Save WhatsApp Settings</button>
+      <button class="btn btn-gold" title="Stores configuration. Existing pending notifications are not retroactively re-sent." onclick="saveWhatsAppSettings()">💾 Save WhatsApp Settings</button>
       <div style="display:flex;gap:6px;align-items:center">
-        <input id="wa-test-mobile" class="form-input" type="tel" placeholder="Test mobile (10 digits)" style="width:180px">
-        <button class="btn btn-dark btn-sm" onclick="testWhatsApp()">📤 Send Test</button>
+        <input id="wa-test-mobile" class="form-input" type="tel" placeholder="Test mobile (10 digits)" style="width:180px" title="Sends a sample test message to the entered number using current settings to verify the integration works.">
+        <button class="btn btn-dark btn-sm" title="Sends a sample test message to the entered number using current settings to verify the integration works." onclick="testWhatsApp()">📤 Send Test</button>
       </div>
       <div id="wa-test-result" style="font-size:12px;color:var(--gray-light)"></div>
     </div>
@@ -10178,39 +10281,67 @@ async function renderSettings() {
     <div id="sc-result" style="margin-top:12px;font-size:12px;min-height:16px"></div>
   </div>` : ''}
 
-  <!-- v30: Loyalty Bonus Vesting Settings -->
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🎁 BONUS & REWARDS</div>
+  <!-- v30: Loyalty Bonus Vesting Settings (v40 §8: per-level vesting model toggle + Tiered Withdrawal) -->
   <div class="settings-section">
     <div class="settings-section-title">💎 Loyalty Bonus Vesting</div>
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Configure the monthly loyalty bonus and vesting schedule for each employee level. Changes take effect from the next monthly accrual cycle.
+      <br><strong style="color:var(--gold)">v40:</strong> each level can use either <em>Cumulative Vesting</em> (existing model) or <em>Tiered Withdrawal with Cooldown</em> (new).
     </div>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:12px" id="lb-settings-table">
       <thead>
         <tr style="background:var(--dark3)">
           <th style="padding:8px;text-align:left;color:var(--gold)">Level</th>
-          <th style="padding:8px;text-align:left;color:var(--gold)">Monthly Bonus (₹) <span class="info-tooltip" title="Fixed amount added to this level's loyalty bonus account each month during the monthly accrual run. Set 0 to disable accrual for a level.">ℹ</span></th>
-          <th style="padding:8px;text-align:left;color:var(--gold)">Vesting Schedule <span class="info-tooltip" title="Milestones that unlock withdrawals. 'After X mo, Y%' means Y% of the accrued balance becomes withdrawable after X months of continuous service. Add multiple milestones for graduated vesting.">ℹ</span></th>
-          <th style="padding:8px;text-align:center;color:var(--gold)">Active <span class="info-tooltip" title="Uncheck to pause accrual for this level. Existing balances are preserved; no new bonus is added until re-enabled.">ℹ</span></th>
+          <th style="padding:8px;text-align:left;color:var(--gold)">Monthly Bonus (₹) <span class="info-tooltip" title="Amount accrued each month into the employee's loyalty bonus pot. Paid out only on withdrawal as per the vesting model below.">ℹ</span></th>
+          <th style="padding:8px;text-align:left;color:var(--gold)">Vesting Model <span class="info-tooltip" title="Choose how this level's loyalty bonus vests. Cumulative = milestones unlock fixed % of total over time. Tiered Withdrawal = employee chooses when to withdraw, with longer waits unlocking higher percentages.">ℹ</span></th>
+          <th style="padding:8px;text-align:left;color:var(--gold)">Schedule / Tiers</th>
+          <th style="padding:8px;text-align:center;color:var(--gold)">Active <span class="info-tooltip" title="If unchecked, this level's loyalty bonus accrual stops. Existing balances are preserved.">ℹ</span></th>
         </tr>
       </thead>
       <tbody>
         ${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(level => {
-          const row = lbSettings.find(s=>s.level===level)||{level, monthly_bonus_amount:0, vesting_schedule_json:'[]', is_active:true};
+          const row = lbSettings.find(s=>s.level===level)||{level, monthly_bonus_amount:0, vesting_schedule_json:'[]', is_active:true, vesting_model:'Cumulative', tiered_first_options_json:'[]', tiered_subsequent_options_json:'[]'};
           let sched = [];
           try { sched = JSON.parse(row.vesting_schedule_json||'[]'); } catch(e) {}
           if (!sched.length) sched = [{months:6,withdrawable_pct:20},{months:12,withdrawable_pct:40},{months:24,withdrawable_pct:100}];
+          let tieredFirst = [];
+          try { tieredFirst = JSON.parse(row.tiered_first_options_json||'[]'); } catch(e) {}
+          if (!tieredFirst.length) tieredFirst = [{months:6,withdrawable_pct:40},{months:12,withdrawable_pct:60}];
+          let tieredSub = [];
+          try { tieredSub = JSON.parse(row.tiered_subsequent_options_json||'[]'); } catch(e) {}
+          if (!tieredSub.length) tieredSub = [{months:6,withdrawable_pct:40},{months:12,withdrawable_pct:60}];
           const inputStyle = 'width:52px;background:var(--dark2);color:var(--white);border:1px solid var(--gold-dim);border-radius:4px;padding:3px 5px;font-size:11px;text-align:center';
           const schedHtml = sched.map((m,i)=>`
             <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px" id="lb-ms-${level}-${i}">
-              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">After <span class="info-tooltip" title="Number of months of continuous service required before this vesting milestone unlocks.">ℹ</span></span>
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">After <span class="info-tooltip" title="After completing X months of tenure, Y% of total accumulated loyalty bonus becomes vested.">ℹ</span></span>
               <input type="number" min="1" max="240" style="${inputStyle}" class="form-input" id="lb-months-${level}-${i}" value="${m.months||6}" placeholder="Mo">
               <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo, <span class="info-tooltip" title="Percentage of total accrued balance that becomes withdrawable at this milestone.">ℹ</span></span>
               <input type="number" min="1" max="100" style="${inputStyle}" class="form-input" id="lb-pct-${level}-${i}" value="${m.withdrawable_pct||m.pct||20}" placeholder="%">
               <span style="color:var(--gray-light);font-size:11px">%</span>
               <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveMS('${level}',${i})">✕</button>
             </div>`).join('');
+          const tieredFirstHtml = tieredFirst.map((m,i)=>`
+            <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px" id="lb-tf-${level}-${i}">
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">After</span>
+              <input type="number" min="1" max="240" style="${inputStyle}" class="form-input" id="lb-tf-months-${level}-${i}" value="${m.months||6}" placeholder="Mo">
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo →</span>
+              <input type="number" min="1" max="100" style="${inputStyle}" class="form-input" id="lb-tf-pct-${level}-${i}" value="${m.withdrawable_pct||m.pct||40}" placeholder="%">
+              <span style="color:var(--gray-light);font-size:11px">%</span>
+              <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveTieredFirst('${level}',${i})">✕</button>
+            </div>`).join('');
+          const tieredSubHtml = tieredSub.map((m,i)=>`
+            <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px" id="lb-ts-${level}-${i}">
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">Wait</span>
+              <input type="number" min="1" max="240" style="${inputStyle}" class="form-input" id="lb-ts-months-${level}-${i}" value="${m.months||6}" placeholder="Mo">
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo →</span>
+              <input type="number" min="1" max="100" style="${inputStyle}" class="form-input" id="lb-ts-pct-${level}-${i}" value="${m.withdrawable_pct||m.pct||40}" placeholder="%">
+              <span style="color:var(--gray-light);font-size:11px">%</span>
+              <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveTieredSubsequent('${level}',${i})">✕</button>
+            </div>`).join('');
           const isActive = String(row.is_active).toLowerCase() !== 'false';
+          const model = String(row.vesting_model || 'Cumulative');
           return `<tr style="border-bottom:1px solid var(--dark3)" id="lb-row-${level}">
             <td style="padding:10px 8px;font-weight:700;color:var(--gold)">${level}</td>
             <td style="padding:10px 8px">
@@ -10220,8 +10351,24 @@ async function renderSettings() {
               </div>
             </td>
             <td style="padding:10px 8px">
-              <div id="lb-ms-container-${level}">${schedHtml}</div>
-              <button class="btn btn-dark btn-sm" style="margin-top:4px;font-size:10px" onclick="lbAddMS('${level}')">+ Add Milestone</button>
+              <select class="form-input" id="lb-model-${level}" onchange="lbToggleModel('${level}')" style="width:170px;font-size:11px">
+                <option value="Cumulative" ${model==='Cumulative'?'selected':''}>Cumulative Vesting</option>
+                <option value="Tiered" ${model==='Tiered'?'selected':''}>Tiered + Cooldown</option>
+              </select>
+            </td>
+            <td style="padding:10px 8px">
+              <div id="lb-cum-block-${level}" style="display:${model==='Cumulative'?'block':'none'}">
+                <div id="lb-ms-container-${level}">${schedHtml}</div>
+                <button class="btn btn-dark btn-sm" style="margin-top:4px;font-size:10px" onclick="lbAddMS('${level}')" title="Add another vesting milestone for this level.">+ Add Milestone</button>
+              </div>
+              <div id="lb-tier-block-${level}" style="display:${model==='Tiered'?'block':'none'}">
+                <div style="font-size:10px;color:var(--gold-light);margin-bottom:3px;font-weight:600">First Withdrawal Options <span class="info-tooltip" title="The employee can choose ONE of these options for their first withdrawal. Longer waits unlock larger percentages.">ℹ</span></div>
+                <div id="lb-tf-container-${level}">${tieredFirstHtml}</div>
+                <button class="btn btn-dark btn-sm" style="margin-top:2px;font-size:10px" onclick="lbAddTieredFirst('${level}')">+ Add Tier</button>
+                <div style="font-size:10px;color:var(--gold-light);margin:8px 0 3px;font-weight:600">Subsequent Withdrawal — Cooldown Options <span class="info-tooltip" title="After any withdrawal, the employee must wait the configured cooldown before withdrawing again. The chosen cooldown determines the percentage.">ℹ</span></div>
+                <div id="lb-ts-container-${level}">${tieredSubHtml}</div>
+                <button class="btn btn-dark btn-sm" style="margin-top:2px;font-size:10px" onclick="lbAddTieredSubsequent('${level}')">+ Add Tier</button>
+              </div>
             </td>
             <td style="padding:10px 8px;text-align:center">
               <input type="checkbox" id="lb-active-${level}" ${isActive?'checked':''} style="accent-color:var(--gold);width:16px;height:16px">
@@ -10340,53 +10487,78 @@ async function renderSettings() {
     </div>
   </div>` : ''}
 
-  <!-- v31: OT & Extra Day Policy Settings -->
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">💰 SALARY & PAYROLL</div>
+  <!-- v31: OT & Extra Day Policy Settings (v40 §7: per-day denominator + OT-hours-equivalent) -->
   <div class="settings-section">
     <div class="settings-section-title">⏱ OT & Extra Day Policy</div>
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Configure overtime and extra day pay multipliers. OT = hours beyond standard shift on a normal day.
       Extra Day = full day worked on a holiday or weekly off. These are two separate calculation types.
     </div>
+    <!-- v40 §7a: Per-Day Salary Denominator -->
+    <div style="background:var(--dark3);border-radius:8px;padding:12px;margin-bottom:14px;border-left:3px solid var(--gold)">
+      <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">💡 Salary Calculation Basis (NEW in v40)</div>
+      <div class="settings-grid">
+        <div class="form-group">
+          <label class="form-label">Per-Day Salary Denominator
+            <span class="info-tooltip" title="Determines how one day's salary is calculated. 'Actual days in month' means January per-day = monthly salary ÷ 31, February per-day = monthly salary ÷ 28 (or 29 in leap year), April per-day = monthly salary ÷ 30, etc. The fixed options use a constant denominator regardless of the calendar month.">ℹ</span>
+          </label>
+          <select class="form-input" id="cfg-perDayDivisor">
+            <option value="Actual" ${(cfg['perDayDivisor']||'Actual')==='Actual'?'selected':''}>Actual days in the month (recommended)</option>
+            <option value="26" ${cfg['perDayDivisor']==='26'?'selected':''}>Fixed: 26 days</option>
+            <option value="30" ${cfg['perDayDivisor']==='30'?'selected':''}>Fixed: 30 days</option>
+            <option value="31" ${cfg['perDayDivisor']==='31'?'selected':''}>Fixed: 31 days</option>
+          </select>
+        </div>
+        <!-- v40 §7d: OT Hours Equivalent to One Day's Pay -->
+        <div class="form-group">
+          <label class="form-label">OT Hours Equivalent to One Day's Pay
+            <span class="info-tooltip" title="How many overtime hours equal one day's salary. ArtzFolio default: 9 hours of OT = 1 day's pay. New formula: OT pay = (OT hours worked ÷ this value) × per-day salary.">ℹ</span>
+          </label>
+          <input class="form-input" type="number" id="cfg-otHoursPerDayPay" value="${cfg['otHoursPerDayPay']||9}" step="0.5" min="1">
+        </div>
+      </div>
+    </div>
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">OT Base Hours Per Day
-          <span class="info-tooltip" title="Number of OT hours that equals 1 full day's salary. This is the OT divisor for all OT calculations regardless of the employee's standard shift length. Default: 9.">ℹ</span>
+          <span class="info-tooltip" title="Standard daily shift hours. Hours beyond this on a normal working day count as OT.">ℹ</span>
         </label>
         <input class="form-input" type="number" id="cfg-otBaseHoursPolicy" value="${cfg['otBaseHoursPolicy']||9}" step="0.5" min="1">
       </div>
       <div class="form-group">
-        <label class="form-label">Regular OT Multiplier
-          <span class="info-tooltip" title="Pay multiplier applied to each OT hour on a standard working day. Formula: Basic/26/OTBase × Multiplier × Hours. Default: 1.5">ℹ</span>
+        <label class="form-label">Regular OT Multiplier <span style="color:var(--orange);font-size:10px;font-weight:600">(DEPRECATED)</span>
+          <span class="info-tooltip" title="Legacy multiplier — superseded by 'OT Hours Equivalent to One Day's Pay'. Retained only for backward compatibility with v39 and earlier records. Does NOT drive any active calculation in v40.">ℹ</span>
         </label>
-        <input class="form-input" type="number" id="cfg-otMultiplierRegular" value="${cfg['otMultiplierRegular']||1.5}" step="0.1" min="1">
+        <input class="form-input" type="number" id="cfg-otMultiplierRegular" value="${cfg['otMultiplierRegular']||1.222222}" step="0.000001" min="0" readonly style="opacity:0.6;cursor:not-allowed">
       </div>
       <div class="form-group">
         <label class="form-label">Company Holiday Extra Day Multiplier
-          <span class="info-tooltip" title="Pay multiplier for working a full day on a declared company holiday. Formula: Basic/26 × Multiplier. Default: 1.5">ℹ</span>
+          <span class="info-tooltip" title="Pay multiplier for working a full day on a declared company holiday. ArtzFolio policy: a multiplier of 1 means the employee earns one additional day's pay (i.e., total = 2 days for that day, since holiday salary is already in the monthly salary). Formula: per-day salary × Multiplier. With 'Actual days in month' selected, the divisor changes per month.">ℹ</span>
         </label>
-        <input class="form-input" type="number" id="cfg-otMultiplierCompanyHoliday" value="${cfg['otMultiplierCompanyHoliday']||1.5}" step="0.1" min="1">
+        <input class="form-input" type="number" id="cfg-otMultiplierCompanyHoliday" value="${cfg['otMultiplierCompanyHoliday']||1}" step="0.1" min="0">
       </div>
       <div class="form-group">
         <label class="form-label">Weekly Off Extra Day Multiplier
-          <span class="info-tooltip" title="Pay multiplier for working a full day on the employee's weekly off day (e.g. Sunday). Formula: Basic/26 × Multiplier. Default: 2.0">ℹ</span>
+          <span class="info-tooltip" title="Pay multiplier for working a full day on a weekly off. ArtzFolio policy: weekly off pay is already in monthly salary, so a multiplier of 1 means the employee earns one additional day's pay (i.e., total = 2 days for that Sunday). Formula: per-day salary × Multiplier.">ℹ</span>
         </label>
-        <input class="form-input" type="number" id="cfg-otMultiplierWeeklyOff" value="${cfg['otMultiplierWeeklyOff']||2.0}" step="0.1" min="1">
+        <input class="form-input" type="number" id="cfg-otMultiplierWeeklyOff" value="${cfg['otMultiplierWeeklyOff']||1}" step="0.1" min="0">
       </div>
       <div class="form-group">
         <label class="form-label">National / Gazetted Holiday Multiplier
-          <span class="info-tooltip" title="Pay multiplier for working a full day on a gazetted national holiday. Formula: Basic/26 × Multiplier. Default: 2.5">ℹ</span>
+          <span class="info-tooltip" title="Pay multiplier for working a full day on a gazetted national holiday. ArtzFolio policy: 1 means one extra day's pay over and above the regular monthly salary. Formula: per-day salary × Multiplier.">ℹ</span>
         </label>
-        <input class="form-input" type="number" id="cfg-otMultiplierNational" value="${cfg['otMultiplierNational']||2.5}" step="0.1" min="1">
+        <input class="form-input" type="number" id="cfg-otMultiplierNational" value="${cfg['otMultiplierNational']||1}" step="0.1" min="0">
       </div>
       <div class="form-group">
         <label class="form-label">Maximum OT Hours Claimable Per Day
-          <span class="info-tooltip" title="Upper limit on OT hours an employee can claim in a single day. Default: 12.">ℹ</span>
+          <span class="info-tooltip" title="Cap on OT hours an employee can claim in a single day. Prevents accidental over-claims.">ℹ</span>
         </label>
         <input class="form-input" type="number" id="cfg-otMaxHoursPerDay" value="${cfg['otMaxHoursPerDay']||12}" step="0.5" min="0.5">
       </div>
       <div class="form-group">
         <label class="form-label">Allow Instant OT / Extra Day Claim
-          <span class="info-tooltip" title="If Yes, employees can request immediate payment instead of waiting for monthly salary.">ℹ</span>
+          <span class="info-tooltip" title="If Yes, employee can submit OT/Extra Day claim on the same day. If No, claims must be submitted later via the request flow.">ℹ</span>
         </label>
         <select class="form-input" id="cfg-otAllowInstant">
           <option value="true" ${cfg['otAllowInstant']==='true'?'selected':''}>Yes</option>
@@ -10395,7 +10567,7 @@ async function renderSettings() {
       </div>
       <div class="form-group">
         <label class="form-label">Claim Requires Manager Approval
-          <span class="info-tooltip" title="If Yes, all instant claims must be approved by a manager or owner before payment is processed.">ℹ</span>
+          <span class="info-tooltip" title="If Yes, manager must approve every OT/Extra Day claim before it is paid. If No, claims auto-approve and flow into payroll.">ℹ</span>
         </label>
         <select class="form-input" id="cfg-otRequiresApproval">
           <option value="true" ${cfg['otRequiresApproval']==='true'?'selected':''}>Yes</option>
@@ -10461,13 +10633,14 @@ async function renderSettings() {
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31BonusSettings()">💾 Save Bonus Settings</button>
   </div>
 
-  <!-- v31: Referral Bonus Settings -->
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🎁 BONUS & REWARDS</div>
+  <!-- v31: Referral Bonus Settings (v40 §6: per-level inputs + tooltips) -->
   <div class="settings-section">
     <div class="settings-section-title">🤝 Referral Bonus Settings</div>
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Enable Referral Bonus
-          <span class="info-tooltip" title="Master toggle. When Yes, the referral bonus system is active and checkReferralBonusDue() runs every month.">ℹ</span>
+          <span class="info-tooltip" title="Master toggle. When off, referral fields are hidden in employee creation and no bonuses are credited.">ℹ</span>
         </label>
         <select class="form-input" id="cfg-referralBonusEnabled">
           <option value="true" ${cfg['referralBonusEnabled']==='true'?'selected':''}>Yes</option>
@@ -10476,22 +10649,22 @@ async function renderSettings() {
       </div>
       <div class="form-group">
         <label class="form-label">Referral Bonus Tenure Requirement (months)
-          <span class="info-tooltip" title="The referrer receives the bonus only after the referred employee completes this many months of service.">ℹ</span>
+          <span class="info-tooltip" title="Minimum tenure (in months) the referred employee must complete before the referrer becomes eligible for the bonus. Example: 3 months means if the referred person leaves before completing 3 months, no bonus is paid.">ℹ</span>
         </label>
         <input class="form-input" type="number" id="cfg-referralBonusTenureMonths" value="${cfg['referralBonusTenureMonths']||6}" min="1">
       </div>
       <div class="form-group" style="grid-column:1/-1">
         <label class="form-label">Payment Method
-          <span class="info-tooltip" title="Referral bonus is always paid in the referrer's monthly salary when due. Instant claim is not permitted for this bonus type.">ℹ</span>
+          <span class="info-tooltip" title="How the referral bonus is paid. Currently fixed to 'Always Add to Salary' — bonus is added to the referrer's monthly payroll in the month eligibility is reached.">ℹ</span>
         </label>
         <div style="padding:8px;background:var(--dark3);border-radius:6px;font-size:12px;color:var(--gray-light)">Always Add to Salary (non-configurable)</div>
       </div>
     </div>
     <div style="margin-top:14px">
-      <div style="font-size:12px;color:var(--gray-light);margin-bottom:8px;font-weight:600">Referral Bonus by Level (INR per referral)</div>
-      <div id="referral-bonus-by-level-table" style="font-size:13px"></div>
+      <div style="font-size:12px;color:var(--gray-light);margin-bottom:8px;font-weight:600">Referral Bonus by Level (INR per referral) <span class="info-tooltip" title="Set the bonus amount paid to the referrer based on the REFERRED employee's level. e.g., if a referrer brings in an L4 employee, the referrer earns the L4 amount set here.">ℹ</span></div>
+      <div id="referral-bonus-by-level-table" style="font-size:13px">Loading…</div>
     </div>
-    <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31ReferralSettings()">💾 Save Referral Bonus Settings</button>
+    <button class="btn btn-gold" style="margin-top:14px" title="Saves all referral configuration. Existing pending referrals already in flight are unaffected." onclick="saveV31ReferralSettings()">💾 Save Referral Bonus Settings</button>
   </div>
 
   <!-- v34: Compensation & Promotion Policy Settings -->
@@ -10739,13 +10912,14 @@ async function renderSettings() {
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31ExitSettings()">💾 Save Exit Policy Settings</button>
   </div>
 
-  <!-- v31: Leave Management Policy Settings -->
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">📅 LEAVE</div>
+  <!-- v31: Leave Management Policy Settings (v40 §1a: removed duplicate Grace Period; canonical lives in Time & Attendance) -->
   <div class="settings-section">
     <div class="settings-section-title">📅 Leave Management Policy</div>
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Leave Year Start Date
-          <span class="info-tooltip" title="When the annual leave year begins. Carry-over and accrual resets on this date. Jan 1 = calendar year, Apr 1 = Indian financial year.">ℹ</span>
+          <span class="info-tooltip" title="The date your annual leave cycle begins. All leave balances reset and accruals restart on this date each year.">ℹ</span>
         </label>
         <select class="form-input" id="cfg-leaveYearStart">
           <option value="Jan1" ${(cfg['leaveYearStart']||'Jan1')==='Jan1'?'selected':''}>January 1 (Calendar Year)</option>
@@ -10754,20 +10928,14 @@ async function renderSettings() {
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Grace Period for Late Arrival (minutes)
-          <span class="info-tooltip" title="How many minutes after the standard start time is allowed before a clock-in is counted as Late. Set to 0 to count any late arrival.">ℹ</span>
-        </label>
-        <input class="form-input" type="number" id="cfg-lateGracePeriodMins" value="${cfg['lateGracePeriodMins']||10}" min="0">
-      </div>
-      <div class="form-group">
         <label class="form-label">Maternity Leave Duration (days)
-          <span class="info-tooltip" title="Total days of Maternity Leave (ML) entitled per pregnancy. Statutory minimum is 182 days (26 weeks) under the Maternity Benefit Act.">ℹ</span>
+          <span class="info-tooltip" title="Total paid maternity leave days as per your policy. Indian law mandates a minimum of 182 days for establishments with 10+ employees.">ℹ</span>
         </label>
         <input class="form-input" type="number" id="cfg-mlDuration" value="${cfg['mlDuration']||182}" min="1">
       </div>
       <div class="form-group">
         <label class="form-label">Paternity Leave Duration (days)
-          <span class="info-tooltip" title="Total days of Paternity Leave (PTL) entitled per event. Common practice is 15 days.">ℹ</span>
+          <span class="info-tooltip" title="Total paid paternity leave days. Not legally mandated in India for private sector — set per your company policy.">ℹ</span>
         </label>
         <input class="form-input" type="number" id="cfg-ptlDuration" value="${cfg['ptlDuration']||15}" min="1">
       </div>
@@ -10785,7 +10953,7 @@ async function renderSettings() {
     </div>
     <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px">
       <button class="btn btn-gold" onclick="saveAllLeaveSettings()">💾 Save Leave Settings</button>
-      <button class="btn btn-dark btn-sm" onclick="seedLeaveBalancesAdmin()">🌱 Seed Leave Balances for All Active Employees</button>
+      <button class="btn btn-dark btn-sm" title="One-click action: creates current-year leave balance entries for every active employee based on the entitlements set above. Run this at the start of each leave year. Existing balances are NOT overwritten — only missing entries are seeded." onclick="seedLeaveBalancesAdmin()">🌱 Seed Leave Balances for All Active Employees <span class="info-tooltip" title="One-click action: creates current-year leave balance entries for every active employee based on the entitlements set above. Run this at the start of each leave year. Existing balances are NOT overwritten — only missing entries are seeded.">ℹ</span></button>
     </div>
   </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
@@ -10793,6 +10961,30 @@ async function renderSettings() {
   setTimeout(() => loadLeaveTypesSettingsTable(), 100);
   // v34: load comp config into settings inputs
   loadCompSettings();
+  // v40 §6a: populate the per-level referral bonus inputs (was an empty div in v39).
+  setTimeout(() => renderReferralBonusByLevelTable(), 100);
+}
+
+// v40 §6a: build per-level INR inputs in the referral-bonus-by-level-table div.
+// Levels mirror the Salary Bands (L1..L10). The amounts are stored in the existing
+// `referralBonusByLevel` JSON config key — no new sheet column is added.
+function renderReferralBonusByLevelTable() {
+  const container = document.getElementById('referral-bonus-by-level-table');
+  if (!container) return;
+  let byLevel = {};
+  try {
+    const raw = (State.settings && State.settings.referralBonusByLevel) || '{}';
+    byLevel = typeof raw === 'string' ? JSON.parse(raw||'{}') : (raw || {});
+  } catch(e) { byLevel = {}; }
+  const levels = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
+  const inputStyle = 'background:var(--dark2);color:var(--white);border:1px solid var(--gold-dim);border-radius:4px;padding:6px 8px;width:160px';
+  container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">' +
+    levels.map(lv => `
+      <div style="display:flex;align-items:center;gap:10px;background:var(--dark3);padding:8px 12px;border-radius:6px">
+        <strong style="color:var(--gold);min-width:32px">${lv}</strong>
+        <span style="color:var(--gray-light);font-size:11px">₹</span>
+        <input type="number" min="0" step="100" id="ref-bonus-${lv}" value="${parseFloat(byLevel[lv]||0)}" placeholder="0" style="${inputStyle}">
+      </div>`).join('') + '</div>';
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -10821,12 +11013,25 @@ async function showLoyaltyBonusCard(empId, empStatus) {
     const elig = Math.round(d.eligible_to_withdraw||0);
     const nextMs = d.next_milestone_months;
     const hasPending = false; // employees can't see pending status in kiosk
+    // v40 §8d: vesting-model aware copy.
+    const vModel = String(d.vestingModel || 'Cumulative');
+    let modelLine = '';
+    if (vModel === 'Tiered' && Array.isArray(d.tieredOptions) && d.tieredOptions.length) {
+      const opts = d.tieredOptions.map(o => `<div style="font-size:11px">• After <strong>${o.months}</strong> mo → <strong>${o.pct}%</strong>${o.available?' <span style="color:var(--green)">(available)</span>':' <span style="color:var(--orange)">(locked)</span>'}</div>`).join('');
+      modelLine = `<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">
+        <strong style="color:var(--gold)">Tiered Withdrawal:</strong>${opts}
+      </div>`;
+    } else {
+      modelLine = nextMs
+        ? `<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">In ${nextMs} months, ${d.next_milestone_pct}% becomes withdrawable</div>`
+        : '<div style="font-size:11px;color:var(--green);margin-bottom:8px">✓ Maximum vesting reached</div>';
+    }
     content.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
         <div><div style="font-size:11px;color:var(--gray-light)">Balance</div><div style="font-size:18px;font-weight:700">₹${bal.toLocaleString('en-IN')}</div></div>
         <div style="text-align:right"><div style="font-size:11px;color:var(--gray-light)">Eligible Now</div><div style="font-size:18px;font-weight:700;color:var(--green)">₹${elig.toLocaleString('en-IN')}</div></div>
       </div>
-      ${nextMs?`<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">In ${nextMs} months, ${d.next_milestone_pct}% becomes withdrawable</div>`:'<div style="font-size:11px;color:var(--green);margin-bottom:8px">✓ Maximum vesting reached</div>'}
+      ${modelLine}
       ${elig > 0 ? `<button class="btn btn-gold btn-sm" style="width:100%" onclick="showKioskLBWithdrawRequest('${escHtml(empId)}',${elig})">
         <span class="en">💎 Request Withdrawal</span><span class="hi">निकासी अनुरोध</span>
       </button>` : ''}
@@ -10932,25 +11137,110 @@ function lbRemoveMS(level, idx) {
   if (el) el.remove();
 }
 
+// v40 §8b: tiered withdrawal UI helpers — first-withdrawal options + subsequent cooldown options.
+function lbToggleModel(level) {
+  const sel = document.getElementById(`lb-model-${level}`);
+  if (!sel) return;
+  const cum = document.getElementById(`lb-cum-block-${level}`);
+  const tier = document.getElementById(`lb-tier-block-${level}`);
+  if (cum)  cum.style.display  = sel.value === 'Cumulative' ? 'block' : 'none';
+  if (tier) tier.style.display = sel.value === 'Tiered'    ? 'block' : 'none';
+}
+function lbAddTieredFirst(level) {
+  const container = document.getElementById(`lb-tf-container-${level}`);
+  if (!container) return;
+  const idx = container.querySelectorAll('[id^="lb-tf-'+level+'-"]').length;
+  const iStyle = 'width:52px;background:var(--dark2);color:var(--white);border:1px solid var(--gold-dim);border-radius:4px;padding:3px 5px;font-size:11px;text-align:center';
+  const div = document.createElement('div');
+  div.id = `lb-tf-${level}-${idx}`;
+  div.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px';
+  div.innerHTML = `<span style="color:var(--gray-light);white-space:nowrap;font-size:11px">After</span>
+    <input type="number" min="1" max="240" style="${iStyle}" class="form-input" id="lb-tf-months-${level}-${idx}" value="6" placeholder="Mo">
+    <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo →</span>
+    <input type="number" min="1" max="100" style="${iStyle}" class="form-input" id="lb-tf-pct-${level}-${idx}" value="40" placeholder="%">
+    <span style="color:var(--gray-light);font-size:11px">%</span>
+    <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveTieredFirst('${level}',${idx})">✕</button>`;
+  container.appendChild(div);
+}
+function lbRemoveTieredFirst(level, idx) {
+  const el = document.getElementById(`lb-tf-${level}-${idx}`);
+  if (el) el.remove();
+}
+function lbAddTieredSubsequent(level) {
+  const container = document.getElementById(`lb-ts-container-${level}`);
+  if (!container) return;
+  const idx = container.querySelectorAll('[id^="lb-ts-'+level+'-"]').length;
+  const iStyle = 'width:52px;background:var(--dark2);color:var(--white);border:1px solid var(--gold-dim);border-radius:4px;padding:3px 5px;font-size:11px;text-align:center';
+  const div = document.createElement('div');
+  div.id = `lb-ts-${level}-${idx}`;
+  div.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px';
+  div.innerHTML = `<span style="color:var(--gray-light);white-space:nowrap;font-size:11px">Wait</span>
+    <input type="number" min="1" max="240" style="${iStyle}" class="form-input" id="lb-ts-months-${level}-${idx}" value="6" placeholder="Mo">
+    <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo →</span>
+    <input type="number" min="1" max="100" style="${iStyle}" class="form-input" id="lb-ts-pct-${level}-${idx}" value="40" placeholder="%">
+    <span style="color:var(--gray-light);font-size:11px">%</span>
+    <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveTieredSubsequent('${level}',${idx})">✕</button>`;
+  container.appendChild(div);
+}
+function lbRemoveTieredSubsequent(level, idx) {
+  const el = document.getElementById(`lb-ts-${level}-${idx}`);
+  if (el) el.remove();
+}
+
 async function saveLoyaltyBonusSettings() {
+  // v40 §8: per-level vesting model + tiered withdrawal options persisted alongside cumulative schedule.
   const levels = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
   const settings = [];
   for (const level of levels) {
     const amt = parseFloat(document.getElementById(`lb-amt-${level}`)?.value||0);
     const isActive = document.getElementById(`lb-active-${level}`)?.checked !== false;
-    const container = document.getElementById(`lb-ms-container-${level}`);
-    const milestoneRows = container ? container.querySelectorAll('[id^="lb-ms-'+level+'-"]') : [];
+    const model = String(document.getElementById(`lb-model-${level}`)?.value || 'Cumulative');
+    if (amt < 0) { toast(`Level ${level}: Amount cannot be negative`, 'error'); return; }
+
+    // Cumulative schedule (always collected — kept around if user toggles back).
+    const cumContainer = document.getElementById(`lb-ms-container-${level}`);
+    const milestoneRows = cumContainer ? cumContainer.querySelectorAll('[id^="lb-ms-'+level+'-"]') : [];
     const schedule = [];
     milestoneRows.forEach((row, i) => {
       const months = parseInt(document.getElementById(`lb-months-${level}-${i}`)?.value||0);
       const pct = parseFloat(document.getElementById(`lb-pct-${level}-${i}`)?.value||0);
       if (months > 0 && pct > 0) schedule.push({months, withdrawable_pct: pct});
     });
-    if (amt < 0) { toast(`Level ${level}: Amount cannot be negative`, 'error'); return; }
-    if (!schedule.length) { toast(`Level ${level}: At least one vesting milestone required`, 'error'); return; }
-    const months = schedule.map(m=>m.months);
-    if (new Set(months).size !== months.length) { toast(`Level ${level}: Duplicate months in vesting schedule`, 'error'); return; }
-    settings.push({level, monthly_bonus_amount: amt, vesting_schedule_json: JSON.stringify(schedule), is_active: isActive});
+    if (model === 'Cumulative') {
+      if (!schedule.length) { toast(`Level ${level}: At least one vesting milestone required`, 'error'); return; }
+      const months = schedule.map(m=>m.months);
+      if (new Set(months).size !== months.length) { toast(`Level ${level}: Duplicate months in vesting schedule`, 'error'); return; }
+    }
+
+    // Tiered: first-withdrawal options + subsequent cooldown options.
+    const tfContainer = document.getElementById(`lb-tf-container-${level}`);
+    const tfRows = tfContainer ? tfContainer.querySelectorAll('[id^="lb-tf-'+level+'-"]') : [];
+    const tieredFirst = [];
+    tfRows.forEach((row, i) => {
+      const m = parseInt(document.getElementById(`lb-tf-months-${level}-${i}`)?.value||0);
+      const p = parseFloat(document.getElementById(`lb-tf-pct-${level}-${i}`)?.value||0);
+      if (m > 0 && p > 0) tieredFirst.push({months:m, withdrawable_pct:p});
+    });
+    const tsContainer = document.getElementById(`lb-ts-container-${level}`);
+    const tsRows = tsContainer ? tsContainer.querySelectorAll('[id^="lb-ts-'+level+'-"]') : [];
+    const tieredSub = [];
+    tsRows.forEach((row, i) => {
+      const m = parseInt(document.getElementById(`lb-ts-months-${level}-${i}`)?.value||0);
+      const p = parseFloat(document.getElementById(`lb-ts-pct-${level}-${i}`)?.value||0);
+      if (m > 0 && p > 0) tieredSub.push({months:m, withdrawable_pct:p});
+    });
+    if (model === 'Tiered' && tieredFirst.length === 0) {
+      toast(`Level ${level}: Tiered model needs at least one first-withdrawal option`, 'error'); return;
+    }
+
+    settings.push({
+      level, monthly_bonus_amount: amt,
+      vesting_schedule_json: JSON.stringify(schedule),
+      is_active: isActive,
+      vesting_model: model,
+      tiered_first_options_json:      JSON.stringify(tieredFirst),
+      tiered_subsequent_options_json: JSON.stringify(tieredSub),
+    });
   }
   const statusEl = document.getElementById('lb-save-status');
   if (statusEl) statusEl.textContent = 'Saving…';
@@ -12493,11 +12783,19 @@ async function loadDefaultHolidays() {
 }
 
 async function saveMilestone(years) {
+  // v40 §3d: persist 7 new reward fields alongside existing ones.
   const res=await API.call('updateMilestone',{
     years, reward:document.getElementById(`ms-rw-${years}`)?.value,
     description:document.getElementById(`ms-ds-${years}`)?.value,
     cashBonus:document.getElementById(`ms-cb-${years}`)?.value,
     leaveBonus:document.getElementById(`ms-lb-${years}`)?.value, active:true,
+    paidLeaves:           document.getElementById(`ms-pl-${years}`)?.value || 0,
+    giftVoucher:          document.getElementById(`ms-gv-${years}`)?.value || '',
+    trophy:               document.getElementById(`ms-tr-${years}`)?.value || '',
+    certification:        document.getElementById(`ms-cert-${years}`)?.value || '',
+    entertainmentCoupons: document.getElementById(`ms-ent-${years}`)?.value || '',
+    cashCoupons:          document.getElementById(`ms-cc-${years}`)?.value || '',
+    customReward:         document.getElementById(`ms-cust-${years}`)?.value || '',
   });
   if(res.ok)toast('✓ Milestone saved','success');else toast('Error','error');
 }
@@ -12647,15 +12945,19 @@ function calcOTLive() {
     btns.style.display = 'none';
     return;
   }
-  // OT formula: Basic / 26 / otBase × multiplier × hours
-  const hourlyRate = basic / 26 / otBase;
-  const otAmount = hourlyRate * multiplier * hours;
+  // v40 §7b/7d: per-day-divisor + OT-hours-equivalent formula
+  //   OT pay = (hours / otHoursPerDayPay) × per-day-salary
+  // Legacy `multiplier` is read for slip metadata only — does NOT scale rupee amount.
+  const _v40Divisor = getPerDayDivisor();
+  const otHoursPerDayPay = getOTHoursPerDayPay();
+  const perDaySalary = basic / _v40Divisor;
+  const otAmount = (hours / otHoursPerDayPay) * perDaySalary;
   bd.style.display = '';
   bd.innerHTML = `
     <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Your Monthly Basic:</span><span>Rs ${basic.toLocaleString('en-IN')}</span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Base Hours (per day):</span><span>${otBase} hours</span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Hourly Rate:</span><span>Rs ${hourlyRate.toFixed(2)}</span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Multiplier:</span><span>${multiplier}x</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Per-Day Divisor (v40):</span><span>${_v40Divisor}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Per-Day Salary:</span><span>Rs ${perDaySalary.toFixed(2)}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Hours = 1 Day's Pay:</span><span>${otHoursPerDayPay} hours</span></div>
     <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">OT Hours Entered:</span><span>${hours}</span></div>
     <div style="border-top:1px solid var(--gray);margin:6px 0;padding-top:6px;display:flex;justify-content:space-between;font-weight:700"><span>OT Amount Due:</span><span style="color:var(--gold)">Rs ${Math.round(otAmount)}</span></div>`;
   btns.style.display = 'flex';
@@ -12666,20 +12968,22 @@ function calcExtraDayLive() {
   if (!emp) return;
   const basic = parseFloat(emp.salary) || 0;
   const dayType = (document.querySelector('input[name="ed-day-type"]:checked') || {}).value || 'Company Holiday';
+  // v40 §7d: ArtzFolio policy — all three multipliers default to 1.
   const multiplierMap = {
-    'Company Holiday':  parseFloat(State.settings && State.settings['otMultiplierCompanyHoliday'] || 1.5),
-    'Weekly Off':       parseFloat(State.settings && State.settings['otMultiplierWeeklyOff'] || 2.0),
-    'National Holiday': parseFloat(State.settings && State.settings['otMultiplierNational'] || 2.5),
+    'Company Holiday':  parseFloat(State.settings && State.settings['otMultiplierCompanyHoliday'] || 1),
+    'Weekly Off':       parseFloat(State.settings && State.settings['otMultiplierWeeklyOff'] || 1),
+    'National Holiday': parseFloat(State.settings && State.settings['otMultiplierNational'] || 1),
   };
-  const multiplier = multiplierMap[dayType] || 1.5;
-  // Extra Day formula: Basic / 26 × day-type multiplier (NOT the 9-hour OT base)
-  const dailyRate = basic / 26;
+  const multiplier = multiplierMap[dayType] || 1;
+  // v40 §7b: per-day denominator from `perDayDivisor` (default Actual = days in current month)
+  const _v40Divisor = getPerDayDivisor();
+  const dailyRate = basic / _v40Divisor;
   const amount = dailyRate * multiplier;
   const bd = document.getElementById('ed-calc-breakdown');
   bd.style.display = '';
   bd.innerHTML = `
     <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Your Monthly Basic:</span><span>Rs ${basic.toLocaleString('en-IN')}</span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Working Days Base:</span><span>26</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Per-Day Divisor (v40):</span><span>${_v40Divisor}</span></div>
     <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Daily Rate:</span><span>Rs ${dailyRate.toFixed(2)}</span></div>
     <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Day Type Selected:</span><span>${escHtml(dayType)}</span></div>
     <div style="display:flex;justify-content:space-between"><span style="color:var(--gray-light)">Extra Day Multiplier:</span><span>${multiplier}x</span></div>
@@ -12927,7 +13231,9 @@ function calcEncashmentAmount() {
   if (!emp) return;
   const days = parseFloat(document.getElementById('encash-days').value) || 0;
   const basic = parseFloat(emp.salary) || 0;
-  const rate = basic / 26;
+  // v40 §7b: per-day denominator from `perDayDivisor` (default Actual = days in current month)
+  const _v40Divisor = getPerDayDivisor();
+  const rate = basic / _v40Divisor;
   const amount = rate * days;
   document.getElementById('encash-amount-display').textContent = days > 0 ?
     'Encashment Amount: Rs ' + Math.round(amount).toLocaleString('en-IN') + ' (' + days + ' days × Rs ' + rate.toFixed(2) + '/day)' : '';
@@ -13706,12 +14012,17 @@ async function seedLeaveBalances() {
 function _cfgVal(id, def='') { const el = document.getElementById(id); return el ? el.value : def; }
 
 async function saveV31OTSettings() {
+  // v40 §7a/7d: persist new perDayDivisor + otHoursPerDayPay keys.
+  // Legacy otMultiplierRegular is read-only in the UI but we still send the existing
+  // value (no change) so payroll history reads keep working.
   const updates = {
+    perDayDivisor: _cfgVal('cfg-perDayDivisor','Actual'),
+    otHoursPerDayPay: _cfgVal('cfg-otHoursPerDayPay','9'),
     otBaseHoursPolicy: _cfgVal('cfg-otBaseHoursPolicy','9'),
-    otMultiplierRegular: _cfgVal('cfg-otMultiplierRegular','1.5'),
-    otMultiplierCompanyHoliday: _cfgVal('cfg-otMultiplierCompanyHoliday','2'),
-    otMultiplierWeeklyOff: _cfgVal('cfg-otMultiplierWeeklyOff','2'),
-    otMultiplierNational: _cfgVal('cfg-otMultiplierNational','2'),
+    otMultiplierRegular: _cfgVal('cfg-otMultiplierRegular','1.222222'),
+    otMultiplierCompanyHoliday: _cfgVal('cfg-otMultiplierCompanyHoliday','1'),
+    otMultiplierWeeklyOff: _cfgVal('cfg-otMultiplierWeeklyOff','1'),
+    otMultiplierNational: _cfgVal('cfg-otMultiplierNational','1'),
     otMaxHoursPerDay: _cfgVal('cfg-otMaxHoursPerDay','12'),
     otAllowInstant: _cfgVal('cfg-otAllowInstant','No'),
     otRequiresApproval: _cfgVal('cfg-otRequiresApproval','Yes'),
@@ -13746,9 +14057,16 @@ async function saveV31BonusSettings() {
 }
 
 async function saveV31ReferralSettings() {
+  // v40 §6a: persist per-level INR amounts (previously dead — UI was empty).
+  const byLevel = {};
+  ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].forEach(lv => {
+    const v = parseFloat(document.getElementById('ref-bonus-' + lv)?.value || 0);
+    if (v > 0) byLevel[lv] = v;
+  });
   const updates = {
     referralBonusEnabled: _cfgVal('cfg-referralBonusEnabled','No'),
     referralBonusTenureMonths: _cfgVal('cfg-referralBonusTenureMonths','6'),
+    referralBonusByLevel: JSON.stringify(byLevel),
   };
   const res = await API.call('updateSettings', {settings: updates});
   if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
@@ -13773,9 +14091,10 @@ async function saveV31ExitSettings() {
 }
 
 async function saveV31LeaveSettings() {
+  // v40 §1a: dropped 'lateGracePeriodMins' — canonical Grace Period is `gracePeriod`
+  // saved in the Time & Attendance card via savePolicySettings().
   const updates = {
     leaveYearStart: _cfgVal('cfg-leaveYearStart','January 1'),
-    lateGracePeriodMins: _cfgVal('cfg-lateGracePeriodMins','10'),
     mlDuration: _cfgVal('cfg-mlDuration','182'),
     ptlDuration: _cfgVal('cfg-ptlDuration','15'),
   };
