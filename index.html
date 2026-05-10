@@ -1414,7 +1414,7 @@ const CFG = {
   pinMaxLen: 4,
   kioskTimeout: 60000,
   kioskLogoutSeconds: 60,
-  version: '14.0',
+  version: '14.1',
 };
 // v40 §7a/7b: client-side mirror of GAS getPerDayDivisor(year, month).
 // Reads State.settings.perDayDivisor (loaded from Config sheet on init) and
@@ -10417,8 +10417,13 @@ async function renderSettings() {
       <button class="btn btn-gold btn-sm" onclick="saveDZToken()">💾 Save Danger Zone Token</button>
       <button class="btn btn-dark btn-sm" onclick="testDZToken()">🔑 Test Token</button>
     </div>
-    <div id="dz-token-status" style="margin-top:8px;font-size:12px;color:${cfg['ownerToken']?'var(--green)':'var(--orange)'}">
-      ${cfg['ownerToken'] ? '✓ Token is configured — Danger Zone actions are enabled' : '⚠ Token not set — Danger Zone actions are blocked'}
+    <!-- v41 Bug 3: read the synthetic ownerTokenSet flag (server-side computed in handleGetSettings).
+         The actual token value is redacted server-side and stripped from State.settings client-side,
+         so cfg['ownerToken'] is always undefined. The flag tells the renderer whether a non-blank
+         value exists in the Config sheet without exposing it. State._dzToken (in-session) also
+         counts as "set" so the banner flips green immediately after Save without a round trip. -->
+    <div id="dz-token-status" style="margin-top:8px;font-size:12px;color:${(cfg['ownerTokenSet']==='true' || State._dzToken)?'var(--green)':'var(--orange)'}">
+      ${(cfg['ownerTokenSet']==='true' || State._dzToken) ? '✓ Token is configured — Danger Zone actions are enabled' : '⚠ Token not set — Danger Zone actions are blocked'}
     </div>
   </div>
 
@@ -11009,17 +11014,51 @@ async function showLoyaltyBonusCard(empId, empStatus) {
       </div>`;
       return;
     }
-    const bal = Math.round(d.current_balance||0);
-    const elig = Math.round(d.eligible_to_withdraw||0);
+    // v41 Bug 2: kiosk now shows the 6 brief-required information blocks:
+    //   1. Total accumulated bonus (lifetime)
+    //   2. Currently redeemable amount
+    //   3. Earliest next-redeemable date
+    //   4. Forward incentive table — "If you wait until X you can redeem ₹Y"
+    //   5. Active vesting model
+    //   6. Current monthly bonus rate (with effective-date footnote when changed recently)
+    const totalAccrued = Math.round(d.totalAccrued || 0);
+    const totalForf    = Math.round(d.totalForfeited || 0);
+    const totalLifetime = totalAccrued; // accrued = lifetime sum of deposits; forfeitures shown separately if any
+    const bal  = Math.round(d.current_balance || d.currentBalance || 0);
+    const elig = Math.round(d.eligible_to_withdraw || d.eligibleToWithdraw || 0);
     const nextMs = d.next_milestone_months;
-    const hasPending = false; // employees can't see pending status in kiosk
-    // v40 §8d: vesting-model aware copy.
     const vModel = String(d.vestingModel || 'Cumulative');
+    const fwd = Array.isArray(d.forwardIncentive) ? d.forwardIncentive : [];
+    const earliestDate = fwd.length ? fwd[0].date : null;
+    const monthlyRate  = Math.round(d.activeMonthlyBonus || 0);
+    const rateEffFrom  = d.activeMonthlyBonusEffectiveFrom || null;
+    // (1) header — model + monthly rate
+    const headerLine = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px">
+      <span style="color:var(--gold);font-weight:700">${vModel === 'Tiered' ? 'Tiered + Cooldown' : 'Cumulative Vesting'}</span>
+      <span style="color:var(--gray-light)">Rate: <strong style="color:var(--white)">₹${monthlyRate.toLocaleString('en-IN')}/mo</strong>${rateEffFrom ? ` <span style="color:var(--gray-light)">(eff. ${escHtml(String(rateEffFrom).substring(0,10))})</span>` : ''}</span>
+    </div>`;
+    // (2)+(3) — totals row
+    const totalsRow = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+      <div><div style="font-size:10px;color:var(--gray-light)">Total Accrued</div><div style="font-size:14px;font-weight:700">₹${totalLifetime.toLocaleString('en-IN')}</div></div>
+      <div><div style="font-size:10px;color:var(--gray-light)">Balance</div><div style="font-size:14px;font-weight:700">₹${bal.toLocaleString('en-IN')}</div></div>
+      <div><div style="font-size:10px;color:var(--gray-light)">Eligible Now</div><div style="font-size:14px;font-weight:700;color:var(--green)">₹${elig.toLocaleString('en-IN')}</div></div>
+    </div>`;
+    // (4) earliest next redeemable + forward incentive table
     let modelLine = '';
     if (vModel === 'Tiered' && Array.isArray(d.tieredOptions) && d.tieredOptions.length) {
       const opts = d.tieredOptions.map(o => `<div style="font-size:11px">• After <strong>${o.months}</strong> mo → <strong>${o.pct}%</strong>${o.available?' <span style="color:var(--green)">(available)</span>':' <span style="color:var(--orange)">(locked)</span>'}</div>`).join('');
       modelLine = `<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">
-        <strong style="color:var(--gold)">Tiered Withdrawal:</strong>${opts}
+        <strong style="color:var(--gold)">Tiered Withdrawal Options:</strong>${opts}
+      </div>`;
+    } else if (fwd.length) {
+      // Forward-incentive table — "the greed factor"
+      const rows = fwd.map(f => `<div style="display:flex;justify-content:space-between;font-size:11px">
+        <span style="color:var(--gray-light)">If you wait until <strong style="color:var(--white)">${escHtml(f.date)}</strong> (${f.months_from_now} mo)</span>
+        <span style="color:var(--gold);font-weight:700">₹${(f.total_eligible_at_that_date||0).toLocaleString('en-IN')}</span>
+      </div>`).join('');
+      modelLine = `<div style="background:rgba(184,150,12,0.08);border-left:3px solid var(--gold);border-radius:4px;padding:6px 8px;margin-bottom:8px">
+        ${earliestDate ? `<div style="font-size:11px;color:var(--gray-light);margin-bottom:4px">Earliest next vesting: <strong style="color:var(--white)">${escHtml(earliestDate)}</strong></div>` : ''}
+        ${rows}
       </div>`;
     } else {
       modelLine = nextMs
@@ -11027,11 +11066,10 @@ async function showLoyaltyBonusCard(empId, empStatus) {
         : '<div style="font-size:11px;color:var(--green);margin-bottom:8px">✓ Maximum vesting reached</div>';
     }
     content.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <div><div style="font-size:11px;color:var(--gray-light)">Balance</div><div style="font-size:18px;font-weight:700">₹${bal.toLocaleString('en-IN')}</div></div>
-        <div style="text-align:right"><div style="font-size:11px;color:var(--gray-light)">Eligible Now</div><div style="font-size:18px;font-weight:700;color:var(--green)">₹${elig.toLocaleString('en-IN')}</div></div>
-      </div>
+      ${headerLine}
+      ${totalsRow}
       ${modelLine}
+      ${totalForf > 0 ? `<div style="font-size:10px;color:var(--red);margin-bottom:6px">Forfeited to date: ₹${totalForf.toLocaleString('en-IN')}</div>` : ''}
       ${elig > 0 ? `<button class="btn btn-gold btn-sm" style="width:100%" onclick="showKioskLBWithdrawRequest('${escHtml(empId)}',${elig})">
         <span class="en">💎 Request Withdrawal</span><span class="hi">निकासी अनुरोध</span>
       </button>` : ''}
@@ -11666,6 +11704,10 @@ async function saveDZToken() {
     try { LS.d('ownerToken'); } catch (e) {} // remove any legacy persisted copy
     const sRes = await API.call('getSettings');
     if (sRes.ok) applySettingsArr(sRes.settings||[]);
+    // v41 Bug 3: pre-set the synthetic flag locally so the immediate re-render
+    // shows the green banner even if the round-trip getSettings hasn't returned
+    // the flag yet (defensive — handleGetSettings does set it server-side).
+    if (State.settings) State.settings.ownerTokenSet = 'true';
     toast('✓ Danger Zone token saved. (Token is held in memory only — re-login retrieves it.)','success');
     await renderSettings(); // refresh to show green status
   } else toast(res.error||'Error saving token','error');
