@@ -553,6 +553,15 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
 .settings-section{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:20px;margin-bottom:20px}
 .settings-section-title{font-size:13px;font-weight:700;color:var(--gold);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--dark3);display:flex;align-items:center;gap:6px}
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+/* v43 W3.9: collapsible Settings cards. Body shows by default until JS toggles. */
+.settings-card-body{}
+.settings-card-chevron{float:right;font-size:12px;color:var(--gray-light);transition:transform 0.15s}
+.settings-section-title[onclick]{user-select:none}
+.settings-section-title[onclick]:hover{background:rgba(255,255,255,0.02);border-radius:6px}
+/* v43 W3.11: tooltip-icon for Compensation form labels (and reusable elsewhere). */
+.tooltip-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--dark3);color:var(--gray-light);font-size:10px;margin-left:4px;cursor:help;position:relative;vertical-align:middle}
+.tooltip-icon:hover::after,.tooltip-icon.active::after{content:attr(data-tooltip-text);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);background:var(--dark1);color:var(--gold);padding:6px 10px;border-radius:6px;font-size:11px;font-weight:normal;white-space:normal;width:min(240px,calc(100vw - 40px));border:1px solid var(--dark3);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:50;pointer-events:none;line-height:1.4;text-align:left}
+.tooltip-icon:hover::before,.tooltip-icon.active::before{content:'';position:absolute;left:50%;bottom:calc(100% + 1px);transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--dark1);z-index:51}
 /* v34: Compensation Module */
 .comp-card{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:16px;margin-bottom:14px}
 .comp-card h4{font-size:13px;font-weight:700;color:var(--gold);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--dark3)}
@@ -2838,14 +2847,80 @@ function showMilestoneDetail() {
   showModal('🏆 Your Milestone Journey / आपकी यात्रा', html);
 }
 
+// v43 W3.9: toggleCard rewritten to support BOTH the legacy edit-employee modal
+// collapsibles (ec-comp-body, ec-ot-calc-body, ec-leaves-body, ec-employment-body,
+// ec-leave-body, ec-myinfo-body — they use a sibling -toggle indicator, no chevron)
+// AND the new Settings cards (which carry the `.settings-card-body` class and use
+// a `.settings-card-chevron` glyph). State persistence is class-gated to Settings
+// cards only so the modal collapsibles continue to behave exactly as before.
 function toggleCard(bodyId) {
   const body = document.getElementById(bodyId);
   if (!body) return;
-  const isHidden = body.style.display === 'none';
-  body.style.display = isHidden ? 'block' : 'none';
+  const wasOpen = body.style.display !== 'none';
+  body.style.display = wasOpen ? 'none' : '';
+  // Legacy path: sibling -toggle text indicator (modal collapsibles)
   const toggleId = bodyId.replace('-body','-toggle');
   const tog = document.getElementById(toggleId);
-  if (tog) tog.textContent = isHidden ? '▲' : '▼';
+  if (tog) tog.textContent = wasOpen ? '▼' : '▲';
+  // v43 W3.9: rotate chevron on Settings cards (header is the previous sibling)
+  const chev = body.previousElementSibling && body.previousElementSibling.querySelector
+    ? body.previousElementSibling.querySelector('.settings-card-chevron')
+    : null;
+  if (chev) chev.textContent = wasOpen ? '▶' : '▼';
+  // v43 W3.9: persist state ONLY for Settings page cards (class-gated)
+  if (body.classList.contains('settings-card-body')) {
+    try {
+      const state = JSON.parse(localStorage.getItem('hrms_settings_card_state_v1') || '{}');
+      state[bodyId] = wasOpen ? 'closed' : 'open';
+      localStorage.setItem('hrms_settings_card_state_v1', JSON.stringify(state));
+    } catch(e) { console.error('toggleCard persist:', e); }
+  }
+}
+
+// v43 W3.9: restore per-card open/closed state on Settings tab render.
+// Default: first card (Connection Settings) open, rest closed — so the page
+// loads quickly without a wall of expanded content but the first card is
+// visible as an entry point.
+function initSettingsCardState() {
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem('hrms_settings_card_state_v1') || '{}'); }
+  catch(e) { console.error('initSettingsCardState parse:', e); }
+  document.querySelectorAll('.settings-card-body').forEach(function(body) {
+    const id = body.id;
+    const def = (id === 'settings-body-connection') ? 'open' : 'closed';
+    const target = state[id] || def;
+    body.style.display = (target === 'open') ? '' : 'none';
+    const chev = body.previousElementSibling && body.previousElementSibling.querySelector
+      ? body.previousElementSibling.querySelector('.settings-card-chevron')
+      : null;
+    if (chev) chev.textContent = (target === 'open') ? '▼' : '▶';
+  });
+}
+
+// v43 W3.10: bulk-toggle helpers wired to the sticky toolbar at the top of Settings.
+function expandAllSettingsCards() {
+  const state = {};
+  document.querySelectorAll('.settings-card-body').forEach(function(b) {
+    b.style.display = '';
+    const chev = b.previousElementSibling && b.previousElementSibling.querySelector
+      ? b.previousElementSibling.querySelector('.settings-card-chevron') : null;
+    if (chev) chev.textContent = '▼';
+    state[b.id] = 'open';
+  });
+  try { localStorage.setItem('hrms_settings_card_state_v1', JSON.stringify(state)); }
+  catch(e) { console.error('expandAllSettingsCards persist:', e); }
+}
+function collapseAllSettingsCards() {
+  const state = {};
+  document.querySelectorAll('.settings-card-body').forEach(function(b) {
+    b.style.display = 'none';
+    const chev = b.previousElementSibling && b.previousElementSibling.querySelector
+      ? b.previousElementSibling.querySelector('.settings-card-chevron') : null;
+    if (chev) chev.textContent = '▶';
+    state[b.id] = 'closed';
+  });
+  try { localStorage.setItem('hrms_settings_card_state_v1', JSON.stringify(state)); }
+  catch(e) { console.error('collapseAllSettingsCards persist:', e); }
 }
 
 function buildLeaveInfoCard(res, emp) {
@@ -5756,11 +5831,29 @@ async function showAddEmpModal() {
 }
 
 async function showEditEmpModal(empId) {
-  // v36 fix BUG-12: pass ownerToken so backend will return currentPin for the admin edit modal
-  const res = await API.call('getEmployee',{empId, ownerToken: State._dzToken||''});
+  // v36 fix BUG-12: pass ownerToken so backend will return currentPin for the admin edit modal.
+  // v43 W2.7: also fetch orgs + employees so the 13 newly-added editable fields
+  // (category, employmentType, group, billableRate, factory, zone, project,
+  // managerId, email, dob, doj, gender, customWorkDays) can render with the
+  // same dropdown semantics as the Add modal. Falls through gracefully if either
+  // dependency call fails — free-text inputs become the substitute.
+  const [res, orgsRes, empsRes] = await Promise.all([
+    API.call('getEmployee',{empId, ownerToken: State._dzToken||''}),
+    API.call('getOrgs'),
+    API.call('getEmployees',{status:'Active'}),
+  ]);
   if (!res.ok) { toast('Not found','error'); return; }
   const e=res.employee;
   const hasPIN=res.hasPIN;
+  const _orgs = (orgsRes && orgsRes.orgs) || [];
+  const _allEmps = (empsRes && empsRes.employees) || [];
+  const _factoryOpts = _orgs.filter(o=>o.type==='factory').map(o=>`<option value="${escHtml(o.name)}" ${e.factory===o.name?'selected':''}>${escHtml(o.name)}</option>`).join('');
+  const _zoneOpts    = _orgs.filter(o=>o.type==='zone').map(o=>`<option value="${escHtml(o.name)}" ${e.zone===o.name?'selected':''}>${escHtml(o.name)}</option>`).join('');
+  const _projOpts    = _orgs.filter(o=>o.type==='project').map(o=>`<option value="${escHtml(o.name)}" ${e.project===o.name?'selected':''}>${escHtml(o.name)}</option>`).join('');
+  const _mgrDatalist = _allEmps.map(em=>`<option value="${escHtml(em.name+' ('+em.id+')')}">${escHtml(em.name)} (${escHtml(em.id)})</option>`).join('');
+  // Pre-format the manager value as "Name (ID)" if the stored value is a raw ID
+  const _mgrEmp = e.managerId ? _allEmps.find(em => em.id === e.managerId) : null;
+  const _mgrDisplay = _mgrEmp ? (_mgrEmp.name + ' (' + _mgrEmp.id + ')') : (e.managerId || '');
   const html=`<div style="font-size:13px;max-height:60vh;overflow-y:auto;padding-right:4px">
   <div class="form-row">
     <div class="form-group"><label class="form-label">Full Name</label><input id="ee-name" class="form-input" value="${escHtml(e.name)}"></div>
@@ -5769,7 +5862,19 @@ async function showEditEmpModal(empId) {
   <div class="form-row">
     <div class="form-group"><label class="form-label">Level</label>
       <select id="ee-level" class="form-input">${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(l=>`<option value="${l}" ${e.level===l?'selected':''}>${l}</option>`).join('')}</select></div>
-    <div class="form-group"><label class="form-label">Department</label><input id="ee-dept" class="form-input" value="${escHtml(e.department||e.dept||'')}"></div>
+    <div class="form-group"><label class="form-label">Department (free text)</label><input id="ee-dept" class="form-input" value="${escHtml(e.department||e.dept||'')}"></div>
+  </div>
+  <!-- v43 W2.7: Category + Employment Type — promoted from Add-only to Edit -->
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Category</label>
+      <select id="ee-cat" class="form-input">${['Workforce','Supervisor','Management'].map(c=>`<option value="${c}" ${(e.category||'Workforce')===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Employment Type</label>
+      <select id="ee-emptype" class="form-input">${['Wage Shift Office','Full-Time Office','Work From Home','Hybrid','Part-Time','Contract','Intern','Freelancer','Full-Time'].map(t=>`<option value="${t}" ${(e.employmentType||'')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+  </div>
+  <!-- v43 W2.7: Group + Billable Rate -->
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Group / Team <span style="color:var(--gray-light);font-weight:400">(optional)</span></label><input id="ee-group" class="form-input" value="${escHtml(e.group||'')}" placeholder="e.g. Night Shift A"></div>
+    <div class="form-group"><label class="form-label">Billable Rate (₹/hr) <span style="color:var(--gray-light);font-weight:400">(0 if N/A)</span></label><input id="ee-billable" class="form-input" type="number" value="${e.billableRate||0}"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Shift Start</label>${build12hPicker('ee-ss', e.shiftStart||'09:00')}</div>
@@ -5785,6 +5890,16 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">Mobile</label><input id="ee-mob" class="form-input" value="${escHtml(e.mobile||'')}"></div>
     <div class="form-group"><label class="form-label">Notice Period (days)</label><input id="ee-np" class="form-input" type="number" value="${e.noticeperiodDays||90}"></div>
   </div>
+  <!-- v43 W2.7: Email + DoB + Date of Joining + Gender -->
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Email</label><input id="ee-email" class="form-input" type="email" value="${escHtml(e.email||'')}"></div>
+    <div class="form-group"><label class="form-label">Date of Joining</label><input id="ee-doj" class="form-input" type="date" value="${escHtml((e.doj||'').substring(0,10))}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Date of Birth</label><input id="ee-dob" class="form-input" type="date" value="${escHtml((e.dob||'').substring(0,10))}"></div>
+    <div class="form-group"><label class="form-label">Gender</label>
+      <select id="ee-gen" class="form-input">${['Male','Female','Other'].map(g=>`<option value="${g}" ${(e.gender||'Male')===g?'selected':''}>${g}</option>`).join('')}</select></div>
+  </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Aadhaar</label><input id="ee-aadh" class="form-input" value="${escHtml(e.aadhaar||'')}"></div>
     <div class="form-group"><label class="form-label">Status</label>
@@ -5797,6 +5912,34 @@ async function showEditEmpModal(empId) {
   <div class="form-row">
     <div class="form-group"><label class="form-label">Current PIN: <span style="color:${hasPIN?'var(--green)':'var(--orange)'};font-weight:700;letter-spacing:3px">${res.currentPin||'Not set'}</span><span style="font-weight:400;color:var(--gray-light);font-size:11px;margin-left:8px">— New PIN (leave blank to keep current)</span></label><input id="ee-pin" class="form-input" type="text" maxlength="4" placeholder="${hasPIN?'Enter new 4-digit PIN to replace…':'Set a 4-digit PIN…'}" style="letter-spacing:4px;font-size:16px"></div>
     <div class="form-group"><label class="form-label">Supervisor ID</label><input id="ee-sup" class="form-input" value="${escHtml(e.supervisorId||'')}"></div>
+  </div>
+  <!-- v43 W2.7: Manager — datalist for "Name (ID)" lookup; backend stores raw ID -->
+  <datalist id="ee-mgr-datalist">${_mgrDatalist}</datalist>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Manager <span style="color:var(--gray-light);font-weight:400">(name or ID — optional)</span></label>
+      <input id="ee-mgr" class="form-input" list="ee-mgr-datalist" value="${escHtml(_mgrDisplay)}" placeholder="Type name or ID…" autocomplete="off"></div>
+    <div class="form-group"><label class="form-label">Custom Work Days <span style="color:var(--gray-light);font-weight:400">(comma list, optional)</span></label>
+      <input id="ee-cwd" class="form-input" value="${escHtml(e.customWorkDays||'')}" placeholder="e.g. Mon,Tue,Wed,Thu,Fri"></div>
+  </div>
+  <!-- v43 W2.7: Factory + Zone + Project — dropdowns sourced from Settings → Org Structure -->
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Factory</label>
+      <select id="ee-fact" class="form-input"><option value="">— Select —</option>${_factoryOpts}</select></div>
+    <div class="form-group"><label class="form-label">Zone</label>
+      <select id="ee-zone" class="form-input"><option value="">— Select —</option>${_zoneOpts}</select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Project</label>
+      <select id="ee-proj" class="form-input"><option value="">— Select —</option>${_projOpts}</select></div>
+    <div class="form-group"><label class="form-label">Org / Brand <span class="info-tooltip" title="Brand/legal-entity label stamped on attendance and salary records. Default: ArtzFolio.com. Change only if the employee belongs to a different brand within the same company.">ℹ</span></label>
+      <input id="ee-org" class="form-input" value="${escHtml(e.org||'')}" placeholder="ArtzFolio.com"></div>
+  </div>
+  <!-- v43 W3.4: 3 remaining audit B.2.3 dormant fields (org / minDayRate / kycFee). customWorkDays already in W2.7. -->
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Min Day Rate (₹) <span class="info-tooltip" title="Per-day minimum used by the early-exit recovery calculation. Default: 300. Increase for higher-level roles where one missed day costs more than 300.">ℹ</span></label>
+      <input id="ee-mindayrate" class="form-input" type="number" min="0" value="${e.minDayRate||300}"></div>
+    <div class="form-group"><label class="form-label">KYC Fee (₹) <span class="info-tooltip" title="One-time KYC processing fee charged at exit if the employee leaves within 30 days. Default: 750. Set to 0 to waive.">ℹ</span></label>
+      <input id="ee-kycfee" class="form-input" type="number" min="0" value="${e.kycFee||750}"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Night Shift Allowance (₹/night)</label><input id="ee-nsa" class="form-input" type="number" value="${e.nightShiftAllowance||0}"></div>
@@ -5826,6 +5969,12 @@ async function showEditEmpModal(empId) {
   showModal(`✏ Edit: ${e.name}`, html, [
     {label:'Save Changes / सहेजें', cls:'btn-gold', cb:async()=>{
       const deptVal=document.getElementById('ee-dept').value;
+      // v43 W2.7: manager input uses the same "Name (ID)" parse as Add modal.
+      function _extractEmpId(val) {
+        if (!val) return '';
+        const m = String(val).match(/\(([^)]+)\)\s*$/);
+        return m ? m[1].trim() : String(val).trim();
+      }
       const payload={empId, name:document.getElementById('ee-name').value, salary:document.getElementById('ee-sal').value,
         level:document.getElementById('ee-level').value, dept:deptVal, department:deptVal,
         shiftStart:document.getElementById('ee-ss').value, shiftEnd:document.getElementById('ee-se').value,
@@ -5844,6 +5993,25 @@ async function showEditEmpModal(empId) {
         referredByName:document.getElementById('ee-refname').value,
         referredByCode:document.getElementById('ee-refcode').value,
         leavePolicyGroup:document.getElementById('ee-lpgroup').value,
+        // v43 W2.7: 13 new editable fields. handleUpdateEmployee.allowedFields
+        // already accepts all of these (verified at gas:2168-2177).
+        category:        document.getElementById('ee-cat').value,
+        employmentType:  document.getElementById('ee-emptype').value,
+        group:           document.getElementById('ee-group').value.trim(),
+        billableRate:    document.getElementById('ee-billable').value || 0,
+        email:           document.getElementById('ee-email').value.trim(),
+        doj:             document.getElementById('ee-doj').value,
+        dob:             document.getElementById('ee-dob').value,
+        gender:          document.getElementById('ee-gen').value,
+        factory:         document.getElementById('ee-fact').value,
+        zone:            document.getElementById('ee-zone').value,
+        project:         document.getElementById('ee-proj').value,
+        managerId:       _extractEmpId(document.getElementById('ee-mgr').value),
+        customWorkDays:  document.getElementById('ee-cwd').value.trim(),
+        // v43 W3.4: 3 remaining dormant fields per audit B.2.3.
+        org:             document.getElementById('ee-org').value.trim(),
+        minDayRate:      document.getElementById('ee-mindayrate').value,
+        kycFee:          document.getElementById('ee-kycfee').value,
       };
       const newPin=document.getElementById('ee-pin').value;
       if(newPin){payload.pin=newPin;}
@@ -9426,9 +9594,17 @@ async function renderSettings() {
     </div>`;
   }
   let html=`
+  <!-- v43 W3.10: sticky Expand All / Collapse All toolbar -->
+  <div class="settings-toolbar" style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;position:sticky;top:0;background:var(--dark1);padding:10px 0;z-index:5;border-bottom:1px solid var(--dark3)">
+    <button class="btn btn-secondary" onclick="expandAllSettingsCards()" style="font-size:12px;padding:6px 12px">▼ Expand All</button>
+    <button class="btn btn-secondary" onclick="collapseAllSettingsCards()" style="font-size:12px;padding:6px 12px">▶ Collapse All</button>
+  </div>
   <!-- Connection Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🔗 Connection Settings (GAS Backend)</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-connection')">
+      🔗 Connection Settings (GAS Backend) <span class="settings-card-chevron">▼</span>
+    </div>
+    <div id="settings-body-connection" class="settings-card-body">
     <div class="settings-grid">
       <div class="form-group" style="grid-column:span 2">
         <label class="form-label">GAS Web App URL</label>
@@ -9444,11 +9620,13 @@ async function renderSettings() {
       <button class="btn btn-dark btn-sm" onclick="confirmResetSetup()">🔄 Reset & Re-Setup</button>
     </div>
     <div id="conn-test-status" style="margin-top:8px;font-size:12px"></div>
+    </div>
   </div>
 
   <!-- Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">⚙ Policy Configuration</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-policy')">⚙ Policy Configuration <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-policy" class="settings-card-body">
     <div class="settings-grid">
       ${cfgField('adminPassword','Admin (Owner) Password','password')}
       ${cfgField('managerPassword','Manager Password','password')}
@@ -9517,11 +9695,13 @@ async function renderSettings() {
     <div style="margin-top:14px">
       <button class="btn btn-gold" onclick="savePolicySettings()">💾 Save Policy Settings</button>
     </div>
+    </div>
   </div>
 
   <!-- Company Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🏭 Company Info</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-company')">🏭 Company Info <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-company" class="settings-card-body">
     <div class="settings-grid">
       ${cfgField('companyName','Company Name')}
       ${cfgField('brandName','Brand Name')}
@@ -9536,11 +9716,13 @@ async function renderSettings() {
       ${cfgField('factoryRadius','Attendance Radius (metres)')}
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveCompanySettings()">💾 Save Company Info</button>
+    </div>
   </div>
 
   <!-- Organization / Locale Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🌐 Organization & Locale Settings</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-locale')">🌐 Organization & Locale Settings <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-locale" class="settings-card-body">
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Currency</label>
@@ -9580,7 +9762,7 @@ async function renderSettings() {
           <span class="info-tooltip" title="Default clock-in time for bulk-imported employees. Individual employees can override this.">ℹ</span>
         </label>
         <select id="cfg-defaultShiftStart" class="form-input">
-          ${['06:00','07:00','08:00','09:00','09:30','10:00','11:00','12:00'].map(t=>`<option value="${t}" ${(cfg['defaultShiftStart']||'09:00')===t?'selected':''}>${fmtShift(t,'').replace(' – ','')}</option>`).join('')}
+          ${['06:00','06:30','07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00'].map(t=>`<option value="${t}" ${(cfg['defaultShiftStart']||'09:00')===t?'selected':''}>${fmtShift(t,'').replace(' – ','')}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
@@ -9588,7 +9770,7 @@ async function renderSettings() {
           <span class="info-tooltip" title="Default clock-out time for bulk-imported employees. Individual employees can override this.">ℹ</span>
         </label>
         <select id="cfg-defaultShiftEnd" class="form-input">
-          ${['14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'].map(t=>`<option value="${t}" ${(cfg['defaultShiftEnd']||'19:00')===t?'selected':''}>${fmtShift('',t).replace('— – ','')}</option>`).join('')}
+          ${['14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'].map(t=>`<option value="${t}" ${(cfg['defaultShiftEnd']||'19:00')===t?'selected':''}>${fmtShift('',t).replace('— – ','')}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
@@ -9681,11 +9863,13 @@ async function renderSettings() {
     <div style="margin-top:14px">
       <button class="btn btn-gold" onclick="saveOrgSettings()">💾 Save Organization Settings</button>
     </div>
+    </div>
   </div>
 
   <!-- 2FA Security Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🔒 Two-Factor Authentication (2FA)</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-2fa')">🔒 Two-Factor Authentication (2FA) <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-2fa" class="settings-card-body">
     <p style="font-size:12px;color:var(--gray-light);margin-bottom:14px">
       When enabled, every admin login requires both the password AND a secret PIN. This prevents unauthorized access even if someone knows the password.
     </p>
@@ -9732,11 +9916,13 @@ async function renderSettings() {
         </button>
       </div>
     </div>
+    </div>
   </div>
 
   <!-- Automation Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🕐 Automation Settings</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-automation')">🕐 Automation Settings <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-automation" class="settings-card-body">
     <div class="settings-grid">
       <!-- Auto Clock-Out -->
       <div class="form-group" style="grid-column:span 2">
@@ -9774,11 +9960,13 @@ async function renderSettings() {
       <strong>Late Clock-In Approval:</strong> If an employee tries to clock in more than [threshold] minutes after shift start, the kiosk shows a "Request Late Clock-In" button that requires manager PIN approval before proceeding.<br>
       <strong>Missed Clock-Out (next day):</strong> If auto clock-out is disabled and an employee forgets to clock out, the next morning's clock-in requires manager approval to verify yesterday's exit time.
     </div>
+    </div>
   </div>
 
   <!-- S4.1 Auto Clock-Out Policy (v32) -->
   <div class="settings-section">
-    <div class="settings-section-title">⏹ Auto Clock-Out Policy</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-auto-clockout')">⏹ Auto Clock-Out Policy <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-auto-clockout" class="settings-card-body">
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Enable Auto Clock-Out
@@ -9840,11 +10028,13 @@ async function renderSettings() {
       <button class="btn btn-gold" onclick="saveAutoClockOutSettings()">💾 Save Auto Clock-Out Settings</button>
       <button class="btn btn-dark btn-sm" onclick="API.call('runAutoClockOut',{}).then(r=>{if(!r||typeof r!=='object'){toast('Auto clock-out run. Refresh attendance to see results.','warning');return;}toast('Auto clock-out: '+r.clocked+' employees processed','success',4000);}).catch(e=>toast('Network error','error'))">▶ Run Now (Manual Trigger)</button>
     </div>
+    </div>
   </div>
 
   <!-- Role Permissions -->
   <div class="settings-section">
-    <div class="settings-section-title">🔑 Role Access Permissions</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-role-access')">🔑 Role Access Permissions <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-role-access" class="settings-card-body">
     <p style="font-size:12px;color:var(--gray-light);margin-bottom:12px">
       Control which tabs are visible to Manager and Supervisor roles. Owner always has full access.
     </p>
@@ -9879,11 +10069,13 @@ async function renderSettings() {
       </table>
     </div>
     <button class="btn btn-gold" style="margin-top:12px" onclick="saveRolePermissions()">💾 Save Permissions</button>
+    </div>
   </div>
 
   <!-- Points & Bonuses -->
   <div class="settings-section">
-    <div class="settings-section-title">⭐ Points & Bonus Settings</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-points')">⭐ Points & Bonus Settings <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-points" class="settings-card-body">
     <div class="settings-grid">
       ${levelPickerField('pointsEligibleLevels','Points Competition Eligible Levels',cfg['pointsEligibleLevels']||'L8,L9,L10')}
       ${cfgFieldTip('points1stPrize','1st Prize (₹)','Monthly cash prize awarded to the employee with the highest performance points. Paid as a bonus in that month\'s salary.')}
@@ -9900,13 +10092,15 @@ async function renderSettings() {
       </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="savePointsSettings()">💾 Save Points Settings</button>
+    </div>
   </div>
 
   <!-- v40 §9: visible group chips show each card's logical group without reordering DOM nodes -->
   <!-- Milestones Editor -->
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🎁 BONUS & REWARDS</div>
   <div class="settings-section">
-    <div class="settings-section-title">🏆 Loyalty Milestones</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-loyalty-milestones')">🏆 Loyalty Milestones <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-loyalty-milestones" class="settings-card-body">
 
     <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">v40 §3: each milestone supports any combination of reward types below. Whatever you fill in here is shown automatically on the employee's kiosk when they reach the milestone.</div>
     <div id="milestones-list">
@@ -9964,12 +10158,14 @@ async function renderSettings() {
         <button class="btn btn-dark btn-sm" onclick="addMilestone()">+ Add Milestone Year</button>
       </div>
     </div>
+    </div>
   </div>
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">💰 SALARY & PAYROLL</div>
   <!-- Salary Bands (v40 §2: input visibility + tooltips) -->
   <div class="settings-section">
-    <div class="settings-section-title">💰 Salary Bands by Level</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-salary-bands')">💰 Salary Bands by Level <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-salary-bands" class="settings-card-body">
     <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">These are reference ranges. Employees can have any salary within or outside these bands.</div>
     ${bands.map(b=>`
     <div class="band-row">
@@ -9980,20 +10176,23 @@ async function renderSettings() {
       <div><label class="form-label" style="font-size:10px">Female Max <span class="info-tooltip" title="Upper bound of the suggested monthly CTC range for this level for female employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-fx-${b.level}" type="number" value="${b.femaleMax||0}"></div>
       <button class="btn btn-dark btn-sm" title="Saves only this level's band to the database." onclick="saveBand('${escHtml(b.level)}')">Save</button>
     </div>`).join('')}
+    </div>
   </div>
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🕒 TIME & ATTENDANCE</div>
   <!-- Holidays -->
   <div class="settings-section">
-    <div class="settings-section-title">📅 Holidays Calendar
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-holidays')">📅 Holidays Calendar
       <span class="info-tooltip" title="Manage paid holidays for your organisation. Holidays marked here are treated as paid working days in attendance and salary calculations. Use 'Applicable To' to restrict a holiday to specific employee levels.">ℹ</span>
       <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-dark btn-sm" onclick="fixHolidayData()" title="Run this once if dates are showing as names in the table — it auto-corrects the column order in your Google Sheet">🔧 Fix Holiday Data</button>
-        <button class="btn btn-dark btn-sm" onclick="loadDefaultHolidays()" title="Load all major Indian 2026 holidays">🇮🇳 Load Indian Defaults</button>
-        <button class="btn btn-dark btn-sm" onclick="bulkImportHolidays()">📥 Bulk Import</button>
-        <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Holidays.xlsx','Holidays',['date','name','type','applicableTo'],${JSON.stringify(hols.map(h=>[h.date,h.name,h.type,h.applicableTo]))})">📤 Export</button>
+        <button class="btn btn-dark btn-sm" onclick="event.stopPropagation();fixHolidayData()" title="Run this once if dates are showing as names in the table — it auto-corrects the column order in your Google Sheet">🔧 Fix Holiday Data</button>
+        <button class="btn btn-dark btn-sm" onclick="event.stopPropagation();loadDefaultHolidays()" title="Load all major Indian 2026 holidays">🇮🇳 Load Indian Defaults</button>
+        <button class="btn btn-dark btn-sm" onclick="event.stopPropagation();bulkImportHolidays()">📥 Bulk Import</button>
+        <button class="btn btn-dark btn-sm" onclick='event.stopPropagation();downloadXLSX("ArtzFolio_Holidays.xlsx","Holidays",["date","name","type","applicableTo"],${JSON.stringify(hols.map(h=>[h.date,h.name,h.type,h.applicableTo]))})'>📤 Export</button>
       </span>
+      <span class="settings-card-chevron">▼</span>
     </div>
+    <div id="settings-body-holidays" class="settings-card-body">
     <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
       <button class="btn btn-red btn-sm" onclick="deleteSelectedHolidays()">🗑 Delete Selected</button>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-light)">
@@ -10036,11 +10235,13 @@ async function renderSettings() {
       </div>
       <button class="btn btn-gold btn-sm" onclick="addHoliday()" style="align-self:flex-end">+ Add Holiday</button>
     </div>
+    </div>
   </div>
 
   <!-- Orgs / Groups -->
   <div class="settings-section">
-    <div class="settings-section-title">🏢 Org Structure (Companies, Zones, Departments)</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-org-structure')">🏢 Org Structure (Companies, Zones, Departments) <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-org-structure" class="settings-card-body">
     <div id="orgs-list">
       ${['company','factory','zone','department','project'].map(type=>{
         const items=orgs.filter(o=>o.type===type);
@@ -10053,12 +10254,48 @@ async function renderSettings() {
         </div>`;
       }).join('')}
     </div>
+    </div>
+  </div>
+
+  <!-- v43 W2.4: Employee ID Format -->
+  <div class="settings-section">
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-emp-id-format')">🆔 Employee ID Format <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-emp-id-format" class="settings-card-body">
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      Customise the auto-generated employee ID. The counter is monotonic — deleting an employee never recycles their ID. Custom IDs entered manually on Add Employee are not affected.
+    </div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label class="form-label">Prefix <span class="info-tooltip" title="Letters/digits prepended to the sequence number. Example: 'AZ_EMP_' yields AZ_EMP_0057. Don't change after launch unless you really mean it.">ℹ</span></label>
+        <input id="cfg-empIdPrefix" class="form-input" value="${escHtml(cfg['empIdPrefix']||'AZ_EMP_')}" placeholder="AZ_EMP_">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Padding (digits) <span class="info-tooltip" title="Number of digits the sequence is zero-padded to. 4 → 0057. 5 → 00057. Increase before you cross the limit (9999 for padding=4).">ℹ</span></label>
+        <input id="cfg-empIdPadding" class="form-input" type="number" min="1" max="8" value="${escHtml(cfg['empIdPadding']||'4')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Next Sequence # <span class="info-tooltip" title="Counter for the next auto-assigned ID. Increments after each successful Add. Leave at 0 to auto-seed from existing employees on first save.">ℹ</span></label>
+        <input id="cfg-empIdNextSeq" class="form-input" type="number" min="0" value="${escHtml(cfg['empIdNextSeq']||'0')}">
+      </div>
+      <div class="form-group" style="grid-column:span 3">
+        <div style="font-size:11px;color:var(--gray-light)">Preview: Next ID will be <strong style="color:var(--gold);font-family:monospace" id="empid-preview">${(() => {
+          const _pre = cfg['empIdPrefix']||'AZ_EMP_';
+          const _pad = parseInt(cfg['empIdPadding']||'4',10) || 4;
+          const _seq = parseInt(cfg['empIdNextSeq']||'0',10) || 0;
+          const _preview = _seq > 0 ? _seq : '<auto-seeded>';
+          return escHtml(_pre + (typeof _preview === 'number' ? String(_preview).padStart(_pad,'0') : _preview));
+        })()}</strong></div>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveEmpIdSettings()">💾 Save Employee ID Format</button>
+    </div>
   </div>
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">💰 SALARY & PAYROLL</div>
   <!-- Statutory Compliance Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">📋 Statutory Compliance (PF / ESI / PT / TDS)</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-statutory')">📋 Statutory Compliance (PF / ESI / PT / TDS) <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-statutory" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Enable the relevant deductions below. Once enabled, they are automatically calculated in every month's payroll and shown on salary slips.
       <br><strong style="color:var(--gold)">ArtzFolio note:</strong> With 34 employees in Noida (UP), PF and ESI are <strong>legally mandatory</strong>. PT = ₹0 in UP.
@@ -10099,11 +10336,13 @@ async function renderSettings() {
       <div class="form-group"><label class="form-label">TAN Number (for TDS) <span class="info-tooltip" title="Your 10-character Tax Deduction Account Number issued by Income Tax Department. Mandatory for filing TDS returns.">ℹ</span></label><input id="cfg-tanNumber" class="form-input" value="${escHtml(cfg['tanNumber']||'')}"></div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveStatutorySettings()">💾 Save Statutory Settings</button>
+    </div>
   </div>
 
   <!-- Petty Cash Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">💵 Petty Cash Settings</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-petty-cash')">💵 Petty Cash Settings <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-petty-cash" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Customize the category dropdown shown in the Petty Cash entry form. Receipts/photos are saved to your Google Drive in the folder <strong style="color:var(--gold)">ArtzFolio_PettyCash/</strong>. Access them from the receipt link in each entry row.
     </div>
@@ -10121,12 +10360,14 @@ async function renderSettings() {
       </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="savePCSettings()">💾 Save Petty Cash Settings</button>
+    </div>
   </div>
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">📢 NOTIFICATIONS</div>
   <!-- WhatsApp / SMS Notifications Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">📱 WhatsApp / SMS Notifications</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-whatsapp-sms')">📱 WhatsApp / SMS Notifications <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-whatsapp-sms" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Automatically notify employees via WhatsApp when their leave is approved/rejected, salary is ready, or advances are credited.
       Supports <strong>Gupshup</strong>, <strong>AiSensy</strong>, <strong>Twilio</strong>, or a custom REST API.
@@ -10171,11 +10412,13 @@ async function renderSettings() {
       </div>
       <div id="wa-test-result" style="font-size:12px;color:var(--gray-light)"></div>
     </div>
+    </div>
   </div>
 
   <!-- OT Pre-Approval Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🕐 Overtime Pre-Approval</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-ot-preapproval')">🕐 Overtime Pre-Approval <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-ot-preapproval" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       When enabled, supervisors or managers must submit an OT request <strong>before</strong> overtime is worked.
       Approved OT requests are visible in the Approvals inbox. OT is only registered on clock-out if a pre-approved request exists.
@@ -10186,11 +10429,13 @@ async function renderSettings() {
       </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveOTSettings()">💾 Save OT Settings</button>
+    </div>
   </div>
 
   <!-- Backup -->
   <div class="settings-section">
-    <div class="settings-section-title">💾 Backup & Data Management</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-backup')">💾 Backup & Data Management <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-backup" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       All data is saved in your <strong style="color:var(--gold)">Google Sheet</strong> — it is always backed up.<br>
       The Export below downloads a complete JSON snapshot you can keep as an extra backup or move to another account.
@@ -10203,12 +10448,14 @@ async function renderSettings() {
     <div style="margin-top:12px;font-size:11px;color:var(--gray-light)">
       <strong>What is JSON backup?</strong> It is a complete copy of all your data (employees, attendance, salary records, transactions, points) saved as a file on your computer. If your Google account is ever inaccessible or your data needs to move to a new Google Sheet, you import this file to restore everything. Think of it like a photocopy of all your records.
     </div>
+    </div>
   </div>
 
   <!-- FIX-13: System Maintenance / Cleaner — FIX-25: added ⓘ tooltips to all options -->
   ${isOwner ? `
   <div class="settings-section">
-    <div class="settings-section-title">🧹 System Maintenance</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-maintenance')">🧹 System Maintenance <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-maintenance" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Free up Google Sheet space and remove stale data. Select actions below and click <strong style="color:var(--gold)">Run Selected Actions</strong>.
       Each action is independent. Your current and recent records are never affected.
@@ -10265,12 +10512,21 @@ async function renderSettings() {
     </div>
     <button class="btn btn-red" onclick="runSystemClean()">🧹 Run Selected Actions</button>
     <div id="sc-result" style="margin-top:12px;font-size:12px;min-height:16px"></div>
+    <!-- v43 W2.3: Audit log archival — preserves history (vs. clearOldAudit which permanently deletes) -->
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">📦 Audit Log Quarterly Archive <span class="info-tooltip" title="MOVES (does not delete) audit rows older than N days into per-quarter archive sheets (Audit_2026Q1, Audit_2026Q2, ...). Keeps the main Audit sheet small and fast. Full history is preserved in the archive sheets — restorable any time by copy-paste back to the main sheet. For automatic quarterly runs, wire the runQuarterlyAuditArchive GAS function as a time-driven trigger.">ℹ</span></div>
+      <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">Archive audit rows older than <input id="aa-days" type="number" value="90" min="30" max="730" style="width:60px;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);padding:2px 4px;border-radius:3px"> days into Audit_YYYYQq sheets. Idempotent — re-running just archives anything new that crossed the cutoff since last time.</div>
+      <button class="btn btn-gold btn-sm" onclick="runAuditArchive()">📦 Archive Old Audit Rows Now</button>
+      <div id="aa-result" style="margin-top:8px;font-size:12px;min-height:16px"></div>
+    </div>
+    </div>
   </div>` : ''}
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🎁 BONUS & REWARDS</div>
   <!-- v30: Loyalty Bonus Vesting Settings (v40 §8: per-level vesting model toggle + Tiered Withdrawal) -->
   <div class="settings-section">
-    <div class="settings-section-title">💎 Loyalty Bonus Vesting</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-loyalty-vesting')">💎 Loyalty Bonus Vesting <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-loyalty-vesting" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Configure the monthly loyalty bonus and vesting schedule for each employee level. Changes take effect from the next monthly accrual cycle.
       <br><strong style="color:var(--gold)">v40:</strong> each level can use either <em>Cumulative Vesting</em> (existing model) or <em>Tiered Withdrawal with Cooldown</em> (new).
@@ -10369,14 +10625,16 @@ async function renderSettings() {
       <button class="btn btn-dark btn-sm" onclick="switchTab('bonustracker')" style="margin-left:4px">📊 View Loyalty Bonus Tracker →</button>
     </div>
     <div id="lb-save-status" style="margin-top:8px;font-size:12px;min-height:16px"></div>
+    </div>
   </div>
 
   ${isOwner ? `
   <!-- Danger Zone Token Config — FIX-25: cleaner description + ⓘ tooltip -->
   <div class="settings-section">
-    <div class="settings-section-title">🔑 Danger Zone Token
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-danger-token')">🔑 Danger Zone Token
       <span class="info-tooltip" title="This is a secret password that guards the most destructive buttons (Delete Employee, Clear Records, Full Reset, Clear Test Data). Without it those buttons will refuse to work. Generate one with Auto-Generate Token, click Save, and you are done — the app saves it automatically. Keep this value confidential.">ℹ</span>
-    </div>
+     <span class="settings-card-chevron">▼</span></div>
+       <div id="settings-body-danger-token" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:12px;line-height:1.7">
       This secret token protects all Danger Zone operations (Delete Employee, Clear Records, Full Reset, Clear Test Data).<br>
       If this is blank, Danger Zone actions will refuse to run. Click <strong style="color:var(--gold)">Auto-Generate Token</strong> then <strong style="color:var(--gold)">Save Danger Zone Token</strong> — the app saves it automatically.
@@ -10411,11 +10669,59 @@ async function renderSettings() {
     <div id="dz-token-status" style="margin-top:8px;font-size:12px;color:${(cfg['ownerTokenSet']==='true' || State._dzToken)?'var(--green)':'var(--orange)'}">
       ${(cfg['ownerTokenSet']==='true' || State._dzToken) ? '✓ Token is configured — Danger Zone actions are enabled' : '⚠ Token not set — Danger Zone actions are blocked'}
     </div>
+    <!-- v43 W3.2: 4 latent admin endpoints (audit D1.3 / F.2.9). All exist in the GAS dispatcher
+         but had no UI button until v43. Owner-token gated server-side. -->
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">🛠 Admin Diagnostic Tools
+        <span class="info-tooltip" title="Four maintenance tools that previously existed in the backend but had no UI button. Token rotation, sheet quarantine recovery, and schema diagnostics. Each is owner-token-gated server-side.">ℹ</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--gold)">🔄 Rotate Owner Token
+              <span class="info-tooltip" title="Generates a new random Owner Token and updates it in the Config sheet. Use this if you suspect the current token has been leaked. After rotation, current Danger Zone session continues to work but a fresh login will use the new value.">ℹ</span>
+            </div>
+            <div style="font-size:11px;color:var(--gray-light)">Generates a new random token. Use quarterly or after a suspected leak.</div>
+          </div>
+          <button class="btn btn-sm" style="background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold)" onclick="adminRotateOwnerToken()">🔄 Rotate Token</button>
+        </div>
+        <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--orange)">🔙 Restore From Quarantine
+              <span class="info-tooltip" title="If you accidentally clicked Full Reset, your data is not deleted — it's renamed to QUARANTINE-* sheets and kept for 24 hours. Click this to restore them. Only works within 24h of the Full Reset.">ℹ</span>
+            </div>
+            <div style="font-size:11px;color:var(--gray-light)">Undo a recent Full Reset (within 24h). Restores quarantined sheets.</div>
+          </div>
+          <button class="btn btn-sm" style="background:#5a3000;color:#fff;border:1px solid var(--orange)" onclick="adminRestoreFromQuarantine()">🔙 Restore</button>
+        </div>
+        <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--red)">🗑 Purge Quarantine
+              <span class="info-tooltip" title="Permanently deletes all QUARANTINE-* sheets older than 24h. After purge, recovery is no longer possible. Safe to leave unrun — quarantine sheets cost very little spreadsheet space.">ℹ</span>
+            </div>
+            <div style="font-size:11px;color:var(--gray-light)">Permanently delete quarantined sheets older than 24h. After purge, recovery is no longer possible.</div>
+          </div>
+          <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="adminPurgeQuarantine()">🗑 Purge</button>
+        </div>
+        <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--gold-light)">📋 Run Schema Check
+              <span class="info-tooltip" title="Diagnostic only — does not change anything. Shows whether your Google Sheet's schema version matches what this build of the app expects. Useful when troubleshooting compatibility issues.">ℹ</span>
+            </div>
+            <div style="font-size:11px;color:var(--gray-light)">Diagnostic — reports the current vs. expected schema version. Read-only.</div>
+          </div>
+          <button class="btn btn-sm" style="background:#1a3a5a;color:var(--gold-light);border:1px solid var(--gold-light)" onclick="adminRunSchemaCheck()">📋 Run Check</button>
+        </div>
+      </div>
+      <div id="admin-diag-status" style="margin-top:10px;font-size:12px;min-height:16px"></div>
+    </div>
+    </div>
   </div>
 
   <!-- ⚠ DANGER ZONE — FIX-25: ⓘ tooltips + Clear Test Data Only button added -->
   <div class="settings-section" style="border-color:var(--red);border-width:2px">
-    <div class="settings-section-title" style="color:var(--red)">⚠ Danger Zone — Owner Only</div>
+    <div class="settings-section-title" style="cursor:pointer;color:var(--red)" onclick="toggleCard('settings-body-danger-zone')">⚠ Danger Zone — Owner Only <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-danger-zone" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:16px;line-height:1.7">
       These actions are <strong style="color:var(--red)">permanent and irreversible</strong>. Always export a backup before proceeding.<br>
       Each action requires you to enter your Owner password and type a confirmation phrase.
@@ -10476,12 +10782,14 @@ async function renderSettings() {
         <button class="btn btn-sm" style="background:#7f0000;color:#fff;border:1px solid var(--red)" onclick="dangerFullReset()">☢ Full Reset</button>
       </div>
     </div>
+    </div>
   </div>` : ''}
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">💰 SALARY & PAYROLL</div>
   <!-- v31: OT & Extra Day Policy Settings (v40 §7: per-day denominator + OT-hours-equivalent) -->
   <div class="settings-section">
-    <div class="settings-section-title">⏱ OT & Extra Day Policy</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-ot-extraday')">⏱ OT & Extra Day Policy <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-ot-extraday" class="settings-card-body">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Configure overtime and extra day pay multipliers. OT = hours beyond standard shift on a normal day.
       Extra Day = full day worked on a holiday or weekly off. These are two separate calculation types.
@@ -10567,11 +10875,13 @@ async function renderSettings() {
       </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31OTSettings()">💾 Save OT & Extra Day Settings</button>
+    </div>
   </div>
 
   <!-- v31: Promotion Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🎯 Promotion Policy</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-promotion')">🎯 Promotion Policy <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-promotion" class="settings-card-body">
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Minimum Advance Notice for Effective Date (days)
@@ -10599,11 +10909,13 @@ async function renderSettings() {
       </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31PromotionSettings()">💾 Save Promotion Settings</button>
+    </div>
   </div>
 
   <!-- v31: Bonus Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">🎁 Bonus Policy</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-bonus')">🎁 Bonus Policy <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-bonus" class="settings-card-body">
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Perfect Attendance Bonus Amount (INR per month)
@@ -10622,12 +10934,14 @@ async function renderSettings() {
       </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31BonusSettings()">💾 Save Bonus Settings</button>
+    </div>
   </div>
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🎁 BONUS & REWARDS</div>
   <!-- v31: Referral Bonus Settings (v40 §6: per-level inputs + tooltips) -->
   <div class="settings-section">
-    <div class="settings-section-title">🤝 Referral Bonus Settings</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-referral')">🤝 Referral Bonus Settings <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-referral" class="settings-card-body">
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Enable Referral Bonus
@@ -10656,6 +10970,7 @@ async function renderSettings() {
       <div id="referral-bonus-by-level-table" style="font-size:13px">Loading…</div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" title="Saves all referral configuration. Existing pending referrals already in flight are unaffected." onclick="saveV31ReferralSettings()">💾 Save Referral Bonus Settings</button>
+    </div>
   </div>
 
   <!-- v34: Compensation & Promotion Policy Settings -->
@@ -10664,6 +10979,19 @@ async function renderSettings() {
       💼 Compensation &amp; Promotion Policy <span style="float:right;font-size:12px;color:var(--gray-light)">▼</span>
     </div>
     <div id="comp-settings-body" style="display:none">
+      <!-- v43 W3.12: Defaults banner — shown when CompensationConfig sheet is empty -->
+      <div id="comp-defaults-banner" style="display:none;background:rgba(228,180,93,0.08);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--gold)">
+        ℹ Showing recommended defaults. Click <strong>Save</strong> on any sub-tab to commit, or click <strong>Initialize Compensation Sheets</strong> below to commit all defaults at once.
+      </div>
+      <!-- v43 W3.13: First-Time Setup banner — consolidated from a single in-panel instance previously at the bottom of the card. Now hides automatically once the Compensation sheets are initialized (sheetExists flag from W3.12). -->
+      <div id="comp-first-time-banner" style="display:none;background:rgba(229,62,62,0.08);border:1px solid var(--red);border-radius:8px;padding:12px 16px;margin-bottom:12px">
+        <div style="color:var(--red);font-weight:700;margin-bottom:4px">⚠ First-Time Setup — Owner Only</div>
+        <div style="font-size:12px;color:var(--gray-light);margin-bottom:8px;line-height:1.6">
+          Run once when setting up Compensation for the first time. Creates SalaryLadder, JoiningBonus, LoyaltyWallet, and CompensationConfig sheets with default values.
+          <span style="color:var(--gold)">Warning:</span> Existing data in those sheets will be overwritten.
+        </div>
+        <button class="btn" style="background:var(--red);color:white" onclick="initCompSheets()">🏗 Initialize Compensation Sheets</button>
+      </div>
       <div class="comp-sub-tabs" id="comp-settings-tabs">
         <button class="comp-sub-tab active" onclick="switchCompSettingsTab('ladder')">Salary Ladder</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('increment')">Increments</button>
@@ -10682,22 +11010,22 @@ async function renderSettings() {
       <div class="comp-sub-panel" id="comp-sp-increment">
         <div class="settings-grid">
           <div class="form-group">
-            <label class="form-label">Increment Period (months)</label>
+            <label class="form-label">Increment Period (months) <span class="tooltip-icon" data-tooltip-key="INCREMENT_PERIOD_MONTHS">i</span></label>
             <input class="form-input" type="number" id="cfg-INCREMENT_PERIOD_MONTHS" min="1" placeholder="6">
           </div>
           <div class="form-group">
-            <label class="form-label">Increment Type</label>
+            <label class="form-label">Increment Type <span class="tooltip-icon" data-tooltip-key="INCREMENT_TYPE">i</span></label>
             <select class="form-input" id="cfg-INCREMENT_TYPE">
               <option value="Flat">Flat Amount</option>
               <option value="Percentage">Percentage</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Percentage Rate (e.g. 0.05 = 5%)</label>
+            <label class="form-label">Percentage Rate (e.g. 0.05 = 5%) <span class="tooltip-icon" data-tooltip-key="INCREMENT_PERCENTAGE">i</span></label>
             <input class="form-input" type="number" id="cfg-INCREMENT_PERCENTAGE" step="0.01" min="0" max="1" placeholder="0.05">
           </div>
           <div class="form-group">
-            <label class="form-label">Max Increment Cycles per Level</label>
+            <label class="form-label">Max Increment Cycles per Level <span class="tooltip-icon" data-tooltip-key="MAX_INCREMENT_CYCLES">i</span></label>
             <input class="form-input" type="number" id="cfg-MAX_INCREMENT_CYCLES" min="1" max="8" placeholder="4">
           </div>
         </div>
@@ -10706,8 +11034,9 @@ async function renderSettings() {
       <!-- Promotion Windows sub-panel -->
       <div class="comp-sub-panel" id="comp-sp-promo">
         <p class="comp-settings-subtitle">Minimum and maximum months before promotion eligibility per level.</p>
+        <!-- v43 W3.11: tooltip-icons on the table header cells (since this grid lacks per-input labels) -->
         <table class="comp-ladder-table" style="margin-bottom:12px">
-          <tr><th>From Level</th><th>Min Months</th><th>Max Months</th></tr>
+          <tr><th>From Level</th><th>Min Months <span class="tooltip-icon" data-tooltip-key="promo-min-months">i</span></th><th>Max Months <span class="tooltip-icon" data-tooltip-key="promo-max-months">i</span></th></tr>
           <tr><td>L10 → L9</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L10" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L10" min="1"></td></tr>
           <tr><td>L9 → L8</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L9" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L9" min="1"></td></tr>
           <tr><td>L8 → L7</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L8" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L8" min="1"></td></tr>
@@ -10719,27 +11048,27 @@ async function renderSettings() {
       <div class="comp-sub-panel" id="comp-sp-ot">
         <div class="settings-grid">
           <div class="form-group" style="grid-column:span 2">
-            <label class="form-label" style="color:var(--red)">9-Hour Shift Minimum OT Hours — HARD MINIMUM — System will block OT entries below this value for 9-hour shift employees.</label>
+            <label class="form-label" style="color:var(--red)">9-Hour Shift Minimum OT Hours — HARD MINIMUM — System will block OT entries below this value for 9-hour shift employees. <span class="tooltip-icon" data-tooltip-key="OT_MIN_HOURS_9HR">i</span></label>
             <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_9HR" min="0.5" step="0.5">
           </div>
           <div class="form-group">
-            <label class="form-label">11-Hour Shift Minimum OT Hours</label>
+            <label class="form-label">11-Hour Shift Minimum OT Hours <span class="tooltip-icon" data-tooltip-key="OT_MIN_HOURS_11HR">i</span></label>
             <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_11HR" min="0.5" step="0.5">
           </div>
           <div class="form-group">
-            <label class="form-label">12-Hour Shift Minimum OT Hours</label>
+            <label class="form-label">12-Hour Shift Minimum OT Hours <span class="tooltip-icon" data-tooltip-key="OT_MIN_HOURS_12HR">i</span></label>
             <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_12HR" min="0.5" step="0.5">
           </div>
           <div class="form-group">
-            <label class="form-label">OT Working Days Divisor</label>
+            <label class="form-label">OT Working Days Divisor <span class="tooltip-icon" data-tooltip-key="OT_WORKING_DAYS_DIVISOR">i</span></label>
             <input class="form-input" type="number" id="cfg-OT_WORKING_DAYS_DIVISOR" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Shift Ratio 11hr ÷ 9hr × 90%</label>
+            <label class="form-label">Shift Ratio 11hr ÷ 9hr × 90% <span class="tooltip-icon" data-tooltip-key="SHIFT_RATIO_11HR">i</span></label>
             <input class="form-input" type="number" id="cfg-SHIFT_RATIO_11HR" step="0.01" min="0.1">
           </div>
           <div class="form-group">
-            <label class="form-label">Shift Ratio 12hr ÷ 9hr × 90%</label>
+            <label class="form-label">Shift Ratio 12hr ÷ 9hr × 90% <span class="tooltip-icon" data-tooltip-key="SHIFT_RATIO_12HR">i</span></label>
             <input class="form-input" type="number" id="cfg-SHIFT_RATIO_12HR" step="0.01" min="0.1">
           </div>
         </div>
@@ -10749,41 +11078,41 @@ async function renderSettings() {
       <div class="comp-sub-panel" id="comp-sp-jbonus">
         <div class="settings-grid">
           <div class="form-group">
-            <label class="form-label">Enable Joining Bonus</label>
+            <label class="form-label">Enable Joining Bonus <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_ENABLED">i</span></label>
             <select class="form-input" id="cfg-JOINING_BONUS_ENABLED">
               <option value="true">Yes</option><option value="false">No</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Total Bonus Amount (₹)</label>
+            <label class="form-label">Total Bonus Amount (₹) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_TOTAL">i</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_TOTAL" min="0">
           </div>
           <div class="form-group">
-            <label class="form-label">Number of Installments</label>
+            <label class="form-label">Number of Installments <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENTS">i</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENTS" min="1" max="12">
           </div>
           <div class="form-group">
-            <label class="form-label">Amount per Installment (₹)</label>
+            <label class="form-label">Amount per Installment (₹) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_AMOUNT">i</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_AMOUNT" min="0" readonly>
           </div>
           <div class="form-group">
-            <label class="form-label">Installment 1 — After (months)</label>
+            <label class="form-label">Installment 1 — After (months) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_1_MONTHS">i</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_1_MONTHS" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Installment 2 — After (months)</label>
+            <label class="form-label">Installment 2 — After (months) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_2_MONTHS">i</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_2_MONTHS" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Installment 3 — After (months)</label>
+            <label class="form-label">Installment 3 — After (months) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_3_MONTHS">i</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_3_MONTHS" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Installment 4 — After (months)</label>
+            <label class="form-label">Installment 4 — After (months) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_4_MONTHS">i</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_4_MONTHS" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Max Leaves Threshold for Eligibility Check</label>
+            <label class="form-label">Max Leaves Threshold for Eligibility Check <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_MAX_LEAVES_THRESHOLD">i</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_MAX_LEAVES_THRESHOLD" min="0">
           </div>
         </div>
@@ -10793,38 +11122,32 @@ async function renderSettings() {
       <div class="comp-sub-panel" id="comp-sp-wallet">
         <div class="settings-grid">
           <div class="form-group">
-            <label class="form-label">Enable Loyalty Wallet</label>
+            <label class="form-label">Enable Loyalty Wallet <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_ENABLED">i</span></label>
             <select class="form-input" id="cfg-LOYALTY_WALLET_ENABLED">
               <option value="true">Yes</option><option value="false">No</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">Year 1 Monthly Credit (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR1_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 2 Monthly Credit (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR2_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 3 Monthly Credit (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR3_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 4 Monthly Credit (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR4_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 5+ Monthly Credit Cap (₹)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR5PLUS_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Max Leaves Threshold</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MAX_LEAVES_THRESHOLD" min="0"></div>
-          <div class="form-group"><label class="form-label">Min Tenure Before First Withdrawal (months)</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MIN_TENURE_MONTHS" min="1"></div>
-          <div class="form-group"><label class="form-label">Withdrawal % after 6-Month Wait</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT" min="0" max="100"></div>
-          <div class="form-group"><label class="form-label">Withdrawal % after 12-Month Wait</label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT" min="0" max="100"></div>
+          <div class="form-group"><label class="form-label">Year 1 Monthly Credit (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR1_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR1_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 2 Monthly Credit (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR2_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR2_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 3 Monthly Credit (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR3_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR3_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 4 Monthly Credit (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR4_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR4_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 5+ Monthly Credit Cap (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR5PLUS_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR5PLUS_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Max Leaves Threshold <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_MAX_LEAVES_THRESHOLD">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MAX_LEAVES_THRESHOLD" min="0"></div>
+          <div class="form-group"><label class="form-label">Min Tenure Before First Withdrawal (months) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_MIN_TENURE_MONTHS">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MIN_TENURE_MONTHS" min="1"></div>
+          <div class="form-group"><label class="form-label">Withdrawal % after 6-Month Wait <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT" min="0" max="100"></div>
+          <div class="form-group"><label class="form-label">Withdrawal % after 12-Month Wait <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT" min="0" max="100"></div>
         </div>
         <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['LOYALTY_WALLET_ENABLED','LOYALTY_WALLET_YR1_MONTHLY','LOYALTY_WALLET_YR2_MONTHLY','LOYALTY_WALLET_YR3_MONTHLY','LOYALTY_WALLET_YR4_MONTHLY','LOYALTY_WALLET_YR5PLUS_MONTHLY','LOYALTY_WALLET_MAX_LEAVES_THRESHOLD','LOYALTY_WALLET_MIN_TENURE_MONTHS','LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT','LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT'])">💾 Save Loyalty Wallet Policy</button>
       </div>
-      <!-- v34: Initialize Compensation Sheets (owner only) -->
-      <div style="margin-top:18px;padding:12px;border:1px solid var(--red);border-radius:8px;background:rgba(229,57,53,0.06)">
-        <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">⚠ First-Time Setup — Owner Only</div>
-        <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px;line-height:1.6">
-          Run once when setting up Compensation for the first time. Creates SalaryLadder, JoiningBonus, LoyaltyWallet, and CompensationConfig sheets with default values.<br>
-          <strong style="color:var(--orange)">Warning:</strong> Existing data in those sheets will be overwritten.
-        </div>
-        <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="initCompSheets()">🏗 Initialize Compensation Sheets</button>
-      </div>
+      <!-- v43 W3.13: First-Time Setup banner was here. Moved to top of comp-settings-body to avoid scrolling past 6 sub-panels to find it, and to consolidate near the new defaults banner (W3.12). -->
+
     </div>
   </div>
 
   <!-- v31: Notice Period & Exit Policy Settings -->
   <div class="settings-section">
-    <div class="settings-section-title">📋 Notice Period & Exit Policy</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-notice-exit')">📋 Notice Period & Exit Policy <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-notice-exit" class="settings-card-body">
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Default Notice Period Duration (days)
@@ -10901,12 +11224,14 @@ async function renderSettings() {
       </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31ExitSettings()">💾 Save Exit Policy Settings</button>
+    </div>
   </div>
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">📅 LEAVE</div>
   <!-- v31: Leave Management Policy Settings (v40 §1a: removed duplicate Grace Period; canonical lives in Time & Attendance) -->
   <div class="settings-section">
-    <div class="settings-section-title">📅 Leave Management Policy</div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-leave-management')">📅 Leave Management Policy <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-leave-management" class="settings-card-body">
     <div class="settings-grid">
       <div class="form-group">
         <label class="form-label">Leave Year Start Date
@@ -10946,8 +11271,12 @@ async function renderSettings() {
       <button class="btn btn-gold" onclick="saveAllLeaveSettings()">💾 Save Leave Settings</button>
       <button class="btn btn-dark btn-sm" title="One-click action: creates current-year leave balance entries for every active employee based on the entitlements set above. Run this at the start of each leave year. Existing balances are NOT overwritten — only missing entries are seeded." onclick="seedLeaveBalancesAdmin()">🌱 Seed Leave Balances for All Active Employees <span class="info-tooltip" title="One-click action: creates current-year leave balance entries for every active employee based on the entitlements set above. Run this at the start of each leave year. Existing balances are NOT overwritten — only missing entries are seeded.">ℹ</span></button>
     </div>
+    </div>
   </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
+  // v43 W3.9: restore per-card collapse state from localStorage. Runs AFTER DOM
+  // insertion so the .settings-card-body lookup matches the freshly-rendered nodes.
+  initSettingsCardState();
   // Post-render: load editable leave types table
   setTimeout(() => loadLeaveTypesSettingsTable(), 100);
   // v34: load comp config into settings inputs
@@ -11036,7 +11365,12 @@ async function showLoyaltyBonusCard(empId, empStatus) {
     let modelLine = '';
     if (vModel === 'Tiered' && Array.isArray(d.tieredOptions) && d.tieredOptions.length) {
       const opts = d.tieredOptions.map(o => `<div style="font-size:11px">• After <strong>${o.months}</strong> mo → <strong>${o.pct}%</strong>${o.available?' <span style="color:var(--green)">(available)</span>':' <span style="color:var(--orange)">(locked)</span>'}</div>`).join('');
+      // v43 W2.8: surface the earliest-next-date line in the Tiered branch too,
+      // so all 6 mandatory loyalty-info pieces show regardless of vesting model.
+      // v42 only emitted this in the Cumulative branch, leaving Tiered employees
+      // with no visible "when is my next unlock" date.
       modelLine = `<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">
+        ${earliestDate ? `<div style="margin-bottom:4px">Earliest next vesting: <strong style="color:var(--white)">${escHtml(earliestDate)}</strong></div>` : ''}
         <strong style="color:var(--gold)">Tiered Withdrawal Options:</strong>${opts}
       </div>`;
     } else if (fwd.length) {
@@ -11054,18 +11388,24 @@ async function showLoyaltyBonusCard(empId, empStatus) {
         ? `<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">In ${nextMs} months, ${d.next_milestone_pct}% becomes withdrawable</div>`
         : '<div style="font-size:11px;color:var(--green);margin-bottom:8px">✓ Maximum vesting reached</div>';
     }
-    // v42 Item E: "How this works" collapsible. Renders only if the employee has any accruals,
-    // and the copy is model-specific so it matches what they actually see below.
+    // v42 Item E: "How this works" collapsible — copy is model-specific so it matches
+    // what they actually see below.
+    // v43 W2.9: render unconditionally. v42 hid this for zero-accrual employees,
+    // which meant brand-new hires never saw the policy explainer until their first
+    // monthly accrual posted. New hires are precisely the people who most need the
+    // intro copy. For zero-accrual case, prepend a "first deposit after first month"
+    // line so they know when the card will start populating.
     const _hasAccruals = totalAccrued > 0;
+    const _firstDepositHint = _hasAccruals
+      ? ''
+      : `<div style="margin-bottom:6px;color:var(--gold-light);font-weight:600">You don't have any deposits yet. Your first monthly bonus will appear after you complete your first full month.</div>`;
     const _howWorksCopy = vModel === 'Tiered'
       ? `Every month, your level's bonus is added to a loyalty pool. The first time you withdraw, you pick a wait/percentage tier — longer wait gives a higher percentage of your current balance. After that first withdrawal, every future withdrawal follows the "Cooldown Options" tier table — you wait, the percentage you can take grows. Cooldown options apply forever.`
       : `Every month, your level's bonus is added as a separate deposit (cohort), and each deposit has its own vesting clock. Deposits made recently are locked; older deposits vest in stages set by your company. Your "Eligible Now" total below is the sum across every deposit's vested portion. The longer you stay, the more cohorts mature — the forward table below shows what you could withdraw if you wait.`;
-    const _howWorksBlock = _hasAccruals
-      ? `<details style="margin-bottom:8px;font-size:11px;background:var(--dark3);border-radius:4px;padding:4px 8px">
+    const _howWorksBlock = `<details style="margin-bottom:8px;font-size:11px;background:var(--dark3);border-radius:4px;padding:4px 8px"${_hasAccruals?'':' open'}>
           <summary style="cursor:pointer;color:var(--gold-light);font-weight:600">ℹ️ How this works</summary>
-          <div style="margin-top:6px;color:var(--gray-light);line-height:1.5">${_howWorksCopy}</div>
-        </details>`
-      : '';
+          <div style="margin-top:6px;color:var(--gray-light);line-height:1.5">${_firstDepositHint}${_howWorksCopy}</div>
+        </details>`;
     content.innerHTML = `
       ${_howWorksBlock}
       ${headerLine}
@@ -11724,6 +12064,78 @@ async function testDZToken() {
   else toast('Token invalid ✗ — token does not match Config sheet OWNER_TOKEN','error');
 }
 
+// v43 W3.2: 4 latent admin endpoints surfaced to the UI. Each is owner-token gated
+// server-side; we pass State._dzToken with every call. Status is shown in
+// #admin-diag-status under the Admin Tools row.
+function _adminDiagStatus(msg, kind) {
+  const el = document.getElementById('admin-diag-status');
+  if (!el) return;
+  const color = kind === 'ok' ? 'var(--green)' : kind === 'warn' ? 'var(--orange)' : kind === 'err' ? 'var(--red)' : 'var(--gray-light)';
+  el.style.color = color;
+  el.textContent = msg;
+}
+async function adminRotateOwnerToken() {
+  const token = State._dzToken || (document.getElementById('cfg-ownerToken')?.value || '').trim();
+  if (!token) { toast('Set or load the current Owner Token first','warning'); return; }
+  if (!(await confirm2('Rotate the Owner Token now? The current token will be replaced with a new random value. You will need to update the new value to any external tools that use it.'))) return;
+  _adminDiagStatus('Rotating…','info');
+  try {
+    const res = await API.call('rotateOwnerToken', { ownerToken: token, userId: State.adminUser });
+    if (!res.ok) { _adminDiagStatus('✗ ' + (res.error||'Failed'),'err'); toast(res.error||'Rotate failed','error'); return; }
+    // Refresh in-memory and the input value so the new token is immediately usable
+    if (res.newToken) {
+      State._dzToken = res.newToken;
+      const inp = document.getElementById('cfg-ownerToken');
+      if (inp) inp.value = res.newToken;
+    }
+    _adminDiagStatus('✓ Token rotated. New value loaded into the Owner Token field above — copy it to your records if needed.','ok');
+    toast('✓ Owner Token rotated','success', 5000);
+  } catch(e) { console.error('adminRotateOwnerToken:', e); _adminDiagStatus('✗ Network error','err'); }
+}
+async function adminRestoreFromQuarantine() {
+  const token = State._dzToken || '';
+  if (!token) { toast('Owner token unavailable — re-login as Owner first','error'); return; }
+  if (!(await confirm2('Restore the most recent QUARANTINE-* sheets back to their original names?\n\nThis works only within 24 hours of a Full Reset.'))) return;
+  _adminDiagStatus('Restoring…','info');
+  try {
+    const res = await API.call('restoreFromQuarantine', { ownerToken: token, userId: State.adminUser });
+    // restoreFromQuarantine returns ok=false when there are name conflicts (partial restore).
+    // Treat that as a warning, not a failure — `restored` count is still meaningful.
+    const conflictCount = (res.conflicts && res.conflicts.length) || 0;
+    if (typeof res.restored === 'number' || res.ok) {
+      const kind = conflictCount ? 'warn' : 'ok';
+      const msg = '✓ Restored ' + (res.restored||0) + ' sheet(s).' + (conflictCount ? ' ⚠ ' + conflictCount + ' could not be restored (name conflict): ' + (res.conflicts||[]).join(', ') : '');
+      _adminDiagStatus(msg, kind);
+      toast(conflictCount ? 'Partial restore — see details above' : '✓ Restore complete — reload the app','success', 6000);
+    } else {
+      _adminDiagStatus('✗ ' + (res.error||'Failed'),'err');
+      toast(res.error||'Restore failed','error');
+    }
+  } catch(e) { console.error('adminRestoreFromQuarantine:', e); _adminDiagStatus('✗ Network error','err'); }
+}
+async function adminPurgeQuarantine() {
+  const token = State._dzToken || '';
+  if (!token) { toast('Owner token unavailable — re-login as Owner first','error'); return; }
+  if (!(await confirm2('PERMANENTLY delete all QUARANTINE-* sheets older than 24 hours?\n\nAfter this, recovery from a recent Full Reset is no longer possible.'))) return;
+  if (!(await confirm2('Final confirmation: this action cannot be undone. Proceed?'))) return;
+  _adminDiagStatus('Purging…','info');
+  try {
+    const res = await API.call('purgeQuarantine', { ownerToken: token, userId: State.adminUser });
+    if (!res.ok) { _adminDiagStatus('✗ ' + (res.error||'Failed'),'err'); toast(res.error||'Purge failed','error'); return; }
+    _adminDiagStatus('✓ Purged ' + (res.deleted||0) + ' quarantine sheet(s).','ok');
+    toast('✓ Quarantine purged','success');
+  } catch(e) { console.error('adminPurgeQuarantine:', e); _adminDiagStatus('✗ Network error','err'); }
+}
+async function adminRunSchemaCheck() {
+  _adminDiagStatus('Checking…','info');
+  try {
+    const res = await API.call('runSchemaCheck', { userId: State.adminUser });
+    if (!res.ok) { _adminDiagStatus('✗ ' + (res.error||'Failed'),'err'); return; }
+    const txt = (res.match ? '✓ ' : '⚠ ') + 'Schema: current=' + res.stored + ', expected=' + res.expected + ' — ' + res.message;
+    _adminDiagStatus(txt, res.match ? 'ok' : 'warn');
+  } catch(e) { console.error('adminRunSchemaCheck:', e); _adminDiagStatus('✗ Network error','err'); }
+}
+
 async function saveOrgSettings() {
   const selectKeys=['currency','timezone','weekStart','durationFormat','timeRounding','autoBreakDeduction','reminderClockIn','reminderClockOut','defaultShiftStart','defaultShiftEnd'];
   const updates={};
@@ -11754,6 +12166,32 @@ async function saveOrgSettings() {
       Notification.requestPermission();
     }
   } else toast(res.error||'Error saving org settings','error');
+}
+
+// v43 W2.4: persist the 3 Employee ID Format settings.
+async function saveEmpIdSettings() {
+  const updates = {};
+  ['empIdPrefix','empIdNextSeq','empIdPadding'].forEach(k => {
+    const el = document.getElementById('cfg-'+k);
+    if (el) updates[k] = el.value;
+  });
+  if (!updates.empIdPrefix || !updates.empIdPrefix.trim()) {
+    toast('Prefix cannot be empty','warning'); return;
+  }
+  const _padInt = parseInt(updates.empIdPadding, 10);
+  if (!_padInt || _padInt < 1 || _padInt > 8) {
+    toast('Padding must be between 1 and 8 digits','warning'); return;
+  }
+  const _seqInt = parseInt(updates.empIdNextSeq, 10);
+  if (isNaN(_seqInt) || _seqInt < 0) {
+    toast('Next Sequence must be 0 or a positive integer','warning'); return;
+  }
+  const res = await API.call('updateSettings', {updates});
+  if (res.ok) {
+    toast('✓ Employee ID format saved','success');
+    const sRes = await API.call('getSettings');
+    if (sRes.ok) { applySettingsArr(sRes.settings||[]); }
+  } else { toast(res.error||'Error saving Employee ID format','error'); }
 }
 
 async function savePointsSettings() {
@@ -11946,6 +12384,28 @@ async function runSystemClean() {
   toast('✓ Maintenance complete','success');
 }
 
+// v43 W2.3: manual trigger for the quarterly audit-archive flow.
+async function runAuditArchive() {
+  const days = parseInt(document.getElementById('aa-days')?.value, 10) || 90;
+  if (days < 30) { toast('Pick at least 30 days — archiving recent rows is pointless','warning'); return; }
+  const token = State._dzToken || '';
+  if (!token) { toast('Owner token unavailable — re-login as Owner first.', 'error'); return; }
+  if (!(await confirm2(`Archive audit rows older than ${days} days?\n\nRows move from the main Audit sheet to per-quarter archive sheets (Audit_YYYYQq). Nothing is deleted; full history is preserved.`))) return;
+  const el = document.getElementById('aa-result');
+  if (el) { el.textContent = '⏳ Archiving…'; el.style.color = 'var(--gold)'; }
+  const res = await API.call('archiveAuditLog', {olderThanDays: days, ownerToken: token, userId: State.adminUser});
+  if (!res.ok) {
+    if (el) { el.textContent = '✗ ' + (res.error || 'Failed'); el.style.color = 'var(--red)'; }
+    toast(res.error || 'Archive failed','error'); return;
+  }
+  const buckets = res.byQuarter ? Object.keys(res.byQuarter).map(k => `${k}: ${res.byQuarter[k]}`).join(', ') : '';
+  if (el) {
+    el.textContent = `✓ Archived ${res.archived} row(s)${buckets?' → '+buckets:''}`;
+    el.style.color = 'var(--green)';
+  }
+  toast(`✓ Archived ${res.archived} audit row(s)`,'success', 5000);
+}
+
 async function saveWhatsAppSettings() {
   const textKeys = ['whatsappApiKey','whatsappFrom','whatsappApiUrl','twilioAccountSid','twilioAuthToken','otManagerNotifyMobile'];
   const checkKeys = ['whatsappEnabled','notifyLeaveApproval','notifyPayslip','notifyAdvance','notifyOTApproval'];
@@ -12092,43 +12552,54 @@ async function exportFullBackup() {
   if (!(await confirm2('Download a complete data backup as JSON? This may take up to a minute on large datasets.'))) return;
   toast('⏳ Building backup…', 'info', 6000);
   try {
-    const calls = await Promise.allSettled([
-      API.call('getEmployees'),
-      API.call('getAttendance'),
-      API.call('getTransactions'),
-      API.call('getPoints'),
-      API.call('getLeaves'),
-      API.call('getLeaveRequests'),
-      API.call('getLeaveBalances'),
-      API.call('getBonusLedger'),
-      API.call('getOTRequests'),
-      API.call('getHolidays'),
-      API.call('getSettings'),
-      API.call('getOrgs'),
-      API.call('getMilestones'),
-      API.call('getSalaryBands'),
-      API.call('getPettyCash'),
-      API.call('getDocuments'),
-    ]);
-    const pick = (r, key) => (r.status === 'fulfilled' && r.value && (r.value[key] || r.value)) || null;
+    // v43 W2.2: single backend call returns every sheet via handleExportAll. Replaces
+    // the 16-parallel-API.call shape from v42 which omitted 16 of 30 sheets (audit,
+    // roster, salaryRecords, promotion history, OT_Claims, loyalty ledger/balances/
+    // settings/schedule_history, FnF_Records, leave_types, pending_attendance,
+    // bonus_ledger, activities, archived_employees, rollback_log). Restoring from
+    // that half-backup would silently obliterate the omitted sheets.
+    const r = await API.call('exportAll', {});
+    if (!r || !r.ok) { toast('Backup failed: ' + ((r && r.error) || 'unknown'), 'error', 6000); return; }
+    // Settings come through exportAll as {key,value,note} rows; the legacy backup
+    // shape stored settings as a plain {key:value} object. Build both for forward
+    // and backward compatibility (a v44 restore handler could read either).
+    const _sheets = r['export'] || {};
+    const _cfgRows = Array.isArray(_sheets.Config) ? _sheets.Config : [];
+    const _settingsObj = {};
+    _cfgRows.forEach(row => { if (row && row.key) _settingsObj[row.key] = row.value; });
+    // v43 W2.2: dual-shape payload. New `sheets:{<sheetName>:rows}` is the source
+    // of truth (one entry per actual sheet). Legacy top-level keys are preserved
+    // for v42-and-earlier restore handlers that look for the old names.
+    const pickRows = (name) => Array.isArray(_sheets[name]) ? _sheets[name] : null;
     const backup = {
-      meta: {version:'v43', exportedAt:new Date().toISOString(), exportedAtIST:fmtDateForFile()+' '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})},
-      employees:     pick(calls[0],  'employees'),
-      attendance:    pick(calls[1],  'records'),
-      transactions:  pick(calls[2],  'transactions'),
-      points:        pick(calls[3],  'points'),
-      leaves:        pick(calls[4],  'leaves'),
-      leaveRequests: pick(calls[5],  'requests'),
-      leaveBalances: pick(calls[6],  'balances'),
-      bonusLedger:   pick(calls[7],  'entries'),
-      otRequests:    pick(calls[8],  'requests'),
-      holidays:      pick(calls[9],  'holidays'),
-      settings:      pick(calls[10], 'settings'),
-      orgs:          pick(calls[11], 'orgs'),
-      milestones:    pick(calls[12], 'milestones'),
-      salaryBands:   pick(calls[13], 'bands'),
-      pettyCash:     pick(calls[14], 'records'),
-      documents:     pick(calls[15], 'documents'),
+      meta: {
+        // v43 W3.8: derive version from CFG so future releases don't need to edit this literal.
+        // window.HRMS_VERSION is the canonical client-side version constant. Falls back to
+        // CFG.version (the schema/feature version) if HRMS_VERSION is somehow unavailable.
+        version: (typeof window !== 'undefined' && window.HRMS_VERSION) || (CFG && CFG.version) || 'unknown',
+        schemaVersion: 1,
+        exportedAt:new Date().toISOString(),
+        exportedAtIST:fmtDateForFile()+' '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'}),
+        sheetCount: Object.keys(_sheets).length,
+      },
+      sheets: _sheets,             // new — every sheet, keyed by exact sheet name
+      // Legacy top-level keys (matched against v42 restore code's switch):
+      employees:     pickRows('Employees'),
+      attendance:    pickRows('Attendance'),
+      transactions:  pickRows('Transactions'),
+      points:        pickRows('Points'),
+      leaves:        pickRows('Leaves'),
+      leaveRequests: pickRows('Leave_Requests'),
+      leaveBalances: pickRows('Leave_Balance'),
+      bonusLedger:   pickRows('Bonus_Ledger'),
+      otRequests:    pickRows('OtRequests'),
+      holidays:      pickRows('Holidays'),
+      orgs:          pickRows('Orgs'),
+      milestones:    pickRows('Milestones'),
+      salaryBands:   pickRows('SalaryBands'),
+      pettyCash:     pickRows('PettyCash'),
+      documents:     pickRows('Documents'),
+      settings:      _settingsObj, // legacy: {key:value} object form
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
@@ -12138,7 +12609,7 @@ async function exportFullBackup() {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 100);
-    toast('✅ Backup downloaded — keep it safe.', 'success', 4000);
+    toast(`✅ Backup downloaded (${backup.meta.sheetCount} sheets) — keep it safe.`, 'success', 4000);
   } catch (e) {
     toast('Backup failed: ' + (e.message || e), 'error', 6000);
   }
@@ -12483,6 +12954,7 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
       parsedRows = window._bulkRows || [];
       if (!parsedRows.length) { toast('No rows to import','warning'); return; }
       let ok=0;
+      let skipped=0; // v43 W3.3: dup-skip counter
       const total = parsedRows.length;
       const importLog = []; // {rowNum, name, status, error}
       // Chunk imports to avoid hanging the browser (5 parallel calls per chunk)
@@ -12502,6 +12974,13 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
             }
             const res = await API.call(confirmAction, payload);
             if(res.ok) {
+              // v43 W3.3: dedup skip — backend signalled duplicate by setting res.duplicate=true.
+              // Report as a "skip" line (not a fail, not a successful add) so the user sees how
+              // many were de-duplicated vs. how many actually imported.
+              if (res.duplicate === true) {
+                importLog.push({rowNum, label, status:'skip', error: res.message || 'Duplicate — already exists'});
+                return 'skip';
+              }
               importLog.push({rowNum, label, status:'ok', error:''});
               return true;
             } else {
@@ -12509,19 +12988,22 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
               return false;
             }
           } catch(e) {
+            console.error('bulk row error:', e);
             importLog.push({rowNum, label, status:'fail', error:e.message||'Network error'});
             return false;
           }
         }));
-        ok += results.filter(Boolean).length;
+        // v43 W3.3: tally three buckets — true (added), 'skip' (duplicate), false (failed)
+        ok      += results.filter(r => r === true).length;
+        skipped += results.filter(r => r === 'skip').length;
         await new Promise(r=>setTimeout(r,50));
       }
-      const fail = total - ok;
+      const fail = total - ok - skipped;
       closeModal();
       window._bulkRows = [];
       await refreshCurrentTab();
-      // Show import report modal
-      showBulkImportReport(importLog, ok, fail, total);
+      // v43 W3.3: pass skipped count to the report so users see dup-skip totals
+      showBulkImportReport(importLog, ok, fail, total, skipped);
     }},
     {label:'Cancel', cls:'btn-dark', cb:()=>{window._bulkRows=[];closeModal();}},
   ]);
@@ -12552,20 +13034,23 @@ async function handleBulkFileSelect(input, previewId, statusId) {
 }
 
 // ─── Bulk Import Report Modal ────────────────────────────────────────────────
-function showBulkImportReport(log, ok, fail, total) {
+// v43 W3.3: added optional 5th arg `skipped` for dedup-skip totals.
+function showBulkImportReport(log, ok, fail, total, skipped) {
+  skipped = skipped || 0;
   const rows = log.map((r,i) => {
-    const icon = r.status==='ok' ? '✅' : '❌';
-    const errCell = r.status==='fail'
-      ? `<td style="color:var(--red);font-size:11px">${escHtml(r.error)}</td>`
-      : `<td style="color:var(--green);font-size:11px">Imported successfully</td>`;
+    const icon = r.status==='ok' ? '✅' : (r.status==='skip' ? '⏭' : '❌');
+    let cellColor = 'var(--green)', cellText = 'Imported successfully';
+    if (r.status === 'fail')  { cellColor = 'var(--red)';  cellText = r.error; }
+    if (r.status === 'skip')  { cellColor = 'var(--orange)'; cellText = r.error || 'Skipped (duplicate)'; }
     return `<tr style="border-bottom:1px solid var(--dark3)">
       <td style="padding:4px 6px;color:var(--gray-light)">${r.rowNum}</td>
       <td style="padding:4px 6px">${icon} ${escHtml(r.label)}</td>
-      ${errCell}
+      <td style="color:${cellColor};font-size:11px">${escHtml(cellText)}</td>
     </tr>`;
   }).join('');
   const summary = `<div style="margin-bottom:10px;font-size:13px">
     <span style="color:var(--green);font-weight:700">✅ ${ok} imported</span>
+    ${skipped>0?`&nbsp;|&nbsp;<span style="color:var(--orange);font-weight:700">⏭ ${skipped} duplicates skipped</span>`:''}
     ${fail>0?`&nbsp;|&nbsp;<span style="color:var(--red);font-weight:700">❌ ${fail} failed</span>`:''}
     &nbsp;|&nbsp;<span style="color:var(--gray-light)">Total: ${total}</span>
   </div>`;
@@ -12580,9 +13065,13 @@ function showBulkImportReport(log, ok, fail, total) {
     </table>
   </div>
   ${fail>0?`<div style="margin-top:10px;font-size:11px;color:var(--gold-light)">⚠ Failed rows were <strong>not</strong> imported. Fix the errors and re-upload only the failed rows.</div>`:''}
+  ${skipped>0?`<div style="margin-top:6px;font-size:11px;color:var(--gold-light)">⏭ Skipped rows already existed in the system — re-importing is safe and creates no duplicates.</div>`:''}
   </div>`;
+  const titleSummary = skipped > 0
+    ? `${ok} added / ${skipped} skipped / ${total} Total`
+    : `${ok}/${total} Rows Successful`;
   showModal(
-    `📊 Import Report — ${ok}/${total} Rows Successful`,
+    `📊 Import Report — ${titleSummary}`,
     html,
     [{label:'Close', cls:'btn-gold', cb:()=>closeModal()}]
   );
@@ -12733,49 +13222,57 @@ async function bulkImportEmployees() {
     ['referredBy','Name (ID) of existing employee','Triggers referral-bonus payout to that employee. Set once at hire — cannot be edited later.'],
     ['leavePolicyGroup','Free text — must match a configured group','Examples: "Staff", "Executive", "Managerial". Drives annual leave quotas. Leave blank for default.'],
   ];
-  // Build a field guide to show in the modal header
-  // (Existing Employees-specific field guide kept hand-typed per owner's
-  // explicit scoping — Item I refactor for Employees is deferred to v43.
-  // We DO append the 13 new column descriptions here so the guide doesn't drift.)
-  const fieldGuide = `<details style="margin-top:10px;font-size:12px">
-    <summary style="cursor:pointer;color:var(--gold);font-weight:600">📖 Column Guide (click to expand)</summary>
-    <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;color:var(--gray-light);line-height:1.7">
-      <span><strong style="color:var(--off-white)">employeeCode</strong> — Custom ID (auto-assigned if blank, e.g. AZ_EMP_0056)</span>
-      <span><strong style="color:var(--gold)">name *</strong> — Full name of employee</span>
-      <span><strong style="color:var(--gold)">level *</strong> — L1–L10 (determines OT eligibility, notice period)</span>
-      <span><strong style="color:var(--gold)">salary *</strong> — Monthly gross salary in ₹</span>
-      <span><strong style="color:var(--gold)">pin *</strong> — 4-digit PIN for kiosk clock-in</span>
-      <span><strong style="color:var(--off-white)">shiftStart / shiftEnd</strong> — HH:MM format (e.g. 09:00 / 19:00)</span>
-      <span><strong style="color:var(--off-white)">dailyHours</strong> — Expected work hours per day (default: 10)</span>
-      <span><strong style="color:var(--off-white)">weeklyOff1 / weeklyOff2</strong> — Sunday, Monday … Saturday</span>
-      <span><strong style="color:var(--off-white)">dept</strong> — Department name (defaults to level if blank)</span>
-      <span><strong style="color:var(--off-white)">category</strong> — Workforce / Staff / Management</span>
-      <span><strong style="color:var(--off-white)">doj / dob</strong> — Date of Joining / Birth in YYYY-MM-DD</span>
-      <span><strong style="color:var(--off-white)">gender</strong> — Male / Female / Other</span>
-      <span><strong style="color:var(--off-white)">aadhaar</strong> — 12-digit Aadhaar number</span>
-      <span><strong style="color:var(--off-white)">noticeperiodDays</strong> — Notice period in days (default: 90)</span>
-      <span><strong style="color:var(--off-white)">nightShiftAllowance</strong> — Monthly night shift allowance in ₹</span>
-      <span><strong style="color:var(--off-white)">travelAllowance</strong> — Monthly travel/conveyance allowance in ₹</span>
-      <span><strong style="color:var(--off-white)">otBaseHours</strong> — Hours after which OT is calculated (default: 9)</span>
-      <span><strong style="color:var(--off-white)">employmentType</strong> — Wage Shift Office / Full-Time Office / Work From Home / Hybrid</span>
-      <span><strong style="color:var(--off-white)">notes</strong> — Any additional notes</span>
-      <!-- v42 Item F additions -->
-      <span><strong style="color:var(--off-white)">group</strong> — Internal team / shift label (free text, optional)</span>
-      <span><strong style="color:var(--off-white)">billableRate</strong> — Per-hour billable rate (₹/hr, 0 if N/A)</span>
-      <span><strong style="color:var(--off-white)">workDaysPerWeek</strong> — Working days per week (1–7, default 6)</span>
-      <span><strong style="color:var(--off-white)">uan</strong> — Universal Account Number (PF), 12 digits</span>
-      <span><strong style="color:var(--off-white)">esiNumber</strong> — ESI registration number, 17 digits</span>
-      <span><strong style="color:var(--off-white)">address</strong> — Permanent address (free text)</span>
-      <span><strong style="color:var(--off-white)">factory</strong> — From Settings → Org Structure dropdown</span>
-      <span><strong style="color:var(--off-white)">zone</strong> — From Settings → Org Structure dropdown</span>
-      <span><strong style="color:var(--off-white)">department</strong> — From Settings → Org Structure (distinct from free-text "dept")</span>
-      <span><strong style="color:var(--off-white)">project</strong> — From Settings → Org Structure dropdown</span>
-      <span><strong style="color:var(--off-white)">supervisorId</strong> — "Name (ID)" or raw ID of existing employee</span>
-      <span><strong style="color:var(--off-white)">managerId</strong> — "Name (ID)" or raw ID of existing employee</span>
-      <span><strong style="color:var(--off-white)">referredBy</strong> — Existing employee who referred this hire (triggers referral bonus)</span>
-      <span><strong style="color:var(--off-white)">leavePolicyGroup</strong> — Staff / Executive / Managerial / etc.</span>
-    </div>
-  </details>`;
+  // v43 W3.6: refactored Employees Column Guide to use the same buildColumnGuide(spec)
+  // pattern as Transactions and Petty Cash. Single-source-of-truth EMP_COL_GUIDE array
+  // — descriptions live alongside their column names. The `headers` array above is the
+  // template-header source-of-truth; this array is the guide source-of-truth. They live
+  // adjacent in the same function so future column additions to the template will be
+  // immediately visible as a guide gap during code review.
+  // Audit B.9.3: drift risk between hand-typed guide and template headers is closed by
+  // using the shared buildColumnGuide renderer, which is exercised by Transactions and
+  // Petty Cash imports today.
+  const EMP_COL_GUIDE = [
+    { label:'employeeCode',                     required:false, desc:'Custom ID (auto-assigned if blank, e.g. AZ_EMP_0056)' },
+    { label:'name *',                           required:true,  desc:'Full name of employee' },
+    { label:'level *',                          required:true,  desc:'L1–L10 (determines OT eligibility, notice period)' },
+    { label:'salary *',                         required:true,  desc:'Monthly gross salary in ₹' },
+    { label:'pin *',                            required:true,  desc:'4-digit PIN for kiosk clock-in' },
+    { label:'shiftStart / shiftEnd',            required:false, desc:'HH:MM format (e.g. 09:00 / 19:00)' },
+    { label:'dailyHours',                       required:false, desc:'Expected work hours per day (default: 10)' },
+    { label:'weeklyOff1 / weeklyOff2',          required:false, desc:'Sunday, Monday … Saturday' },
+    { label:'dept',                             required:false, desc:'Department name (defaults to level if blank)' },
+    { label:'category',                         required:false, desc:'Workforce / Staff / Management' },
+    { label:'doj / dob',                        required:false, desc:'Date of Joining / Birth in YYYY-MM-DD' },
+    { label:'gender',                           required:false, desc:'Male / Female / Other' },
+    { label:'aadhaar',                          required:false, desc:'12-digit Aadhaar number' },
+    { label:'noticeperiodDays',                 required:false, desc:'Notice period in days (default: 90)' },
+    { label:'nightShiftAllowance',              required:false, desc:'Monthly night shift allowance in ₹' },
+    { label:'travelAllowance',                  required:false, desc:'Monthly travel/conveyance allowance in ₹' },
+    { label:'otBaseHours',                      required:false, desc:'Hours after which OT is calculated (default: 9)' },
+    { label:'employmentType',                   required:false, desc:'Wage Shift Office / Full-Time Office / Work From Home / Hybrid' },
+    { label:'notes',                            required:false, desc:'Any additional notes' },
+    // ── v42 Item F additions ──
+    { label:'group',                            required:false, desc:'Internal team / shift label (free text, optional)' },
+    { label:'billableRate',                     required:false, desc:'Per-hour billable rate (₹/hr, 0 if N/A)' },
+    { label:'workDaysPerWeek',                  required:false, desc:'Working days per week (1–7, default 6)' },
+    { label:'uan',                              required:false, desc:'Universal Account Number (PF), 12 digits' },
+    { label:'esiNumber',                        required:false, desc:'ESI registration number, 17 digits' },
+    { label:'address',                          required:false, desc:'Permanent address (free text)' },
+    { label:'factory',                          required:false, desc:'From Settings → Org Structure dropdown' },
+    { label:'zone',                             required:false, desc:'From Settings → Org Structure dropdown' },
+    { label:'department',                       required:false, desc:'From Settings → Org Structure (distinct from free-text "dept")' },
+    { label:'project',                          required:false, desc:'From Settings → Org Structure dropdown' },
+    { label:'supervisorId',                     required:false, desc:'"Name (ID)" or raw ID of existing employee' },
+    { label:'managerId',                        required:false, desc:'"Name (ID)" or raw ID of existing employee' },
+    { label:'referredBy',                       required:false, desc:'Existing employee who referred this hire (triggers referral bonus)' },
+    { label:'leavePolicyGroup',                 required:false, desc:'Staff / Executive / Managerial / etc.' },
+  ];
+  // Soft drift-check: warn in console if the guide doesn't list as many columns as the
+  // template has. Doesn't break the import — just surfaces a future code-review nudge.
+  if (EMP_COL_GUIDE.length < headers.length - 5) {
+    console.warn('Employee bulk-import: Column Guide has', EMP_COL_GUIDE.length, 'entries but template has', headers.length, 'columns — guide may be missing entries.');
+  }
+  const fieldGuide = buildColumnGuide(EMP_COL_GUIDE);
   // v42 Item F: dynamic Org dropdowns for 4 columns. Substring keys (lowercased,
   // alnum-only) — header "factory" → key 'factory', etc. Empty lists are
   // silently skipped inside downloadBulkTemplateRich.
@@ -12915,7 +13412,8 @@ function bulkImportTransactions() {
       const empId = emp ? emp.id : raw;
       return {empId, date:row['date *'], type:row['type *'],
               amount:parseFloat(row['amount *'])||0, note:row['note']||'',
-              approvedBy:row['approvedBy']||State.adminUser||'Admin', status:'Applied'};
+              approvedBy:row['approvedBy']||State.adminUser||'Admin', status:'Applied',
+              dedupOnImport: true /* v43 W3.3 */};
     }, 'addTransaction', buildColumnGuide(TRANS_COLS), sampleRows, validValues);
 }
 
@@ -12946,7 +13444,8 @@ function bulkImportLeaves() {
       const empId = emp ? emp.id : raw;
       return {empId, type:row['leaveType *'],
               startDate:row['startDate *'], endDate:row['endDate *'],
-              note:row['note']||'', urgency:row['urgency']||'normal'};
+              note:row['note']||'', urgency:row['urgency']||'normal',
+              dedupOnImport: true /* v43 W3.3 */};
     }, 'requestLeave', null, sampleRows, validValues);
 }
 
@@ -13031,6 +13530,7 @@ function bulkImportPettyCash() {
         paidTo: row['paidTo'] || '',
         note: row['note'] || '',
         recordedBy: State.adminUser || State.adminRole || 'admin',
+        dedupOnImport: true /* v43 W3.3 */
         // receiptBase64 / receiptMime intentionally absent — receipts attached later via manual edit.
       };
     },
@@ -13051,7 +13551,8 @@ async function bulkImportHolidays() {
   ];
   openBulkImportModal('📅 Bulk Import Holidays', headers, 'ArtzFolio_Holiday_Template.xlsx', row => {
     if (!row['date *'] || !row['name *']) return null;
-    return {date:row['date *'], name:row['name *'], type:row['type']||'National', applicableTo:row['applicableTo']||'All'};
+    return {date:row['date *'], name:row['name *'], type:row['type']||'National', applicableTo:row['applicableTo']||'All',
+            dedupOnImport: true /* v43 W3.3 */};
   }, 'addHoliday', null, sampleRows, validValues);
 }
 
@@ -14725,40 +15226,139 @@ function switchCompSettingsTab(panel) {
   var activePanel = document.getElementById('comp-sp-' + panel);
   if (activePanel) activePanel.classList.add('active');
   if (panel === 'ladder') initCompLadderEditor();
+  // v43 W3.11: re-hydrate tooltips after sub-tab switch in case the panel had
+  // not been rendered yet on first loadCompSettings(). hydrateCompensationTooltips
+  // is idempotent — re-applying data-tooltip-text is a no-op.
+  hydrateCompensationTooltips();
+}
+
+// v43 W3.12: defaults visibility banner show/hide. Both the "showing defaults" and
+// the "first-time setup" banners (W3.13) are gated by the same sheetExists flag.
+function showCompDefaultsBanner() {
+  var b = document.getElementById('comp-defaults-banner');
+  if (b) b.style.display = '';
+  var ft = document.getElementById('comp-first-time-banner');
+  if (ft) ft.style.display = '';
+}
+function hideCompDefaultsBanner() {
+  var b = document.getElementById('comp-defaults-banner');
+  if (b) b.style.display = 'none';
+  var ft = document.getElementById('comp-first-time-banner');
+  if (ft) ft.style.display = 'none';
+}
+
+// v43 W3.11: copy text for fields that don't have a corresponding COMP_CONFIG_DEFAULTS row.
+// These are mostly the Salary Ladder cells and the Promotion-window inputs which use
+// dynamic IDs (ladder-L7-9 etc.) rather than the CFG_KEY → cfg-CFG_KEY pattern.
+const _MANUAL_COMP_TOOLTIPS = {
+  'ladder-9hr-base': 'Base morning salary for this level on a standard 9-hour shift. The 11hr and 12hr salaries auto-compute by multiplying with the configured shift ratios.',
+  'ladder-11hr-auto': 'Auto-derived from 9hr base x Shift Ratio 11hr x 90% adjustment. Edit ratios in the OT Policy tab.',
+  'ladder-12hr-auto': 'Auto-derived from 9hr base x Shift Ratio 12hr x 90% adjustment. Edit ratios in the OT Policy tab.',
+  'promo-min-months': 'Minimum months an employee must spend at this level before becoming promotion-eligible.',
+  'promo-max-months': 'Maximum months before the system flags the employee for promotion review. Blank = no maximum (managerial discretion only, used for L6 cap).',
+  'joining-bonus-installment-amount-display': 'Auto-calculated from Total Bonus / Number of Installments. Read-only display.'
+};
+
+// v43 W3.11: cache the backend-sourced descriptions across sub-tab switches so we
+// don't refetch on every panel change. First call populates; subsequent calls reuse.
+let _compCfgDescriptionsCache = null;
+
+async function hydrateCompensationTooltips() {
+  let cfgDescriptions = _compCfgDescriptionsCache;
+  if (!cfgDescriptions) {
+    try {
+      const res = await API.call('getCompConfigDescriptions');
+      if (res && res.ok && res.descriptions) {
+        cfgDescriptions = res.descriptions;
+        _compCfgDescriptionsCache = cfgDescriptions;
+      }
+    } catch(e) { console.error('hydrateCompensationTooltips:', e); }
+    if (!cfgDescriptions) cfgDescriptions = {};
+  }
+  document.querySelectorAll('.tooltip-icon').forEach(function(el) {
+    const key = el.getAttribute('data-tooltip-key');
+    if (!key) return;
+    const text = cfgDescriptions[key] || _MANUAL_COMP_TOOLTIPS[key] || '';
+    if (text) el.setAttribute('data-tooltip-text', text);
+    else if (!el.hasAttribute('data-tooltip-text')) console.warn('Tooltip missing for key:', key);
+  });
+  // v43 W3.11: mobile tap-to-toggle. Idempotent — addEventListener on the same handler
+  // is a no-op, but we use a dataset flag to be extra-safe across re-renders.
+  document.querySelectorAll('.tooltip-icon').forEach(function(el) {
+    if (el.dataset.tooltipBound === '1') return;
+    el.dataset.tooltipBound = '1';
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      document.querySelectorAll('.tooltip-icon.active').forEach(function(x) {
+        if (x !== el) x.classList.remove('active');
+      });
+      el.classList.toggle('active');
+    });
+  });
+  if (!window._tooltipDocCloseBound) {
+    window._tooltipDocCloseBound = true;
+    document.addEventListener('click', function() {
+      document.querySelectorAll('.tooltip-icon.active').forEach(function(el) { el.classList.remove('active'); });
+    });
+  }
 }
 
 // ── Settings: Load Compensation Config ───────────────────────────────
+// v43 W3.12: rewritten to merge backend defaults on top of an empty CompensationConfig
+// so admins see meaningful values immediately on a fresh install. Defaults banner +
+// first-time-setup banner (W3.13) auto-show when the sheet is empty.
 async function loadCompSettings() {
   try {
-    var res = await API.call('getAllCompensationConfig');
-    if (!res.ok) return;
-    var cfg = res.config || {};
-    Object.keys(cfg).forEach(function(key) {
-      var el = document.getElementById('cfg-' + key);
+    const cfgRes = await API.call('getAllCompensationConfig');
+    const cfg = (cfgRes && cfgRes.ok && cfgRes.config) ? cfgRes.config : {};
+    const sheetExists = Object.keys(cfg).length > 0;
+    let defaults = {};
+    if (!sheetExists) {
+      try {
+        const defRes = await API.call('getCompConfigDefaults');
+        if (defRes && defRes.ok) defaults = defRes.defaults || {};
+      } catch(e) { console.error('getCompConfigDefaults:', e); }
+      showCompDefaultsBanner();
+    } else {
+      hideCompDefaultsBanner();
+    }
+    const merged = Object.assign({}, defaults, cfg);  // sheet wins over defaults
+    Object.keys(merged).forEach(function(key) {
+      const el = document.getElementById('cfg-' + key);
       if (!el) return;
       if (el.tagName === 'SELECT') {
-        var found = false;
         el.querySelectorAll('option').forEach(function(o) {
-          if (o.value === cfg[key]) { o.selected = true; found = true; }
-          else o.selected = false;
+          o.selected = (String(o.value) === String(merged[key]));
         });
       } else {
-        el.value = cfg[key];
+        el.value = merged[key];
       }
     });
     // Auto-compute installment amount display
-    var totalEl = document.getElementById('cfg-JOINING_BONUS_TOTAL');
-    var instEl = document.getElementById('cfg-JOINING_BONUS_INSTALLMENTS');
-    var instAmtEl = document.getElementById('cfg-JOINING_BONUS_INSTALLMENT_AMOUNT');
+    const totalEl  = document.getElementById('cfg-JOINING_BONUS_TOTAL');
+    const instEl   = document.getElementById('cfg-JOINING_BONUS_INSTALLMENTS');
+    const instAmtEl= document.getElementById('cfg-JOINING_BONUS_INSTALLMENT_AMOUNT');
     if (totalEl && instEl && instAmtEl) {
-      var n = parseInt(instEl.value) || 1;
+      const n = parseInt(instEl.value) || 1;
       instAmtEl.value = n > 0 ? Math.round(parseFloat(totalEl.value || 0) / n) : 0;
     }
     initCompLadderEditor();
-  } catch(e) {}
+    hydrateCompensationTooltips();  // v43 W3.11
+  } catch(e) { console.error('loadCompSettings:', e); }
 }
 
 // ── Settings: Initialize Salary Ladder Editor ────────────────────────
+// v43 W3.12: when the SalaryLadder sheet is empty (fresh install — admin hasn't
+// clicked Initialize Compensation Sheets yet), render with the LADDER_SEED so the
+// owner sees concrete values instead of blank inputs. The seed is the same set
+// that handleSetCompensationConfig / initCompensationSheets writes on init.
+const LADDER_SEED = {
+  L10:{ morning:11000 },
+  L9: { morning:12500 },
+  L8: { morning:14000 },
+  L7: { morning:16000 },
+  L6: { morning:20000 }
+};
 async function initCompLadderEditor() {
   var container = document.getElementById('comp-ladder-editor');
   if (!container) return;
@@ -14768,25 +15368,37 @@ async function initCompLadderEditor() {
     if (!res.ok) { container.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load ladder data.</div>'; return; }
     var rows = res.rows || [];
     var levels = ['L10','L9','L8','L7','L6'];
+    // v43 W3.12: if the sheet returned 0 rows, treat as fresh install and render with seed values.
+    var usingSeed = rows.length === 0;
     var html = '<table class="comp-ladder-table"><thead><tr>' +
-      '<th>Level</th><th>9hr Base (₹)</th><th>11hr (auto-computed)</th><th>12hr (auto-computed)</th>' +
+      '<th>Level <span class="tooltip-icon" data-tooltip-key="ladder-9hr-base">i</span></th>' +
+      '<th>9hr Base (₹) <span class="tooltip-icon" data-tooltip-key="ladder-9hr-base">i</span></th>' +
+      '<th>11hr (auto-computed) <span class="tooltip-icon" data-tooltip-key="ladder-11hr-auto">i</span></th>' +
+      '<th>12hr (auto-computed) <span class="tooltip-icon" data-tooltip-key="ladder-12hr-auto">i</span></th>' +
       '</tr></thead><tbody>';
     levels.forEach(function(level) {
       // SalaryLadder sheet columns: level, shiftHours, morningSalary (all lowercase from sheetToObjects)
       var r9  = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 9; }) || {};
       var r11 = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 11; }) || {};
       var r12 = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 12; }) || {};
+      // v43 W3.12: fall back to seed if no row for this level
+      var base9 = parseFloat(r9.morningSalary) || (usingSeed && LADDER_SEED[level] ? LADDER_SEED[level].morning : 0);
+      var disp11 = parseFloat(r11.morningSalary) || (base9 ? Math.round(base9 * 1.10 / 100) * 100 : 0);
+      var disp12 = parseFloat(r12.morningSalary) || (base9 ? Math.round(base9 * 1.20 / 100) * 100 : 0);
       html += '<tr>' +
         '<td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
-        '<td><input type="number" class="form-input" id="ladder-' + level + '-9" value="' + (r9.morningSalary || '') +
+        '<td><input type="number" class="form-input" id="ladder-' + level + '-9" value="' + (base9 || '') +
           '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:110px;padding:4px 6px"></td>' +
-        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-11-disp">' + fmtINR(r11.morningSalary || 0) + '</span></td>' +
-        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-12-disp">' + fmtINR(r12.morningSalary || 0) + '</span></td>' +
+        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-11-disp">' + fmtINR(disp11) + '</span></td>' +
+        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-12-disp">' + fmtINR(disp12) + '</span></td>' +
       '</tr>';
     });
     html += '</tbody></table>';
     container.innerHTML = html;
+    // v43 W3.11: hydrate tooltips for the freshly-inserted ladder cells
+    hydrateCompensationTooltips();
   } catch(e) {
+    console.error('initCompLadderEditor:', e);
     container.innerHTML = '<div style="color:var(--red);font-size:12px">Error: ' + escHtml(String(e)) + '</div>';
   }
 }
