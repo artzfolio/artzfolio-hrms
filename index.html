@@ -1414,7 +1414,7 @@ const CFG = {
   pinMaxLen: 4,
   kioskTimeout: 60000,
   kioskLogoutSeconds: 60,
-  version: '14.1',
+  version: '14.3',
 };
 // v40 §7a/7b: client-side mirror of GAS getPerDayDivisor(year, month).
 // Reads State.settings.perDayDivisor (loaded from Config sheet on init) and
@@ -1474,7 +1474,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v37-2026-05'; // v37 fix H-02
+const CACHE = 'artzfolio-hrms-v43-2026-05'; // v37 fix H-02; v43 W1.1: bumped cache namespace so SW evicts stale build
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2040,7 +2040,9 @@ const API = {
 
 // v37 fix H-01: client version constant. Server emits serverVersion on every response;
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
-window.HRMS_VERSION = 'v37';
+// v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
+// (server has been v38/v39/v40/v41/v42 since this line was last touched).
+window.HRMS_VERSION = 'v43';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -2472,7 +2474,12 @@ async function submitPin() {
   State.pin = ''; updatePinDots();
   try {
     // retries=0: one attempt only — PIN lookup either works or it doesn't
-    const res = await API.call('auth', {pin, empId:null}, 0);
+    // v43 W1.5: pass per-device clientId so the backend per-device PIN rate limit
+    // (kiosk_pin_rl_c_<clientId>) can throttle this kiosk independently of others.
+    // Stable random UUID; persists across reloads on the same device only.
+    let _cid = LS.g('kioskClientId');
+    if (!_cid) { _cid = 'kiosk_' + Math.random().toString(36).substring(2,10) + Date.now().toString(36); LS.s('kioskClientId', _cid); }
+    const res = await API.call('auth', {pin, empId:null, clientId:_cid}, 0);
     await handleAuthResult(res);
   } catch(e) { toast('Connection error. Try again.','error'); }
   finally {
@@ -8927,6 +8934,7 @@ async function renderPettyCash() {
       onchange="window._pcMonth=this.value;renderPettyCash()">
     <button class="btn btn-gold btn-sm" onclick="renderPettyCash()">↻ Refresh</button>
     ${canAdd ? `<button class="btn btn-gold btn-sm" onclick="openPCEntryModal()">+ Add Entry</button>` : ''}
+    ${canAdd ? `<button class="btn btn-dark btn-sm" onclick="bulkImportPettyCash()">📥 Bulk Import</button>` : ''}
     ${entries.length ? `<button class="btn btn-dark btn-sm" onclick="exportPCExcel()">⬇ Export XLSX</button>` : ''}
   </div>`;
 
@@ -8989,10 +8997,11 @@ function openPCEntryModal(prefill={}) {
   if (rawCats) { try { categories = JSON.parse(rawCats); } catch { categories = defaultCats; } }
   const catOptions = categories.map(c=>`<option value="${c}" ${prefill.category===c?'selected':''}>${c}</option>`).join('');
 
-  // Build employee dropdown — from State.employees or fresh
-  const emps = State.employees || [];
-  const empOpts = `<option value="">— Vendor / Other (type below) —</option>` +
-    emps.map(e=>`<option value="${escHtml(e.id)}" data-name="${escHtml(e.name)}" ${prefill.linkedEmpId===e.id?'selected':''}>${escHtml(e.name)} (${escHtml(e.id)})</option>`).join('');
+  // v43 W1.3: removed employee dropdown + linkedEmpId hidden field + auto-deduct
+  // checkbox. The backend handleAddPettyCash never persisted those values, so the
+  // UI was promising automatic salary deduction it could not deliver. v44 will
+  // re-introduce a properly designed auto-deduct flow that actually creates the
+  // companion Advance transaction. Free-text "Paid To / Received From" is retained.
 
   const bodyHtml = `
     <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
@@ -9022,15 +9031,7 @@ function openPCEntryModal(prefill={}) {
     </div>
     <div style="margin-top:12px">
       <label class="form-label">Paid To / Received From</label>
-      <select class="form-input" id="pc-emp-sel" onchange="syncPCEmpToName()" style="margin-bottom:6px">${empOpts}</select>
-      <input class="form-input" id="pc-paidto" type="text" placeholder="Or type vendor / person name" value="${escHtml(prefill.paidTo||'')}">
-      <input type="hidden" id="pc-linked-emp" value="${escHtml(prefill.linkedEmpId||'')}">
-    </div>
-    <div id="pc-deduct-row" style="margin-top:8px;display:none">
-      <label class="form-label" style="font-size:12px">
-        <input type="checkbox" id="pc-deduct-from-salary" ${prefill.deductFromSalary?'checked':''}>
-        Deduct this amount from employee's next salary automatically
-      </label>
+      <input class="form-input" id="pc-paidto" type="text" placeholder="Vendor name, employee name, or other party" value="${escHtml(prefill.paidTo||'')}">
     </div>
     <div style="margin-top:12px">
       <label class="form-label">Note</label>
@@ -9056,22 +9057,9 @@ function openPCEntryModal(prefill={}) {
   );
 }
 
-function syncPCEmpToName() {
-  const sel = document.getElementById('pc-emp-sel');
-  const paidToEl = document.getElementById('pc-paidto');
-  const linkedEl = document.getElementById('pc-linked-emp');
-  const deductRow = document.getElementById('pc-deduct-row');
-  if (sel.value) {
-    const opt = sel.options[sel.selectedIndex];
-    paidToEl.value = opt.dataset.name + ' (' + sel.value + ')';
-    linkedEl.value = sel.value;
-    deductRow.style.display = 'block';
-  } else {
-    paidToEl.value = '';
-    linkedEl.value = '';
-    deductRow.style.display = 'none';
-  }
-}
+// v43 W1.3: syncPCEmpToName removed along with the linked-employee dropdown.
+// The "Paid To" free-text field is now the only path; admins can type "Name (ID)"
+// if they want a paper trail to a specific employee.
 
 function previewPCReceipt(input) {
   const prev = document.getElementById('pc-receipt-preview');
@@ -9095,8 +9083,7 @@ async function submitPCEntry(existingId) {
   const amount      = parseFloat(document.getElementById('pc-amount').value)||0;
   const paidTo      = document.getElementById('pc-paidto').value.trim();
   const note        = document.getElementById('pc-note').value.trim();
-  const linkedEmpId = (document.getElementById('pc-linked-emp')?.value||'').trim();
-  const deductFromSalary = document.getElementById('pc-deduct-from-salary')?.checked || false;
+  // v43 W1.3: linkedEmpId + deductFromSalary removed — backend never persisted them.
 
   if (!date || !type || !category || !description || !amount) {
     toast('Please fill all required fields (Date, Type, Category, Description, Amount)', 'error'); return;
@@ -9127,7 +9114,6 @@ async function submitPCEntry(existingId) {
     res = await API.call('updatePettyCash', {id: existingId, updates});
   } else {
     res = await API.call('addPettyCash', {date, type, category, description, amount, paidTo, note,
-                                           linkedEmpId, deductFromSalary,
                                            receiptBase64, receiptMime, recordedBy});
   }
 
@@ -10295,7 +10281,7 @@ async function renderSettings() {
         <tr style="background:var(--dark3)">
           <th style="padding:8px;text-align:left;color:var(--gold)">Level</th>
           <th style="padding:8px;text-align:left;color:var(--gold)">Monthly Bonus (₹) <span class="info-tooltip" title="Amount accrued each month into the employee's loyalty bonus pot. Paid out only on withdrawal as per the vesting model below.">ℹ</span></th>
-          <th style="padding:8px;text-align:left;color:var(--gold)">Vesting Model <span class="info-tooltip" title="Choose how this level's loyalty bonus vests. Cumulative = milestones unlock fixed % of total over time. Tiered Withdrawal = employee chooses when to withdraw, with longer waits unlocking higher percentages.">ℹ</span></th>
+          <th style="padding:8px;text-align:left;color:var(--gold)">Vesting Model <span class="info-tooltip" title="Cumulative: each monthly deposit gets its own vesting clock — the schedule applies per deposit, not to the total pool. New deposits are always locked again, so the forward incentive never disappears. | Tiered + Cooldown: first withdrawal picks a wait/percentage tier (longer wait = higher %). After any withdrawal, all subsequent withdrawals follow the Cooldown Options. The % applies to the current total balance at withdrawal time.">ℹ</span></th>
           <th style="padding:8px;text-align:left;color:var(--gold)">Schedule / Tiers</th>
           <th style="padding:8px;text-align:center;color:var(--gold)">Active <span class="info-tooltip" title="If unchecked, this level's loyalty bonus accrual stops. Existing balances are preserved.">ℹ</span></th>
         </tr>
@@ -10315,9 +10301,9 @@ async function renderSettings() {
           const inputStyle = 'width:52px;background:var(--dark2);color:var(--white);border:1px solid var(--gold-dim);border-radius:4px;padding:3px 5px;font-size:11px;text-align:center';
           const schedHtml = sched.map((m,i)=>`
             <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px" id="lb-ms-${level}-${i}">
-              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">After <span class="info-tooltip" title="After completing X months of tenure, Y% of total accumulated loyalty bonus becomes vested.">ℹ</span></span>
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">After <span class="info-tooltip" title="Months since each individual deposit was made. The schedule applies per cohort: a deposit made today only becomes Y% vested after X months from today — not from the employee's joining date.">ℹ</span></span>
               <input type="number" min="1" max="240" style="${inputStyle}" class="form-input" id="lb-months-${level}-${i}" value="${m.months||6}" placeholder="Mo">
-              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo, <span class="info-tooltip" title="Percentage of total accrued balance that becomes withdrawable at this milestone.">ℹ</span></span>
+              <span style="color:var(--gray-light);white-space:nowrap;font-size:11px">mo, <span class="info-tooltip" title="Percentage of THIS DEPOSIT (cohort) that becomes withdrawable at this milestone. Employee total eligible = sum across every deposit's per-cohort percentage. Schedule applies per deposit, NOT to the running total.">ℹ</span></span>
               <input type="number" min="1" max="100" style="${inputStyle}" class="form-input" id="lb-pct-${level}-${i}" value="${m.withdrawable_pct||m.pct||20}" placeholder="%">
               <span style="color:var(--gray-light);font-size:11px">%</span>
               <button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="lbRemoveMS('${level}',${i})">✕</button>
@@ -11033,9 +11019,12 @@ async function showLoyaltyBonusCard(empId, empStatus) {
     const monthlyRate  = Math.round(d.activeMonthlyBonus || 0);
     const rateEffFrom  = d.activeMonthlyBonusEffectiveFrom || null;
     // (1) header — model + monthly rate
+    // v42 Item D: highlight effective date in green if rate changed in last 30 days.
+    const _rateEffMs = rateEffFrom ? new Date(String(rateEffFrom).substring(0,10)).getTime() : 0;
+    const _rateIsRecent = _rateEffMs > 0 && (Date.now() - _rateEffMs) < (30 * 24 * 3600 * 1000);
     const headerLine = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px">
       <span style="color:var(--gold);font-weight:700">${vModel === 'Tiered' ? 'Tiered + Cooldown' : 'Cumulative Vesting'}</span>
-      <span style="color:var(--gray-light)">Rate: <strong style="color:var(--white)">₹${monthlyRate.toLocaleString('en-IN')}/mo</strong>${rateEffFrom ? ` <span style="color:var(--gray-light)">(eff. ${escHtml(String(rateEffFrom).substring(0,10))})</span>` : ''}</span>
+      <span style="color:var(--gray-light)">Rate: <strong style="color:var(--white)">₹${monthlyRate.toLocaleString('en-IN')}/mo</strong>${rateEffFrom ? ` <span style="color:${_rateIsRecent?'var(--green)':'var(--gray-light)'};font-weight:${_rateIsRecent?'700':'400'}">(eff. ${escHtml(String(rateEffFrom).substring(0,10))}${_rateIsRecent?' • new':''})</span>` : ''}</span>
     </div>`;
     // (2)+(3) — totals row
     const totalsRow = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
@@ -11065,7 +11054,20 @@ async function showLoyaltyBonusCard(empId, empStatus) {
         ? `<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">In ${nextMs} months, ${d.next_milestone_pct}% becomes withdrawable</div>`
         : '<div style="font-size:11px;color:var(--green);margin-bottom:8px">✓ Maximum vesting reached</div>';
     }
+    // v42 Item E: "How this works" collapsible. Renders only if the employee has any accruals,
+    // and the copy is model-specific so it matches what they actually see below.
+    const _hasAccruals = totalAccrued > 0;
+    const _howWorksCopy = vModel === 'Tiered'
+      ? `Every month, your level's bonus is added to a loyalty pool. The first time you withdraw, you pick a wait/percentage tier — longer wait gives a higher percentage of your current balance. After that first withdrawal, every future withdrawal follows the "Cooldown Options" tier table — you wait, the percentage you can take grows. Cooldown options apply forever.`
+      : `Every month, your level's bonus is added as a separate deposit (cohort), and each deposit has its own vesting clock. Deposits made recently are locked; older deposits vest in stages set by your company. Your "Eligible Now" total below is the sum across every deposit's vested portion. The longer you stay, the more cohorts mature — the forward table below shows what you could withdraw if you wait.`;
+    const _howWorksBlock = _hasAccruals
+      ? `<details style="margin-bottom:8px;font-size:11px;background:var(--dark3);border-radius:4px;padding:4px 8px">
+          <summary style="cursor:pointer;color:var(--gold-light);font-weight:600">ℹ️ How this works</summary>
+          <div style="margin-top:6px;color:var(--gray-light);line-height:1.5">${_howWorksCopy}</div>
+        </details>`
+      : '';
     content.innerHTML = `
+      ${_howWorksBlock}
       ${headerLine}
       ${totalsRow}
       ${modelLine}
@@ -12110,7 +12112,7 @@ async function exportFullBackup() {
     ]);
     const pick = (r, key) => (r.status === 'fulfilled' && r.value && (r.value[key] || r.value)) || null;
     const backup = {
-      meta: {version:'v36', exportedAt:new Date().toISOString(), exportedAtIST:fmtDateForFile()+' '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})},
+      meta: {version:'v43', exportedAt:new Date().toISOString(), exportedAtIST:fmtDateForFile()+' '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})},
       employees:     pick(calls[0],  'employees'),
       attendance:    pick(calls[1],  'records'),
       transactions:  pick(calls[2],  'transactions'),
@@ -12194,7 +12196,13 @@ function downloadXLSX(filename, sheetName, headers, rows=[]) {
 }
 
 // Download bulk import template with sample rows + ValidValues reference sheet
-function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, validValues) {
+// v42 Item F: optional 6th param `extraDropdowns` accepts dynamic per-template
+// dropdown options that aren't in the static DROPDOWN_MAP. Shape:
+//   [{ key:'factory', options:['Noida Factory','Delhi Factory',...] }, ...]
+// `key` is a normalised header substring (lowercased, alnum-only) to match
+// against; `options` is the list to drop into the Excel data-validation list.
+// Existing callers don't pass this — backward compatible.
+function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, validValues, extraDropdowns) {
   const wb = XLSX.utils.book_new();
 
   // ── Sheet 1: Template with sample rows ─────────────────────
@@ -12224,8 +12232,20 @@ function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, vali
     'employmenttype':  ['Wage Shift Office','Full-Time Office','Work From Home','Hybrid'],
     'noticeperioddays':['30','60','90','180'],
     'status':          ['Active','Archived'],
-    'type':            ['IL','SL','PL','EL','UL'],   // for leave import
+    // v42 Item G: key renamed 'type' → 'leavetype' so it no longer mis-matches the
+    // Transaction template's 'type *' header. Leave template's header is now
+    // 'leaveType *' to keep the substring match (lowercased + alnum-stripped = 'leavetype').
+    'leavetype':       ['IL','SL','PL','EL','UL'],
   };
+  // v42 Item F: merge any caller-supplied dynamic dropdowns (e.g. live Orgs values
+  // for Employee template's factory/zone/department/project columns).
+  if (Array.isArray(extraDropdowns)) {
+    extraDropdowns.forEach(d => {
+      if (d && d.key && Array.isArray(d.options) && d.options.length) {
+        DROPDOWN_MAP[String(d.key).toLowerCase().replace(/[^a-z0-9]/g, '')] = d.options;
+      }
+    });
+  }
 
   // ── Build a hidden "Dropdowns" sheet with all lists as columns ───────────
   const dropCols = {};   // colKey → {sheetCol (letter), options}
@@ -12372,6 +12392,30 @@ function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, vali
   XLSX.writeFile(wb, filename, {bookType:'xlsx', type:'binary', cellStyles:true});
 }
 
+// v42 Item I (scoped): single source of truth for bulk-import templates.
+// A COLUMN_SPEC is an array of objects, one per column. Each object has:
+//   { label:       '<spreadsheet header text>',     // exactly what appears in row 1 of the .xlsx
+//     required:    true|false,                       // adds the * marker on the label
+//     sample:      <value used in sample rows>,      // single value reused across both sample rows
+//     desc:        '<one-line description>',         // shown in the modal Column Guide
+//     valid:       '<valid values / format>',        // shown in the modal Column Guide + Valid_Values_Reference sheet
+//     note:        '<extra context>'                 // optional; goes to Valid_Values_Reference 3rd col
+//   }
+// `bulkImportTransactions` and `bulkImportPettyCash` (Item H) derive their
+// headers / sampleRows / validValues / Column Guide HTML from the same spec
+// so the template and the modal can never drift apart.
+// Employees template is intentionally NOT refactored to use this in v42 —
+// existing hand-typed lists are correct; refactor risk left for v43.
+function buildColumnGuide(spec) {
+  if (!Array.isArray(spec) || spec.length === 0) return '';
+  return `<details style="margin-top:10px;font-size:12px">
+    <summary style="cursor:pointer;color:var(--gold);font-weight:600">📖 Column Guide (click to expand)</summary>
+    <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;color:var(--gray-light);line-height:1.7">
+      ${spec.map(c => `<span><strong style="color:${c.required ? 'var(--gold)' : 'var(--off-white)'}">${escHtml(c.label)}</strong> — ${escHtml(c.desc || '')}${c.valid ? ` <em style="color:var(--gray)">(${escHtml(c.valid)})</em>` : ''}</span>`).join('')}
+    </div>
+  </details>`;
+}
+
 // Parse an uploaded Excel/CSV file and return array of objects keyed by header row
 function parseXLSX(file) {
   return new Promise((resolve, reject) => {
@@ -12403,17 +12447,20 @@ function downloadBulkTemplate() {
   const t = window._currentBulkTemplate;
   if (!t) return;
   if (t.sampleRows && t.sampleRows.length) {
-    downloadBulkTemplateRich(t.filename, 'Template', t.headers, t.sampleRows, t.validValues||[]);
+    // v42 Item F: pass through any caller-supplied dynamic dropdowns.
+    downloadBulkTemplateRich(t.filename, 'Template', t.headers, t.sampleRows, t.validValues||[], t.extraDropdowns||[]);
   } else {
     downloadXLSX(t.filename, 'Template', t.headers);
   }
 }
 
 // Show a modal to bulk-import from Excel
-async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml, sampleRows, validValues) {
+async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml, sampleRows, validValues, extraDropdowns) {
   let parsedRows = [];
   // Store template data in window global to avoid JSON.stringify issues with HTML attributes
-  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename, sampleRows: sampleRows||[], validValues: validValues||[] };
+  // v42 Item F: extraDropdowns is an array of {key, options} rules merged into DROPDOWN_MAP
+  // at template-download time (used by bulkImportEmployees for live Orgs values).
+  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename, sampleRows: sampleRows||[], validValues: validValues||[], extraDropdowns: extraDropdowns||[] };
   const html = `
   <div style="font-size:13px">
     <p style="color:var(--gray-light);margin-bottom:8px">
@@ -12603,8 +12650,28 @@ function _excelTimeToHHMM(v) {
   return '';
 }
 
-function bulkImportEmployees() {
+// v42 Item F: function is now async — fetches live Orgs values so factory/zone/
+// department/project dropdowns reflect the customer's actual org structure.
+// All 13 brief-listed missing columns appended at the end (additive — existing
+// column positions unchanged so older offline templates still parse). 14th add
+// (email) skipped: verification showed `email` is ALREADY in v41 headers at
+// position 12 — the brief's "orphaned email mapper reference" was a false
+// alarm. Reported in v42 implementation log.
+async function bulkImportEmployees() {
+  // Fetch live Orgs for the 4 dropdown-backed fields. If the call fails or returns
+  // empty, dropdowns simply fall back to free text on import (backend accepts any string).
+  let orgs = [];
+  try { const orgsRes = await API.call('getOrgs'); orgs = orgsRes.orgs||[]; } catch(e) {}
+  const factoryOpts    = orgs.filter(o=>o.type==='factory').map(o=>o.name);
+  const zoneOpts       = orgs.filter(o=>o.type==='zone').map(o=>o.name);
+  const departmentOpts = orgs.filter(o=>o.type==='department').map(o=>o.name);
+  const projectOpts    = orgs.filter(o=>o.type==='project').map(o=>o.name);
+  // Pick sample employees for supervisorId/managerId/referredBy "Name (ID)" examples.
+  const empSample = (State.employees||[]).filter(e=>e.status==='Active').slice(0,1)
+    .map(e=>`${e.name} (${e.id})`)[0] || 'Ramesh Kumar (AZ_EMP_0002)';
+
   const headers = [
+    // ── v41 columns (positions unchanged) ────────────────────────
     'employeeCode (optional, e.g. AZ_EMP_0056)',
     'name *','level *','salary *','pin *',
     'shiftStart (e.g. 09:00)','shiftEnd (e.g. 19:00)',
@@ -12613,13 +12680,30 @@ function bulkImportEmployees() {
     'doj (YYYY-MM-DD)','dob (YYYY-MM-DD)',
     'gender','aadhaar',
     'noticeperiodDays','nightShiftAllowance','travelAllowance',
-    'otBaseHours','employmentType','notes'
+    'otBaseHours','employmentType','notes',
+    // ── v42 Item F: 13 newly added columns (additive only) ───────
+    'group',
+    'billableRate',
+    'workDaysPerWeek',
+    'uan',
+    'esiNumber',
+    'address',
+    'factory',
+    'zone',
+    'department',
+    'project',
+    'supervisorId (Name (ID) or raw ID)',
+    'managerId (Name (ID) or raw ID)',
+    'referredBy (Name (ID) of existing employee)',
+    'leavePolicyGroup',
   ];
   const sampleRows = [
-    // Row 1: factory wage worker example
-    ['AZ_EMP_0056','Ravi Kumar','L4',18000,1234,'09:00','19:00',10,'Sunday','','9876543210','ravi.kumar@example.com','Production','Workforce','2025-01-15','1995-06-20','Male','123456789012',90,0,500,9,'Wage Shift Office','Example row — delete before importing'],
+    // Row 1: factory wage worker example (24 v41 values + 13 v42 values = 37 cells)
+    ['AZ_EMP_0056','Ravi Kumar','L4',18000,1234,'09:00','19:00',10,'Sunday','','9876543210','ravi.kumar@example.com','Production','Workforce','2025-01-15','1995-06-20','Male','123456789012',90,0,500,9,'Wage Shift Office','Example row — delete before importing',
+     'Night Shift A', 0, 6, '', '', '', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Printing', projectOpts[0]||'General', '', '', '', ''],
     // Row 2: office staff example
-    ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Supervisor','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office manager — example row'],
+    ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Supervisor','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office manager — example row',
+     '', 250, 5, 'UAN12345678', 'ESI98765432', 'Sector 18, Noida, UP 201301', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Admin', projectOpts[0]||'General', empSample, empSample, '', 'Staff'],
   ];
   const validValues = [
     ['level *','L1, L2, L3, L4, L5, L6, L7, L8, L9, L10','L1=lowest (helper), L10=senior management'],
@@ -12633,8 +12717,26 @@ function bulkImportEmployees() {
     ['pin *','4-digit number','e.g. 1234, 5678 — used for kiosk clock-in'],
     ['salary *','Monthly gross in ₹','e.g. 18000 — do not use commas or ₹ symbol'],
     ['employeeCode','AZ_EMP_XXXX format or leave blank','If left blank, system auto-assigns next available ID'],
+    // ── v42 Item F additions ─────────────────────────────────────
+    ['group','Free text','Internal team / shift label, e.g. "Night Shift A", "Packing Team 2". Optional.'],
+    ['billableRate','Number, ₹/hr','Per-hour billable rate for time-tracked reports. 0 if not applicable.'],
+    ['workDaysPerWeek','1–7','Number of days the employee normally works each week. Default: 6.'],
+    ['uan','UAN number','12-digit Universal Account Number (PF). Leave blank if not enrolled.'],
+    ['esiNumber','ESI registration number','17-digit ESI number. Leave blank if not enrolled.'],
+    ['address','Permanent address (free text)','Single-line address.'],
+    ['factory', factoryOpts.length ? factoryOpts.join(', ') : 'Pulled from Settings → Org Structure','Must match a Factory entry under Settings → Org Structure. Leave blank to skip.'],
+    ['zone',    zoneOpts.length    ? zoneOpts.join(', ')    : 'Pulled from Settings → Org Structure','Must match a Zone entry under Settings → Org Structure. Leave blank to skip.'],
+    ['department', departmentOpts.length ? departmentOpts.join(', ') : 'Pulled from Settings → Org Structure','Must match a Department under Settings → Org Structure. Distinct from the free-text "dept" column.'],
+    ['project', projectOpts.length ? projectOpts.join(', ') : 'Pulled from Settings → Org Structure','Must match a Project under Settings → Org Structure. Leave blank to skip.'],
+    ['supervisorId','Name (ID) or raw ID','Examples: "Ramesh Kumar (AZ_EMP_0002)" or just "AZ_EMP_0002". Existing employee — leave blank if unknown.'],
+    ['managerId','Name (ID) or raw ID','Same format as supervisorId. Existing employee — leave blank if unknown.'],
+    ['referredBy','Name (ID) of existing employee','Triggers referral-bonus payout to that employee. Set once at hire — cannot be edited later.'],
+    ['leavePolicyGroup','Free text — must match a configured group','Examples: "Staff", "Executive", "Managerial". Drives annual leave quotas. Leave blank for default.'],
   ];
   // Build a field guide to show in the modal header
+  // (Existing Employees-specific field guide kept hand-typed per owner's
+  // explicit scoping — Item I refactor for Employees is deferred to v43.
+  // We DO append the 13 new column descriptions here so the guide doesn't drift.)
   const fieldGuide = `<details style="margin-top:10px;font-size:12px">
     <summary style="cursor:pointer;color:var(--gold);font-weight:600">📖 Column Guide (click to expand)</summary>
     <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;color:var(--gray-light);line-height:1.7">
@@ -12657,8 +12759,40 @@ function bulkImportEmployees() {
       <span><strong style="color:var(--off-white)">otBaseHours</strong> — Hours after which OT is calculated (default: 9)</span>
       <span><strong style="color:var(--off-white)">employmentType</strong> — Wage Shift Office / Full-Time Office / Work From Home / Hybrid</span>
       <span><strong style="color:var(--off-white)">notes</strong> — Any additional notes</span>
+      <!-- v42 Item F additions -->
+      <span><strong style="color:var(--off-white)">group</strong> — Internal team / shift label (free text, optional)</span>
+      <span><strong style="color:var(--off-white)">billableRate</strong> — Per-hour billable rate (₹/hr, 0 if N/A)</span>
+      <span><strong style="color:var(--off-white)">workDaysPerWeek</strong> — Working days per week (1–7, default 6)</span>
+      <span><strong style="color:var(--off-white)">uan</strong> — Universal Account Number (PF), 12 digits</span>
+      <span><strong style="color:var(--off-white)">esiNumber</strong> — ESI registration number, 17 digits</span>
+      <span><strong style="color:var(--off-white)">address</strong> — Permanent address (free text)</span>
+      <span><strong style="color:var(--off-white)">factory</strong> — From Settings → Org Structure dropdown</span>
+      <span><strong style="color:var(--off-white)">zone</strong> — From Settings → Org Structure dropdown</span>
+      <span><strong style="color:var(--off-white)">department</strong> — From Settings → Org Structure (distinct from free-text "dept")</span>
+      <span><strong style="color:var(--off-white)">project</strong> — From Settings → Org Structure dropdown</span>
+      <span><strong style="color:var(--off-white)">supervisorId</strong> — "Name (ID)" or raw ID of existing employee</span>
+      <span><strong style="color:var(--off-white)">managerId</strong> — "Name (ID)" or raw ID of existing employee</span>
+      <span><strong style="color:var(--off-white)">referredBy</strong> — Existing employee who referred this hire (triggers referral bonus)</span>
+      <span><strong style="color:var(--off-white)">leavePolicyGroup</strong> — Staff / Executive / Managerial / etc.</span>
     </div>
   </details>`;
+  // v42 Item F: dynamic Org dropdowns for 4 columns. Substring keys (lowercased,
+  // alnum-only) — header "factory" → key 'factory', etc. Empty lists are
+  // silently skipped inside downloadBulkTemplateRich.
+  const extraDropdowns = [
+    { key:'factory',    options: factoryOpts },
+    { key:'zone',       options: zoneOpts },
+    { key:'department', options: departmentOpts },
+    { key:'project',    options: projectOpts },
+  ];
+  // v42 Item F: extractEmpId — parses "Name (ID)" → returns the ID portion.
+  // Defined inline so the row-mapper closure is self-contained; mirror of the
+  // helper used by the manual Add Employee modal at html:5684.
+  function extractEmpId(val) {
+    if (!val) return '';
+    const m = String(val).match(/\(([^)]+)\)\s*$/);
+    return m ? m[1].trim() : String(val).trim();
+  }
   openBulkImportModal('👥 Bulk Import Employees', headers, 'ArtzFolio_Employee_Template.xlsx', row => {
     // Validate required fields — throw with specific message so import report shows which field is missing
     const missing = [];
@@ -12689,15 +12823,29 @@ function bulkImportEmployees() {
     if (pinStr && !/^\d{4}$/.test(pinStr)) throw new Error(`PIN must be exactly 4 digits, got "${pinStr}" — leave blank to auto-generate`);
     const defaultShiftStart = (State.settings&&State.settings.defaultShiftStart)||'09:00';
     const defaultShiftEnd   = (State.settings&&State.settings.defaultShiftEnd)||'19:00';
+    // v42 Item F: dropdown-aware department resolution. If the user supplied the
+    // dropdown 'department' column AND left 'dept' blank, prefer the dropdown
+    // value for both Sheet columns (matches the manual Add-Employee form's BUG-15 logic).
+    const _deptFree = (row['dept']||'').toString().trim();
+    const _deptDrop = (row['department']||'').toString().trim();
+    const _deptVal  = _deptDrop || _deptFree || lvl;
+    // v42 Item F: referral parsing — extract referredByCode + referredByName from a single
+    // "Name (ID)" cell so the bulk row matches the manual form's payload shape.
+    const refRaw = String(row['referredBy (Name (ID) of existing employee)']||'').trim();
+    const _refMatch = refRaw.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    const referredByName = _refMatch ? _refMatch[1].trim() : '';
+    const referredByCode = _refMatch ? _refMatch[2].trim() : (refRaw || '');
     return {
       customId: row['employeeCode (optional, e.g. AZ_EMP_0056)']||'',
       name: row['name *'], level: lvl, salary: row['salary *'], pin: String(row['pin *']),
       shiftStart: _excelTimeToHHMM(row['shiftStart (e.g. 09:00)'])||defaultShiftStart,
       shiftEnd:   _excelTimeToHHMM(row['shiftEnd (e.g. 19:00)'])||defaultShiftEnd,
-      dailyHours: row['dailyHours']||10, workDaysPerWeek: row['workDaysPerWeek']||6,
+      dailyHours: row['dailyHours']||10,
+      // workDaysPerWeek now also reads from the new explicit column header for clarity.
+      workDaysPerWeek: row['workDaysPerWeek']||6,
       weeklyOff1: row['weeklyOff1']||'Sunday', weeklyOff2: row['weeklyOff2']||'',
       mobile: row['mobile']||'', email: row['email']||'',
-      dept: row['dept']||lvl, department: row['dept']||lvl,
+      dept: _deptVal, department: _deptVal,
       category: row['category']||'Workforce', doj: row['doj (YYYY-MM-DD)']||todayStr(),
       dob: row['dob (YYYY-MM-DD)']||'', gender: row['gender']||'Male', aadhaar: row['aadhaar']||'',
       noticeperiodDays: row['noticeperiodDays']||90,
@@ -12706,24 +12854,56 @@ function bulkImportEmployees() {
       otBaseHours: row['otBaseHours']||9,
       employmentType: row['employmentType']||'Wage Shift Office',
       notes: row['notes']||'',
+      // ── v42 Item F additions ──
+      group: row['group']||'',
+      billableRate: row['billableRate']||0,
+      uan: row['uan']||'',
+      esiNumber: row['esiNumber']||'',
+      address: row['address']||'',
+      factory: row['factory']||'',
+      zone: row['zone']||'',
+      project: row['project']||'',
+      supervisorId: extractEmpId(row['supervisorId (Name (ID) or raw ID)']||''),
+      managerId:    extractEmpId(row['managerId (Name (ID) or raw ID)']||''),
+      ...(referredByCode ? {referredByName, referredByCode} : {}),
+      leavePolicyGroup: row['leavePolicyGroup']||'',
     };
-  }, 'addEmployee', fieldGuide, sampleRows, validValues);
+  }, 'addEmployee', fieldGuide, sampleRows, validValues, extraDropdowns);
 }
 
 function bulkImportTransactions() {
-  const headers = ['empId * (code or name)','date *','type *','amount *','note','approvedBy'];
+  // v42 Item I (scoped): single source of truth for Transaction bulk import.
+  // headers / sampleRows / validValues / Column Guide modal all derive from this spec.
   const empSamples = (State.employees||[]).slice(0,2).map(e=>`${e.id} (${e.name})`);
+  const TRANS_COLS = [
+    { label:'empId * (code or name)', required:true,  sample:empSamples[0]||'AZ_EMP_0002 (Ramesh Kumar)',
+      desc:'Employee — code OR full name', valid:'AZ_EMP_XXXX or employee name',
+      note:'Use employee code (e.g. AZ_EMP_0002) OR full name (e.g. Ramesh Kumar) — both accepted' },
+    { label:'date *',                 required:true,  sample:'2026-04-10',
+      desc:'Transaction date',          valid:'YYYY-MM-DD',
+      note:'e.g. 2026-04-15' },
+    { label:'type *',                 required:true,  sample:'Advance',
+      desc:'Transaction type',
+      valid:'Advance, Loan, LoanRepayment, Bonus, Penalty, DamageRecovery, LateFine, KYCFee, PINReactivationFee, Increment',
+      note:'Advance/Loan/Penalty = deductions; Bonus/Increment = additions' },
+    { label:'amount *',               required:true,  sample:5000,
+      desc:'Amount in ₹',               valid:'Number without commas',
+      note:'e.g. 5000 (not ₹5,000)' },
+    { label:'note',                   required:false, sample:'April advance payment requested by employee',
+      desc:'Free-text reason / reference', valid:'Any text' },
+    { label:'approvedBy',             required:false, sample:'Owner',
+      desc:'Who approved this transaction', valid:'Owner / Manager / Admin name',
+      note:'Defaults to current admin user if blank' },
+  ];
+  const headers = TRANS_COLS.map(c => c.label);
+  // Two example rows — first uses TRANS_COLS.sample, second is a hand-tweaked variant.
   const sampleRows = [
-    [empSamples[0]||'AZ_EMP_0002 (Ramesh Kumar)', '2026-04-10', 'Advance', 5000, 'April advance payment requested by employee', 'Owner'],
-    [empSamples[1]||'AZ_EMP_0005 (Sunita Devi)',  '2026-04-12', 'Bonus',   2000, 'Q1 performance bonus — example row', 'Owner'],
+    TRANS_COLS.map(c => c.sample),
+    [empSamples[1]||'AZ_EMP_0005 (Sunita Devi)', '2026-04-12', 'Bonus', 2000, 'Q1 performance bonus — example row', 'Owner'],
   ];
-  const validValues = [
-    ['empId *','AZ_EMP_XXXX or employee name','Use employee code (e.g. AZ_EMP_0002) OR full name (e.g. Ramesh Kumar) — both accepted'],
-    ['type *','Advance, Loan, LoanRepayment, Bonus, Penalty, DamageRecovery, LateFine, KYCFee, PINReactivationFee, Increment','Advance/Loan/Penalty = deductions; Bonus/Increment = additions'],
-    ['date *','YYYY-MM-DD','e.g. 2026-04-15'],
-    ['amount *','Number without commas','e.g. 5000 (not ₹5,000)'],
-    ['urgency','normal, urgent','Leave blank for normal'],
-  ];
+  const validValues = TRANS_COLS
+    .filter(c => c.valid)
+    .map(c => [c.label, c.valid, c.note || '']);
   openBulkImportModal(
     `💸 Bulk Import Transactions`,
     headers, 'ArtzFolio_Transaction_Template.xlsx',
@@ -12736,11 +12916,15 @@ function bulkImportTransactions() {
       return {empId, date:row['date *'], type:row['type *'],
               amount:parseFloat(row['amount *'])||0, note:row['note']||'',
               approvedBy:row['approvedBy']||State.adminUser||'Admin', status:'Applied'};
-    }, 'addTransaction', null, sampleRows, validValues);
+    }, 'addTransaction', buildColumnGuide(TRANS_COLS), sampleRows, validValues);
 }
 
 function bulkImportLeaves() {
-  const headers = ['empId * (code or name)','type *','startDate *','endDate *','note','urgency'];
+  // v42 Item G: header 'type *' renamed to 'leaveType *' so DROPDOWN_MAP key
+  // 'leavetype' (substring match on lowercased+alnum-stripped header) still
+  // applies the IL/SL/PL/EL/UL dropdown here, and the Transaction template's
+  // unchanged 'type *' header no longer mis-matches the same dropdown.
+  const headers = ['empId * (code or name)','leaveType *','startDate *','endDate *','note','urgency'];
   const empSamples = (State.employees||[]).slice(0,2).map(e=>`${e.id} (${e.name})`);
   const sampleRows = [
     [empSamples[0]||'AZ_EMP_0003 (Mohan Lal)', 'IL', '2026-04-20', '2026-04-22', 'Family function — example row', 'normal'],
@@ -12748,7 +12932,7 @@ function bulkImportLeaves() {
   ];
   const validValues = [
     ['empId *','AZ_EMP_XXXX or employee name','Use employee code OR full name — both accepted'],
-    ['type *','IL, IHL, UL, UHL, SL, PL','IL=Informed Leave; IHL=Half Day Informed; UL=Uninformed; UHL=Half Uninformed; SL=Sick; PL=Paid'],
+    ['leaveType *','IL, IHL, UL, UHL, SL, PL','IL=Informed Leave; IHL=Half Day Informed; UL=Uninformed; UHL=Half Uninformed; SL=Sick; PL=Paid'],
     ['startDate / endDate *','YYYY-MM-DD','Both must be filled. Same date for single-day leave.'],
     ['urgency','normal, urgent','Leave blank for normal'],
   ];
@@ -12756,14 +12940,101 @@ function bulkImportLeaves() {
     `📋 Bulk Import Leaves`,
     headers, 'ArtzFolio_Leave_Template.xlsx',
     row => {
-      if (!row['empId * (code or name)'] || !row['type *'] || !row['startDate *'] || !row['endDate *']) return null;
+      if (!row['empId * (code or name)'] || !row['leaveType *'] || !row['startDate *'] || !row['endDate *']) return null;
       const raw = String(row['empId * (code or name)']).trim();
       const emp = (State.employees||[]).find(e=>e.id===raw||e.name.toLowerCase()===raw.toLowerCase()||raw.includes(e.id));
       const empId = emp ? emp.id : raw;
-      return {empId, type:row['type *'],
+      return {empId, type:row['leaveType *'],
               startDate:row['startDate *'], endDate:row['endDate *'],
               note:row['note']||'', urgency:row['urgency']||'normal'};
     }, 'requestLeave', null, sampleRows, validValues);
+}
+
+// v42 Item H: bulk import for Petty Cash. Backend handleAddPettyCash already
+// accepts (date, type, category, description, amount, paidTo, note, recordedBy)
+// — no GAS changes were needed for this item. Receipt photo is NOT supported
+// in bulk (the manual form base64-encodes a file pick; no equivalent in a
+// flat spreadsheet row). Users can attach a receipt via the manual edit flow
+// after import. Uses the shared COLUMN_SPEC + buildColumnGuide pattern
+// (Item I scoped) so headers / sampleRows / validValues / Column Guide modal
+// stay in lock-step.
+function bulkImportPettyCash() {
+  // Build category dropdown values from the live Settings list, falling back
+  // to the same defaults shown in the manual Add Entry form.
+  let categories = [];
+  try {
+    const raw = State.settings?.pettyCashCategories || LS.g('pettyCashCategories');
+    if (raw) categories = JSON.parse(raw);
+  } catch(e) {}
+  if (!Array.isArray(categories) || categories.length === 0) {
+    categories = ['Office Supplies','Travel','Food & Refreshments','Courier / Delivery',
+                  'Repair & Maintenance','Utilities','Raw Materials','Packaging',
+                  'Salary Advance (Employee)','Vendor Payment','Other'];
+  }
+  const PC_COLS = [
+    { label:'date *',          required:true,  sample:'2026-05-08',
+      desc:'Date of the petty cash event', valid:'YYYY-MM-DD',
+      note:'e.g. 2026-05-08' },
+    { label:'type *',          required:true,  sample:'OUT',
+      desc:'Cash direction',              valid:'IN, OUT',
+      note:'IN = cash received into the box; OUT = cash paid from the box' },
+    { label:'category *',      required:true,  sample:categories[0]||'Office Supplies',
+      desc:'Spend / receipt category',    valid:categories.join(', '),
+      note:'Categories come from Settings → Petty Cash. Free text accepted but you can keep it consistent with the dropdown.' },
+    { label:'amount *',        required:true,  sample:1500,
+      desc:'Amount in ₹',                 valid:'Number without commas',
+      note:'e.g. 1500 (not ₹1,500)' },
+    { label:'description *',   required:true,  sample:'Stationery purchase for office',
+      desc:'What the spend / receipt was for', valid:'Any text',
+      note:'Required — at least a short description' },
+    { label:'paidTo',          required:false, sample:'Sharma Stationers',
+      desc:'Vendor / payee / payer name', valid:'Any text',
+      note:'For OUT entries: who you paid. For IN entries: who you received from.' },
+    { label:'note',            required:false, sample:'Quarterly stocking — example row',
+      desc:'Additional free-text note',   valid:'Any text' },
+  ];
+  const headers = PC_COLS.map(c => c.label);
+  const sampleRows = [
+    PC_COLS.map(c => c.sample),
+    ['2026-05-09','IN', categories[0]||'Office Supplies', 500, 'Reimbursement from owner', 'Owner', 'Top-up — example row'],
+  ];
+  const validValues = PC_COLS
+    .filter(c => c.valid)
+    .map(c => [c.label, c.valid, c.note || '']);
+  // Document the receipt-photo limitation in the reference sheet (per brief).
+  validValues.push(['receiptPhoto', 'NOT supported in bulk import',
+    'Bulk imports cannot attach receipt images. Open each imported entry in the manual edit flow to upload the photo afterwards.']);
+  // v42 Item H: dynamic dropdowns for THIS template only. Critical: the bare
+  // 'category *' header would otherwise substring-match DROPDOWN_MAP's static
+  // 'category' key (Workforce/Supervisor/Management) and show employee
+  // categories — wrong list. We override with PC categories here, and add a
+  // local-only 'type' key for IN/OUT so users get an in-cell dropdown.
+  // DROPDOWN_MAP is rebuilt per call inside downloadBulkTemplateRich, so this
+  // override does NOT leak into Employees or Transactions templates.
+  const extraDropdowns = [
+    { key:'category', options: categories },
+    { key:'type',     options: ['IN','OUT'] },
+  ];
+  openBulkImportModal(
+    `💵 Bulk Import Petty Cash`,
+    headers, 'ArtzFolio_PettyCash_Template.xlsx',
+    row => {
+      const date = row['date *'];
+      const type = String(row['type *']||'').trim().toUpperCase();
+      const category = row['category *'];
+      const amount = parseFloat(row['amount *']) || 0;
+      const description = row['description *'];
+      if (!date || !type || !category || !amount || !description) return null;
+      if (!['IN','OUT'].includes(type)) return null;
+      return {
+        date, type, category, amount, description,
+        paidTo: row['paidTo'] || '',
+        note: row['note'] || '',
+        recordedBy: State.adminUser || State.adminRole || 'admin',
+        // receiptBase64 / receiptMime intentionally absent — receipts attached later via manual edit.
+      };
+    },
+    'addPettyCash', buildColumnGuide(PC_COLS), sampleRows, validValues, extraDropdowns);
 }
 
 async function bulkImportHolidays() {
