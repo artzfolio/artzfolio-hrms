@@ -1434,7 +1434,7 @@ const CFG = {
   pinMaxLen: 4,
   kioskTimeout: 60000,
   kioskLogoutSeconds: 60,
-  version: '14.3',
+  version: '14.4',
 };
 // v40 §7a/7b: client-side mirror of GAS getPerDayDivisor(year, month).
 // Reads State.settings.perDayDivisor (loaded from Config sheet on init) and
@@ -2062,7 +2062,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v43';
+window.HRMS_VERSION = 'v44';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -6396,7 +6396,7 @@ async function renderAttendanceGrid(empId, year, month, emps) {
       <td>${d}</td><td>${dayName}</td>
       <td>${rec&&rec.clockIn?fmtTime(rec.clockIn):'—'}</td>
       <td>${rec&&rec.clockOut?fmtTime(rec.clockOut):'—'}</td>
-      <td class="att-${status}"${isLWP?' style="background:rgba(183,28,28,0.18)"':''}>${statusBadge(status||'—')}</td>
+      <td class="att-${status}"${isLWP?' style="background:rgba(183,28,28,0.18)"':''}>${statusBadge(status||'—')}${rec ? _v44BackfillBadge(rec.note||'') : ''}</td>
       <td style="font-size:11px">${rec&&parseInt(rec.lateMinutes)>0?`<span style="color:var(--orange)">${rec.lateMinutes}m</span>`:'—'}</td>
       <td style="font-size:11px">${rec&&rec.workMinutes?`${Math.floor(rec.workMinutes/60)}h${rec.workMinutes%60}m`:'—'}${rec&&parseInt(rec.otMinutes)>0?` <span style="background:var(--orange);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;white-space:nowrap">OT ${rec.otMinutes}m</span>`:''}</td>
       <td style="font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis">${rec&&rec.locationNote?escHtml(rec.locationNote):'—'}</td>
@@ -6735,7 +6735,11 @@ async function saveBulkHoursEntry() {
       hoursOverride: hrs||null, reason
     };
   });
-  const res = await API.call('bulkAttendanceEntry', {records, adminCode:State.adminUser, reason});
+  // v44 Workstream D: pre-v44 this handler silently overwrote existing rows.
+  // The new Backfill Imports flow (Settings → Backfill) defaults to no-overwrite
+  // for safety. This single-day kiosk path is intentionally an authoritative
+  // correction — opt back in via allowOverwrite:true to preserve old behaviour.
+  const res = await API.call('bulkAttendanceEntry', {records, adminCode:State.adminUser, reason, allowOverwrite:true});
   if (!res || !res.ok) { toast(res?.error||'Error','error'); return; }
   closeModal();
   toast('Bulk entry saved — '+(res.count||records.length)+' records','success');
@@ -7783,6 +7787,9 @@ async function renderPayroll() {
   const now=new Date();
   const html=`
   <div class="section-hdr"><div class="section-title">Payroll / वेतन</div></div>
+  <!-- v44 Workstream E3: mid-month onboarding banner. Hidden by default;
+       _v44RenderMidMonthBanner() reveals when the toggle is ON. -->
+  <div id="payroll-mid-month-banner" style="display:none;background:rgba(184,150,12,0.15);border:1px solid var(--gold);color:var(--gold);padding:10px 14px;border-radius:6px;margin-bottom:12px;font-size:12px;line-height:1.5"></div>
   <div style="display:flex;gap:8px;margin-bottom:12px">
     <button class="btn btn-gold btn-sm" id="pay-tab-salaries" onclick="switchPayrollView('salaries')" style="font-weight:700">💰 Salary Register</button>
     <button class="btn btn-dark btn-sm" id="pay-tab-statutory" onclick="switchPayrollView('statutory')">📋 Statutory Compliance</button>
@@ -7804,6 +7811,8 @@ async function renderPayroll() {
   </div>
   <div id="payroll-statutory-view" style="display:none"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
+  // v44 Workstream E3: render the mid-month onboarding banner if toggled on.
+  if (typeof _v44RenderMidMonthBanner === 'function') _v44RenderMidMonthBanner();
 }
 
 async function generateAllSalaries() {
@@ -9629,6 +9638,9 @@ async function renderSettings() {
     </div>`;
   }
   let html=`
+  <!-- v44 Workstream E2: duplicate-binding scanner banner. Hidden until the
+       scanner finds a real duplicate. Initial state hidden. -->
+  <div id="v44-cfg-dup-banner" style="display:none;background:rgba(220,50,50,0.15);border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:6px;margin-bottom:10px;font-size:12px;font-weight:600"></div>
   <!-- v43 W3.10: sticky Expand All / Collapse All toolbar -->
   <div class="settings-toolbar" style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;position:sticky;top:0;background:var(--dark1);padding:10px 0;z-index:5;border-bottom:1px solid var(--dark3)">
     <button class="btn btn-secondary" onclick="expandAllSettingsCards()" style="font-size:12px;padding:6px 12px">▼ Expand All</button>
@@ -10113,10 +10125,9 @@ async function renderSettings() {
       <div id="settings-body-points" class="settings-card-body">
     <div class="settings-grid">
       ${levelPickerField('pointsEligibleLevels','Points Competition Eligible Levels',cfg['pointsEligibleLevels']||'L8,L9,L10')}
-      ${cfgFieldTip('points1stPrize','1st Prize (₹)','Monthly cash prize awarded to the employee with the highest performance points. Paid as a bonus in that month\'s salary.')}
-      ${cfgFieldTip('points2ndPrize','2nd Prize (₹)','Monthly cash prize for the second-highest points holder.')}
-      ${cfgFieldTip('points3rdPrize','3rd Prize (₹)','Monthly cash prize for the third-highest points holder.')}
-      ${cfgFieldTip('perfectAttendanceBonus','Perfect Attendance Bonus (₹)','Bonus paid to any employee who has zero absences, zero uninformed leaves, and zero late arrivals for the entire calendar month. Applied automatically at month-end payroll.')}
+      ${cfgFieldTip('points1stPrize','1st Prize (₹)','Monthly cash prize awarded to the employee with the highest performance points. Paid as a bonus in that month\'s salary. Auto-credited at month-end to the top point-earner. No manual action required.')}
+      ${cfgFieldTip('points2ndPrize','2nd Prize (₹)','Monthly cash prize for the second-highest points holder. Auto-credited at month-end. No manual action required.')}
+      ${cfgFieldTip('points3rdPrize','3rd Prize (₹)','Monthly cash prize for the third-highest points holder. Auto-credited at month-end. No manual action required.')}
       ${cfgFieldTip('pointsRatePerPoint','Points Bonus Rate (₹ per point)','Each performance point an employee earns is worth this amount in rupees. E.g. value 10 = every point = ₹10 added to salary bonus. Set to 0 to disable per-point monetary bonus.')}
       <div class="form-group" style="grid-column:span 2">
         <label class="form-label">Include Points Bonus in Salary</label>
@@ -10753,6 +10764,94 @@ async function renderSettings() {
     </div>
   </div>
 
+  <!-- v44 Workstream E3: Mid-Month Onboarding Mode toggle -->
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">⚙ SYSTEM</div>
+  <div class="settings-section">
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-mid-month')">🆕 Mid-Month Onboarding Mode <span class="settings-card-chevron">▼</span></div>
+    <div id="settings-body-mid-month" class="settings-card-body">
+      <div style="font-size:12px;color:var(--gray-light);margin-bottom:12px;line-height:1.6">
+        Use this when rolling the system out to a team that has already started the month elsewhere. When ON, the Payroll tab shows a one-time alert reminding you to backfill attendance for newly-imported employees before generating salaries. Off otherwise.
+      </div>
+      <div class="form-group" style="max-width:320px">
+        <label class="form-label">Mid-Month Onboarding Mode
+          <span class="info-tooltip" title="Owner-facing reminder banner on the Payroll tab. Does not change calculations — it only nudges you to run the Backfill Imports flow before clicking Generate Salaries on the first month after a new hire batch.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-midMonthOnboardingMode">
+          <option value="false" ${cfg['midMonthOnboardingMode']!=='true'?'selected':''}>Off</option>
+          <option value="true"  ${cfg['midMonthOnboardingMode']==='true'?'selected':''}>On — show backfill reminder on Payroll</option>
+        </select>
+      </div>
+      <button class="btn btn-gold" style="margin-top:12px" onclick="saveMidMonthOnboardingMode()">💾 Save</button>
+    </div>
+  </div>
+
+  <!-- v44 Workstream D: Backfill Imports (mid-month onboarding) -->
+  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">⏰ TIME & ATTENDANCE</div>
+  <div class="settings-section">
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-backfill')">🛠 Backfill Imports <span class="settings-card-chevron">▼</span></div>
+    <div id="settings-body-backfill" class="settings-card-body">
+      <div style="background:var(--dark3);border-left:3px solid var(--gold);padding:10px 14px;border-radius:6px;margin-bottom:14px;font-size:12px;color:var(--gray-light);line-height:1.6">
+        Use this when onboarding mid-month or seeding pre-existing approved leaves. Both flows are <strong>append-or-update</strong> — never delete. Validation pre-commit shows you exactly what will be written, updated, and skipped before anything touches the spreadsheet.
+      </div>
+
+      <!-- Attendance Backfill -->
+      <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:8px;padding:14px;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:8px">📋 Attendance Backfill</div>
+        <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">Bulk-create historical attendance rows for one or more employees over a date range (max 92 days). Use the Excel template for ranges over 7 days; the in-app grid for shorter ranges.</div>
+        <div class="settings-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
+          <div class="form-group">
+            <label class="form-label">From Date
+              <span class="info-tooltip" title="Earliest date in the import. Combined with To Date, range cannot exceed 92 days.">ℹ</span>
+            </label>
+            <input type="date" id="bf-att-from" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">To Date
+              <span class="info-tooltip" title="Latest date in the import. Inclusive.">ℹ</span>
+            </label>
+            <input type="date" id="bf-att-to" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Conflict Behaviour
+              <span class="info-tooltip" title="When OFF (default), any existing attendance row for the same employee/date is left untouched and reported as Skipped. When ON, the import overwrites the existing row.">ℹ</span>
+            </label>
+            <select id="bf-att-overwrite" class="form-input">
+              <option value="false">Skip rows that already exist (safe default)</option>
+              <option value="true">Overwrite existing rows</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="bfDownloadAttendanceTemplate()">📥 Download Excel Template</button>
+          <input type="file" id="bf-att-upload" accept=".xlsx,.xls" style="display:none" onchange="bfHandleAttendanceFile(event)">
+          <button class="btn btn-secondary" onclick="document.getElementById('bf-att-upload').click()">📤 Upload Filled Template</button>
+          <button class="btn btn-secondary" onclick="bfRenderAttendanceGrid()">📊 Edit in Grid (≤7 days)</button>
+        </div>
+        <div id="bf-att-grid" style="margin-top:12px"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-gold" onclick="bfCommitAttendance()" id="bf-att-commit-btn" disabled>✅ Commit Attendance Backfill</button>
+        </div>
+        <div id="bf-att-results" style="margin-top:12px;font-size:12px"></div>
+      </div>
+
+      <!-- Leave Backfill -->
+      <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:8px;padding:14px">
+        <div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:8px">🏖 Leave Backfill</div>
+        <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">Seed historical approved leaves into the Leave Requests sheet. All rows are written with status 'Approved' (assumes already-approved). Conflicts with existing approved leave for the same employee+range are skipped.</div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="bfDownloadLeaveTemplate()">📥 Download Excel Template</button>
+          <input type="file" id="bf-leave-upload" accept=".xlsx,.xls" style="display:none" onchange="bfHandleLeaveFile(event)">
+          <button class="btn btn-secondary" onclick="document.getElementById('bf-leave-upload').click()">📤 Upload Filled Template</button>
+        </div>
+        <div id="bf-leave-preview" style="margin-top:12px;font-size:12px;color:var(--gray-light)"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-gold" onclick="bfCommitLeave()" id="bf-leave-commit-btn" disabled>✅ Commit Leave Backfill</button>
+        </div>
+        <div id="bf-leave-results" style="margin-top:12px;font-size:12px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ⚠ DANGER ZONE — FIX-25: ⓘ tooltips + Clear Test Data Only button added -->
   <div class="settings-section" style="border-color:var(--red);border-width:2px">
     <div class="settings-section-title" style="cursor:pointer;color:var(--red)" onclick="toggleCard('settings-body-danger-zone')">⚠ Danger Zone — Owner Only <span class="settings-card-chevron">▼</span></div>
@@ -10947,14 +11046,18 @@ async function renderSettings() {
     </div>
   </div>
 
-  <!-- v31: Bonus Policy Settings -->
+  <!-- v31: Bonus Policy Settings — v44 Workstream B: expanded with toggleable disqualifiers -->
   <div class="settings-section">
     <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-bonus')">🎁 Bonus Policy <span class="settings-card-chevron">▼</span></div>
       <div id="settings-body-bonus" class="settings-card-body">
+    <div style="background:var(--dark3);border-left:3px solid var(--gold);padding:10px 14px;border-radius:6px;margin-bottom:14px;font-size:12px;color:var(--gray-light);line-height:1.6">
+      <strong style="color:var(--gold)">🎁 Perfect Attendance Bonus</strong><br>
+      Auto-awarded at <strong>month-end</strong> to employees who pass every enabled check below. Changes apply to the <strong>next month's payroll onwards</strong>. Past payroll is locked.
+    </div>
     <div class="settings-grid">
       <div class="form-group">
-        <label class="form-label">Perfect Attendance Bonus Amount (INR per month)
-          <span class="info-tooltip" title="Auto-awarded to employees who have zero unapproved absences, zero LWP days, and zero unapproved late arrivals in a calendar month. Approved paid leave does NOT disqualify. Set to 0 to disable.">ℹ</span>
+        <label class="form-label">Bonus Amount per Month (₹)
+          <span class="info-tooltip" title="Amount paid as Perfect Attendance Bonus when an employee qualifies. Set to 0 to disable the bonus entirely.">ℹ</span>
         </label>
         <input class="form-input" type="number" id="cfg-perfectAttendanceBonusAmount" value="${cfg['perfectAttendanceBonusAmount']||0}" min="0">
       </div>
@@ -10966,6 +11069,35 @@ async function renderSettings() {
           <option value="true" ${cfg['bonusRequiresApproval']==='true'?'selected':''}>Yes</option>
           <option value="false" ${cfg['bonusRequiresApproval']!=='true'?'selected':''}>No</option>
         </select>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--dark3)">
+      <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:8px">
+        Disqualifying factors
+        <span class="info-tooltip" title="Tick to make the leave type forfeit the bonus when the employee uses it during the month. Untick to make the leave type neutral (does not affect the bonus).">ℹ</span>
+      </div>
+      <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">If <strong>any</strong> ticked factor applies during the month, the employee loses the bonus.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 14px;font-size:13px">
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyCL"  ${cfg['paBonus_disqualifyCL']!=='false'?'checked':''}> Casual Leave (CL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifySL"  ${cfg['paBonus_disqualifySL']!=='false'?'checked':''}> Sick / Informed Half-day (SL, IHL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyEL"  ${cfg['paBonus_disqualifyEL']!=='false'?'checked':''}> Earned Leave (EL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyPL"  ${cfg['paBonus_disqualifyPL']!=='false'?'checked':''}> Privilege Leave (PL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyML"  ${cfg['paBonus_disqualifyML']!=='false'?'checked':''}> Maternity Leave (ML)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyPTL" ${cfg['paBonus_disqualifyPTL']!=='false'?'checked':''}> Paternity Leave (PTL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyBL"  ${cfg['paBonus_disqualifyBL']!=='false'?'checked':''}> Bereavement Leave (BL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyCOL" ${cfg['paBonus_disqualifyCOL']!=='false'?'checked':''}> Compassionate Leave (COL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifySOL" ${cfg['paBonus_disqualifySOL']!=='false'?'checked':''}> Sandwich Leave (SOL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyLate" ${cfg['paBonus_disqualifyLate']!=='false'?'checked':''}> Any unapproved late arrival</label>
+      </div>
+      <div class="form-group" style="margin-top:10px;max-width:260px">
+        <label class="form-label" style="font-size:12px">Late grace (minutes, 0 = strict)
+          <span class="info-tooltip" title="Late arrivals up to this many minutes are forgiven for Perfect Attendance Bonus purposes. Default 0 means even 1 minute late forfeits the bonus.">ℹ</span>
+        </label>
+        <input class="form-input" type="number" id="cfg-paBonus_lateGraceMinutes" value="${cfg['paBonus_lateGraceMinutes']||0}" min="0">
+      </div>
+      <div style="margin-top:12px;padding:8px 12px;background:var(--dark3);border-radius:6px;font-size:11px;color:var(--gray-light);line-height:1.6">
+        <strong style="color:var(--orange)">Always disqualifies (no toggle):</strong> Unapproved Leave (UL / UHL), Loss of Pay (LWP).<br>
+        <strong style="color:var(--green)">Always neutral (no toggle):</strong> Weekly Off, National Holiday, Company-declared Holiday.
       </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31BonusSettings()">💾 Save Bonus Settings</button>
@@ -11044,6 +11176,8 @@ async function renderSettings() {
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('ot')">OT Policy</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('jbonus')">Joining Bonus</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('wallet')">Loyalty Wallet</button>
+        <!-- v44 Workstream C: per-employee per-month wallet credit adjustment workspace. -->
+        <button class="comp-sub-tab" onclick="switchCompSettingsTab('walletadj')">Wallet Adjustments</button>
       </div>
       <!-- Salary Ladder sub-panel -->
       <div class="comp-sub-panel active" id="comp-sp-ladder">
@@ -11236,7 +11370,94 @@ async function renderSettings() {
           <div class="form-group"><label class="form-label">Withdrawal % after 6-Month Wait <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT" min="0" max="100"></div>
           <div class="form-group"><label class="form-label">Withdrawal % after 12-Month Wait <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT" min="0" max="100"></div>
         </div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['LOYALTY_WALLET_ENABLED','LOYALTY_WALLET_YR1_MONTHLY','LOYALTY_WALLET_YR2_MONTHLY','LOYALTY_WALLET_YR3_MONTHLY','LOYALTY_WALLET_YR4_MONTHLY','LOYALTY_WALLET_YR5PLUS_MONTHLY','LOYALTY_WALLET_MAX_LEAVES_THRESHOLD','LOYALTY_WALLET_MIN_TENURE_MONTHS','LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT','LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT'])">💾 Save Loyalty Wallet Policy</button>
+        <!-- v44 Workstream C: Performance-based Adjustments sub-section -->
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
+          <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:8px">Performance-based Adjustments</div>
+          <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">Allow authorised users to hold or reduce a single employee's monthly wallet credit when performance falls short. Adjustments are forward-only and never rewrite past credits.</div>
+          <div class="settings-grid">
+            <div class="form-group">
+              <label class="form-label">Enable Performance Adjustments
+                <span class="info-tooltip" title="Master switch. When OFF, monthly credit always uses the tenure-based amount regardless of any submitted adjustments.">ℹ</span>
+              </label>
+              <select class="form-input" id="cfg-LOYALTY_WALLET_PERF_ADJ_ENABLED">
+                <option value="true">Yes</option><option value="false">No</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Roles Permitted to Act
+                <span class="info-tooltip" title="Select which roles may submit a wallet adjustment. The Owner role is always implicitly allowed.">ℹ</span>
+              </label>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:13px;padding:6px 0">
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_owner" checked disabled> Owner</label>
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_admin"> Admin</label>
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_manager"> Manager</label>
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_supervisor"> Supervisor</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Approval Required
+                <span class="info-tooltip" title="None = single-click action. Two-eye = a different authorised user must confirm. Owner-final = Owner must approve every adjustment.">ℹ</span>
+              </label>
+              <select class="form-input" id="cfg-LOYALTY_WALLET_PERF_ADJ_APPROVAL">
+                <option value="None">None — single-click reduction</option>
+                <option value="TwoEye">Two-eye approval</option>
+                <option value="OwnerFinal">Owner final approval</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Reduction per Month (%)
+                <span class="info-tooltip" title="Hard cap on the reduction percentage allowed in a single adjustment. The form will reject any value above this. 100 = full hold permitted.">ℹ</span>
+              </label>
+              <input class="form-input" type="number" id="cfg-LOYALTY_WALLET_PERF_ADJ_MAX_PCT" min="0" max="100" value="100">
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['LOYALTY_WALLET_ENABLED','LOYALTY_WALLET_YR1_MONTHLY','LOYALTY_WALLET_YR2_MONTHLY','LOYALTY_WALLET_YR3_MONTHLY','LOYALTY_WALLET_YR4_MONTHLY','LOYALTY_WALLET_YR5PLUS_MONTHLY','LOYALTY_WALLET_MAX_LEAVES_THRESHOLD','LOYALTY_WALLET_MIN_TENURE_MONTHS','LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT','LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT','LOYALTY_WALLET_PERF_ADJ_ENABLED','LOYALTY_WALLET_PERF_ADJ_ROLES','LOYALTY_WALLET_PERF_ADJ_APPROVAL','LOYALTY_WALLET_PERF_ADJ_MAX_PCT'])">💾 Save Loyalty Wallet Policy</button>
+      </div>
+      <!-- v44 Workstream C: Wallet Adjustments sub-panel (per-employee per-month action) -->
+      <div class="comp-sub-panel" id="comp-sp-walletadj">
+        <p class="comp-settings-subtitle">Hold or reduce a single employee's monthly wallet credit. Adjustments are forward-only — never rewrite past credits. Submitted adjustments may require second-eye approval before they take effect.</p>
+        <div class="settings-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+          <div class="form-group">
+            <label class="form-label">Employee</label>
+            <select id="wa-emp" class="form-input"><option value="">— Select —</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Month (YYYY-MM)
+              <span class="info-tooltip" title="Target month for the adjustment. If the credit for this month has already been booked, the adjustment is logged but does not rewrite history (forward-only policy).">ℹ</span>
+            </label>
+            <input id="wa-month" class="form-input" type="month">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Action</label>
+            <select id="wa-action" class="form-input" onchange="_v44ToggleWAReduction()">
+              <option value="Full">Full credit (no change)</option>
+              <option value="Partial">Partial credit (reduce by %)</option>
+              <option value="Hold">Hold — skip this month</option>
+              <option value="Reduce">Reduce by %</option>
+            </select>
+          </div>
+          <div class="form-group" id="wa-pct-wrap">
+            <label class="form-label">Reduction %
+              <span class="info-tooltip" title="Capped by the configured Max Reduction % in Loyalty Wallet settings.">ℹ</span>
+            </label>
+            <input id="wa-pct" class="form-input" type="number" min="1" max="100">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px">
+          <label class="form-label">Reason (mandatory, ≥ 20 chars)
+            <span class="info-tooltip" title="Audit trail. Be specific — this is what the second approver and the employee dispute resolver will read.">ℹ</span>
+          </label>
+          <textarea id="wa-reason" class="form-input" rows="2" placeholder="e.g. Repeat performance warnings issued in May 2026; HR review minutes attached."></textarea>
+        </div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="submitWalletAdjustment()">📤 Submit Adjustment</button>
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:600">Recent Adjustments</div>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="loadWalletAdjustments()">🔄 Refresh</button>
+          </div>
+          <div id="wa-list" style="font-size:12px;color:var(--gray-light)">Click Refresh to load.</div>
+        </div>
       </div>
       <!-- v43 W3.13: First-Time Setup banner was here. Moved to top of comp-settings-body to avoid scrolling past 6 sub-panels to find it, and to consolidate near the new defaults banner (W3.12). -->
 
@@ -11376,6 +11597,9 @@ async function renderSettings() {
   // v43 W3.9: restore per-card collapse state from localStorage. Runs AFTER DOM
   // insertion so the .settings-card-body lookup matches the freshly-rendered nodes.
   initSettingsCardState();
+  // v44 Workstream E2: scan for duplicate cfg-* bindings and surface a banner.
+  // Runs on every Settings render so adding a new card is auto-checked.
+  if (typeof _v44ScanDuplicateConfigBindings === 'function') _v44ScanDuplicateConfigBindings();
   // Post-render: load editable leave types table
   setTimeout(() => loadLeaveTypesSettingsTable(), 100);
   // v34: load comp config into settings inputs
@@ -12294,7 +12518,10 @@ async function saveEmpIdSettings() {
 }
 
 async function savePointsSettings() {
-  const keys=['pointsEligibleLevels','points1stPrize','points2ndPrize','points3rdPrize','perfectAttendanceBonus','pointsRatePerPoint'];
+  // v44 Workstream B: removed orphan 'perfectAttendanceBonus' (was the dead key
+  // bound to the cfg-perfectAttendanceBonus field that we deleted). The active
+  // PA bonus key 'perfectAttendanceBonusAmount' is owned by saveV31BonusSettings.
+  const keys=['pointsEligibleLevels','points1stPrize','points2ndPrize','points3rdPrize','pointsRatePerPoint'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   // Handle checkbox for pointsBonusInSalary
@@ -14959,10 +15186,33 @@ async function saveV31PromotionSettings() {
 }
 
 async function saveV31BonusSettings() {
+  // v44 Workstream B: 11 new disqualifier toggles + grace minutes.
+  // Checkbox booleans are stored as 'true' / 'false' strings to match the
+  // server-side getCfg() string-comparison semantics.
+  const _cb = (id) => document.getElementById(id)?.checked ? 'true' : 'false';
   const updates = {
     perfectAttendanceBonusAmount: _cfgVal('cfg-perfectAttendanceBonusAmount','1000'),
     bonusRequiresApproval: _cfgVal('cfg-bonusRequiresApproval','Yes'),
+    paBonus_disqualifyCL:   _cb('cfg-paBonus_disqualifyCL'),
+    paBonus_disqualifySL:   _cb('cfg-paBonus_disqualifySL'),
+    paBonus_disqualifyEL:   _cb('cfg-paBonus_disqualifyEL'),
+    paBonus_disqualifyPL:   _cb('cfg-paBonus_disqualifyPL'),
+    paBonus_disqualifyML:   _cb('cfg-paBonus_disqualifyML'),
+    paBonus_disqualifyPTL:  _cb('cfg-paBonus_disqualifyPTL'),
+    paBonus_disqualifyBL:   _cb('cfg-paBonus_disqualifyBL'),
+    paBonus_disqualifyCOL:  _cb('cfg-paBonus_disqualifyCOL'),
+    paBonus_disqualifySOL:  _cb('cfg-paBonus_disqualifySOL'),
+    paBonus_disqualifyLate: _cb('cfg-paBonus_disqualifyLate'),
+    paBonus_lateGraceMinutes: _cfgVal('cfg-paBonus_lateGraceMinutes','0'),
   };
+  // v44 Workstream E1: prompt for reason + effective-from when changing bonus
+  // policy. Cancel skips audit, save still proceeds (audit is a side channel,
+  // not a blocker — preserves owner UX).
+  const auditMeta = await _v44PromptBonusAudit('Perfect Attendance Bonus settings');
+  if (auditMeta) {
+    updates._reason = auditMeta.reason;
+    updates._effectiveFrom = auditMeta.effectiveFrom;
+  }
   const res = await API.call('updateSettings', {settings: updates});
   if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
   if (res.ok) toast('Bonus settings saved', 'success');
@@ -15325,6 +15575,12 @@ function switchCompSettingsTab(panel) {
   var activePanel = document.getElementById('comp-sp-' + panel);
   if (activePanel) activePanel.classList.add('active');
   if (panel === 'ladder') initCompLadderEditor();
+  // v44 Workstream C: hydrate employee picker + reduction-field visibility
+  // on first reveal of the wallet-adjustments sub-panel.
+  if (panel === 'walletadj') {
+    if (typeof _v44PopulateWalletAdjEmployees === 'function') _v44PopulateWalletAdjEmployees();
+    if (typeof _v44ToggleWAReduction === 'function') _v44ToggleWAReduction();
+  }
   // v43 W3.11: re-hydrate tooltips after sub-tab switch in case the panel had
   // not been rendered yet on first loadCompSettings(). hydrateCompensationTooltips
   // is idempotent — re-applying data-tooltip-text is a no-op.
@@ -15571,6 +15827,15 @@ async function loadCompSettings() {
     }
     const merged = Object.assign({}, defaults, cfg);  // sheet wins over defaults
     Object.keys(merged).forEach(function(key) {
+      // v44 Workstream C: ROLES is stored as a CSV; hydrate the 4 checkboxes.
+      if (key === 'LOYALTY_WALLET_PERF_ADJ_ROLES') {
+        const csv = String(merged[key]||'Owner,Admin').split(',').map(s => s.trim().toLowerCase());
+        ['admin','manager','supervisor'].forEach(function(role) {
+          const c = document.getElementById('cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_' + role);
+          if (c) c.checked = csv.includes(role);
+        });
+        return;
+      }
       const el = document.getElementById('cfg-' + key);
       if (!el) return;
       if (el.tagName === 'SELECT') {
@@ -15708,6 +15973,17 @@ function autoRecomputeShifts(level) {
 async function saveCompSettings(keys) {
   var updates = {};
   keys.forEach(function(key) {
+    // v44 Workstream C: ROLES is composed from 4 separate checkboxes (not a
+    // single cfg- element). Compose into a CSV the backend can split.
+    if (key === 'LOYALTY_WALLET_PERF_ADJ_ROLES') {
+      var picked = ['Owner']; // Owner is always implicitly allowed
+      ['Admin','Manager','Supervisor'].forEach(function(role) {
+        var c = document.getElementById('cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_' + role.toLowerCase());
+        if (c && c.checked) picked.push(role);
+      });
+      updates[key] = picked.join(',');
+      return;
+    }
     var el = document.getElementById('cfg-' + key);
     if (!el) return;
     if (key === 'OT_WORKING_DAYS_DIVISOR' && el.dataset.numeric) {
@@ -15720,6 +15996,398 @@ async function saveCompSettings(keys) {
   var res = await API.call('setCompensationConfig', {updates: updates});
   if (res.ok) toast('✓ Compensation settings saved', 'success');
   else toast(res.error || 'Save failed', 'error');
+}
+
+// ── v44 Workstream E3: mid-month onboarding mode save handler ─────────
+async function saveMidMonthOnboardingMode() {
+  const updates = { midMonthOnboardingMode: document.getElementById('cfg-midMonthOnboardingMode')?.value || 'false' };
+  const res = await API.call('updateSettings', { settings: updates });
+  if (res?.ok) toast('✓ Mid-Month Onboarding Mode saved', 'success');
+  else toast(res?.error || 'Save failed', 'error');
+  // Refresh in-memory settings so the Payroll-tab banner reflects the change immediately.
+  const sRes = await API.call('getSettings');
+  if (sRes?.ok) applySettingsArr(sRes.settings || []);
+}
+
+// Render (or hide) the Payroll-tab mid-month onboarding banner. Called once
+// from renderPayroll (or equivalent) after data load. Idempotent.
+function _v44RenderMidMonthBanner() {
+  const wrap = document.getElementById('payroll-mid-month-banner');
+  if (!wrap) return;
+  const on = (State.settings && State.settings.midMonthOnboardingMode === 'true');
+  if (!on) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  wrap.innerHTML = '🆕 <strong>Mid-Month Onboarding Mode is ON.</strong> '
+    + 'Before generating salaries, run <a href="#" onclick="event.preventDefault();document.querySelector(\'[data-tab=\\\'settings\\\']\')?.click()" style="color:var(--gold);text-decoration:underline">Settings → Backfill Imports</a> to seed any missing attendance for newly-imported employees.';
+}
+
+// ── v44 Workstream E1: bonus-config audit prompt ──────────────────────
+// Tiny modal that returns { reason, effectiveFrom } or null on cancel.
+// Cancel does NOT block the save — the audit is a side channel, not a gate,
+// so owner can still make a quick edit without filling the form. The backend
+// records the edit either way; the optional metadata enriches the trail.
+function _v44PromptBonusAudit(label) {
+  return new Promise(function(resolve) {
+    const today = new Date().toISOString().substring(0,10);
+    const html = '<div style="padding:8px"><div style="font-size:12px;color:var(--gray-light);margin-bottom:10px">'
+      + 'Optional — audit trail for ' + escHtml(label) + '. Skip to save without these notes.'
+      + '</div>'
+      + '<div class="form-group"><label class="form-label">Reason for change</label>'
+      + '<textarea id="bonus-reason-input" class="form-input" rows="2" placeholder="e.g. Quarterly review of attendance bonus policy"></textarea></div>'
+      + '<div class="form-group"><label class="form-label">Effective From</label>'
+      + '<input id="bonus-effective-from" class="form-input" type="date" value="' + today + '"></div>'
+      + '</div>';
+    showModal('📝 Bonus Policy Change Audit', html, [
+      { label:'Save with notes', cls:'btn-gold', cb: function(){
+        const reason = document.getElementById('bonus-reason-input')?.value?.trim() || '';
+        const effectiveFrom = document.getElementById('bonus-effective-from')?.value || '';
+        closeModal(); resolve({ reason, effectiveFrom });
+      }},
+      { label:'Skip notes', cls:'btn-secondary', cb: function(){ closeModal(); resolve(null); }},
+    ]);
+  });
+}
+
+// ── v44 Workstream E2: duplicate config-key binding scanner ───────────
+// Walks the Settings DOM at app load and warns the owner if any two
+// `cfg-*` form elements bind to the same canonical config key. This was
+// the root cause of Workstream B (orphan cfg-perfectAttendanceBonus and
+// the active cfg-perfectAttendanceBonusAmount). Catches the same class
+// of bug from regressing in future Settings work.
+function _v44ScanDuplicateConfigBindings() {
+  try {
+    const els = document.querySelectorAll('[id^="cfg-"]');
+    const byKey = {};
+    els.forEach(function(el) {
+      const key = el.id.substring(4); // strip 'cfg-'
+      // Suffixed sub-elements (e.g. cfg-LOYALTY_..._ROLES_admin) are intentional.
+      // Treat as duplicate ONLY if both keys are exact matches.
+      if (!byKey[key]) byKey[key] = [];
+      byKey[key].push(el);
+    });
+    const dups = Object.keys(byKey).filter(k => byKey[k].length > 1);
+    const banner = document.getElementById('v44-cfg-dup-banner');
+    if (!dups.length) {
+      if (banner) banner.style.display = 'none';
+      return;
+    }
+    if (banner) {
+      banner.innerHTML = '⚠ <strong>Duplicate Settings binding detected:</strong> '
+        + dups.map(k => '<code>' + escHtml(k) + '</code>').join(', ')
+        + '. This caused the v43 Perfect Attendance Bonus orphan-field bug. Tell the developer.';
+      banner.style.display = 'block';
+    }
+  } catch(e) { console.warn('[v44] dup-scan error:', e); }
+}
+
+// ── v44 Workstream E4: Bulk Backfill provenance badge helper ──────────
+// Returns a small badge HTML if the attendance row's note carries the marker.
+function _v44BackfillBadge(note) {
+  if (!note || String(note).indexOf('[backfilled-on ') === -1) return '';
+  return '<span title="' + escHtml(String(note)) + '" style="display:inline-block;font-size:9px;padding:1px 5px;background:rgba(184,150,12,0.25);color:var(--gold);border-radius:8px;margin-left:4px;font-weight:700">🛈 BF</span>';
+}
+
+// ── v44 Workstream D: Backfill Imports (attendance + leave) ───────────
+// In-memory staging area: rows the owner has uploaded/edited but not yet
+// committed. Cleared on each fresh upload or grid render.
+window._v44BackfillAtt = { rows: [], allowOverwrite: false };
+window._v44BackfillLeave = { rows: [] };
+
+const _v44ValidStatuses = ['P','EW','WO','H','UL','UHL','CL','SL','IHL','EL','PL','ML','PTL','BL','COL','SOL','LWP'];
+
+function _v44DateRangeDays(from, to) {
+  if (!from || !to) return 0;
+  const f = new Date(from + 'T00:00:00Z');
+  const t = new Date(to   + 'T00:00:00Z');
+  if (isNaN(f) || isNaN(t) || t < f) return 0;
+  return Math.round((t - f) / 86400000) + 1;
+}
+
+function _v44IterDates(from, to, cb) {
+  const f = new Date(from + 'T00:00:00Z');
+  const t = new Date(to   + 'T00:00:00Z');
+  for (let d = new Date(f); d <= t; d.setUTCDate(d.getUTCDate()+1)) {
+    cb(d.toISOString().substring(0,10));
+  }
+}
+
+function bfDownloadAttendanceTemplate() {
+  const from = document.getElementById('bf-att-from')?.value;
+  const to   = document.getElementById('bf-att-to')?.value;
+  if (!from || !to) { toast('Pick a From + To date first', 'warning'); return; }
+  const days = _v44DateRangeDays(from, to);
+  if (days <= 0) { toast('Invalid date range', 'error'); return; }
+  if (days > 92) { toast('Range cannot exceed 92 days', 'error'); return; }
+  const emps = (State.employees||[]).filter(e => e.status === 'Active' || e.status === 'Notice Period');
+  if (!emps.length) { toast('No active employees to template', 'warning'); return; }
+  const headers = ['empId','empName','date','status','clockIn','clockOut','hoursOverride','notes'];
+  const rows = [];
+  emps.forEach(e => {
+    _v44IterDates(from, to, function(dt) {
+      const doj = String(e.doj||'').substring(0,10);
+      if (doj && dt < doj) return; // not yet joined
+      if (e.lwd && dt > String(e.lwd).substring(0,10)) return; // post lwd
+      rows.push([e.id, e.name, dt, '', '', '', '', '']);
+    });
+  });
+  downloadXLSX('ArtzFolio_Attendance_Backfill_' + from + '_to_' + to + '.xlsx',
+    'Attendance', headers, rows);
+}
+
+function bfHandleAttendanceFile(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const arr = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      const records = arr.filter(r => r.empId && r.date && r.status).map(r => ({
+        empId: String(r.empId).trim(),
+        date: String(r.date).substring(0,10),
+        status: String(r.status).trim().toUpperCase(),
+        clockIn: r.clockIn ? String(r.clockIn).trim() : '',
+        clockOut: r.clockOut ? String(r.clockOut).trim() : '',
+        hoursOverride: r.hoursOverride || '',
+        notes: r.notes || ''
+      }));
+      const bad = records.filter(r => !_v44ValidStatuses.includes(r.status));
+      if (bad.length) {
+        toast(bad.length + ' row(s) have invalid status code (allowed: ' + _v44ValidStatuses.join(', ') + '). First: ' + bad[0].empId + ' ' + bad[0].date + ' = ' + bad[0].status, 'error', 9000);
+        return;
+      }
+      const ow = document.getElementById('bf-att-overwrite')?.value === 'true';
+      window._v44BackfillAtt = { rows: records, allowOverwrite: ow, sourceFile: file.name };
+      const btn = document.getElementById('bf-att-commit-btn'); if (btn) btn.disabled = false;
+      const res = document.getElementById('bf-att-results');
+      if (res) res.innerHTML = '<span style="color:var(--green)">✓ Loaded ' + records.length + ' rows from ' + escHtml(file.name) + '. Click Commit to write.</span>';
+    } catch(err) {
+      toast('Excel parse error: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  ev.target.value = '';
+}
+
+function bfRenderAttendanceGrid() {
+  const from = document.getElementById('bf-att-from')?.value;
+  const to   = document.getElementById('bf-att-to')?.value;
+  const days = _v44DateRangeDays(from, to);
+  if (days <= 0 || days > 7) { toast('Grid mode supports up to 7 days. Pick a smaller range or use the Excel template.', 'warning'); return; }
+  const emps = (State.employees||[]).filter(e => e.status === 'Active' || e.status === 'Notice Period');
+  const dates = []; _v44IterDates(from, to, d => dates.push(d));
+  let html = '<div style="overflow:auto;max-height:400px;border:1px solid var(--dark3);border-radius:6px">'
+    + '<table class="az-table" style="font-size:11px;width:auto"><thead><tr>'
+    + '<th>Employee</th>' + dates.map(d => '<th>' + d + '</th>').join('') + '</tr></thead><tbody>';
+  emps.forEach((e, i) => {
+    html += '<tr><td>' + escHtml(e.name) + '<br><span style="color:var(--gray-light)">' + escHtml(e.id) + '</span></td>';
+    dates.forEach((d, j) => {
+      html += '<td><select class="form-input" style="font-size:11px;padding:2px;width:60px" data-emp="' + escHtml(e.id) + '" data-date="' + d + '">'
+        + '<option value="">—</option>'
+        + _v44ValidStatuses.map(s => '<option value="' + s + '">' + s + '</option>').join('')
+        + '</select></td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>'
+    + '<button class="btn btn-secondary" style="margin-top:8px" onclick="bfStageAttendanceFromGrid()">📦 Stage Grid for Commit</button>';
+  const div = document.getElementById('bf-att-grid');
+  if (div) div.innerHTML = html;
+}
+
+function bfStageAttendanceFromGrid() {
+  const sels = document.querySelectorAll('#bf-att-grid select[data-emp]');
+  const records = [];
+  sels.forEach(s => {
+    if (!s.value) return;
+    records.push({ empId: s.dataset.emp, date: s.dataset.date, status: s.value });
+  });
+  if (!records.length) { toast('Pick a status for at least one cell', 'warning'); return; }
+  const ow = document.getElementById('bf-att-overwrite')?.value === 'true';
+  window._v44BackfillAtt = { rows: records, allowOverwrite: ow, sourceFile: '(grid)' };
+  const btn = document.getElementById('bf-att-commit-btn'); if (btn) btn.disabled = false;
+  const res = document.getElementById('bf-att-results');
+  if (res) res.innerHTML = '<span style="color:var(--green)">✓ Staged ' + records.length + ' grid cells. Click Commit to write.</span>';
+}
+
+async function bfCommitAttendance() {
+  const stage = window._v44BackfillAtt;
+  if (!stage || !stage.rows || !stage.rows.length) { toast('No rows staged', 'warning'); return; }
+  const ok = await confirm2('Commit ' + stage.rows.length + ' attendance row(s)? Existing rows will be ' + (stage.allowOverwrite ? 'OVERWRITTEN' : 'SKIPPED') + '.');
+  if (!ok) return;
+  const adminName = State.adminUser || State.user?.name || 'Admin';
+  // Chunk at 100 rows to stay under Apps Script 6-min timeout for large imports.
+  const CHUNK = 100;
+  let totals = { written: 0, updated: 0, skipped: 0, results: [] };
+  for (let i = 0; i < stage.rows.length; i += CHUNK) {
+    const slice = stage.rows.slice(i, i + CHUNK);
+    const res = await API.call('bulkAttendanceEntry', {
+      records: slice, adminName, allowOverwrite: stage.allowOverwrite,
+      isBackfill: true, sourceFile: stage.sourceFile || ''
+    });
+    if (!res || !res.ok) { toast('Chunk ' + (i/CHUNK + 1) + ' failed: ' + (res?.error||'unknown'), 'error'); break; }
+    totals.written += res.written || 0;
+    totals.updated += res.updated || 0;
+    totals.skipped += res.skipped || 0;
+    totals.results = totals.results.concat(res.results||[]);
+  }
+  const div = document.getElementById('bf-att-results');
+  if (div) {
+    const skippedRows = totals.results.filter(r => r.status === 'skipped');
+    div.innerHTML = '<div style="padding:8px;background:var(--dark3);border-radius:6px"><strong>Result:</strong> '
+      + totals.written + ' written, ' + totals.updated + ' updated, ' + totals.skipped + ' skipped.</div>'
+      + (skippedRows.length ? ('<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--orange)">Show ' + skippedRows.length + ' skipped row reason(s)</summary><div style="max-height:180px;overflow:auto;font-size:11px">'
+          + skippedRows.map(r => escHtml(r.empId) + ' ' + escHtml(r.date) + ' — ' + escHtml(r.reason||'')).join('<br>')
+          + '</div></details>') : '');
+  }
+  toast('Backfill committed', 'success');
+  window._v44BackfillAtt = { rows: [], allowOverwrite: false };
+  const btn = document.getElementById('bf-att-commit-btn'); if (btn) btn.disabled = true;
+}
+
+function bfDownloadLeaveTemplate() {
+  const headers = ['empId','leaveType','fromDate','toDate','days','reason','approvedBy','approvedOn','status'];
+  const sample = [['EMP001','SL','2026-04-15','2026-04-16',2,'Fever','Manager-Anil','2026-04-14','Approved']];
+  downloadXLSX('ArtzFolio_Leave_Backfill_template.xlsx', 'Leaves', headers, sample);
+}
+
+function bfHandleLeaveFile(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const arr = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      const rows = arr.filter(r => r.empId && r.leaveType && r.fromDate && r.toDate).map(r => ({
+        empId: String(r.empId).trim(),
+        leaveType: String(r.leaveType).trim().toUpperCase(),
+        fromDate: String(r.fromDate).substring(0,10),
+        toDate: String(r.toDate).substring(0,10),
+        days: r.days || '',
+        reason: r.reason || '',
+        approvedBy: r.approvedBy || '',
+        approvedOn: r.approvedOn || '',
+        status: r.status || 'Approved'
+      }));
+      window._v44BackfillLeave = { rows, sourceFile: file.name };
+      const prev = document.getElementById('bf-leave-preview');
+      if (prev) prev.innerHTML = '<span style="color:var(--green)">✓ Loaded ' + rows.length + ' leave row(s). Click Commit to write.</span>';
+      const btn = document.getElementById('bf-leave-commit-btn'); if (btn) btn.disabled = false;
+    } catch(err) {
+      toast('Excel parse error: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  ev.target.value = '';
+}
+
+async function bfCommitLeave() {
+  const stage = window._v44BackfillLeave;
+  if (!stage || !stage.rows || !stage.rows.length) { toast('No rows staged', 'warning'); return; }
+  const ok = await confirm2('Commit ' + stage.rows.length + ' leave row(s) as Approved?');
+  if (!ok) return;
+  const adminName = State.adminUser || State.user?.name || 'Admin';
+  const res = await API.call('bulkLeaveBackfill', { rows: stage.rows, adminName, sourceFile: stage.sourceFile || '' });
+  const div = document.getElementById('bf-leave-results');
+  if (!res || !res.ok) {
+    if (div) div.innerHTML = '<span style="color:var(--red)">' + escHtml(res?.error||'Backfill failed') + '</span>';
+    toast(res?.error || 'Backfill failed', 'error'); return;
+  }
+  const skippedRows = (res.results||[]).filter(r => r.status === 'skipped');
+  if (div) {
+    div.innerHTML = '<div style="padding:8px;background:var(--dark3);border-radius:6px"><strong>Result:</strong> '
+      + (res.written||0) + ' written, ' + (res.skipped||0) + ' skipped.</div>'
+      + (skippedRows.length ? ('<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--orange)">Show ' + skippedRows.length + ' skipped row reason(s)</summary><div style="max-height:180px;overflow:auto;font-size:11px">'
+          + skippedRows.map(r => escHtml(r.empId) + ' — ' + escHtml(r.reason||'')).join('<br>')
+          + '</div></details>') : '');
+  }
+  toast('Leave backfill committed', 'success');
+  window._v44BackfillLeave = { rows: [] };
+  const btn = document.getElementById('bf-leave-commit-btn'); if (btn) btn.disabled = true;
+}
+
+// ── v44 Workstream C: Wallet Adjustments UI ───────────────────────────
+function _v44ToggleWAReduction() {
+  const action = document.getElementById('wa-action')?.value || 'Full';
+  const wrap = document.getElementById('wa-pct-wrap');
+  if (wrap) wrap.style.display = (action === 'Partial' || action === 'Reduce') ? '' : 'none';
+}
+
+function _v44PopulateWalletAdjEmployees() {
+  const sel = document.getElementById('wa-emp');
+  if (!sel || sel.dataset.populated === '1') return;
+  const emps = (State.employees||[]).filter(e => e.status === 'Active' || e.status === 'Notice Period');
+  sel.innerHTML = '<option value="">— Select —</option>' +
+    emps.map(e => `<option value="${escHtml(e.id)}">${escHtml(e.name)} (${escHtml(e.id)}) — ${escHtml(e.level||'')}</option>`).join('');
+  sel.dataset.populated = '1';
+}
+
+async function submitWalletAdjustment() {
+  const empId = document.getElementById('wa-emp')?.value || '';
+  const month = document.getElementById('wa-month')?.value || '';
+  const action = document.getElementById('wa-action')?.value || 'Full';
+  const pct = parseFloat(document.getElementById('wa-pct')?.value || '0') || 0;
+  const reason = (document.getElementById('wa-reason')?.value || '').trim();
+  if (!empId) { toast('Select an employee', 'warning'); return; }
+  if (!month) { toast('Pick a target month', 'warning'); return; }
+  if ((action === 'Partial' || action === 'Reduce') && (pct <= 0 || pct > 100)) {
+    toast('Reduction % must be between 1 and 100', 'warning'); return;
+  }
+  if (reason.length < 20) { toast('Reason must be at least 20 characters', 'warning'); return; }
+  const requestedBy = State.adminUser || State.user?.name || 'Admin';
+  const requestedByRole = State.user?.role || 'Owner';
+  const res = await API.call('submitLoyaltyWalletAdjustment', {
+    empId, actionMonth: month, actionType: action,
+    reductionPct: pct, reason, requestedBy, requestedByRole
+  });
+  if (!res || !res.ok) { toast(res?.error || 'Submit failed', 'error'); return; }
+  toast('Adjustment ' + res.adjustmentId + ' submitted (' + res.status + ')'
+    + (res.retroactive ? ' — note: month already credited; future-only' : ''), 'success', 7000);
+  ['wa-pct','wa-reason'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  loadWalletAdjustments();
+}
+
+async function loadWalletAdjustments() {
+  const div = document.getElementById('wa-list');
+  if (!div) return;
+  div.innerHTML = 'Loading…';
+  const res = await API.call('listLoyaltyWalletAdjustments', {});
+  if (!res || !res.ok) { div.innerHTML = '<span style="color:var(--red)">Error loading adjustments.</span>'; return; }
+  const rows = (res.adjustments || []).slice().reverse();
+  if (!rows.length) { div.innerHTML = 'No adjustments yet.'; return; }
+  const me = State.adminUser || State.user?.name || 'Admin';
+  div.innerHTML = '<table class="az-table" style="font-size:11px;width:100%">'
+    + '<thead><tr><th>ID</th><th>Employee</th><th>Month</th><th>Action</th><th>Reduction</th><th>Status</th><th>Requested By</th><th>Reason</th><th></th></tr></thead><tbody>'
+    + rows.map(r => {
+      const isPending = r.status === 'PendingApproval';
+      const canApprove = isPending && String(r.requestedBy) !== String(me);
+      const action = canApprove
+        ? `<button class="btn btn-sm btn-gold" onclick="approveWalletAdjustment('${escHtml(r.id)}','Approve')">Approve</button> `
+          + `<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="approveWalletAdjustment('${escHtml(r.id)}','Reject')">Reject</button>`
+        : '';
+      return '<tr>'
+        + '<td>'+escHtml(r.id||'')+'</td>'
+        + '<td>'+escHtml(r.empName||'')+'<br><span style="color:var(--gray-light)">'+escHtml(r.empId||'')+'</span></td>'
+        + '<td>'+escHtml(r.actionMonth||'')+'</td>'
+        + '<td>'+escHtml(r.actionType||'')+'</td>'
+        + '<td>'+(r.reductionPct ? escHtml(r.reductionPct)+'%' : '—')+'</td>'
+        + '<td>'+escHtml(r.status||'')+'</td>'
+        + '<td>'+escHtml(r.requestedBy||'')+'<br><span style="color:var(--gray-light);font-size:10px">'+escHtml(r.requestedOn||'')+'</span></td>'
+        + '<td style="max-width:240px;white-space:normal">'+escHtml(r.reason||'')+'</td>'
+        + '<td>'+action+'</td>'
+        + '</tr>';
+    }).join('') + '</tbody></table>';
+}
+
+async function approveWalletAdjustment(adjustmentId, decision) {
+  const approvedBy = State.adminUser || State.user?.name || 'Admin';
+  const res = await API.call('approveLoyaltyWalletAdjustment', { adjustmentId, decision, approvedBy });
+  if (!res || !res.ok) { toast(res?.error || 'Approval failed', 'error'); return; }
+  toast('Adjustment ' + adjustmentId + ' → ' + res.status, 'success');
+  loadWalletAdjustments();
 }
 
 // ── Settings: Save Salary Ladder ──────────────────────────────────────
