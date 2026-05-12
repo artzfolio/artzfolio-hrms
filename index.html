@@ -121,8 +121,19 @@ input,select,textarea{font-family:inherit;outline:none;border:none}
 ─────────────────────────────────────────── */
 .form-group{margin-bottom:16px}
 .form-label{display:block;font-size:12px;color:var(--gold-light);margin-bottom:6px;font-weight:600}
+/* v43 W4.4: legacy .info-tooltip positioning rewrite — anchor ABOVE icon (was viewport-center).
+   This single CSS-class fix addresses 156 instances across the app at once, without
+   touching any HTML. Color bumped from --gray-light to --white for higher contrast.
+   Added ::before arrow to match the new .tooltip-icon system from W3.11.
+   .active class added to support mobile tap-to-toggle (wired by JS below). */
 .info-tooltip{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);color:var(--white);font-size:11px;font-weight:700;cursor:help;margin-left:6px;vertical-align:middle;position:relative;flex-shrink:0}
-.info-tooltip:hover::after{content:attr(title);position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);max-width:300px;width:90vw;background:#1e1e2e;border:1px solid var(--gold-dim);border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.6;color:var(--gray-light);z-index:9999;white-space:normal;pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.7)}
+.info-tooltip:hover::after,.info-tooltip.active::after{content:attr(title);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);min-width:240px;max-width:360px;width:max-content;background:#1e1e2e;border:1px solid var(--gold-dim);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;color:var(--white);z-index:9999;white-space:normal;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.7);text-align:left}
+.info-tooltip:hover::before,.info-tooltip.active::before{content:'';position:absolute;left:50%;bottom:calc(100% + 3px);transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--gold-dim);z-index:9999}
+/* v43 W4.4: viewport edge-flip modifiers — applied by JS when icon is near viewport edge */
+.info-tooltip.tt-flip-right:hover::after,.info-tooltip.tt-flip-right.active::after,
+.tooltip-icon.tt-flip-right:hover::after,.tooltip-icon.tt-flip-right.active::after{left:auto;right:0;transform:none}
+.info-tooltip.tt-flip-left:hover::after,.info-tooltip.tt-flip-left.active::after,
+.tooltip-icon.tt-flip-left:hover::after,.tooltip-icon.tt-flip-left.active::after{left:0;right:auto;transform:none}
 .form-input{width:100%;background:var(--dark3);border:1px solid var(--dark3);color:var(--white);
             padding:10px 14px;border-radius:var(--radius-sm);font-size:14px;transition:var(--trans)}
 .form-input:focus{border-color:var(--gold)}
@@ -5941,6 +5952,26 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">KYC Fee (₹) <span class="info-tooltip" title="One-time KYC processing fee charged at exit if the employee leaves within 30 days. Default: 750. Set to 0 to waive.">ℹ</span></label>
       <input id="ee-kycfee" class="form-input" type="number" min="0" value="${e.kycFee||750}"></div>
   </div>
+  <!-- v43 W4.9: per-employee salary override. Lazy-init fields on Employees sheet.
+       When enabled, salary stays manual and is NOT auto-recomputed on shift/level change. -->
+  <div class="form-group" style="grid-column:span 2;margin-top:8px;padding:10px;background:var(--dark3);border-radius:6px">
+    <div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:6px">💰 Salary</div>
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:8px">
+      Current salary on record: <strong>₹${escHtml(String(e.salary || 0))}</strong>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-size:13px">
+      <input type="checkbox" id="ee-salary-override-enabled" ${(String(e.salaryOverrideEnabled||'').toLowerCase()==='true') ? 'checked' : ''} onchange="document.getElementById('ee-salary-override-fields').style.display=this.checked?'block':'none'">
+      <span>Use manual override (custom salary not from ladder)</span>
+    </label>
+    <div id="ee-salary-override-fields" style="display:${(String(e.salaryOverrideEnabled||'').toLowerCase()==='true') ? 'block' : 'none'};margin-top:8px">
+      <input id="ee-salary-override-amount" class="form-input" type="number" min="0" placeholder="Custom salary ₹" value="${e.salaryOverrideAmount || ''}">
+      <input id="ee-salary-override-reason" class="form-input" style="margin-top:6px" placeholder="Reason (optional, e.g. 'Special-case raise approved by founder')" value="${escHtml(e.salaryOverrideReason||'')}">
+      <div style="font-size:11px;color:var(--gray-light);margin-top:6px">
+        When override is ON: salary stays manual; shift/level changes do NOT auto-recompute.
+        When OFF: salary auto-recomputes from the ladder on level or shift type change.
+      </div>
+    </div>
+  </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Night Shift Allowance (₹/night)</label><input id="ee-nsa" class="form-input" type="number" value="${e.nightShiftAllowance||0}"></div>
     <div class="form-group"><label class="form-label">Travel Allowance (₹/day present)</label><input id="ee-travel" class="form-input" type="number" value="${e.travelAllowance||0}"></div>
@@ -6012,6 +6043,10 @@ async function showEditEmpModal(empId) {
         org:             document.getElementById('ee-org').value.trim(),
         minDayRate:      document.getElementById('ee-mindayrate').value,
         kycFee:          document.getElementById('ee-kycfee').value,
+        // v43 W4.9: per-employee salary override fields (3 new lazy-init cols).
+        salaryOverrideEnabled: document.getElementById('ee-salary-override-enabled') && document.getElementById('ee-salary-override-enabled').checked ? 'true' : 'false',
+        salaryOverrideAmount:  parseFloat(document.getElementById('ee-salary-override-amount') ? document.getElementById('ee-salary-override-amount').value : '') || 0,
+        salaryOverrideReason:  document.getElementById('ee-salary-override-reason') ? document.getElementById('ee-salary-override-reason').value : '',
       };
       const newPin=document.getElementById('ee-pin').value;
       if(newPin){payload.pin=newPin;}
@@ -10979,6 +11014,16 @@ async function renderSettings() {
       💼 Compensation &amp; Promotion Policy <span style="float:right;font-size:12px;color:var(--gray-light)">▼</span>
     </div>
     <div id="comp-settings-body" style="display:none">
+      <!-- v43 W4.7: Promotion Review Queue summary card. Hidden when queue is empty. -->
+      <div id="comp-promotion-review-summary-card" style="background:var(--dark3);border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:3px solid var(--gold);display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <span style="font-size:14px;font-weight:600;color:var(--gold)" id="comp-prq-icon-count">🔔 0 employees in promotion review queue</span>
+            <div style="font-size:11px;color:var(--gray-light);margin-top:2px" id="comp-prq-breakdown">— eligible · — overdue</div>
+          </div>
+          <button class="btn btn-gold" style="font-size:12px;padding:6px 12px" onclick="goToAdminPromotionQueue()">View in Admin Panel →</button>
+        </div>
+      </div>
       <!-- v43 W3.12: Defaults banner — shown when CompensationConfig sheet is empty -->
       <div id="comp-defaults-banner" style="display:none;background:rgba(228,180,93,0.08);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--gold)">
         ℹ Showing recommended defaults. Click <strong>Save</strong> on any sub-tab to commit, or click <strong>Initialize Compensation Sheets</strong> below to commit all defaults at once.
@@ -11025,11 +11070,60 @@ async function renderSettings() {
             <input class="form-input" type="number" id="cfg-INCREMENT_PERCENTAGE" step="0.01" min="0" max="1" placeholder="0.05">
           </div>
           <div class="form-group">
-            <label class="form-label">Max Increment Cycles per Level <span class="tooltip-icon" data-tooltip-key="MAX_INCREMENT_CYCLES">i</span></label>
-            <input class="form-input" type="number" id="cfg-MAX_INCREMENT_CYCLES" min="1" max="8" placeholder="4">
+            <!-- v43 W4.3: label softened from hard-cap to advisory phrasing. DOM id unchanged per R1. -->
+            <label class="form-label">Increment Cycles Before Promotion Review (advisory) <span class="tooltip-icon" data-tooltip-key="MAX_INCREMENT_CYCLES">i</span></label>
+            <input class="form-input" type="number" id="cfg-MAX_INCREMENT_CYCLES" min="0" max="8" placeholder="4">
           </div>
         </div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['INCREMENT_PERIOD_MONTHS','INCREMENT_TYPE','INCREMENT_PERCENTAGE','MAX_INCREMENT_CYCLES'])">💾 Save Increment Settings</button>
+        <!-- v43 W4.2: per-level flat increment table. Visible only when INCREMENT_TYPE=Flat (loadCompSettings toggles visibility).
+             Keys INCREMENT_9HR_L10..L6 already exist in COMP_CONFIG_DEFAULTS (gas:8324-8328); this UI surfaces them. -->
+        <div id="comp-increment-per-level" style="margin-top:14px;display:none">
+          <div style="font-size:12px;color:var(--gold);margin-bottom:6px;font-weight:600">
+            Per-Level Flat Increment (9hr base)
+            <span class="tooltip-icon" data-tooltip-key="comp-increment-per-level">i</span>
+          </div>
+          <table class="comp-ladder-table">
+            <thead><tr>
+              <th>Level</th>
+              <th>Flat ₹ (9hr)</th>
+              <th>11hr (auto ×1.10)</th>
+              <th>12hr (auto ×1.20)</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:700;color:var(--gold)">L10</td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L10" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L10')"></td>
+                <td style="color:var(--gray-light)"><span id="inc-L10-11-disp">—</span></td>
+                <td style="color:var(--gray-light)"><span id="inc-L10-12-disp">—</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;color:var(--gold)">L9</td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L9" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L9')"></td>
+                <td style="color:var(--gray-light)"><span id="inc-L9-11-disp">—</span></td>
+                <td style="color:var(--gray-light)"><span id="inc-L9-12-disp">—</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;color:var(--gold)">L8</td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L8" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L8')"></td>
+                <td style="color:var(--gray-light)"><span id="inc-L8-11-disp">—</span></td>
+                <td style="color:var(--gray-light)"><span id="inc-L8-12-disp">—</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;color:var(--gold)">L7</td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L7" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L7')"></td>
+                <td style="color:var(--gray-light)"><span id="inc-L7-11-disp">—</span></td>
+                <td style="color:var(--gray-light)"><span id="inc-L7-12-disp">—</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;color:var(--gold)">L6</td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L6" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L6')"></td>
+                <td style="color:var(--gray-light)"><span id="inc-L6-11-disp">—</span></td>
+                <td style="color:var(--gray-light)"><span id="inc-L6-12-disp">—</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['INCREMENT_PERIOD_MONTHS','INCREMENT_TYPE','INCREMENT_PERCENTAGE','MAX_INCREMENT_CYCLES','INCREMENT_9HR_L10','INCREMENT_9HR_L9','INCREMENT_9HR_L8','INCREMENT_9HR_L7','INCREMENT_9HR_L6'])">💾 Save Increment Settings</button>
       </div>
       <!-- Promotion Windows sub-panel -->
       <div class="comp-sub-panel" id="comp-sp-promo">
@@ -11060,8 +11154,13 @@ async function renderSettings() {
             <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_12HR" min="0.5" step="0.5">
           </div>
           <div class="form-group">
-            <label class="form-label">OT Working Days Divisor <span class="tooltip-icon" data-tooltip-key="OT_WORKING_DAYS_DIVISOR">i</span></label>
-            <input class="form-input" type="number" id="cfg-OT_WORKING_DAYS_DIVISOR" min="1">
+            <!-- v43 W4.5: OT_WORKING_DAYS_DIVISOR is now DERIVED from cfg-perDayDivisor (Organization & Locale).
+                 Read-only display preserves the Config key (OT backend math untouched per R13). -->
+            <label class="form-label">OT Working Days Divisor (auto from Per-Day Denominator) <span class="tooltip-icon" data-tooltip-key="OT_WORKING_DAYS_DIVISOR">i</span></label>
+            <input class="form-input" type="text" id="cfg-OT_WORKING_DAYS_DIVISOR" readonly style="background:var(--dark2);opacity:0.7;cursor:not-allowed" value="(loading…)">
+            <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
+              Driven by Per-Day Salary Denominator in Settings → Organization &amp; Locale. To change, edit that dropdown.
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Shift Ratio 11hr ÷ 9hr × 90% <span class="tooltip-icon" data-tooltip-key="SHIFT_RATIO_11HR">i</span></label>
@@ -15232,6 +15331,40 @@ function switchCompSettingsTab(panel) {
   hydrateCompensationTooltips();
 }
 
+// v43 W4.7: refresh the Promotion Review summary card on Compensation home.
+// Called from loadCompSettings. Fires getPromotionReviewQueue and updates the
+// counter pills. Card hides itself when queue is empty.
+async function refreshPromotionReviewSummary() {
+  try {
+    const res = await API.call('getPromotionReviewQueue');
+    const card = document.getElementById('comp-promotion-review-summary-card');
+    if (!card) return;
+    if (!res || !res.ok || !Array.isArray(res.employees) || res.employees.length === 0) {
+      card.style.display = 'none';
+      return;
+    }
+    const n = res.employees.length;
+    const elig = res.employees.filter(e => e.status === 'eligible').length;
+    const over = res.employees.filter(e => e.status === 'overdue').length;
+    const iconCount = document.getElementById('comp-prq-icon-count');
+    const breakdown = document.getElementById('comp-prq-breakdown');
+    if (iconCount) iconCount.textContent = '🔔 ' + n + ' employee' + (n > 1 ? 's' : '') + ' in promotion review queue';
+    if (breakdown) breakdown.textContent = elig + ' eligible · ' + over + ' overdue';
+    card.style.display = 'block';
+  } catch(e) { console.error('refreshPromotionReviewSummary:', e); }
+}
+
+// v43 W4.7: jump to the Promotion Review sub-tab under Compensation Management admin tab.
+function goToAdminPromotionQueue() {
+  try {
+    if (typeof switchTab === 'function') switchTab('compmgmt');
+    // Wait one tick for the tab to render, then activate the review sub-tab
+    setTimeout(function() {
+      if (typeof switchCompMgmtTab === 'function') switchCompMgmtTab('review');
+    }, 250);
+  } catch(e) { console.error('goToAdminPromotionQueue:', e); }
+}
+
 // v43 W3.12: defaults visibility banner show/hide. Both the "showing defaults" and
 // the "first-time setup" banners (W3.13) are gated by the same sheetExists flag.
 function showCompDefaultsBanner() {
@@ -15250,14 +15383,85 @@ function hideCompDefaultsBanner() {
 // v43 W3.11: copy text for fields that don't have a corresponding COMP_CONFIG_DEFAULTS row.
 // These are mostly the Salary Ladder cells and the Promotion-window inputs which use
 // dynamic IDs (ladder-L7-9 etc.) rather than the CFG_KEY → cfg-CFG_KEY pattern.
+// v43 W4.6: layman-friendly text. Night-ladder tooltip keys added for W4.1's new cells.
 const _MANUAL_COMP_TOOLTIPS = {
-  'ladder-9hr-base': 'Base morning salary for this level on a standard 9-hour shift. The 11hr and 12hr salaries auto-compute by multiplying with the configured shift ratios.',
-  'ladder-11hr-auto': 'Auto-derived from 9hr base x Shift Ratio 11hr x 90% adjustment. Edit ratios in the OT Policy tab.',
-  'ladder-12hr-auto': 'Auto-derived from 9hr base x Shift Ratio 12hr x 90% adjustment. Edit ratios in the OT Policy tab.',
-  'promo-min-months': 'Minimum months an employee must spend at this level before becoming promotion-eligible.',
-  'promo-max-months': 'Maximum months before the system flags the employee for promotion review. Blank = no maximum (managerial discretion only, used for L6 cap).',
-  'joining-bonus-installment-amount-display': 'Auto-calculated from Total Bonus / Number of Installments. Read-only display.'
+  'ladder-9hr-base': 'Default monthly salary for this level on a 9-hour MORNING shift. Editing here changes the default for new hires; existing employees keep their saved salary unless you click Recompute Salaries from Ladder in Admin → Bulk Operations.',
+  'ladder-9hr-base-night': 'Default monthly salary for this level on a 9-hour NIGHT shift. Per Excel: night base is INDEPENDENT of morning, not a fixed multiplier — set each level explicitly.',
+  'ladder-11hr-auto': 'Auto-derived from 9hr Morning × Shift Ratio 11hr (default 1.10 = 10% more). Editable ratio in OT Policy tab.',
+  'ladder-11hr-auto-night': 'Auto-derived from 9hr Night × Shift Ratio 11hr. Edit the ratio in the OT Policy tab.',
+  'ladder-12hr-auto': 'Auto-derived from 9hr Morning × Shift Ratio 12hr (default 1.20 = 20% more). Editable ratio in OT Policy tab.',
+  'ladder-12hr-auto-night': 'Auto-derived from 9hr Night × Shift Ratio 12hr.',
+  'promo-min-months': 'Minimum months an employee must spend at this level before becoming promotion-eligible. Below this, the system blocks promotion requests.',
+  'promo-max-months': 'After this many months at the same level without promotion, the employee is flagged Overdue in the Promotion Review Queue. Blank = no maximum (used for L6, the top operational level).',
+  'joining-bonus-installment-amount-display': 'Auto-calculated from Total Bonus / Number of Installments. Read-only display.',
+  // v43 W4.2: per-level increment table tooltip.
+  'comp-increment-per-level': 'Per-level flat increment values (Type = Flat only). Each L-level can have a different ₹ raise per 6-month cycle. Backend keys: INCREMENT_9HR_L10..L6. 11hr/12hr columns auto-scale (×1.10 / ×1.20).'
 };
+
+// v43 W4.5: OT_WORKING_DAYS_DIVISOR display is now derived from cfg-perDayDivisor.
+// Fired on load + on Per-Day Denominator dropdown change. Stashes the numeric value
+// on the display input's data-numeric attribute so saveCompSettings can persist
+// the correct number (not the display string like "Actual (31 for May 2026)").
+function syncOTDivisorFromPerDay() {
+  var src = document.getElementById('cfg-perDayDivisor');
+  var dst = document.getElementById('cfg-OT_WORKING_DAYS_DIVISOR');
+  if (!src || !dst) return;
+  var mode = src.value;
+  var display, num;
+  if (mode === 'Actual') {
+    var d = new Date();
+    num = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+    display = 'Actual (' + num + ' for ' + d.toLocaleString('default', {month:'short', year:'numeric'}) + ')';
+  } else {
+    num = parseInt(mode, 10) || 26;
+    display = String(num);
+  }
+  dst.value = display;
+  dst.dataset.numeric = num;
+}
+// Bind change listener once when present (the cfg-perDayDivisor element may render later via renderSettings).
+(function bindOTDivisorSync() {
+  if (window._w45BindAttempts) return;
+  window._w45BindAttempts = 0;
+  function attemptBind() {
+    var src = document.getElementById('cfg-perDayDivisor');
+    if (src && src.dataset.w45bound !== '1') {
+      src.dataset.w45bound = '1';
+      src.addEventListener('change', syncOTDivisorFromPerDay);
+      syncOTDivisorFromPerDay();
+      return true;
+    }
+    return false;
+  }
+  // Try immediately; if Settings not yet rendered, retry up to 5 times over 2.5s
+  if (!attemptBind()) {
+    var iv = setInterval(function() {
+      window._w45BindAttempts++;
+      if (attemptBind() || window._w45BindAttempts >= 5) clearInterval(iv);
+    }, 500);
+  }
+})();
+
+// v43 W4.2: per-level increment auto-recompute. Mirrors autoRecomputeShifts pattern.
+function autoRecomputeIncrementShifts(level) {
+  var inc9El = document.getElementById('cfg-INCREMENT_9HR_' + level);
+  if (!inc9El) return;
+  var inc9 = parseFloat(inc9El.value) || 0;
+  var inc11 = Math.round(inc9 * 1.10 / 10) * 10; // round to ₹10
+  var inc12 = Math.round(inc9 * 1.20 / 10) * 10;
+  var d11 = document.getElementById('inc-' + level + '-11-disp');
+  var d12 = document.getElementById('inc-' + level + '-12-disp');
+  if (d11) d11.textContent = inc9 > 0 ? '₹' + inc11 : '—';
+  if (d12) d12.textContent = inc9 > 0 ? '₹' + inc12 : '—';
+}
+
+// v43 W4.2: show/hide per-level increment table based on INCREMENT_TYPE value.
+function syncIncrementTypeVisibility() {
+  var typeEl = document.getElementById('cfg-INCREMENT_TYPE');
+  var perLevelBlock = document.getElementById('comp-increment-per-level');
+  if (!typeEl || !perLevelBlock) return;
+  perLevelBlock.style.display = (typeEl.value === 'Flat') ? 'block' : 'none';
+}
 
 // v43 W3.11: cache the backend-sourced descriptions across sub-tab switches so we
 // don't refetch on every panel change. First call populates; subsequent calls reuse.
@@ -15299,9 +15503,52 @@ async function hydrateCompensationTooltips() {
     window._tooltipDocCloseBound = true;
     document.addEventListener('click', function() {
       document.querySelectorAll('.tooltip-icon.active').forEach(function(el) { el.classList.remove('active'); });
+      // v43 W4.4: also clear .info-tooltip.active on outside click
+      document.querySelectorAll('.info-tooltip.active').forEach(function(el) { el.classList.remove('active'); });
     });
   }
 }
+
+// v43 W4.4: viewport edge-flip + mobile tap-to-toggle for BOTH .info-tooltip and .tooltip-icon.
+// Single IIFE — binds once at script eval. Idempotent via window._hrmsTooltipGuardInit.
+(function initTooltipEdgeGuard() {
+  if (window._hrmsTooltipGuardInit) return;
+  window._hrmsTooltipGuardInit = true;
+  function recheck(el) {
+    if (!el) return;
+    setTimeout(function() {
+      try {
+        var icon = el.getBoundingClientRect();
+        var vw = window.innerWidth;
+        // Flip right when icon is too close to right edge (tooltip ~240px wide)
+        if (icon.right > vw - 130) el.classList.add('tt-flip-right');
+        else el.classList.remove('tt-flip-right');
+        // Flip left when icon is too close to left edge
+        if (icon.left < 130) el.classList.add('tt-flip-left');
+        else el.classList.remove('tt-flip-left');
+      } catch(e) { console.error('tooltip edge-guard:', e); }
+    }, 0);
+  }
+  // Hover triggers the edge-flip recompute (cheap, runs once per icon hover)
+  document.addEventListener('mouseover', function(e) {
+    var t = e.target && e.target.closest ? e.target.closest('.info-tooltip, .tooltip-icon') : null;
+    if (t) recheck(t);
+  });
+  // Mobile/tap: toggle .active class on both legacy .info-tooltip and new .tooltip-icon.
+  // .tooltip-icon already has its own click handler in hydrateCompensationTooltips —
+  // this binds the legacy .info-tooltip instances (156 of them) on first user interaction.
+  document.addEventListener('click', function(e) {
+    var t = e.target && e.target.closest ? e.target.closest('.info-tooltip') : null;
+    if (!t) return;
+    e.stopPropagation();
+    // Close any other open tooltips
+    document.querySelectorAll('.info-tooltip.active, .tooltip-icon.active').forEach(function(x) {
+      if (x !== t) x.classList.remove('active');
+    });
+    t.classList.toggle('active');
+    recheck(t);
+  });
+})();
 
 // ── Settings: Load Compensation Config ───────────────────────────────
 // v43 W3.12: rewritten to merge backend defaults on top of an empty CompensationConfig
@@ -15344,6 +15591,18 @@ async function loadCompSettings() {
     }
     initCompLadderEditor();
     hydrateCompensationTooltips();  // v43 W3.11
+    // v43 W4.2: recompute per-level increment displays after loading + bind type-change listener.
+    ['L10','L9','L8','L7','L6'].forEach(function(lvl) { autoRecomputeIncrementShifts(lvl); });
+    syncIncrementTypeVisibility();
+    var incTypeEl = document.getElementById('cfg-INCREMENT_TYPE');
+    if (incTypeEl && incTypeEl.dataset.w4bound !== '1') {
+      incTypeEl.dataset.w4bound = '1';
+      incTypeEl.addEventListener('change', syncIncrementTypeVisibility);
+    }
+    // v43 W4.5: sync OT_WORKING_DAYS_DIVISOR display from perDayDivisor (read-only mirror).
+    if (typeof syncOTDivisorFromPerDay === 'function') syncOTDivisorFromPerDay();
+    // v43 W4.7: refresh the promotion-review summary card in Compensation home.
+    if (typeof refreshPromotionReviewSummary === 'function') refreshPromotionReviewSummary();
   } catch(e) { console.error('loadCompSettings:', e); }
 }
 
@@ -15352,12 +15611,14 @@ async function loadCompSettings() {
 // clicked Initialize Compensation Sheets yet), render with the LADDER_SEED so the
 // owner sees concrete values instead of blank inputs. The seed is the same set
 // that handleSetCompensationConfig / initCompensationSheets writes on init.
+// v43 W4.1: night seed values per Excel (ArtzFolio_Salary_Incremental_Model). Night base is INDEPENDENT
+// per level (per-level ratio varies 1.107–1.150 — NOT a single multiplier of morning).
 const LADDER_SEED = {
-  L10:{ morning:11000 },
-  L9: { morning:12500 },
-  L8: { morning:14000 },
-  L7: { morning:16000 },
-  L6: { morning:20000 }
+  L10:{ morning:11000, night:12500 },
+  L9: { morning:12500, night:14000 },
+  L8: { morning:14000, night:15500 },
+  L7: { morning:16000, night:18000 },
+  L6: { morning:20000, night:23000 }
 };
 async function initCompLadderEditor() {
   var container = document.getElementById('comp-ladder-editor');
@@ -15370,27 +15631,40 @@ async function initCompLadderEditor() {
     var levels = ['L10','L9','L8','L7','L6'];
     // v43 W3.12: if the sheet returned 0 rows, treat as fresh install and render with seed values.
     var usingSeed = rows.length === 0;
+    // v43 W4.1: 7-column table — Level / 9hr Morning / 9hr Night / 11hr M / 11hr N / 12hr M / 12hr N.
+    // Editable inputs: 9hr Morning + 9hr Night (independent per level).
+    // Auto-computed displays: 11hr/12hr × 1.10/1.20 for BOTH morning and night.
     var html = '<table class="comp-ladder-table"><thead><tr>' +
-      '<th>Level <span class="tooltip-icon" data-tooltip-key="ladder-9hr-base">i</span></th>' +
-      '<th>9hr Base (₹) <span class="tooltip-icon" data-tooltip-key="ladder-9hr-base">i</span></th>' +
-      '<th>11hr (auto-computed) <span class="tooltip-icon" data-tooltip-key="ladder-11hr-auto">i</span></th>' +
-      '<th>12hr (auto-computed) <span class="tooltip-icon" data-tooltip-key="ladder-12hr-auto">i</span></th>' +
+      '<th>Level</th>' +
+      '<th>9hr Morning (₹) <span class="tooltip-icon" data-tooltip-key="ladder-9hr-base">i</span></th>' +
+      '<th>9hr Night (₹) <span class="tooltip-icon" data-tooltip-key="ladder-9hr-base-night">i</span></th>' +
+      '<th>11hr M (auto) <span class="tooltip-icon" data-tooltip-key="ladder-11hr-auto">i</span></th>' +
+      '<th>11hr N (auto) <span class="tooltip-icon" data-tooltip-key="ladder-11hr-auto-night">i</span></th>' +
+      '<th>12hr M (auto) <span class="tooltip-icon" data-tooltip-key="ladder-12hr-auto">i</span></th>' +
+      '<th>12hr N (auto) <span class="tooltip-icon" data-tooltip-key="ladder-12hr-auto-night">i</span></th>' +
       '</tr></thead><tbody>';
     levels.forEach(function(level) {
-      // SalaryLadder sheet columns: level, shiftHours, morningSalary (all lowercase from sheetToObjects)
+      // SalaryLadder sheet columns: level, shiftHours, morningSalary, nightSalary (all lowercase from sheetToObjects)
       var r9  = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 9; }) || {};
       var r11 = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 11; }) || {};
       var r12 = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 12; }) || {};
-      // v43 W3.12: fall back to seed if no row for this level
-      var base9 = parseFloat(r9.morningSalary) || (usingSeed && LADDER_SEED[level] ? LADDER_SEED[level].morning : 0);
-      var disp11 = parseFloat(r11.morningSalary) || (base9 ? Math.round(base9 * 1.10 / 100) * 100 : 0);
-      var disp12 = parseFloat(r12.morningSalary) || (base9 ? Math.round(base9 * 1.20 / 100) * 100 : 0);
+      // v43 W3.12 + W4.1: fall back to seed for BOTH morning and night if no row for this level
+      var base9M = parseFloat(r9.morningSalary) || (usingSeed && LADDER_SEED[level] ? LADDER_SEED[level].morning : 0);
+      var base9N = parseFloat(r9.nightSalary)   || (usingSeed && LADDER_SEED[level] ? LADDER_SEED[level].night   : 0);
+      var d11M   = parseFloat(r11.morningSalary) || (base9M ? Math.round(base9M * 1.10 / 100) * 100 : 0);
+      var d11N   = parseFloat(r11.nightSalary)   || (base9N ? Math.round(base9N * 1.10 / 100) * 100 : 0);
+      var d12M   = parseFloat(r12.morningSalary) || (base9M ? Math.round(base9M * 1.20 / 100) * 100 : 0);
+      var d12N   = parseFloat(r12.nightSalary)   || (base9N ? Math.round(base9N * 1.20 / 100) * 100 : 0);
       html += '<tr>' +
         '<td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
-        '<td><input type="number" class="form-input" id="ladder-' + level + '-9" value="' + (base9 || '') +
-          '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:110px;padding:4px 6px"></td>' +
-        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-11-disp">' + fmtINR(disp11) + '</span></td>' +
-        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-12-disp">' + fmtINR(disp12) + '</span></td>' +
+        '<td><input type="number" class="form-input" id="ladder-' + level + '-9" value="' + (base9M || '') +
+          '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:100px;padding:4px 6px"></td>' +
+        '<td><input type="number" class="form-input" id="ladder-' + level + '-9-night" value="' + (base9N || '') +
+          '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:100px;padding:4px 6px"></td>' +
+        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-11-disp">' + fmtINR(d11M) + '</span></td>' +
+        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-11-night-disp">' + fmtINR(d11N) + '</span></td>' +
+        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-12-disp">' + fmtINR(d12M) + '</span></td>' +
+        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-12-night-disp">' + fmtINR(d12N) + '</span></td>' +
       '</tr>';
     });
     html += '</tbody></table>';
@@ -15404,23 +15678,43 @@ async function initCompLadderEditor() {
 }
 
 function autoRecomputeShifts(level) {
+  // Morning recompute (preserved from W3.12)
   var base9El = document.getElementById('ladder-' + level + '-9');
-  if (!base9El) return;
-  var base9 = parseFloat(base9El.value) || 0;
-  var sal11 = Math.round(base9 * 1.10 / 100) * 100;
-  var sal12 = Math.round(base9 * 1.20 / 100) * 100;
-  var disp11 = document.getElementById('ladder-' + level + '-11-disp');
-  var disp12 = document.getElementById('ladder-' + level + '-12-disp');
-  if (disp11) disp11.textContent = fmtINR(sal11);
-  if (disp12) disp12.textContent = fmtINR(sal12);
+  if (base9El) {
+    var base9 = parseFloat(base9El.value) || 0;
+    var sal11 = Math.round(base9 * 1.10 / 100) * 100;
+    var sal12 = Math.round(base9 * 1.20 / 100) * 100;
+    var disp11 = document.getElementById('ladder-' + level + '-11-disp');
+    var disp12 = document.getElementById('ladder-' + level + '-12-disp');
+    if (disp11) disp11.textContent = fmtINR(sal11);
+    if (disp12) disp12.textContent = fmtINR(sal12);
+  }
+  // v43 W4.1: night recompute (mirror of morning, using the independent 9hr night base)
+  var base9N_el = document.getElementById('ladder-' + level + '-9-night');
+  if (base9N_el) {
+    var base9N = parseFloat(base9N_el.value) || 0;
+    var sal11N = Math.round(base9N * 1.10 / 100) * 100;
+    var sal12N = Math.round(base9N * 1.20 / 100) * 100;
+    var d11N = document.getElementById('ladder-' + level + '-11-night-disp');
+    var d12N = document.getElementById('ladder-' + level + '-12-night-disp');
+    if (d11N) d11N.textContent = fmtINR(sal11N);
+    if (d12N) d12N.textContent = fmtINR(sal12N);
+  }
 }
 
 // ── Settings: Save Compensation Config ───────────────────────────────
+// v43 W4.5: OT_WORKING_DAYS_DIVISOR display is a string like "Actual (31 for May 2026)".
+// Backend expects a number. Extract from data-numeric (set by syncOTDivisorFromPerDay).
 async function saveCompSettings(keys) {
   var updates = {};
   keys.forEach(function(key) {
     var el = document.getElementById('cfg-' + key);
-    if (el) updates[key] = el.value;
+    if (!el) return;
+    if (key === 'OT_WORKING_DAYS_DIVISOR' && el.dataset.numeric) {
+      updates[key] = el.dataset.numeric;
+    } else {
+      updates[key] = el.value;
+    }
   });
   if (!Object.keys(updates).length) return;
   var res = await API.call('setCompensationConfig', {updates: updates});
@@ -15429,20 +15723,30 @@ async function saveCompSettings(keys) {
 }
 
 // ── Settings: Save Salary Ladder ──────────────────────────────────────
+// v43 W4.1: send BOTH morning and night for each shift. New payload shape
+// `{level, shiftHours, morningSalary, nightSalary}`. Backend accepts both new and
+// legacy `{baseSalary}` shapes (handleSaveSalaryLadder is backward-compatible).
 async function saveCompLadder() {
   var levels = ['L10','L9','L8','L7','L6'];
   var rows = [];
   var valid = true;
   levels.forEach(function(level) {
-    var el = document.getElementById('ladder-' + level + '-9');
-    if (!el) return;
-    var base9 = Math.round(parseFloat(el.value) || 0);
-    if (base9 <= 0) { toast('Enter valid salary for ' + level, 'error'); valid = false; return; }
-    var sal11 = Math.round(base9 * 1.10 / 100) * 100;
-    var sal12 = Math.round(base9 * 1.20 / 100) * 100;
-    rows.push({level: level, shiftHours: 9, baseSalary: base9});
-    rows.push({level: level, shiftHours: 11, baseSalary: sal11});
-    rows.push({level: level, shiftHours: 12, baseSalary: sal12});
+    var morningEl = document.getElementById('ladder-' + level + '-9');
+    var nightEl   = document.getElementById('ladder-' + level + '-9-night');
+    if (!morningEl || !nightEl) return;
+    var base9M = Math.round(parseFloat(morningEl.value) || 0);
+    var base9N = Math.round(parseFloat(nightEl.value) || 0);
+    if (base9M <= 0 || base9N <= 0) {
+      toast('Enter valid morning AND night salary for ' + level, 'error');
+      valid = false; return;
+    }
+    var sal11M = Math.round(base9M * 1.10 / 100) * 100;
+    var sal12M = Math.round(base9M * 1.20 / 100) * 100;
+    var sal11N = Math.round(base9N * 1.10 / 100) * 100;
+    var sal12N = Math.round(base9N * 1.20 / 100) * 100;
+    rows.push({level: level, shiftHours: 9,  morningSalary: base9M, nightSalary: base9N});
+    rows.push({level: level, shiftHours: 11, morningSalary: sal11M, nightSalary: sal11N});
+    rows.push({level: level, shiftHours: 12, morningSalary: sal12M, nightSalary: sal12N});
   });
   if (!valid) return;
   var res = await API.call('saveSalaryLadder', {rows: rows});
@@ -15467,11 +15771,15 @@ async function renderCompMgmt() {
   var el = document.getElementById('admin-tab-content');
   if (!el) return;
   el.innerHTML = '<div class="loading-spinner"></div>';
+  // v43 W4.7: added 'review' sub-tab for Promotion Review Queue
+  // v43 W4.10: added 'bulk' sub-tab for Bulk Operations (Recompute All Salaries etc.)
   var subTabs = [
     {id:'joining', label:'Joining Bonus'},
     {id:'wallet', label:'Loyalty Wallet'},
     {id:'promo', label:'Promotion'},
-    {id:'ladder', label:'Salary Ladder'}
+    {id:'review', label:'Review Queue'},
+    {id:'ladder', label:'Salary Ladder'},
+    {id:'bulk', label:'Bulk Operations'}
   ];
   var tabBtns = subTabs.map(function(t) {
     var active = (t.id === _compMgmtTab) ? ' active' : '';
@@ -15487,14 +15795,182 @@ async function renderCompMgmt() {
 
 async function switchCompMgmtTab(tab) {
   _compMgmtTab = tab;
-  var tabLabels = {joining:'Joining Bonus', wallet:'Loyalty Wallet', promo:'Promotion', ladder:'Salary Ladder'};
+  var tabLabels = {joining:'Joining Bonus', wallet:'Loyalty Wallet', promo:'Promotion', review:'Review Queue', ladder:'Salary Ladder', bulk:'Bulk Operations'};
   document.querySelectorAll('#comp-mgmt-tabs .comp-sub-tab').forEach(function(btn) {
     btn.classList.toggle('active', btn.textContent.trim() === (tabLabels[tab] || ''));
   });
   if (tab === 'joining') await renderJoiningBonusDashboard();
   else if (tab === 'wallet') await renderLoyaltyWalletDashboard();
   else if (tab === 'promo') await renderCompPromotionManagement();
+  else if (tab === 'review') await renderPromotionReviewQueue();   // v43 W4.7
   else if (tab === 'ladder') await renderSalaryLadderViewer();
+  else if (tab === 'bulk') await renderCompBulkOperations();        // v43 W4.10
+}
+
+// v43 W4.7: render the Promotion Review Queue admin widget. Sortable by status (overdue first),
+// each row has Promote / Defer / Mark Reviewed actions.
+async function renderPromotionReviewQueue() {
+  var el = document.getElementById('comp-mgmt-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  try {
+    var res = await API.call('getPromotionReviewQueue');
+    if (!res || !res.ok) {
+      el.innerHTML = '<div style="color:var(--red);padding:16px">Failed: ' + escHtml((res && res.error) || 'Error') + '</div>';
+      return;
+    }
+    var rows = res.employees || [];
+    if (rows.length === 0) {
+      el.innerHTML = '<div style="color:var(--gray-light);padding:30px;text-align:center">' +
+        '<div style="font-size:24px;margin-bottom:8px">✓</div>' +
+        '<div>No employees in the promotion review queue.</div>' +
+        '<div style="font-size:11px;margin-top:6px">Employees who hit MAX_INCREMENT_CYCLES at their level OR exceed PROMO_MAX months will appear here.</div>' +
+        '</div>';
+      return;
+    }
+    var nElig = rows.filter(function(r){return r.status==='eligible';}).length;
+    var nOver = rows.filter(function(r){return r.status==='overdue';}).length;
+    el.innerHTML = '<div id="admin-promotion-review-queue">' +
+      '<div style="font-size:12px;color:var(--gray-light);margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap">' +
+        '<span><strong style="color:var(--gold)">' + rows.length + '</strong> total</span>' +
+        '<span style="color:var(--red)"><strong>' + nOver + '</strong> overdue</span>' +
+        '<span style="color:var(--gold-light)"><strong>' + nElig + '</strong> eligible</span>' +
+      '</div>' +
+      '<div class="table-wrap"><table class="az-table"><thead><tr>' +
+        '<th>Emp ID</th><th>Name</th><th>Level</th><th>Months at level</th><th>Cycles</th><th>Status</th><th>Last increment</th><th>Action</th>' +
+      '</tr></thead><tbody id="prq-tbody">' +
+        rows.map(function(r) {
+          var statusBadge = r.status === 'overdue'
+            ? '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:rgba(229,62,62,0.15);color:var(--red);font-size:11px;font-weight:600">Overdue</span>'
+            : '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:rgba(228,180,93,0.15);color:var(--gold);font-size:11px;font-weight:600">Eligible</span>';
+          return '<tr>' +
+            '<td>' + escHtml(r.id || '') + '</td>' +
+            '<td>' + escHtml(r.name || '') + '</td>' +
+            '<td>' + escHtml(r.level || '') + '</td>' +
+            '<td>' + r.monthsAtLevel + 'm</td>' +
+            '<td>' + r.cyclesCompletedAtLevel + '</td>' +
+            '<td>' + statusBadge + '</td>' +
+            '<td style="font-size:11px;color:var(--gray-light)">' + escHtml(r.lastIncrementDate || '—') + '</td>' +
+            '<td>' +
+              '<button class="btn btn-gold btn-sm" onclick="prqPromote(\'' + escHtml(r.id) + '\',\'' + escHtml(r.level) + '\',\'' + escHtml(r.name) + '\')">Promote</button> ' +
+              '<button class="btn btn-dark btn-sm" onclick="prqDefer(\'' + escHtml(r.id) + '\',\'' + escHtml(r.name) + '\')">Defer</button> ' +
+              '<button class="btn btn-dark btn-sm" onclick="prqMarkReviewed(\'' + escHtml(r.id) + '\',\'' + escHtml(r.name) + '\')">Reviewed</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('') +
+      '</tbody></table></div></div>';
+  } catch(e) {
+    console.error('renderPromotionReviewQueue:', e);
+    el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
+  }
+}
+
+// v43 W4.7: promote from review queue. Reuses existing approvePromotion handler.
+// Prompts owner for the new level (auto-suggested as one rank up).
+function prqPromote(empId, currentLevel, name) {
+  var levels = ['L10','L9','L8','L7','L6'];
+  var curIdx = levels.indexOf(currentLevel);
+  var suggested = curIdx > 0 ? levels[curIdx - 1] : currentLevel;
+  showModal('Promote Employee', '<div style="padding:6px 4px">' +
+    '<div style="margin-bottom:10px"><strong>' + escHtml(name) + '</strong> (' + escHtml(empId) + ')</div>' +
+    '<div style="margin-bottom:10px">Current level: <strong>' + escHtml(currentLevel) + '</strong></div>' +
+    '<div class="form-group"><label class="form-label">Promote to level</label>' +
+    '<select class="form-input" id="prq-promo-level">' +
+    levels.map(function(l) { return '<option value="' + l + '"' + (l === suggested ? ' selected' : '') + '>' + l + '</option>'; }).join('') +
+    '</select></div>' +
+    '<div class="form-group"><label class="form-label">Effective date</label>' +
+    '<input type="date" class="form-input" id="prq-promo-date" value="' + todayStr() + '"></div>' +
+    '</div>',
+    [{label:'Cancel', cls:'btn-dark', cb:closeModal},
+     {label:'Promote', cls:'btn-gold', cb:async function() {
+       var newLevel = document.getElementById('prq-promo-level').value;
+       var effDate = document.getElementById('prq-promo-date').value || todayStr();
+       closeModal();
+       var res = await API.call('approvePromotion', {employeeId:empId, newLevel:newLevel, effectiveDate:effDate, adminId:State.adminUser||State.adminRole||'admin'});
+       if (res && res.ok) {
+         toast('✓ ' + name + ' promoted to ' + newLevel, 'success');
+         renderPromotionReviewQueue();
+       } else { toast((res && res.error) || 'Promote failed', 'error'); }
+     }}]);
+}
+
+// v43 W4.7: defer review for N months
+function prqDefer(empId, name) {
+  showModal('Defer Promotion Review', '<div style="padding:6px 4px">' +
+    '<div style="margin-bottom:10px"><strong>' + escHtml(name) + '</strong> (' + escHtml(empId) + ')</div>' +
+    '<div class="form-group"><label class="form-label">Defer for (months)</label>' +
+    '<input type="number" class="form-input" id="prq-defer-months" min="1" max="24" value="3"></div>' +
+    '<div class="form-group"><label class="form-label">Reason (optional)</label>' +
+    '<input type="text" class="form-input" id="prq-defer-reason" placeholder="e.g. Performance review pending"></div>' +
+    '</div>',
+    [{label:'Cancel', cls:'btn-dark', cb:closeModal},
+     {label:'Defer', cls:'btn-gold', cb:async function() {
+       var deferMonths = parseInt(document.getElementById('prq-defer-months').value, 10) || 3;
+       var reason = document.getElementById('prq-defer-reason').value || '';
+       closeModal();
+       var res = await API.call('deferPromotionReview', {empId:empId, deferMonths:deferMonths, reason:reason, userId:State.adminUser||State.adminRole||'admin'});
+       if (res && res.ok) {
+         toast('✓ Deferred until ' + res.deferredUntil, 'success');
+         renderPromotionReviewQueue();
+       } else { toast((res && res.error) || 'Defer failed', 'error'); }
+     }}]);
+}
+
+// v43 W4.7: mark as reviewed (audit-only, no promotion)
+function prqMarkReviewed(empId, name) {
+  showModal('Mark Reviewed', '<div style="padding:6px 4px">' +
+    '<div style="margin-bottom:10px"><strong>' + escHtml(name) + '</strong> (' + escHtml(empId) + ')</div>' +
+    '<div style="font-size:12px;color:var(--gray-light);margin-bottom:10px">Records that the employee was reviewed. Does not promote or defer. Removes existing deferral if any.</div>' +
+    '<div class="form-group"><label class="form-label">Reason / notes</label>' +
+    '<textarea class="form-input" id="prq-reviewed-reason" rows="3" placeholder="e.g. Reviewed in Q1 cycle, retain at current level"></textarea></div>' +
+    '</div>',
+    [{label:'Cancel', cls:'btn-dark', cb:closeModal},
+     {label:'Save Review', cls:'btn-gold', cb:async function() {
+       var reason = document.getElementById('prq-reviewed-reason').value || '';
+       closeModal();
+       var res = await API.call('markPromotionReviewed', {empId:empId, reason:reason, userId:State.adminUser||State.adminRole||'admin'});
+       if (res && res.ok) {
+         toast('✓ Marked reviewed', 'success');
+         renderPromotionReviewQueue();
+       } else { toast((res && res.error) || 'Save failed', 'error'); }
+     }}]);
+}
+
+// v43 W4.10: Bulk Operations panel inside Compensation Management
+async function renderCompBulkOperations() {
+  var el = document.getElementById('comp-mgmt-content');
+  if (!el) return;
+  el.innerHTML = '<div style="padding:6px 4px;max-width:680px">' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:6px">Bulk Operations</div>' +
+    '<div style="font-size:12px;color:var(--gray-light);margin-bottom:14px">Destructive or wide-impact actions. Each requires confirmation.</div>' +
+    '<div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:14px;margin-bottom:10px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px">🔄 Recompute All Salaries from Current Ladder</div>' +
+      '<div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">Iterates every active employee and sets their salary to the ladder value matching their level + shift. Employees with the Salary Override flag enabled are SKIPPED. Every change is logged to SalaryHistory.</div>' +
+      '<button class="btn btn-gold btn-sm" onclick="bulkRecomputeAllSalaries()">🔄 Run Recompute</button>' +
+      '<div id="bulk-recompute-status" style="margin-top:8px;font-size:12px;min-height:16px"></div>' +
+    '</div>' +
+  '</div>';
+}
+
+async function bulkRecomputeAllSalaries() {
+  var token = State._dzToken || '';
+  if (!token) { toast('Owner token unavailable — re-login as Owner first.', 'error'); return; }
+  if (!(await confirm2('Recompute salaries for ALL active employees from the current Salary Ladder?\n\nEmployees with the manual Salary Override enabled will be SKIPPED. Each change will be logged to the SalaryHistory audit sheet.'))) return;
+  var stat = document.getElementById('bulk-recompute-status');
+  if (stat) { stat.textContent = '⏳ Recomputing…'; stat.style.color = 'var(--gold)'; }
+  try {
+    var res = await API.call('recomputeAllSalaries', {ownerToken: token, userId: State.adminUser || State.adminRole || 'admin'});
+    if (!res || !res.ok) {
+      if (stat) { stat.textContent = '✗ ' + ((res && res.error) || 'Failed'); stat.style.color = 'var(--red)'; }
+      toast((res && res.error) || 'Recompute failed', 'error'); return;
+    }
+    var msg = '✓ Updated ' + (res.updated || 0) + ', skipped ' + (res.skippedOverrides || 0) + ' overrides, ' + (res.errors || 0) + ' errors';
+    if (stat) { stat.textContent = msg; stat.style.color = 'var(--green)'; }
+    toast(msg, 'success', 6000);
+  } catch(e) {
+    console.error('bulkRecomputeAllSalaries:', e);
+    if (stat) { stat.textContent = '✗ Network error'; stat.style.color = 'var(--red)'; }
+  }
 }
 
 async function renderJoiningBonusDashboard() {
