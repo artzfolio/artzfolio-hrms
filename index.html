@@ -1,3 +1,12 @@
+<!-- ArtzFolio HRMS v45 | 2026-05-12 -->
+<!-- v45 (2026-05-12):
+       A. Wallet Adjustments moved from Settings to Payroll (role-gated)
+       B. Fixed substring-match bug in switchCompSettingsTab
+       C. Removed duplicate 6M/12M withdrawal fields from Loyalty Wallet
+       D. Standardized Loyalty Wallet tooltips to info-tooltip class
+       E. Perfect Attendance Bonus: per-level applicability (empty=disabled)
+       F. Action dropdown collapsed from 4 → 3 options
+     v36 origin comment retained below for historical reference. -->
 <!-- ArtzFolio HRMS v36 | May 2026 | v36: 92-bug audit pass — server-side 2FA, removed hardcoded passwords, exportCSV/exportFullBackup/importBackup defined, JSON-injection in onclick fixed, LockService across ~25 handlers, F&F correctness, PII/PIN/audit-log redaction, IST filenames, in-app rejection modal, SW cache versioning, etc. -->
 <!DOCTYPE html>
 <html lang="en">
@@ -6,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v36</title>
+<title>ArtzFolio HRMS v45</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1434,7 +1443,7 @@ const CFG = {
   pinMaxLen: 4,
   kioskTimeout: 60000,
   kioskLogoutSeconds: 60,
-  version: '14.4',
+  version: '14.6',
 };
 // v40 §7a/7b: client-side mirror of GAS getPerDayDivisor(year, month).
 // Reads State.settings.perDayDivisor (loaded from Config sheet on init) and
@@ -1494,7 +1503,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v43-2026-05'; // v37 fix H-02; v43 W1.1: bumped cache namespace so SW evicts stale build
+const CACHE = 'artzfolio-hrms-v46-2026-05'; // v37 fix H-02; v43 W1.1: bumped cache namespace so SW evicts stale build; v46 W1-Q4: bumped from stale 'v43' baseline so v46 build is actually loaded by clients
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2062,7 +2071,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v44';
+window.HRMS_VERSION = 'v46';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -7790,9 +7799,11 @@ async function renderPayroll() {
   <!-- v44 Workstream E3: mid-month onboarding banner. Hidden by default;
        _v44RenderMidMonthBanner() reveals when the toggle is ON. -->
   <div id="payroll-mid-month-banner" style="display:none;background:rgba(184,150,12,0.15);border:1px solid var(--gold);color:var(--gold);padding:10px 14px;border-radius:6px;margin-bottom:12px;font-size:12px;line-height:1.5"></div>
-  <div style="display:flex;gap:8px;margin-bottom:12px">
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
     <button class="btn btn-gold btn-sm" id="pay-tab-salaries" onclick="switchPayrollView('salaries')" style="font-weight:700">💰 Salary Register</button>
     <button class="btn btn-dark btn-sm" id="pay-tab-statutory" onclick="switchPayrollView('statutory')">📋 Statutory Compliance</button>
+    <!-- v45 Workstream A2: third tab — Wallet Adjustments moved here from Settings → Compensation -->
+    <button class="btn btn-dark btn-sm" id="pay-tab-walletadj" onclick="switchPayrollView('walletadj')">💎 Loyalty Wallet Adjustments</button>
   </div>
   <div id="payroll-salary-view">
   <div class="filters-bar">
@@ -7809,7 +7820,9 @@ async function renderPayroll() {
   </div>
   <div id="payroll-result"></div>
   </div>
-  <div id="payroll-statutory-view" style="display:none"></div>`;
+  <div id="payroll-statutory-view" style="display:none"></div>
+  <!-- v45 Workstream A2: Wallet Adjustments view container (initially hidden). -->
+  <div id="payroll-walletadj-view" style="display:none"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
   // v44 Workstream E3: render the mid-month onboarding banner if toggled on.
   if (typeof _v44RenderMidMonthBanner === 'function') _v44RenderMidMonthBanner();
@@ -8053,11 +8066,17 @@ function shareSlipEmail(data) {
 
 // ─── Payroll view switcher ────────────────────────────────────
 function switchPayrollView(view) {
-  document.getElementById('payroll-salary-view').style.display   = view==='salaries'  ? '' : 'none';
+  document.getElementById('payroll-salary-view').style.display    = view==='salaries'  ? '' : 'none';
   document.getElementById('payroll-statutory-view').style.display = view==='statutory' ? '' : 'none';
+  // v45 Workstream A2: third view = Wallet Adjustments (moved from Settings).
+  var waView = document.getElementById('payroll-walletadj-view');
+  if (waView) waView.style.display = view==='walletadj' ? '' : 'none';
   document.getElementById('pay-tab-salaries').className  = 'btn btn-sm ' + (view==='salaries'  ? 'btn-gold' : 'btn-dark');
   document.getElementById('pay-tab-statutory').className = 'btn btn-sm ' + (view==='statutory' ? 'btn-gold' : 'btn-dark');
+  var waBtn = document.getElementById('pay-tab-walletadj');
+  if (waBtn) waBtn.className = 'btn btn-sm ' + (view==='walletadj' ? 'btn-gold' : 'btn-dark');
   if (view==='statutory') renderStatutoryCompliance();
+  if (view==='walletadj' && typeof _v45RenderWalletAdjPanel === 'function') _v45RenderWalletAdjPanel();
 }
 
 // ─── Statutory Compliance View ───────────────────────────────
@@ -9966,114 +9985,136 @@ async function renderSettings() {
     </div>
   </div>
 
-  <!-- Automation Settings -->
+  <!-- v46 W1: ONE consolidated 🕐 Auto Clock-Out & Automation card replaces
+       the v45 split between "Automation Settings" and "Auto Clock-Out Policy".
+       All v45 cfg-* IDs are preserved verbatim per R9 (autoClockOutEnabled,
+       shiftAutoClockoutBuffer, autoMarkPresentEnabled, autoMarkPresentThreshold,
+       lateClockInApprovalMinutes, autoCoEnabled, autoCoMethod, autoCoMaxHours,
+       autoCoFixedTime, autoCoApplyTo, autoCoNote, autoCoNotifyManager). A new
+       master toggle (auto-clockout-master) drives the legacy autoClockOutEnabled
+       + autoCoEnabled keys consistently per the chosen Trigger Method; see
+       saveConsolidatedAutoClockOut(). Legacy wrappers saveAutomationSettings()
+       and saveAutoClockOutSettings() are retained as thin delegators. -->
   <div class="settings-section">
-    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-automation')">🕐 Automation Settings <span class="settings-card-chevron">▼</span></div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-automation')">🕐 Auto Clock-Out &amp; Automation <span class="settings-card-chevron">▼</span></div>
       <div id="settings-body-automation" class="settings-card-body">
+
+    <!-- Group 1 — Master switch + Trigger Method -->
     <div class="settings-grid">
-      <!-- Auto Clock-Out -->
       <div class="form-group" style="grid-column:span 2">
-        <label class="form-label">Auto Clock-Out</label>
-        <div style="display:flex;align-items:center;gap:10px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px">
-            <input type="checkbox" id="cfg-autoClockOutEnabled" ${cfg['autoClockOutEnabled']==='true'?'checked':''}>
-            Enable Auto Clock-Out (at shift end + buffer minutes)
-          </label>
-        </div>
-      </div>
-      ${cfgField('shiftAutoClockoutBuffer','Auto Clock-Out Buffer (minutes after shift end — use negative to penalize early clock-out)')}
-      <!-- Auto Mark Present -->
-      <div class="form-group" style="grid-column:span 2">
-        <label class="form-label">Auto Mark Present
-          <span class="info-tooltip" title="Auto Mark Present: When enabled, the system automatically updates attendance status to 'Present (P)' for employees who have already clocked in and have been working for the threshold duration. This is a background job — employees still need to physically clock in via the kiosk first.">ℹ</span>
+        <label class="form-label">Enable Auto Clock-Out
+          <span class="info-tooltip" title="Master switch. When ON, the system will auto-clock-out forgotten employees per the Trigger Method below. When OFF, no auto-clock-out fires and the next-morning clock-in shows a 'Missed Clock-Out' approval gate.">ℹ</span>
         </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px">
-          <input type="checkbox" id="cfg-autoMarkPresentEnabled" ${cfg['autoMarkPresentEnabled']==='true'?'checked':''}>
-          Enable Auto Mark Present (confirms attendance after employees have been working for threshold minutes)
+          <input type="checkbox" id="auto-clockout-master" onchange="syncAutoClockOutMethod()" ${(cfg['autoClockOutEnabled']==='true' || cfg['autoCoEnabled']==='Yes')?'checked':''}>
+          <span>Auto-clock-out employees who forgot to clock out</span>
         </label>
       </div>
-      ${cfgField('autoMarkPresentThreshold','Auto Mark Present Threshold — minutes into shift before status is confirmed (default: 30)')}
-      <!-- Late Clock-In Approval Threshold -->
-      ${cfgField('lateClockInApprovalMinutes','Late Clock-In Approval Threshold — minutes after shift start before manager approval is required (default: 60)')}
-    </div>
-    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-gold" onclick="saveAutomationSettings()">💾 Save Automation Settings</button>
-      <button class="btn btn-dark" onclick="runAutoClockOut()">▶ Run Auto Clock-Out Now</button>
-      <button class="btn btn-dark" onclick="runAutoMarkPresent()">▶ Run Auto Mark Present Now</button>
-    </div>
-    <div style="margin-top:8px;font-size:12px;color:var(--gray-light);line-height:1.8">
-      <strong>Auto Clock-Out:</strong> Automatically clocks out employees who forgot to clock out, at shift end + buffer minutes. Buffer can be negative to apply early clock-out penalty.<br>
-      <strong>Auto Mark Present:</strong> Background job that confirms employees as 'P' if they have clocked in AND been working for the threshold duration. Does <em>not</em> bypass the kiosk — employees must clock in themselves first.<br>
-      <strong>Late Clock-In Approval:</strong> If an employee tries to clock in more than [threshold] minutes after shift start, the kiosk shows a "Request Late Clock-In" button that requires manager PIN approval before proceeding.<br>
-      <strong>Missed Clock-Out (next day):</strong> If auto clock-out is disabled and an employee forgets to clock out, the next morning's clock-in requires manager approval to verify yesterday's exit time.
-    </div>
-    </div>
-  </div>
-
-  <!-- S4.1 Auto Clock-Out Policy (v32) -->
-  <div class="settings-section">
-    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-auto-clockout')">⏹ Auto Clock-Out Policy <span class="settings-card-chevron">▼</span></div>
-      <div id="settings-body-auto-clockout" class="settings-card-body">
-    <div class="settings-grid">
-      <div class="form-group">
-        <label class="form-label">Enable Auto Clock-Out
-          <span class="info-tooltip" title="Automatically clock out employees who exceed the maximum hours threshold or miss a fixed cut-off time. Recommended: Yes for factory environments.">ℹ</span>
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Trigger Method
+          <span class="info-tooltip" title="At Shift End + Buffer: fires the configured buffer minutes after each employee's scheduled shift-end (uses time-trigger handleAutoClockOut). After Fixed Hours: fires N hours after the employee clocks in. At Fixed Time: fires at one HH:MM daily for everyone. Both: whichever of the latter two fires first.">ℹ</span>
         </label>
-        <select class="form-input" id="cfg-autoCoEnabled">
-          <option value="No" ${(cfg['autoCoEnabled']||'No')==='No'?'selected':''}>No</option>
-          <option value="Yes" ${cfg['autoCoEnabled']==='Yes'?'selected':''}>Yes</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Auto Clock-Out Method
-          <span class="info-tooltip" title="'After Fixed Hours': clock-out fires after N hours from clock-in. 'At Fixed Time': clock-out fires at a set daily time. 'Both': whichever trigger comes first.">ℹ</span>
-        </label>
-        <select class="form-input" id="cfg-autoCoMethod">
-          <option value="After Fixed Hours" ${(cfg['autoCoMethod']||'After Fixed Hours')==='After Fixed Hours'?'selected':''}>After Fixed Hours</option>
+        <select class="form-input" id="cfg-autoCoMethod" onchange="syncAutoClockOutMethod()">
+          <option value="ShiftEndBuffer" ${(cfg['autoCoMethod']==='ShiftEndBuffer' || (!cfg['autoCoMethod'] && cfg['autoClockOutEnabled']==='true'))?'selected':''}>At Shift End + Buffer</option>
+          <option value="After Fixed Hours" ${cfg['autoCoMethod']==='After Fixed Hours'?'selected':''}>After Fixed Hours</option>
           <option value="At Fixed Time" ${cfg['autoCoMethod']==='At Fixed Time'?'selected':''}>At Fixed Time</option>
-          <option value="Both" ${cfg['autoCoMethod']==='Both'?'selected':''}>Both (whichever comes first)</option>
+          <option value="Both" ${cfg['autoCoMethod']==='Both'?'selected':''}>Both Fixed Hours &amp; Fixed Time (whichever first)</option>
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Max Hours Before Auto Clock-Out
+    </div>
+
+    <!-- Group 2 — Method-specific fields (show/hide on Trigger Method) -->
+    <div class="settings-grid" id="auto-clockout-method-fields">
+      <div class="form-group" id="auto-clockout-group-shiftend">
+        ${cfgField('shiftAutoClockoutBuffer','Buffer minutes after shift end (negative to penalise early clock-out)')}
+      </div>
+      <div class="form-group" id="auto-clockout-group-fixedhours">
+        <label class="form-label">Max Hours After Clock-In
           <span class="info-tooltip" title="Used when method is 'After Fixed Hours' or 'Both'. Employee is auto-clocked-out this many hours after their clock-in time. Range: 1–24, supports 0.5 increments.">ℹ</span>
         </label>
         <input class="form-input" type="number" id="cfg-autoCoMaxHours" value="${cfg['autoCoMaxHours']||10}" min="1" max="24" step="0.5">
       </div>
-      <div class="form-group">
-        <label class="form-label">Fixed Auto Clock-Out Time (HH:MM, 24-hr)
+      <div class="form-group" id="auto-clockout-group-fixedtime">
+        <label class="form-label">Fixed Clock-Out Time (HH:MM, 24-hr)
           <span class="info-tooltip" title="Used when method is 'At Fixed Time' or 'Both'. All still-clocked-in employees are clocked out at this time daily. Format: HH:MM (e.g. 22:00).">ℹ</span>
         </label>
         <input class="form-input" type="time" id="cfg-autoCoFixedTime" value="${cfg['autoCoFixedTime']||'22:00'}">
       </div>
-      <div class="form-group">
-        <label class="form-label">Apply To
-          <span class="info-tooltip" title="'All Employees': rule applies to every employee. 'By Zone/Department': only employees in selected zones/departments are affected (zone configuration pending).">ℹ</span>
-        </label>
-        <select class="form-input" id="cfg-autoCoApplyTo">
-          <option value="All Employees" ${(cfg['autoCoApplyTo']||'All Employees')==='All Employees'?'selected':''}>All Employees</option>
-          <option value="By Zone/Department" ${cfg['autoCoApplyTo']==='By Zone/Department'?'selected':''}>By Zone/Department</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Auto Clock-Out Note
-          <span class="info-tooltip" title="Text appended to the attendance record's Notes field whenever an automatic clock-out fires. Visible to managers in the timesheet.">ℹ</span>
-        </label>
-        <input class="form-input" type="text" id="cfg-autoCoNote" value="${escHtml(cfg['autoCoNote']||'Auto clock-out by system')}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notify Manager on Auto Clock-Out
-          <span class="info-tooltip" title="If Yes, a notification is created for the employee's manager whenever an automatic clock-out fires, so they can review and correct if needed.">ℹ</span>
-        </label>
-        <select class="form-input" id="cfg-autoCoNotifyManager">
-          <option value="Yes" ${(cfg['autoCoNotifyManager']||'Yes')==='Yes'?'selected':''}>Yes</option>
-          <option value="No" ${cfg['autoCoNotifyManager']==='No'?'selected':''}>No</option>
-        </select>
+    </div>
+
+    <!-- Group 3 — Auto Mark Present sub-block (independent) -->
+    <div style="margin-top:18px;padding-top:12px;border-top:1px solid var(--dark3)">
+      <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px">Auto Mark Present (independent)</div>
+      <div class="settings-grid">
+        <div class="form-group" style="grid-column:span 2">
+          <label class="form-label">Enable Auto Mark Present
+            <span class="info-tooltip" title="Auto Mark Present: When enabled, the system automatically updates attendance status to 'Present (P)' for employees who have already clocked in and have been working for the threshold duration. This is a background job — employees still need to physically clock in via the kiosk first.">ℹ</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px">
+            <input type="checkbox" id="cfg-autoMarkPresentEnabled" ${cfg['autoMarkPresentEnabled']==='true'?'checked':''}>
+            Confirm attendance after employees have been working for the threshold minutes
+          </label>
+        </div>
+        ${cfgField('autoMarkPresentThreshold','Auto Mark Present Threshold — minutes into shift before status is confirmed (default: 30)')}
       </div>
     </div>
+
+    <!-- Group 4 — Other (always visible) -->
+    <div style="margin-top:18px;padding-top:12px;border-top:1px solid var(--dark3)">
+      <div class="settings-grid">
+        ${cfgField('lateClockInApprovalMinutes','Late Clock-In Approval Threshold — minutes after shift start before manager approval is required (default: 60)')}
+        <div class="form-group">
+          <label class="form-label">Apply To
+            <span class="info-tooltip" title="'All Employees': rule applies to every employee. 'By Zone/Department': only employees in selected zones/departments are affected (zone configuration pending).">ℹ</span>
+          </label>
+          <select class="form-input" id="cfg-autoCoApplyTo">
+            <option value="All Employees" ${(cfg['autoCoApplyTo']||'All Employees')==='All Employees'?'selected':''}>All Employees</option>
+            <option value="By Zone/Department" ${cfg['autoCoApplyTo']==='By Zone/Department'?'selected':''}>By Zone/Department</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Auto Clock-Out Note
+            <span class="info-tooltip" title="Text appended to the attendance record's Notes field whenever an automatic clock-out fires. Visible to managers in the timesheet.">ℹ</span>
+          </label>
+          <input class="form-input" type="text" id="cfg-autoCoNote" value="${escHtml(cfg['autoCoNote']||'Auto clock-out by system')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notify Manager on Auto Clock-Out
+            <span class="info-tooltip" title="If Yes, a notification is created for the employee's manager whenever an automatic clock-out fires, so they can review and correct if needed.">ℹ</span>
+          </label>
+          <select class="form-input" id="cfg-autoCoNotifyManager">
+            <option value="Yes" ${(cfg['autoCoNotifyManager']||'Yes')==='Yes'?'selected':''}>Yes</option>
+            <option value="No" ${cfg['autoCoNotifyManager']==='No'?'selected':''}>No</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Group 5 — Action buttons -->
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-gold" onclick="saveAutoClockOutSettings()">💾 Save Auto Clock-Out Settings</button>
-      <button class="btn btn-dark btn-sm" onclick="API.call('runAutoClockOut',{}).then(r=>{if(!r||typeof r!=='object'){toast('Auto clock-out run. Refresh attendance to see results.','warning');return;}toast('Auto clock-out: '+r.clocked+' employees processed','success',4000);}).catch(e=>toast('Network error','error'))">▶ Run Now (Manual Trigger)</button>
+      <button class="btn btn-gold" onclick="saveConsolidatedAutoClockOut()">💾 Save Settings</button>
+      <button class="btn btn-dark" onclick="runAutoClockOut()">▶ Run Auto Clock-Out Now</button>
+      <button class="btn btn-dark" onclick="runAutoMarkPresent()">▶ Run Auto Mark Present Now</button>
+    </div>
+
+    <!-- Legacy hidden controls — preserved for backward compat with any external readers / legacy save handlers. The consolidated saver writes the right values into these on every save. -->
+    <span style="display:none">
+      <input type="checkbox" id="cfg-autoClockOutEnabled" ${cfg['autoClockOutEnabled']==='true'?'checked':''}>
+      <select id="cfg-autoCoEnabled">
+        <option value="No" ${(cfg['autoCoEnabled']||'No')==='No'?'selected':''}>No</option>
+        <option value="Yes" ${cfg['autoCoEnabled']==='Yes'?'selected':''}>Yes</option>
+      </select>
+    </span>
+
+    <!-- Help block — combined and condensed from v45 Card A + Card B copy -->
+    <div style="margin-top:10px;font-size:12px;color:var(--gray-light);line-height:1.8">
+      <strong>At Shift End + Buffer:</strong> auto-clock-out fires <em>buffer</em> minutes after each employee's scheduled shift-end. Buffer can be negative to penalise early clock-out.<br>
+      <strong>After Fixed Hours:</strong> fires <em>Max Hours</em> after the employee's actual clock-in (handy when shift times vary day-to-day).<br>
+      <strong>At Fixed Time:</strong> sweeps everyone still clocked-in at one daily HH:MM (e.g. 22:00 factory close).<br>
+      <strong>Both:</strong> whichever of Fixed Hours / Fixed Time fires first per employee.<br>
+      <strong>Auto Mark Present:</strong> background job that confirms employees as 'P' after they have been working for the threshold duration. Does not bypass the kiosk — employees still clock in themselves first.<br>
+      <strong>Late Clock-In Approval:</strong> if an employee tries to clock in more than [threshold] minutes after shift start, the kiosk shows a "Request Late Clock-In" button that requires manager PIN approval.<br>
+      <strong>Missed Clock-Out (next day):</strong> if the master switch is OFF and an employee forgets to clock out, the next morning's clock-in requires manager approval to verify yesterday's exit time.
     </div>
     </div>
   </div>
@@ -10569,10 +10610,64 @@ async function renderSettings() {
   </div>` : ''}
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🎁 BONUS & REWARDS</div>
-  <!-- v30: Loyalty Bonus Vesting Settings (v40 §8: per-level vesting model toggle + Tiered Withdrawal) -->
+  <!-- v46 W2: org-level master selector for loyalty programs. Picks which of
+       the two loyalty accrual systems is active. Single source of truth — the
+       two existing panels (Level-Based Retention Bonus + Tenure-Based Monthly
+       Wallet) each show a live read-only status line that mirrors this value. -->
   <div class="settings-section">
-    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-loyalty-vesting')">💎 Loyalty Bonus Vesting <span class="settings-card-chevron">▼</span></div>
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-loyalty-programs')">💎 Loyalty Programs <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-loyalty-programs" class="settings-card-body">
+    <div style="background:var(--dark3);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--gray-light);line-height:1.7">
+      ArtzFolio runs <strong style="color:var(--gold)">two</strong> loyalty-credit systems. Only one accrues new credits at a time (or both, if you prefer — that is the current default).
+      <br><br>
+      <strong style="color:var(--gold)">Level-Based Retention Bonus</strong> — a per-LEVEL monthly bonus (L1–L10) that vests over time with cohort schedules. Lives below as <em>💎 Level-Based Retention Bonus</em>.
+      <br>
+      <strong style="color:var(--gold)">Tenure-Based Monthly Wallet</strong> — a per-TENURE-YEAR monthly credit (Y1–Y5+) gated by max-leaves with optional performance adjustments. Lives in <em>Settings → Compensation → Tenure-Based Wallet</em>.
+      <br><br>
+      Existing balances on both ledgers are preserved no matter which model is active. Employees can still withdraw what they have already earned from either ledger.
+    </div>
+    <div class="settings-grid">
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Active Loyalty Model
+          <span class="info-tooltip" title="Picks which loyalty accrual fires each cycle. Tenure-Based Wallet only = pauses LB Vesting. Level-Based Retention Bonus only = pauses wallet credits. Both = parallel (v45 behaviour). Changes here are logged in Config_Audit with reason + effective-from.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-LOYALTY_ACTIVE_MODEL">
+          <option value="TenureWallet">Tenure-Based Wallet only</option>
+          <option value="RetentionBonus">Level-Based Retention Bonus only</option>
+          <option value="Both">Both run in parallel (default)</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <div id="loyalty-active-status" style="font-size:12px;color:var(--gold);padding:6px 10px;background:var(--dark2);border-radius:4px;line-height:1.6">Currently active: …</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="saveLoyaltyProgramsMaster()">💾 Save Loyalty Model</button>
+    </div>
+      </div>
+  </div>
+
+  <!-- v30: Loyalty Bonus Vesting Settings (v40 §8: per-level vesting model toggle + Tiered Withdrawal)
+       v46 W2: renamed in the title to "Level-Based Retention Bonus" so the boundary against
+       Tenure-Based Wallet is obvious to a non-technical reader. -->
+  <div class="settings-section">
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-loyalty-vesting')">💎 Level-Based Retention Bonus (per-level vesting) <span class="settings-card-chevron">▼</span></div>
       <div id="settings-body-loyalty-vesting" class="settings-card-body">
+    <!-- v46 W2: explanation block answers the four questions from the owner brief —
+         what this is, how it differs, what triggers it, what it affects downstream. -->
+    <div style="background:var(--dark3);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--gray-light);line-height:1.7">
+      <strong style="color:var(--gold)">What this is:</strong> a per-LEVEL retention bonus (L1–L10) that accrues monthly and vests over time per the schedule you configure below. Each monthly accrual is its own cohort with its own clock.
+      <br>
+      <strong style="color:var(--gold)">How it differs:</strong> the <em>Tenure-Based Monthly Wallet</em> (Settings → Compensation → Tenure-Based Wallet) pays per-TENURE-YEAR, not per-level.
+      <br>
+      <strong style="color:var(--gold)">Trigger:</strong> per-level fixed amount, posted once a month by the time-trigger when this program is the active loyalty model.
+      <br>
+      <strong style="color:var(--gold)">Affects:</strong> Bonus_Ledger (LB_LEDGER) rows · per-cohort vesting clocks · forfeit-on-notice hook · kiosk loyalty card display · Config_Audit (when master selector changes).
+    </div>
+    <!-- v46 W2: live cross-reference status line, mirrors LOYALTY_ACTIVE_MODEL. -->
+    <div id="lb-vesting-active-status" style="font-size:12px;color:var(--gold);padding:6px 10px;margin-bottom:10px;background:var(--dark2);border-radius:4px;line-height:1.6">
+      ⚠ <span id="lb-vesting-status-state">…</span> · Change in <strong>Settings → 💎 Loyalty Programs</strong>.
+    </div>
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
       Configure the monthly loyalty bonus and vesting schedule for each employee level. Changes take effect from the next monthly accrual cycle.
       <br><strong style="color:var(--gold)">v40:</strong> each level can use either <em>Cumulative Vesting</em> (existing model) or <em>Tiered Withdrawal with Cooldown</em> (new).
@@ -11099,6 +11194,26 @@ async function renderSettings() {
         <strong style="color:var(--orange)">Always disqualifies (no toggle):</strong> Unapproved Leave (UL / UHL), Loss of Pay (LWP).<br>
         <strong style="color:var(--green)">Always neutral (no toggle):</strong> Weekly Off, National Holiday, Company-declared Holiday.
       </div>
+      <!-- v45 Workstream E2/E5: Per-level applicability + live status line. -->
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--dark3)">
+        <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:8px">
+          Applicable Levels
+          <span class="info-tooltip" title="Perfect Attendance Bonus is awarded ONLY to employees whose level is ticked here. If no level is ticked, the bonus is fully disabled — no employee receives it.">ℹ</span>
+        </div>
+        <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">
+          Tick the levels that qualify. If no level is selected, the bonus is disabled.
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px 14px;font-size:13px">
+          ${['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(lv =>
+            `<label style="display:flex;align-items:center;gap:6px">
+               <input type="checkbox" id="cfg-paBonus_lvl_${lv}" onchange="_v45UpdatePABonusStatusLine()"
+                  ${(cfg['paBonus_applicableLevels']||'').split(',').map(s=>s.trim()).includes(lv) ? 'checked' : ''}>
+               ${lv}
+             </label>`
+          ).join('')}
+        </div>
+        <div id="paBonus-status-line" style="margin-top:10px;font-size:11px;color:var(--gold);font-weight:600"></div>
+      </div>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" onclick="saveV31BonusSettings()">💾 Save Bonus Settings</button>
     </div>
@@ -11175,9 +11290,11 @@ async function renderSettings() {
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('promo')">Promotion Windows</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('ot')">OT Policy</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('jbonus')">Joining Bonus</button>
-        <button class="comp-sub-tab" onclick="switchCompSettingsTab('wallet')">Loyalty Wallet</button>
-        <!-- v44 Workstream C: per-employee per-month wallet credit adjustment workspace. -->
-        <button class="comp-sub-tab" onclick="switchCompSettingsTab('walletadj')">Wallet Adjustments</button>
+        <button class="comp-sub-tab" onclick="switchCompSettingsTab('wallet')" title="Tenure-Based Monthly Wallet (per-year credit)">Tenure-Based Wallet</button>
+        <!-- v45 Workstream A1: "Wallet Adjustments" sub-tab removed. The
+             per-employee adjustment workspace now lives on the Payroll tab
+             (third tab next to Salary Register and Statutory Compliance) so
+             Payroll/HR can reach it without digging into compensation policy. -->
       </div>
       <!-- Salary Ladder sub-panel -->
       <div class="comp-sub-panel active" id="comp-sp-ladder">
@@ -11189,23 +11306,23 @@ async function renderSettings() {
       <div class="comp-sub-panel" id="comp-sp-increment">
         <div class="settings-grid">
           <div class="form-group">
-            <label class="form-label">Increment Period (months) <span class="tooltip-icon" data-tooltip-key="INCREMENT_PERIOD_MONTHS">i</span></label>
+            <label class="form-label">Increment Period (months) <span class="info-tooltip" title="How often an eligible employee receives an increment at the same level. Default: 6 months. Example: a worker joining 1-Jan becomes eligible for their first increment on 1-Jul.">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-INCREMENT_PERIOD_MONTHS" min="1" placeholder="6">
           </div>
           <div class="form-group">
-            <label class="form-label">Increment Type <span class="tooltip-icon" data-tooltip-key="INCREMENT_TYPE">i</span></label>
+            <label class="form-label">Increment Type <span class="info-tooltip" title="How the raise is calculated. Flat = fixed ₹ per level (per-level table below). Percentage = % of current salary (uniform across levels). Factory roles use Flat; knowledge roles often use Percentage.">ℹ</span></label>
             <select class="form-input" id="cfg-INCREMENT_TYPE">
               <option value="Flat">Flat Amount</option>
               <option value="Percentage">Percentage</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Percentage Rate (e.g. 0.05 = 5%) <span class="tooltip-icon" data-tooltip-key="INCREMENT_PERCENTAGE">i</span></label>
+            <label class="form-label">Percentage Rate (e.g. 0.05 = 5%) <span class="info-tooltip" title="Percentage raise per cycle when Type = Percentage. Example: 0.05 = 5%.">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-INCREMENT_PERCENTAGE" step="0.01" min="0" max="1" placeholder="0.05">
           </div>
           <div class="form-group">
             <!-- v43 W4.3: label softened from hard-cap to advisory phrasing. DOM id unchanged per R1. -->
-            <label class="form-label">Increment Cycles Before Promotion Review (advisory) <span class="tooltip-icon" data-tooltip-key="MAX_INCREMENT_CYCLES">i</span></label>
+            <label class="form-label">Increment Cycles Before Promotion Review (advisory) <span class="info-tooltip" title="After this many increments at the same level, the employee is flagged in the Promotion Review Queue. ADVISORY — does NOT auto-promote. Performance still decides. Use 0 to disable the alert.">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-MAX_INCREMENT_CYCLES" min="0" max="8" placeholder="4">
           </div>
         </div>
@@ -11214,7 +11331,7 @@ async function renderSettings() {
         <div id="comp-increment-per-level" style="margin-top:14px;display:none">
           <div style="font-size:12px;color:var(--gold);margin-bottom:6px;font-weight:600">
             Per-Level Flat Increment (9hr base)
-            <span class="tooltip-icon" data-tooltip-key="comp-increment-per-level">i</span>
+            <span class="info-tooltip" title="Per-level flat increment values (Type = Flat only). Each L-level can have a different ₹ raise per 6-month cycle. Backend keys: INCREMENT_9HR_L10..L6. 11hr/12hr columns auto-scale (×1.10 / ×1.20).">ℹ</span>
           </div>
           <table class="comp-ladder-table">
             <thead><tr>
@@ -11264,7 +11381,7 @@ async function renderSettings() {
         <p class="comp-settings-subtitle">Minimum and maximum months before promotion eligibility per level.</p>
         <!-- v43 W3.11: tooltip-icons on the table header cells (since this grid lacks per-input labels) -->
         <table class="comp-ladder-table" style="margin-bottom:12px">
-          <tr><th>From Level</th><th>Min Months <span class="tooltip-icon" data-tooltip-key="promo-min-months">i</span></th><th>Max Months <span class="tooltip-icon" data-tooltip-key="promo-max-months">i</span></th></tr>
+          <tr><th>From Level</th><th>Min Months <span class="info-tooltip" title="Minimum months an employee must spend at this level before becoming promotion-eligible. Below this, the system blocks promotion requests.">ℹ</span></th><th>Max Months <span class="info-tooltip" title="After this many months at the same level without promotion, the employee is flagged Overdue in the Promotion Review Queue. Blank = no maximum (used for L6, the top operational level).">ℹ</span></th></tr>
           <tr><td>L10 → L9</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L10" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L10" min="1"></td></tr>
           <tr><td>L9 → L8</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L9" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L9" min="1"></td></tr>
           <tr><td>L8 → L7</td><td><input class="form-input" type="number" id="cfg-PROMO_MIN_L8" min="1"></td><td><input class="form-input" type="number" id="cfg-PROMO_MAX_L8" min="1"></td></tr>
@@ -11276,32 +11393,32 @@ async function renderSettings() {
       <div class="comp-sub-panel" id="comp-sp-ot">
         <div class="settings-grid">
           <div class="form-group" style="grid-column:span 2">
-            <label class="form-label" style="color:var(--red)">9-Hour Shift Minimum OT Hours — HARD MINIMUM — System will block OT entries below this value for 9-hour shift employees. <span class="tooltip-icon" data-tooltip-key="OT_MIN_HOURS_9HR">i</span></label>
+            <label class="form-label" style="color:var(--red)">9-Hour Shift Minimum OT Hours — HARD MINIMUM — System will block OT entries below this value for 9-hour shift employees. <span class="info-tooltip" title="HARD MINIMUM OT hours for 9-hour shift employees. Blocks OT entries below this. Example: 4.5 means OT entries of 1, 2, 3, or 4 hours are rejected. Prevents trivial OT logging.">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_9HR" min="0.5" step="0.5">
           </div>
           <div class="form-group">
-            <label class="form-label">11-Hour Shift Minimum OT Hours <span class="tooltip-icon" data-tooltip-key="OT_MIN_HOURS_11HR">i</span></label>
+            <label class="form-label">11-Hour Shift Minimum OT Hours <span class="info-tooltip" title="Minimum OT hours for 11-hour shift employees. Default 1.">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_11HR" min="0.5" step="0.5">
           </div>
           <div class="form-group">
-            <label class="form-label">12-Hour Shift Minimum OT Hours <span class="tooltip-icon" data-tooltip-key="OT_MIN_HOURS_12HR">i</span></label>
+            <label class="form-label">12-Hour Shift Minimum OT Hours <span class="info-tooltip" title="Minimum OT hours for 12-hour shift employees. Default 1.">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-OT_MIN_HOURS_12HR" min="0.5" step="0.5">
           </div>
           <div class="form-group">
             <!-- v43 W4.5: OT_WORKING_DAYS_DIVISOR is now DERIVED from cfg-perDayDivisor (Organization & Locale).
                  Read-only display preserves the Config key (OT backend math untouched per R13). -->
-            <label class="form-label">OT Working Days Divisor (auto from Per-Day Denominator) <span class="tooltip-icon" data-tooltip-key="OT_WORKING_DAYS_DIVISOR">i</span></label>
+            <label class="form-label">OT Working Days Divisor (auto from Per-Day Denominator) <span class="info-tooltip" title="Days divisor for OT hourly rate calculation. AUTO-SET from Per-Day Salary Denominator (Org & Locale). To change, edit that dropdown — this field is read-only.">ℹ</span></label>
             <input class="form-input" type="text" id="cfg-OT_WORKING_DAYS_DIVISOR" readonly style="background:var(--dark2);opacity:0.7;cursor:not-allowed" value="(loading…)">
             <div style="font-size:11px;color:var(--gray-light);margin-top:4px">
               Driven by Per-Day Salary Denominator in Settings → Organization &amp; Locale. To change, edit that dropdown.
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Shift Ratio 11hr ÷ 9hr × 90% <span class="tooltip-icon" data-tooltip-key="SHIFT_RATIO_11HR">i</span></label>
+            <label class="form-label">Shift Ratio 11hr ÷ 9hr × 90% <span class="info-tooltip" title="11hr salary = 9hr base × this ratio. Default 1.10 (11hr earns 10% more). The &quot;× 90%&quot; in the field label reflects an efficiency factor — full 11/9 ratio (1.22) is reduced to 1.10. Editing this recomputes ALL 11hr morning AND night salaries.">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-SHIFT_RATIO_11HR" step="0.01" min="0.1">
           </div>
           <div class="form-group">
-            <label class="form-label">Shift Ratio 12hr ÷ 9hr × 90% <span class="tooltip-icon" data-tooltip-key="SHIFT_RATIO_12HR">i</span></label>
+            <label class="form-label">Shift Ratio 12hr ÷ 9hr × 90% <span class="info-tooltip" title="12hr salary = 9hr base × this ratio. Default 1.20. Editing recomputes ALL 12hr morning AND night salaries.">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-SHIFT_RATIO_12HR" step="0.01" min="0.1">
           </div>
         </div>
@@ -11311,68 +11428,94 @@ async function renderSettings() {
       <div class="comp-sub-panel" id="comp-sp-jbonus">
         <div class="settings-grid">
           <div class="form-group">
-            <label class="form-label">Enable Joining Bonus <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_ENABLED">i</span></label>
+            <label class="form-label">Enable Joining Bonus <span class="info-tooltip" title="Enable/disable joining bonus">ℹ</span></label>
             <select class="form-input" id="cfg-JOINING_BONUS_ENABLED">
               <option value="true">Yes</option><option value="false">No</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Total Bonus Amount (₹) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_TOTAL">i</span></label>
+            <label class="form-label">Total Bonus Amount (₹) <span class="info-tooltip" title="Total joining bonus amount">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_TOTAL" min="0">
           </div>
           <div class="form-group">
-            <label class="form-label">Number of Installments <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENTS">i</span></label>
+            <label class="form-label">Number of Installments <span class="info-tooltip" title="Number of installments">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENTS" min="1" max="12">
           </div>
           <div class="form-group">
-            <label class="form-label">Amount per Installment (₹) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_AMOUNT">i</span></label>
+            <label class="form-label">Amount per Installment (₹) <span class="info-tooltip" title="Amount per installment">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_AMOUNT" min="0" readonly>
           </div>
           <div class="form-group">
-            <label class="form-label">Installment 1 — After (months) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_1_MONTHS">i</span></label>
+            <label class="form-label">Installment 1 — After (months) <span class="info-tooltip" title="Months for 1st installment">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_1_MONTHS" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Installment 2 — After (months) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_2_MONTHS">i</span></label>
+            <label class="form-label">Installment 2 — After (months) <span class="info-tooltip" title="Months for 2nd installment">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_2_MONTHS" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Installment 3 — After (months) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_3_MONTHS">i</span></label>
+            <label class="form-label">Installment 3 — After (months) <span class="info-tooltip" title="Months for 3rd installment">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_3_MONTHS" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Installment 4 — After (months) <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_INSTALLMENT_4_MONTHS">i</span></label>
+            <label class="form-label">Installment 4 — After (months) <span class="info-tooltip" title="Months for 4th installment">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_INSTALLMENT_4_MONTHS" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Max Leaves Threshold for Eligibility Check <span class="tooltip-icon" data-tooltip-key="JOINING_BONUS_MAX_LEAVES_THRESHOLD">i</span></label>
+            <label class="form-label">Max Leaves Threshold for Eligibility Check <span class="info-tooltip" title="Max leaves before installment flagged">ℹ</span></label>
             <input class="form-input" type="number" id="cfg-JOINING_BONUS_MAX_LEAVES_THRESHOLD" min="0">
           </div>
         </div>
         <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['JOINING_BONUS_ENABLED','JOINING_BONUS_TOTAL','JOINING_BONUS_INSTALLMENTS','JOINING_BONUS_INSTALLMENT_AMOUNT','JOINING_BONUS_INSTALLMENT_1_MONTHS','JOINING_BONUS_INSTALLMENT_2_MONTHS','JOINING_BONUS_INSTALLMENT_3_MONTHS','JOINING_BONUS_INSTALLMENT_4_MONTHS','JOINING_BONUS_MAX_LEAVES_THRESHOLD'])">💾 Save Joining Bonus Policy</button>
       </div>
-      <!-- Loyalty Wallet sub-panel -->
+      <!-- Tenure-Based Monthly Wallet sub-panel (renamed in v46 W2; DOM id comp-sp-wallet kept verbatim per R9) -->
       <div class="comp-sub-panel" id="comp-sp-wallet">
+        <!-- v45 Workstream D: standardised every tooltip-icon to info-tooltip
+             with hardcoded titles (no dependency on the data-tooltip-key
+             hydration pipeline). Matches the rest of the v44 settings. -->
+        <!-- v46 W2: panel title + explanation block + cross-reference status line. -->
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">💎 Tenure-Based Monthly Wallet (per-year credit)</div>
+        <div style="background:var(--dark3);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--gray-light);line-height:1.7">
+          <strong style="color:var(--gold)">What this is:</strong> a per-TENURE-YEAR monthly credit (Y1–Y5+) added to the employee's wallet. Gated by Max Leaves Threshold and optional performance adjustments.
+          <br>
+          <strong style="color:var(--gold)">How it differs:</strong> the <em>Level-Based Retention Bonus</em> (Settings → 💎 Level-Based Retention Bonus) pays per-LEVEL with cohort-based vesting, not per-tenure-year.
+          <br>
+          <strong style="color:var(--gold)">Trigger:</strong> per-tenure-year fixed amount, posted monthly when this program is the active loyalty model.
+          <br>
+          <strong style="color:var(--gold)">Affects:</strong> LoyaltyWallet sheet (totalAccumulated · currentBalance · monthlyCreditsLog) · LoyaltyWallet_Adjustments (performance holds/reductions) · kiosk wallet card · Config_Audit (when master selector changes). Withdrawal % and timing are read from the seeded keys (40 / 60 after 6M / 12M waits).
+        </div>
+        <div id="tenure-wallet-active-status" style="font-size:12px;color:var(--gold);padding:6px 10px;margin-bottom:10px;background:var(--dark2);border-radius:4px;line-height:1.6">
+          ⚠ <span id="tenure-wallet-status-state">…</span> · Change in <strong>Settings → 💎 Loyalty Programs</strong>.
+        </div>
         <div class="settings-grid">
           <div class="form-group">
-            <label class="form-label">Enable Loyalty Wallet <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_ENABLED">i</span></label>
+            <label class="form-label">Enable Loyalty Wallet <span class="info-tooltip" title="Master switch. When OFF, no monthly credit is added to any employee's wallet, but existing balances are preserved.">ℹ</span></label>
             <select class="form-input" id="cfg-LOYALTY_WALLET_ENABLED">
               <option value="true">Yes</option><option value="false">No</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">Year 1 Monthly Credit (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR1_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR1_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 2 Monthly Credit (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR2_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR2_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 3 Monthly Credit (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR3_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR3_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 4 Monthly Credit (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR4_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR4_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 5+ Monthly Credit Cap (₹) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_YR5PLUS_MONTHLY">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR5PLUS_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Max Leaves Threshold <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_MAX_LEAVES_THRESHOLD">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MAX_LEAVES_THRESHOLD" min="0"></div>
-          <div class="form-group"><label class="form-label">Min Tenure Before First Withdrawal (months) <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_MIN_TENURE_MONTHS">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MIN_TENURE_MONTHS" min="1"></div>
-          <div class="form-group"><label class="form-label">Withdrawal % after 6-Month Wait <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT" min="0" max="100"></div>
-          <div class="form-group"><label class="form-label">Withdrawal % after 12-Month Wait <span class="tooltip-icon" data-tooltip-key="LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT">i</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT" min="0" max="100"></div>
+          <div class="form-group"><label class="form-label">Year 1 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit added to an employee's Loyalty Wallet during their first 12 months of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR1_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 2 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 13–24 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR2_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 3 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 25–36 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR3_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 4 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 37–48 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR4_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 5+ Monthly Credit Cap (₹) <span class="info-tooltip" title="Monthly credit from month 49 onwards. The maximum tier.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR5PLUS_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Max Leaves Threshold <span class="info-tooltip" title="If an employee exceeds this leave count in a month, that month's credit is held automatically.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MAX_LEAVES_THRESHOLD" min="0"></div>
+          <div class="form-group"><label class="form-label">Min Tenure Before First Withdrawal (months) <span class="info-tooltip" title="Minimum service before an employee can request their first wallet withdrawal.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MIN_TENURE_MONTHS" min="1"></div>
+          <!-- v45 Workstream C: removed duplicate Withdrawal % after 6M/12M
+               wait fields. Withdrawal percentages and timing are owned per-level
+               in Settings → Bonus & Rewards → 💎 Loyalty Bonus Vesting. The
+               backend keys LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT and _12M_PCT
+               remain seeded in COMP_CONFIG_DEFAULTS (40 / 60) so
+               getLoyaltyWalletStatus continues to function until the v46
+               re-route. See header v45 TODO block in gas_backend_v45.gs. -->
         </div>
+        <!-- v45 W-C3 advisory SUPERSEDED in v46 W2 by the explanation + status block
+             at the top of this panel. (Kept the deferred-TODO note in gas header.) -->
         <!-- v44 Workstream C: Performance-based Adjustments sub-section -->
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
           <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:8px">Performance-based Adjustments</div>
+          <!-- v46 W2: clarifier — Performance Adjustments apply only to the Tenure-Based Monthly Wallet, not to the Level-Based Retention Bonus. -->
+          <div style="font-size:11px;color:var(--gold);margin-bottom:6px;font-style:italic">ℹ Performance Adjustments apply only to the Tenure-Based Monthly Wallet — not to the Level-Based Retention Bonus.</div>
           <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">Allow authorised users to hold or reduce a single employee's monthly wallet credit when performance falls short. Adjustments are forward-only and never rewrite past credits.</div>
           <div class="settings-grid">
             <div class="form-group">
@@ -11388,7 +11531,7 @@ async function renderSettings() {
                 <span class="info-tooltip" title="Select which roles may submit a wallet adjustment. The Owner role is always implicitly allowed.">ℹ</span>
               </label>
               <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:13px;padding:6px 0">
-                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_owner" checked disabled> Owner</label>
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_owner" checked disabled> Owner <span class="info-tooltip" title="Owner role is always permitted to submit wallet adjustments and cannot be removed from this list.">ℹ</span></label>
                 <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_admin"> Admin</label>
                 <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_manager"> Manager</label>
                 <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_supervisor"> Supervisor</label>
@@ -11412,53 +11555,15 @@ async function renderSettings() {
             </div>
           </div>
         </div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['LOYALTY_WALLET_ENABLED','LOYALTY_WALLET_YR1_MONTHLY','LOYALTY_WALLET_YR2_MONTHLY','LOYALTY_WALLET_YR3_MONTHLY','LOYALTY_WALLET_YR4_MONTHLY','LOYALTY_WALLET_YR5PLUS_MONTHLY','LOYALTY_WALLET_MAX_LEAVES_THRESHOLD','LOYALTY_WALLET_MIN_TENURE_MONTHS','LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT','LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT','LOYALTY_WALLET_PERF_ADJ_ENABLED','LOYALTY_WALLET_PERF_ADJ_ROLES','LOYALTY_WALLET_PERF_ADJ_APPROVAL','LOYALTY_WALLET_PERF_ADJ_MAX_PCT'])">💾 Save Loyalty Wallet Policy</button>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['LOYALTY_WALLET_ENABLED','LOYALTY_WALLET_YR1_MONTHLY','LOYALTY_WALLET_YR2_MONTHLY','LOYALTY_WALLET_YR3_MONTHLY','LOYALTY_WALLET_YR4_MONTHLY','LOYALTY_WALLET_YR5PLUS_MONTHLY','LOYALTY_WALLET_MAX_LEAVES_THRESHOLD','LOYALTY_WALLET_MIN_TENURE_MONTHS','LOYALTY_WALLET_PERF_ADJ_ENABLED','LOYALTY_WALLET_PERF_ADJ_ROLES','LOYALTY_WALLET_PERF_ADJ_APPROVAL','LOYALTY_WALLET_PERF_ADJ_MAX_PCT'])">💾 Save Loyalty Wallet Policy</button>
       </div>
-      <!-- v44 Workstream C: Wallet Adjustments sub-panel (per-employee per-month action) -->
-      <div class="comp-sub-panel" id="comp-sp-walletadj">
-        <p class="comp-settings-subtitle">Hold or reduce a single employee's monthly wallet credit. Adjustments are forward-only — never rewrite past credits. Submitted adjustments may require second-eye approval before they take effect.</p>
-        <div class="settings-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
-          <div class="form-group">
-            <label class="form-label">Employee</label>
-            <select id="wa-emp" class="form-input"><option value="">— Select —</option></select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Month (YYYY-MM)
-              <span class="info-tooltip" title="Target month for the adjustment. If the credit for this month has already been booked, the adjustment is logged but does not rewrite history (forward-only policy).">ℹ</span>
-            </label>
-            <input id="wa-month" class="form-input" type="month">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Action</label>
-            <select id="wa-action" class="form-input" onchange="_v44ToggleWAReduction()">
-              <option value="Full">Full credit (no change)</option>
-              <option value="Partial">Partial credit (reduce by %)</option>
-              <option value="Hold">Hold — skip this month</option>
-              <option value="Reduce">Reduce by %</option>
-            </select>
-          </div>
-          <div class="form-group" id="wa-pct-wrap">
-            <label class="form-label">Reduction %
-              <span class="info-tooltip" title="Capped by the configured Max Reduction % in Loyalty Wallet settings.">ℹ</span>
-            </label>
-            <input id="wa-pct" class="form-input" type="number" min="1" max="100">
-          </div>
-        </div>
-        <div class="form-group" style="margin-top:10px">
-          <label class="form-label">Reason (mandatory, ≥ 20 chars)
-            <span class="info-tooltip" title="Audit trail. Be specific — this is what the second approver and the employee dispute resolver will read.">ℹ</span>
-          </label>
-          <textarea id="wa-reason" class="form-input" rows="2" placeholder="e.g. Repeat performance warnings issued in May 2026; HR review minutes attached."></textarea>
-        </div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="submitWalletAdjustment()">📤 Submit Adjustment</button>
-        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-            <div style="font-size:13px;font-weight:600">Recent Adjustments</div>
-            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="loadWalletAdjustments()">🔄 Refresh</button>
-          </div>
-          <div id="wa-list" style="font-size:12px;color:var(--gray-light)">Click Refresh to load.</div>
-        </div>
-      </div>
+      <!-- v45 Workstream A1: "Wallet Adjustments" sub-panel removed from
+           Settings → Compensation. The per-employee adjustment workspace
+           now lives on the Payroll tab — see _v45RenderWalletAdjPanel and
+           switchPayrollView('walletadj'). All DOM IDs (wa-emp, wa-month,
+           wa-action, wa-pct, wa-pct-wrap, wa-reason, wa-list) are preserved
+           verbatim in the new location so the existing global handlers
+           (submitWalletAdjustment, loadWalletAdjustments, etc.) still work. -->
       <!-- v43 W3.13: First-Time Setup banner was here. Moved to top of comp-settings-body to avoid scrolling past 6 sub-panels to find it, and to consolidate near the new defaults banner (W3.12). -->
 
     </div>
@@ -11600,6 +11705,13 @@ async function renderSettings() {
   // v44 Workstream E2: scan for duplicate cfg-* bindings and surface a banner.
   // Runs on every Settings render so adding a new card is auto-checked.
   if (typeof _v44ScanDuplicateConfigBindings === 'function') _v44ScanDuplicateConfigBindings();
+  // v45 Workstream E5: render the PA-bonus applicable-levels status line on first load.
+  if (typeof _v45UpdatePABonusStatusLine === 'function') _v45UpdatePABonusStatusLine();
+  // v46 W2: hydrate the LOYALTY_ACTIVE_MODEL dropdown + 3 status lines.
+  if (typeof _v46EnsureCompCfgCache === 'function') _v46EnsureCompCfgCache();
+  // v46 W1: render the consolidated Auto Clock-Out card's method-specific
+  // groups based on the current Trigger Method on first load.
+  if (typeof syncAutoClockOutMethod === 'function') syncAutoClockOutMethod();
   // Post-render: load editable leave types table
   setTimeout(() => loadLeaveTypesSettingsTable(), 100);
   // v34: load comp config into settings inputs
@@ -11642,7 +11754,15 @@ async function showLoyaltyBonusCard(empId, empStatus) {
   card.style.display = 'block';
   content.innerHTML = '<span style="color:var(--gray-light)">Loading…</span>';
   try {
-    const res = await API.call('getEmployeeLoyaltyBonus', {employee_id: empId});
+    // v46 W2-Q6: parallel-fetch the master selector so we can render a
+    // "[Other Program] is active" badge when this ledger is paused org-wide.
+    const _parallel = await Promise.all([
+      API.call('getEmployeeLoyaltyBonus', {employee_id: empId}),
+      API.call('getAllCompensationConfig', {})
+    ]);
+    const res = _parallel[0];
+    const _activeModel = (_parallel[1] && _parallel[1].ok && _parallel[1].config
+                          && _parallel[1].config.LOYALTY_ACTIVE_MODEL) || 'Both';
     if (!res.ok || !res.data) { card.style.display = 'none'; return; }
     const d = res.data;
     const isNotice = (empStatus||'').toLowerCase() === 'notice period';
@@ -11729,7 +11849,12 @@ async function showLoyaltyBonusCard(empId, empStatus) {
           <summary style="cursor:pointer;color:var(--gold-light);font-weight:600">ℹ️ How this works</summary>
           <div style="margin-top:6px;color:var(--gray-light);line-height:1.5">${_firstDepositHint}${_howWorksCopy}</div>
         </details>`;
+    // v46 W2-Q6: paused-badge when LB Vesting ledger is inactive org-wide.
+    const _lbPausedBadge = (_activeModel === 'TenureWallet')
+      ? `<div style="display:inline-block;background:var(--dark3);color:var(--gray-light);border:1px solid var(--gold-dim);border-radius:999px;padding:4px 10px;font-size:11px;margin-bottom:8px;line-height:1.4">ℹ This program is currently paused org-wide. The Tenure-Based Monthly Wallet is active.</div>`
+      : '';
     content.innerHTML = `
+      ${_lbPausedBadge}
       ${_howWorksBlock}
       ${headerLine}
       ${totalsRow}
@@ -12625,29 +12750,71 @@ async function reconnectFromBanner() {
   }
 }
 
-async function saveAutomationSettings() {
-  const keys=['shiftAutoClockoutBuffer','autoMarkPresentThreshold','lateClockInApprovalMinutes'];
-  const updates={};
-  keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
-  // Handle checkboxes
-  const acoEl=document.getElementById('cfg-autoClockOutEnabled');
-  if(acoEl) updates['autoClockOutEnabled'] = acoEl.checked ? 'true' : 'false';
-  const ampEl=document.getElementById('cfg-autoMarkPresentEnabled');
-  if(ampEl) updates['autoMarkPresentEnabled'] = ampEl.checked ? 'true' : 'false';
-  const res=await API.call('updateSettings',{updates});
-  if(res.ok) toast('✓ Automation settings saved','success');
-  else toast(res.error||'Error','error');
+// v46 W1: legacy wrapper — kept so any external caller still works.
+// Delegates to the consolidated saver. Same payload reached, same toast.
+async function saveAutomationSettings() { return saveConsolidatedAutoClockOut(); }
+
+// v46 W1: legacy wrapper — kept so any external caller still works.
+async function saveAutoClockOutSettings() { return saveConsolidatedAutoClockOut(); }
+
+// v46 W1: consolidated saver for the merged "🕐 Auto Clock-Out & Automation"
+// card. Writes BOTH legacy backend keys (autoClockOutEnabled + autoCoEnabled)
+// consistently per the chosen Trigger Method per the pre-coding analysis
+// mapping (owner W1-Q1 default = 'No' for autoCoEnabled when method =
+// ShiftEndBuffer, so the policy sweep does not run alongside the shift-end
+// fallback). All Auto Mark Present + Late Clock-In + Apply To + Note +
+// Notify keys are saved as well. No backend math touched.
+async function saveConsolidatedAutoClockOut() {
+  try {
+    var masterOn = !!document.getElementById('auto-clockout-master')?.checked;
+    var method   = document.getElementById('cfg-autoCoMethod')?.value || 'ShiftEndBuffer';
+    var updates  = {};
+    // Master-toggle → legacy keys mapping per pre-coding analysis Backend mapping table.
+    if (!masterOn) {
+      updates.autoClockOutEnabled = 'false';
+      updates.autoCoEnabled       = 'No';
+    } else if (method === 'ShiftEndBuffer') {
+      updates.autoClockOutEnabled = 'true';
+      updates.autoCoEnabled       = 'No';  // owner W1-Q1
+    } else {
+      updates.autoClockOutEnabled = 'false';
+      updates.autoCoEnabled       = 'Yes';
+    }
+    updates.autoCoMethod = method;
+    // Always-saved keys
+    ['shiftAutoClockoutBuffer','autoMarkPresentThreshold','lateClockInApprovalMinutes',
+     'autoCoMaxHours','autoCoFixedTime','autoCoApplyTo','autoCoNote','autoCoNotifyManager'].forEach(function(k) {
+      var el = document.getElementById('cfg-' + k);
+      if (el) updates[k] = el.value;
+    });
+    var ampEl = document.getElementById('cfg-autoMarkPresentEnabled');
+    if (ampEl) updates.autoMarkPresentEnabled = ampEl.checked ? 'true' : 'false';
+    // Sync the legacy hidden controls so any other code path still finds the right values.
+    var legacyAcoEl = document.getElementById('cfg-autoClockOutEnabled');
+    if (legacyAcoEl) legacyAcoEl.checked = updates.autoClockOutEnabled === 'true';
+    var legacyCoEl  = document.getElementById('cfg-autoCoEnabled');
+    if (legacyCoEl)  legacyCoEl.value   = updates.autoCoEnabled;
+    var res = await API.call('updateSettings', { updates: updates });
+    if (res && res.ok) toast('✓ Auto Clock-Out & Automation settings saved', 'success');
+    else toast((res && res.error) || 'Save failed', 'error');
+  } catch(e) {
+    console.error('saveConsolidatedAutoClockOut:', e);
+    toast('Save failed: ' + (e.message || e), 'error');
+  }
 }
 
-// S4.2 — Save Auto Clock-Out Policy settings
-async function saveAutoClockOutSettings() {
-  const keys = ['autoCoEnabled','autoCoMethod','autoCoMaxHours','autoCoFixedTime','autoCoApplyTo','autoCoNote','autoCoNotifyManager'];
-  const updates = {};
-  keys.forEach(k => { const el = document.getElementById('cfg-' + k); if (el) updates[k] = el.value; });
-  const res = await API.call('updateSettings', {settings: updates});
-  if (!res || typeof res !== 'object') { toast('Auto clock-out settings saved. Refresh to verify.', 'warning'); return; }
-  if (res.ok) toast('Auto clock-out settings saved', 'success');
-  else toast(res.error || 'Error', 'error');
+// v46 W1: toggle visibility of the three method-specific field wrappers
+// based on the current Trigger Method dropdown. Idempotent.
+function syncAutoClockOutMethod() {
+  try {
+    var method = document.getElementById('cfg-autoCoMethod')?.value || 'ShiftEndBuffer';
+    var g1 = document.getElementById('auto-clockout-group-shiftend');
+    var g2 = document.getElementById('auto-clockout-group-fixedhours');
+    var g3 = document.getElementById('auto-clockout-group-fixedtime');
+    if (g1) g1.style.display = (method === 'ShiftEndBuffer') ? '' : 'none';
+    if (g2) g2.style.display = (method === 'After Fixed Hours' || method === 'Both') ? '' : 'none';
+    if (g3) g3.style.display = (method === 'At Fixed Time' || method === 'Both') ? '' : 'none';
+  } catch(e) { console.error('syncAutoClockOutMethod:', e); }
 }
 
 // FIX-14: Org structure add/delete
@@ -12801,7 +12968,17 @@ async function saveOTSettings() {
 }
 
 async function runAutoClockOut() {
-  const res=await API.call('runAutoClockOut',{});
+  // v46 W1-Q2: when Trigger Method = "At Shift End + Buffer", the backend
+  // runAutoClockOut sweep (gas:4630) checks autoCoEnabled === 'Yes' and
+  // returns 0 clocked because the consolidated saver intentionally sets
+  // autoCoEnabled='No' for this method. Tell the owner what they need to
+  // know instead of showing "0 employees clocked out".
+  var method = document.getElementById('cfg-autoCoMethod')?.value || '';
+  if (method === 'ShiftEndBuffer') {
+    toast('Manual Run is only available for the Fixed Hours / Fixed Time methods. The Shift-End + Buffer method runs via the daily time trigger configured in Google Apps Script.', 'warning', 8000);
+    return;
+  }
+  const res = await API.call('runAutoClockOut', {});
   toast(`Auto clock-out done: ${res.clocked||res.affected?.length||0} employees clocked out`,'success',4000);
 }
 
@@ -15205,6 +15382,11 @@ async function saveV31BonusSettings() {
     paBonus_disqualifyLate: _cb('cfg-paBonus_disqualifyLate'),
     paBonus_lateGraceMinutes: _cfgVal('cfg-paBonus_lateGraceMinutes','0'),
   };
+  // v45 Workstream E3: build the applicable-levels CSV from the 10 checkboxes.
+  // Empty string (no boxes ticked) = bonus disabled for everyone (per E4c gate).
+  const _levels = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
+  const _ticked = _levels.filter(lv => document.getElementById('cfg-paBonus_lvl_' + lv)?.checked);
+  updates.paBonus_applicableLevels = _ticked.join(',');
   // v44 Workstream E1: prompt for reason + effective-from when changing bonus
   // policy. Cancel skips audit, save still proceeds (audit is a side channel,
   // not a blocker — preserves owner UX).
@@ -15524,7 +15706,13 @@ function _renderCompTab(tab, data) {
     var w = data.wallet || {};
     // getLoyaltyWalletStatus returns: {ok, balance, totalAccumulated, totalWithdrawn, withdrawableAmount, currentMonthlyCredit, monthsOfService}
     if (!w.ok) { el.innerHTML = '<div style="color:var(--gray-light);font-size:12px;text-align:center;padding:20px">Loyalty Wallet data unavailable. Contact admin.</div>'; return; }
-    html = '<div class="comp-stat-row"><span style="color:var(--gray-light)">Total Credited</span><span class="inr-display">' + fmtINR(w.totalAccumulated) + '</span></div>' +
+    // v46 W2-Q6: paused-badge when wallet ledger is inactive org-wide.
+    var _walletPausedBadge = '';
+    if (String(data.activeLoyaltyModel || 'Both') === 'RetentionBonus') {
+      _walletPausedBadge = '<div style="display:inline-block;background:var(--dark3);color:var(--gray-light);border:1px solid var(--gold-dim);border-radius:999px;padding:4px 10px;font-size:11px;margin-bottom:8px;line-height:1.4">ℹ This program is currently paused org-wide. The Level-Based Retention Bonus is active.</div>';
+    }
+    html = _walletPausedBadge +
+      '<div class="comp-stat-row"><span style="color:var(--gray-light)">Total Credited</span><span class="inr-display">' + fmtINR(w.totalAccumulated) + '</span></div>' +
       '<div class="comp-stat-row"><span style="color:var(--gray-light)">Total Withdrawn</span><span>' + fmtINR(w.totalWithdrawn) + '</span></div>' +
       '<div class="comp-stat-row"><span style="color:var(--gray-light)">Balance</span><span style="font-weight:700;color:var(--gold)">' + fmtINR(w.balance) + '</span></div>' +
       '<div class="comp-stat-row"><span style="color:var(--gray-light)">Withdrawal Eligible</span><span>' + fmtINR(w.withdrawableAmount) + '</span></div>' +
@@ -15547,16 +15735,21 @@ async function loadCompKiosk(empId) {
       API.call('getSalaryProjection', {employeeId: empId}),
       API.call('getPromotionEligibility', {employeeId: empId}),
       API.call('getJoiningBonusStatus', {employeeId: empId}),
-      API.call('getLoyaltyWalletStatus', {employeeId: empId})
+      API.call('getLoyaltyWalletStatus', {employeeId: empId}),
+      // v46 W2-Q6: fetch active loyalty model so the wallet kiosk tab can render
+      // the "[Other Program] is active" badge when this ledger is paused org-wide.
+      API.call('getAllCompensationConfig', {})
     ]);
+    var _compCfg = (results[5] && results[5].ok && results[5].config) ? results[5].config : {};
     window._v34CompData = {
       salary: results[0].ok ? results[0] : {},
       projection: results[1].ok ? results[1] : {},
       eligibility: results[2].ok ? results[2] : {},
       joiningBonus: results[3].ok ? results[3] : {},
-      wallet: results[4].ok ? results[4] : {}
+      wallet: results[4].ok ? results[4] : {},
+      activeLoyaltyModel: String(_compCfg.LOYALTY_ACTIVE_MODEL || 'Both')
     };
-  } catch(e) {}
+  } catch(e) { console.error('loadCompKiosk:', e); }
   _renderCompTab('salary', window._v34CompData);
 }
 
@@ -15569,22 +15762,27 @@ function switchCompSettingsTab(panel) {
     p.classList.remove('active');
   });
   var tabs = document.querySelectorAll('#comp-settings-tabs .comp-sub-tab');
+  // v45 Workstream B: was substring match — caused 'wallet' to also activate
+  // 'walletadj' tab. Exact-match prevents this. Workstream A removes walletadj
+  // from this strip anyway, but exact-match is the correct long-term fix.
+  var expected = "switchCompSettingsTab('" + panel + "')";
   tabs.forEach(function(btn) {
-    if (btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf(panel) !== -1) btn.classList.add('active');
+    if (btn.getAttribute('onclick') === expected) btn.classList.add('active');
   });
   var activePanel = document.getElementById('comp-sp-' + panel);
   if (activePanel) activePanel.classList.add('active');
   if (panel === 'ladder') initCompLadderEditor();
-  // v44 Workstream C: hydrate employee picker + reduction-field visibility
-  // on first reveal of the wallet-adjustments sub-panel.
-  if (panel === 'walletadj') {
-    if (typeof _v44PopulateWalletAdjEmployees === 'function') _v44PopulateWalletAdjEmployees();
-    if (typeof _v44ToggleWAReduction === 'function') _v44ToggleWAReduction();
-  }
+  // v45 Workstream A1: removed 'walletadj' branch — that panel now lives on the
+  // Payroll tab. See _v45RenderWalletAdjPanel + switchPayrollView('walletadj').
   // v43 W3.11: re-hydrate tooltips after sub-tab switch in case the panel had
   // not been rendered yet on first loadCompSettings(). hydrateCompensationTooltips
   // is idempotent — re-applying data-tooltip-text is a no-op.
   hydrateCompensationTooltips();
+  // v46 W2: refresh the Tenure-Based Wallet cross-reference status line when
+  // the wallet sub-tab becomes visible (DOM nodes only render once user clicks in).
+  if (panel === 'wallet' && typeof _v46UpdateLoyaltyStatusLines === 'function') {
+    _v46UpdateLoyaltyStatusLines();
+  }
 }
 
 // v43 W4.7: refresh the Promotion Review summary card on Compensation home.
@@ -15901,12 +16099,12 @@ async function initCompLadderEditor() {
     // Auto-computed displays: 11hr/12hr × 1.10/1.20 for BOTH morning and night.
     var html = '<table class="comp-ladder-table"><thead><tr>' +
       '<th>Level</th>' +
-      '<th>9hr Morning (₹) <span class="tooltip-icon" data-tooltip-key="ladder-9hr-base">i</span></th>' +
-      '<th>9hr Night (₹) <span class="tooltip-icon" data-tooltip-key="ladder-9hr-base-night">i</span></th>' +
-      '<th>11hr M (auto) <span class="tooltip-icon" data-tooltip-key="ladder-11hr-auto">i</span></th>' +
-      '<th>11hr N (auto) <span class="tooltip-icon" data-tooltip-key="ladder-11hr-auto-night">i</span></th>' +
-      '<th>12hr M (auto) <span class="tooltip-icon" data-tooltip-key="ladder-12hr-auto">i</span></th>' +
-      '<th>12hr N (auto) <span class="tooltip-icon" data-tooltip-key="ladder-12hr-auto-night">i</span></th>' +
+      '<th>9hr Morning (₹) <span class="info-tooltip" title="Default monthly salary for this level on a 9-hour MORNING shift. Editing here changes the default for new hires; existing employees keep their saved salary unless you click Recompute Salaries from Ladder in Admin → Bulk Operations.">ℹ</span></th>' +
+      '<th>9hr Night (₹) <span class="info-tooltip" title="Default monthly salary for this level on a 9-hour NIGHT shift. Per Excel: night base is INDEPENDENT of morning, not a fixed multiplier — set each level explicitly.">ℹ</span></th>' +
+      '<th>11hr M (auto) <span class="info-tooltip" title="Auto-derived from 9hr Morning × Shift Ratio 11hr (default 1.10 = 10% more). Editable ratio in OT Policy tab.">ℹ</span></th>' +
+      '<th>11hr N (auto) <span class="info-tooltip" title="Auto-derived from 9hr Night × Shift Ratio 11hr. Edit the ratio in the OT Policy tab.">ℹ</span></th>' +
+      '<th>12hr M (auto) <span class="info-tooltip" title="Auto-derived from 9hr Morning × Shift Ratio 12hr (default 1.20 = 20% more). Editable ratio in OT Policy tab.">ℹ</span></th>' +
+      '<th>12hr N (auto) <span class="info-tooltip" title="Auto-derived from 9hr Night × Shift Ratio 12hr.">ℹ</span></th>' +
       '</tr></thead><tbody>';
     levels.forEach(function(level) {
       // SalaryLadder sheet columns: level, shiftHours, morningSalary, nightSalary (all lowercase from sheetToObjects)
@@ -16048,6 +16246,115 @@ function _v44PromptBonusAudit(label) {
   });
 }
 
+// ── v46 W2: Loyalty Programs master selector — save + status renderer ─
+// Saves the LOYALTY_ACTIVE_MODEL CompensationConfig key via the standard
+// setCompensationConfig endpoint. Per owner W2-Q5, ALWAYS prompts for
+// reason + effective-from (master toggle is an org-wide policy switch,
+// not a tuning knob). The backend hook in handleSetCompensationConfig
+// passes the audit metadata into _logConfigAudit.
+async function saveLoyaltyProgramsMaster() {
+  try {
+    var el = document.getElementById('cfg-LOYALTY_ACTIVE_MODEL');
+    if (!el) return;
+    var newVal = el.value;
+    var meta = await _v44PromptBonusAudit('Loyalty Programs master selector → ' + newVal);
+    var payload = { LOYALTY_ACTIVE_MODEL: newVal };
+    if (meta) {
+      if (meta.reason) payload._reason = meta.reason;
+      if (meta.effectiveFrom) payload._effectiveFrom = meta.effectiveFrom;
+    }
+    payload._changedBy = (State && State.adminUser) || 'admin';
+    var res = await API.call('setCompensationConfig', { updates: payload });
+    if (res && res.ok) {
+      toast('✓ Loyalty model saved', 'success');
+      // Refresh cached compensation config so the status renderer reads the new value.
+      try {
+        var fresh = await API.call('getAllCompensationConfig', {});
+        if (fresh && fresh.ok && fresh.config) {
+          window._v46CompCfgCache = fresh.config;
+        } else {
+          window._v46CompCfgCache = window._v46CompCfgCache || {};
+          window._v46CompCfgCache.LOYALTY_ACTIVE_MODEL = newVal;
+        }
+      } catch(e) {
+        console.error('saveLoyaltyProgramsMaster cache refresh:', e);
+        window._v46CompCfgCache = window._v46CompCfgCache || {};
+        window._v46CompCfgCache.LOYALTY_ACTIVE_MODEL = newVal;
+      }
+      _v46UpdateLoyaltyStatusLines();
+    } else {
+      toast((res && res.error) || 'Save failed', 'error');
+    }
+  } catch(e) {
+    console.error('saveLoyaltyProgramsMaster:', e);
+    toast('Save failed: ' + (e.message || e), 'error');
+  }
+}
+
+// Idempotent. Reads the current LOYALTY_ACTIVE_MODEL value (from in-memory
+// cache, in-flight DOM, or as a fallback the dropdown's selected value) and
+// updates the three status lines: the master section header, the LB Vesting
+// card cross-reference, and the Tenure-Based Wallet sub-panel cross-reference.
+function _v46UpdateLoyaltyStatusLines() {
+  try {
+    var dd = document.getElementById('cfg-LOYALTY_ACTIVE_MODEL');
+    var active = (window._v46CompCfgCache && window._v46CompCfgCache.LOYALTY_ACTIVE_MODEL)
+                 || (dd && dd.value)
+                 || 'Both';
+    var labels = {
+      'TenureWallet':   'Tenure-Based Wallet only',
+      'RetentionBonus': 'Level-Based Retention Bonus only',
+      'Both':           'Both run in parallel'
+    };
+    var activeLabel = labels[active] || active;
+    var master = document.getElementById('loyalty-active-status');
+    if (master) master.textContent = 'Currently active: ' + activeLabel;
+    if (dd && dd.value !== active) dd.value = active;
+    // LB Vesting card status
+    var lbState = document.getElementById('lb-vesting-status-state');
+    if (lbState) {
+      if (active === 'TenureWallet') {
+        lbState.textContent = 'This program is currently INACTIVE org-wide (Tenure-Based Wallet is active).';
+      } else if (active === 'RetentionBonus') {
+        lbState.textContent = 'This program is currently ACTIVE org-wide.';
+      } else {
+        lbState.textContent = 'Both loyalty programs are currently active org-wide.';
+      }
+    }
+    // Tenure Wallet sub-panel status
+    var twState = document.getElementById('tenure-wallet-status-state');
+    if (twState) {
+      if (active === 'RetentionBonus') {
+        twState.textContent = 'This program is currently INACTIVE org-wide (Level-Based Retention Bonus is active).';
+      } else if (active === 'TenureWallet') {
+        twState.textContent = 'This program is currently ACTIVE org-wide.';
+      } else {
+        twState.textContent = 'Both loyalty programs are currently active org-wide.';
+      }
+    }
+  } catch(e) { console.error('_v46UpdateLoyaltyStatusLines:', e); }
+}
+
+// Fetches the CompensationConfig once and caches it on window._v46CompCfgCache
+// so renderSettings / switchCompSettingsTab can synchronously read
+// LOYALTY_ACTIVE_MODEL without a per-render round trip. Safe to call repeatedly.
+async function _v46EnsureCompCfgCache() {
+  try {
+    if (window._v46CompCfgCache && window._v46CompCfgCache.LOYALTY_ACTIVE_MODEL !== undefined) return;
+    var res = await API.call('getAllCompensationConfig', {});
+    if (res && res.ok && res.config) {
+      window._v46CompCfgCache = res.config;
+    } else {
+      window._v46CompCfgCache = { LOYALTY_ACTIVE_MODEL: 'Both' };
+    }
+  } catch(e) {
+    console.error('_v46EnsureCompCfgCache:', e);
+    window._v46CompCfgCache = { LOYALTY_ACTIVE_MODEL: 'Both' };
+  } finally {
+    _v46UpdateLoyaltyStatusLines();
+  }
+}
+
 // ── v44 Workstream E2: duplicate config-key binding scanner ───────────
 // Walks the Settings DOM at app load and warns the owner if any two
 // `cfg-*` form elements bind to the same canonical config key. This was
@@ -16085,6 +16392,119 @@ function _v44ScanDuplicateConfigBindings() {
 function _v44BackfillBadge(note) {
   if (!note || String(note).indexOf('[backfilled-on ') === -1) return '';
   return '<span title="' + escHtml(String(note)) + '" style="display:inline-block;font-size:9px;padding:1px 5px;background:rgba(184,150,12,0.25);color:var(--gold);border-radius:8px;margin-left:4px;font-weight:700">🛈 BF</span>';
+}
+
+// ── v45 Workstream E5: PA Bonus Applicable Levels — live status line ───
+// Reads the 10 cfg-paBonus_lvl_* checkboxes and renders a plain-English
+// summary below the grid. Called on Settings render + on every checkbox
+// change (onchange wired in the inline checkbox markup).
+function _v45UpdatePABonusStatusLine() {
+  const out = document.getElementById('paBonus-status-line');
+  if (!out) return;
+  const levels = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
+  const ticked = levels.filter(lv => document.getElementById('cfg-paBonus_lvl_' + lv)?.checked);
+  if (ticked.length === 0) {
+    out.style.color = 'var(--orange)';
+    out.textContent = 'Bonus currently DISABLED — tick at least one level to enable.';
+  } else {
+    out.style.color = 'var(--gold)';
+    out.textContent = 'Bonus enabled for: ' + ticked.join(', ') + ' (' + ticked.length + ' level' + (ticked.length === 1 ? '' : 's') + ').';
+  }
+}
+
+// ── v45 Workstream A: Loyalty Wallet Adjustments panel (moved from Settings to Payroll) ───────────
+// Role-gated render. Reads State.adminRole + the configured ROLES CSV from
+// CompensationConfig. Owner is always permitted regardless of CSV.
+// Action dropdown collapsed from 4 → 3 options (Full / Hold / Reduce); the
+// backend validActions array still accepts "Partial" for backwards compat
+// with any v44 in-flight rows. All DOM IDs (wa-emp, wa-month, wa-action,
+// wa-pct, wa-pct-wrap, wa-reason, wa-list) are preserved verbatim from v44
+// so the existing handlers (submitWalletAdjustment, loadWalletAdjustments,
+// approveWalletAdjustment, _v44PopulateWalletAdjEmployees, _v44ToggleWAReduction)
+// keep working unchanged.
+async function _v45RenderWalletAdjPanel() {
+  const wrap = document.getElementById('payroll-walletadj-view');
+  if (!wrap) return;
+  // Step 1: pull the configured roles CSV (defaults to 'Owner,Admin' if the
+  // CompensationConfig sheet hasn't been initialised yet).
+  let allowedCsv = 'Owner,Admin';
+  try {
+    const cfgRes = await API.call('getAllCompensationConfig');
+    if (cfgRes && cfgRes.ok && cfgRes.config && cfgRes.config.LOYALTY_WALLET_PERF_ADJ_ROLES) {
+      allowedCsv = String(cfgRes.config.LOYALTY_WALLET_PERF_ADJ_ROLES);
+    }
+  } catch(e) { /* fall through to default */ }
+  const allowed = allowedCsv.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const myRole = String(State.adminRole || '').toLowerCase();
+  // Owner is always permitted, regardless of CSV.
+  const canSubmit = (myRole === 'owner') || allowed.includes(myRole);
+  if (!canSubmit) {
+    wrap.innerHTML =
+      '<div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:12px;padding:24px;max-width:640px;margin:24px auto;text-align:center">'
+      + '<div style="font-size:36px;margin-bottom:8px">🔒</div>'
+      + '<div style="font-size:15px;font-weight:600;color:var(--gold);margin-bottom:8px">Access restricted</div>'
+      + '<div style="font-size:12px;color:var(--gray-light);line-height:1.6">Loyalty Wallet adjustments are restricted. Ask the Owner to grant access in <strong>Settings → Compensation → Loyalty Wallet → Performance Adjustments → Roles Permitted to Act</strong>.</div>'
+      + '</div>';
+    return;
+  }
+  // Step 2: render the form (markup moved from v44 Settings sub-panel + v45 changes).
+  wrap.innerHTML =
+    '<div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:12px;padding:18px;margin-bottom:14px">'
+    + '<h3 style="margin:0 0 6px 0;color:var(--gold);font-size:16px">💎 Loyalty Wallet — Monthly Credit Adjustments</h3>'
+    + '<p style="font-size:12px;color:var(--gray-light);line-height:1.6;margin:0 0 14px 0">Hold or reduce a specific employee\'s <strong>Loyalty Wallet monthly credit</strong> (the tenure-based wallet — not the per-level Loyalty Bonus Vesting). Adjustments are forward-only — past months are never rewritten. Submitted adjustments may require second-eye approval before they take effect.</p>'
+    // — Form grid —
+    + '<div class="settings-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">'
+    +   '<div class="form-group">'
+    +     '<label class="form-label">Employee'
+    +       ' <span class="info-tooltip" title="Select the employee whose Loyalty Wallet credit you want to hold or reduce for the selected month.">ℹ</span>'
+    +     '</label>'
+    +     '<select id="wa-emp" class="form-input"><option value="">— Select —</option></select>'
+    +   '</div>'
+    +   '<div class="form-group">'
+    +     '<label class="form-label">Month (YYYY-MM)'
+    +       ' <span class="info-tooltip" title="Target month for the adjustment. If the credit for this month has already been booked, the adjustment is logged but does not rewrite history (forward-only policy).">ℹ</span>'
+    +     '</label>'
+    +     '<input id="wa-month" class="form-input" type="month">'
+    +   '</div>'
+    +   '<div class="form-group">'
+    +     '<label class="form-label">Action'
+    +       ' <span class="info-tooltip" title="Full = no change. Hold = skip credit for this month entirely. Reduce = credit is paid at a reduced percentage of the normal tenure-based amount.">ℹ</span>'
+    +     '</label>'
+    // v45: collapsed Partial→Reduce in UI. Backend still accepts both
+    // for any pending records from v44.
+    +     '<select id="wa-action" class="form-input" onchange="_v44ToggleWAReduction()">'
+    +       '<option value="Full">Full credit (no change)</option>'
+    +       '<option value="Hold">Hold — skip this month entirely</option>'
+    +       '<option value="Reduce">Reduce monthly credit by %</option>'
+    +     '</select>'
+    +   '</div>'
+    +   '<div class="form-group" id="wa-pct-wrap">'
+    +     '<label class="form-label">Reduction %'
+    +       ' <span class="info-tooltip" title="Capped by the configured Max Reduction % in Loyalty Wallet settings.">ℹ</span>'
+    +     '</label>'
+    +     '<input id="wa-pct" class="form-input" type="number" min="1" max="100">'
+    +   '</div>'
+    + '</div>'
+    + '<div class="form-group" style="margin-top:10px">'
+    +   '<label class="form-label">Reason (mandatory, ≥ 20 chars)'
+    +     ' <span class="info-tooltip" title="Audit trail. Be specific — this is what the second approver and the employee dispute resolver will read.">ℹ</span>'
+    +   '</label>'
+    +   '<textarea id="wa-reason" class="form-input" rows="2" placeholder="e.g. Repeat performance warnings issued in May 2026; HR review minutes attached."></textarea>'
+    + '</div>'
+    + '<button class="btn btn-gold" style="margin-top:10px" onclick="submitWalletAdjustment()">📤 Submit Adjustment</button>'
+    + '<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">'
+    +   '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+    +     '<div style="font-size:13px;font-weight:600">Recent Adjustments</div>'
+    +     '<button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="loadWalletAdjustments()">🔄 Refresh</button>'
+    +   '</div>'
+    +   '<div id="wa-list" style="font-size:12px;color:var(--gray-light)">Click Refresh to load.</div>'
+    + '</div>'
+    + '</div>';
+  // Step 3: post-render hooks (employee picker + reduction-field visibility).
+  if (typeof _v44PopulateWalletAdjEmployees === 'function') _v44PopulateWalletAdjEmployees();
+  if (typeof _v44ToggleWAReduction === 'function') _v44ToggleWAReduction();
+  // Auto-load recent adjustments so the panel isn't empty on first visit.
+  if (typeof loadWalletAdjustments === 'function') loadWalletAdjustments();
 }
 
 // ── v44 Workstream D: Backfill Imports (attendance + leave) ───────────
