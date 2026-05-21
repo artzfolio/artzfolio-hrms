@@ -1138,11 +1138,12 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
       <span class="en">Vishnu Image Folio Pvt Ltd</span>
     </div>
     <button id="admin-link-btn" onclick="openAdminLogin()" title="Admin / Manager Login">⚙ ADMIN</button>
-    <div id="pwa-install-banner" style="display:none;align-items:center;gap:10px;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:12px">
-      <span>📱 Add to Home Screen for app experience</span>
-      <button class="btn btn-gold btn-sm" onclick="window._pwaInstallEvent?.prompt();document.getElementById('pwa-install-banner').style.display='none'">Install</button>
-      <button onclick="document.getElementById('pwa-install-banner').style.display='none'" style="background:none;border:none;color:var(--gray-light);cursor:pointer">✕</button>
-    </div>
+    <!-- v48: legacy pwa-install-banner kept as no-op stub for backward-compat
+         (any code path elsewhere that still references it will simply find a
+         hidden element). The active install UI is rendered by _v48RenderInstallCard()
+         into every element with class "pwa-install-card-mount". -->
+    <div id="pwa-install-banner" style="display:none"></div>
+    <div id="pwa-install-card-v48" class="pwa-install-card-mount" style="display:none;margin-top:8px"></div>
   </div>
 </div><!-- /screen-kiosk -->
 
@@ -1358,8 +1359,14 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
       </div>
       <button class="btn btn-dark btn-sm" onclick="refreshCurrentPage()" title="Refresh this page" style="min-width:36px">↻</button>
       <button class="btn btn-dark btn-sm" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Light/Dark theme">🌙</button>
+      <!-- v48: always-reachable retrigger for the multi-platform install card. -->
+      <button class="btn btn-dark btn-sm" id="settings-pwa-install-link" onclick="_v48RenderInstallCard(true)" title="Install ArtzFolio HRMS as an app on this device" style="min-width:36px">📱</button>
       <div id="admin-user-info" style="font-size:11px;color:var(--gray-light)"></div>
     </div>
+    <!-- v48: install-card mount on the admin home screen. _v48RenderInstallCard()
+         writes into every element with class pwa-install-card-mount, so this
+         duplicates whatever appears in the kiosk's mount near html:1141. -->
+    <div id="pwa-install-card-v48-admin" class="pwa-install-card-mount" style="display:none;margin:0 18px 12px"></div>
     <div id="admin-tab-content"><!-- tab content rendered here --></div>
   </div>
 
@@ -1443,7 +1450,7 @@ const CFG = {
   pinMaxLen: 4,
   kioskTimeout: 60000,
   kioskLogoutSeconds: 60,
-  version: '14.6',
+  version: '14.9',
 };
 // v40 §7a/7b: client-side mirror of GAS getPerDayDivisor(year, month).
 // Reads State.settings.perDayDivisor (loaded from Config sheet on init) and
@@ -1503,7 +1510,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v46-2026-05'; // v37 fix H-02; v43 W1.1: bumped cache namespace so SW evicts stale build; v46 W1-Q4: bumped from stale 'v43' baseline so v46 build is actually loaded by clients
+const CACHE = 'artzfolio-hrms-v49-2026-05'; // v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -1538,14 +1545,192 @@ self.addEventListener('fetch', e => {
     }).catch(()=>{});
   }
   // Add install banner
+  // v48: capture the install event so the multi-platform install card can
+  // trigger Android / Desktop native install. Card-rendering moved to
+  // _v48RenderInstallCard() globally (below) so the kiosk AND the admin
+  // home screen can each mount a copy.
   window._pwaInstallEvent = null;
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     window._pwaInstallEvent = e;
-    const banner = document.getElementById('pwa-install-banner');
-    if (banner) banner.style.display='flex';
+    try { if (typeof _v48RenderInstallCard === 'function') _v48RenderInstallCard(); } catch (_e) {}
   });
 })();
+
+// ═══════════════════════════════════════════
+// v48 PWA — multi-platform install card + UPDATE handler
+// ═══════════════════════════════════════════
+// Visible on BOTH the kiosk screen and the admin home screen. Detects platform
+// from navigator.userAgent and shows platform-specific install instructions:
+//   Android: native beforeinstallprompt button, or static 3-dot fallback.
+//   iOS:     "Tap Share ⬆ → Add to Home Screen" (no programmatic install).
+//   Desktop: native beforeinstallprompt button, or "Use in browser" copy.
+// Persists "Don't show again" choice in localStorage key
+// `PWA_INSTALL_DISMISSED_v48`. Always re-openable via the Settings header
+// link `settings-pwa-install-link`.
+function _v48DetectPlatform() {
+  try {
+    var ua = String(navigator.userAgent || '');
+    if (/iPhone|iPad|iPod/i.test(ua) && !window.MSStream) return 'iOS';
+    if (/Android/i.test(ua)) return 'Android';
+    if (/Windows|Macintosh|Linux/i.test(ua)) return 'Desktop';
+  } catch (_e) { console.error('_v48DetectPlatform:', _e); }
+  return 'Other';
+}
+
+function _v48IsStandalone() {
+  try {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || (typeof navigator.standalone === 'boolean' && navigator.standalone === true);
+  } catch (_e) { return false; }
+}
+
+function _v48InstallCardHTML(platform, forceShow) {
+  var hasEvt = !!window._pwaInstallEvent;
+  var head = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+           + '<strong style="color:var(--gold);font-size:13px">📱 Install ArtzFolio HRMS</strong>'
+           + '<button id="pwa-install-card-dismiss" onclick="_v48DismissInstallCard()" '
+           + 'style="background:none;border:none;color:var(--gray-light);cursor:pointer;font-size:14px" '
+           + 'title="Don’t show this again">✕</button>'
+           + '</div>';
+  var body = '';
+  if (platform === 'iOS') {
+    body = '<div style="font-size:12px;color:var(--gray-light);line-height:1.6">'
+         + '<strong style="color:var(--white)">Install on iPhone / iPad (Safari):</strong><br>'
+         + '<span style="display:inline-block;margin-top:4px">1. Tap the <strong style="color:var(--white)">Share</strong> icon ⬆️ at the bottom of Safari.</span><br>'
+         + '<span>2. Scroll down and tap <strong style="color:var(--white)">Add to Home Screen</strong>.</span><br>'
+         + '<span>3. Tap <strong style="color:var(--white)">Add</strong> in the top-right corner.</span><br>'
+         + '<em style="display:inline-block;margin-top:4px;color:var(--gold-light)">The app will open like a native iOS app next time you tap the icon.</em>'
+         + '</div>';
+  } else if (platform === 'Android') {
+    if (hasEvt) {
+      body = '<div style="font-size:12px;color:var(--gray-light);line-height:1.6">'
+           + 'Tap the button below to install. The app will work offline and open like any other Android app.'
+           + '<div style="margin-top:8px">'
+           + '<button id="pwa-install-card-btn" class="btn btn-gold btn-sm" '
+           + 'onclick="_v48TriggerInstall()">⬇️ Install App</button>'
+           + '</div>'
+           + '</div>';
+    } else {
+      body = '<div style="font-size:12px;color:var(--gray-light);line-height:1.6">'
+           + '<strong style="color:var(--white)">Install on Android (Chrome):</strong><br>'
+           + '<span style="display:inline-block;margin-top:4px">1. Tap the <strong style="color:var(--white)">three-dot menu</strong> at the top-right of Chrome.</span><br>'
+           + '<span>2. Tap <strong style="color:var(--white)">Add to Home Screen</strong> (or "Install app").</span><br>'
+           + '<span>3. Tap <strong style="color:var(--white)">Add</strong>.</span>'
+           + '</div>';
+    }
+  } else if (platform === 'Desktop') {
+    if (hasEvt) {
+      body = '<div style="font-size:12px;color:var(--gray-light);line-height:1.6">'
+           + 'Install ArtzFolio HRMS as a desktop app. Opens in its own window with no browser chrome.'
+           + '<div style="margin-top:8px">'
+           + '<button id="pwa-install-card-btn" class="btn btn-gold btn-sm" '
+           + 'onclick="_v48TriggerInstall()">⬇️ Install on Desktop</button>'
+           + '</div>'
+           + '</div>';
+    } else {
+      body = '<div style="font-size:12px;color:var(--gray-light);line-height:1.6">'
+           + 'You can continue using the app in your browser. To install as a desktop app, look for an "Install" icon in your browser address bar (Chrome / Edge).'
+           + '</div>';
+    }
+  } else {
+    body = '<div style="font-size:12px;color:var(--gray-light);line-height:1.6">'
+         + 'You can continue using the app in this browser. For a true app experience, open the page in Chrome, Safari, or Edge.'
+         + '</div>';
+  }
+  return '<div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 14px">'
+       + head + body
+       + '</div>';
+}
+
+function _v48RenderInstallCard(forceShow) {
+  try {
+    // Skip when already installed as a PWA.
+    if (_v48IsStandalone()) { _v48HideInstallCard(); return; }
+    // Skip when dismissed (unless forceShow=true from the Settings retrigger link).
+    var dismissed = (function(){ try { return localStorage.getItem('PWA_INSTALL_DISMISSED_v48') === '1'; } catch (_e) { return false; } })();
+    if (dismissed && !forceShow) { _v48HideInstallCard(); return; }
+    var platform = _v48DetectPlatform();
+    var html = _v48InstallCardHTML(platform, forceShow);
+    var mounts = document.querySelectorAll('.pwa-install-card-mount');
+    mounts.forEach(function(el) {
+      el.innerHTML = html;
+      el.style.display = '';
+    });
+  } catch (e) { console.error('_v48RenderInstallCard:', e); }
+}
+
+function _v48HideInstallCard() {
+  try {
+    var mounts = document.querySelectorAll('.pwa-install-card-mount');
+    mounts.forEach(function(el) { el.style.display = 'none'; el.innerHTML = ''; });
+  } catch (e) { console.error('_v48HideInstallCard:', e); }
+}
+
+function _v48TriggerInstall() {
+  try {
+    var evt = window._pwaInstallEvent;
+    if (evt && typeof evt.prompt === 'function') {
+      evt.prompt();
+      if (evt.userChoice && typeof evt.userChoice.then === 'function') {
+        evt.userChoice.then(function() { window._pwaInstallEvent = null; _v48HideInstallCard(); });
+      } else {
+        _v48HideInstallCard();
+      }
+    } else {
+      // Fallback: re-render card so the manual instructions appear if the
+      // native event has expired.
+      _v48RenderInstallCard(true);
+    }
+  } catch (e) { console.error('_v48TriggerInstall:', e); }
+}
+
+function _v48DismissInstallCard() {
+  try { localStorage.setItem('PWA_INSTALL_DISMISSED_v48', '1'); } catch (_e) {}
+  _v48HideInstallCard();
+}
+
+// First-render pass — fires as soon as the DOM is parsed enough for the mount
+// points to exist. The PWA IIFE above also calls this on `beforeinstallprompt`.
+(function _v48FirstRender(){
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ _v48RenderInstallCard(); });
+  } else {
+    setTimeout(_v48RenderInstallCard, 0);
+  }
+})();
+
+// v48 PWA — apply update handler wired to the UPDATE button in the version
+// mismatch toast (defined just above where toast is shown, html:~2050).
+// Best-effort: unregister all service workers, clear all caches, reload.
+// Wrapped end-to-end in try/catch and ALWAYS reloads — even if any step throws.
+function _v48ApplyUpdateNow() {
+  try {
+    var btn = document.getElementById('update-now-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
+  } catch (_e) {}
+  var unregister = Promise.resolve();
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      unregister = navigator.serviceWorker.getRegistrations().then(function(regs){
+        return Promise.all(regs.map(function(r){ return r.unregister().catch(function(){}); }));
+      }).catch(function(){});
+    }
+  } catch (_e) { console.error('_v48ApplyUpdateNow unregister:', _e); }
+  var clearCaches = Promise.resolve();
+  try {
+    if (window.caches && caches.keys) {
+      clearCaches = caches.keys().then(function(keys){
+        return Promise.all(keys.map(function(k){ return caches.delete(k).catch(function(){}); }));
+      }).catch(function(){});
+    }
+  } catch (_e) { console.error('_v48ApplyUpdateNow clearCaches:', _e); }
+  Promise.all([unregister, clearCaches]).then(function(){
+    try { location.reload(); } catch (_e) { window.location.href = window.location.href; }
+  }).catch(function(){
+    try { location.reload(); } catch (_e) { window.location.href = window.location.href; }
+  });
+}
 
 // ═══════════════════════════════════════════
 // TRANSLATIONS — All bilingual text
@@ -2047,11 +2232,23 @@ const API = {
           if (!window._versionMismatchPrompted) {
             window._versionMismatchPrompted = true;
             try {
+              // v48: replace "Hard-refresh (Ctrl-Shift-R)" toast with an actionable
+              // UPDATE button. iOS users can't perform Ctrl-Shift-R; mobile users
+              // have no obvious refresh gesture either. The UPDATE button unregisters
+              // the service worker, clears all caches, and reloads. Function
+              // _v48ApplyUpdateNow is defined later in the file (see "v48 PWA").
               if (typeof toast === 'function') {
-                toast('⚠ App update available (server ' + data.serverVersion + ', client ' + window.HRMS_VERSION + '). Hard-refresh (Ctrl-Shift-R) to load the new build.', 'warning', 12000);
+                var _msg = '⚠ App update available (v' + data.serverVersion
+                  + ' on server, v' + window.HRMS_VERSION
+                  + ' on this device). Tap UPDATE to load the new build.'
+                  + ' <button id="update-now-btn" onclick="_v48ApplyUpdateNow()"'
+                  + ' style="margin-left:10px;padding:4px 14px;font-size:12px;font-weight:700;'
+                  + 'background:var(--gold);color:var(--dark1);border:none;border-radius:4px;'
+                  + 'cursor:pointer">UPDATE</button>';
+                toast(_msg, 'warning', 30000);
               }
               console.warn('[HRMS] Version mismatch — server:', data.serverVersion, 'client:', window.HRMS_VERSION);
-            } catch (e) {}
+            } catch (e) { console.error('v48 mismatch toast:', e); }
           }
         }
         return data;
@@ -2071,7 +2268,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v46';
+window.HRMS_VERSION = 'v49';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -5772,6 +5969,41 @@ async function showAddEmpModal() {
       <input id="e-lpgroup" class="form-input" placeholder="e.g. Staff, Executive, Managerial">
     </div>
   </div>
+  <!-- v48: Increment Policy (Optional Override). Defaults to "Use company policy"
+       so existing hire-flow behaviour is preserved when the section is skipped. -->
+  <div style="border-top:1px solid var(--gray);margin-top:12px;padding-top:12px">
+    <div style="font-size:12px;font-weight:700;color:var(--gold-light);margin-bottom:8px">
+      Increment Policy (Optional Override)
+      <span class="info-tooltip" title="By default, this employee follows the company auto-increment policy. Pick a custom mode below only if you want to override.">ℹ</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="radio" name="e-eo-mode" id="eo-mode-policy" value="" checked onchange="_v48ToggleEoFields('e')">
+        <span>Use company policy <em style="color:var(--gray-light)">(default)</em></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="radio" name="e-eo-mode" id="eo-mode-flat" value="CUSTOM_FLAT" onchange="_v48ToggleEoFields('e')">
+        <span>Custom flat ₹ / cycle</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="radio" name="e-eo-mode" id="eo-mode-pct" value="CUSTOM_PCT" onchange="_v48ToggleEoFields('e')">
+        <span>Custom percentage / cycle</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="radio" name="e-eo-mode" id="eo-mode-off" value="OFF" onchange="_v48ToggleEoFields('e')">
+        <span>No auto-increments for this employee</span>
+      </label>
+    </div>
+    <div id="eo-flat-wrap" style="display:none;margin-top:8px">
+      <label class="form-label">Custom flat amount (₹ per cycle)</label>
+      <input class="form-input" id="eo-flat-input" type="number" min="0" step="50" placeholder="e.g. 800" oninput="_v48RefreshEoPreview('e')">
+    </div>
+    <div id="eo-pct-wrap" style="display:none;margin-top:8px">
+      <label class="form-label">Custom percentage (0.07 = 7%)</label>
+      <input class="form-input" id="eo-pct-input" type="number" min="0" max="1" step="0.01" placeholder="e.g. 0.07" oninput="_v48RefreshEoPreview('e')">
+    </div>
+    <div id="eo-preview" style="margin-top:6px;font-size:11px;color:var(--gold-light);min-height:14px">Effective increment at next cycle: ₹ — (policy)</div>
+  </div>
   </div>`;
   // Init static 12h pickers after DOM renders
   setTimeout(()=>{
@@ -5779,6 +6011,7 @@ async function showAddEmpModal() {
     const seW=document.getElementById('e-se-wrap');
     if(ssW) ssW.innerHTML=build12hPicker('e-ss','09:00');
     if(seW) seW.innerHTML=build12hPicker('e-se','19:00');
+    if (typeof _v48RefreshEoPreview === 'function') _v48RefreshEoPreview('e');
   },50);
     showModal('➕ Add New Employee / नया कर्मचारी', html, [
     {label:'Add Employee / जोड़ें', cls:'btn-gold', cb:async()=>{
@@ -5830,6 +6063,15 @@ async function showAddEmpModal() {
           return refCode ? {referredByName:refName, referredByCode:refCode} : {};
         })(),
         notes:document.getElementById('e-notes').value,
+        // v48 — per-employee increment override. Blank mode = "use company policy",
+        // matches the backend default at resolveIncrementForEmployee branch 5/6.
+        ...(function(){
+          var mode = (document.querySelector('input[name="e-eo-mode"]:checked')||{}).value || '';
+          var out = { incrementMode: mode, empIncrementFlat: '', empIncrementPct: '' };
+          if (mode === 'CUSTOM_FLAT') out.empIncrementFlat = parseFloat(document.getElementById('eo-flat-input')?.value) || 0;
+          if (mode === 'CUSTOM_PCT')  out.empIncrementPct  = parseFloat(document.getElementById('eo-pct-input')?.value)  || 0;
+          return out;
+        })(),
       };
       if(!payload.name||!payload.salary){toast('Name and Salary are required','warning');return;}
       const res=await API.call('addEmployee',payload);
@@ -5997,6 +6239,42 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">Referred By Code <span class="info-tooltip" title="Employee code of the referrer. This can only be set once and cannot be changed after saving. Choose carefully.">ℹ</span></label><input id="ee-refcode" class="form-input" value="${escHtml(e.referredByCode||'')}" placeholder="e.g. AZ_EMP_0001" ${e.referredByCode?'readonly style="opacity:0.6;cursor:not-allowed"':''}></div>
   </div>
   <div class="form-group"><label class="form-label">Leave Policy Group <span class="info-tooltip" title="Assign this employee to a leave policy group (e.g. Staff, Executive). The group's annual leave quotas will be used for this employee.">ℹ</span></label><input id="ee-lpgroup" class="form-input" value="${escHtml(e.leavePolicyGroup||'')}" placeholder="e.g. Staff, Executive, Managerial"></div>
+  <!-- v48: Increment Policy (Optional Override). Prefilled from existing employee row.
+       Blank mode = "use company policy". Saving writes blank back when "Use company policy"
+       is selected — do NOT write the strings 'POLICY' or 'DEFAULT'. -->
+  <div style="border-top:1px solid var(--gray);margin-top:12px;padding-top:12px">
+    <div style="font-size:12px;font-weight:700;color:var(--gold-light);margin-bottom:8px">
+      Increment Policy (Optional Override)
+      <span class="info-tooltip" title="By default, this employee follows the company auto-increment policy. Pick a custom mode below only if you want to override.">ℹ</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="radio" name="ee-eo-mode" id="ee-eo-mode-policy" value="" ${!e.incrementMode?'checked':''} onchange="_v48ToggleEoFields('ee')">
+        <span>Use company policy <em style="color:var(--gray-light)">(default)</em></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="radio" name="ee-eo-mode" id="ee-eo-mode-flat" value="CUSTOM_FLAT" ${e.incrementMode==='CUSTOM_FLAT'?'checked':''} onchange="_v48ToggleEoFields('ee')">
+        <span>Custom flat ₹ / cycle</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="radio" name="ee-eo-mode" id="ee-eo-mode-pct" value="CUSTOM_PCT" ${e.incrementMode==='CUSTOM_PCT'?'checked':''} onchange="_v48ToggleEoFields('ee')">
+        <span>Custom percentage / cycle</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="radio" name="ee-eo-mode" id="ee-eo-mode-off" value="OFF" ${e.incrementMode==='OFF'?'checked':''} onchange="_v48ToggleEoFields('ee')">
+        <span>No auto-increments for this employee</span>
+      </label>
+    </div>
+    <div id="ee-eo-flat-wrap" style="display:${e.incrementMode==='CUSTOM_FLAT'?'block':'none'};margin-top:8px">
+      <label class="form-label">Custom flat amount (₹ per cycle)</label>
+      <input class="form-input" id="ee-eo-flat-input" type="number" min="0" step="50" placeholder="e.g. 800" value="${escHtml(String(e.empIncrementFlat||''))}" oninput="_v48RefreshEoPreview('ee')">
+    </div>
+    <div id="ee-eo-pct-wrap" style="display:${e.incrementMode==='CUSTOM_PCT'?'block':'none'};margin-top:8px">
+      <label class="form-label">Custom percentage (0.07 = 7%)</label>
+      <input class="form-input" id="ee-eo-pct-input" type="number" min="0" max="1" step="0.01" placeholder="e.g. 0.07" value="${escHtml(String(e.empIncrementPct||''))}" oninput="_v48RefreshEoPreview('ee')">
+    </div>
+    <div id="ee-eo-preview" style="margin-top:6px;font-size:11px;color:var(--gold-light);min-height:14px">Effective increment at next cycle: ₹ — (policy)</div>
+  </div>
   <!-- v31: Admin actions -->
   <div style="border-top:1px solid var(--gray);margin-top:14px;padding-top:14px">
     <div style="font-size:12px;color:var(--gray-light);margin-bottom:10px;font-weight:600">Admin Actions</div>
@@ -6056,6 +6334,16 @@ async function showEditEmpModal(empId) {
         salaryOverrideEnabled: document.getElementById('ee-salary-override-enabled') && document.getElementById('ee-salary-override-enabled').checked ? 'true' : 'false',
         salaryOverrideAmount:  parseFloat(document.getElementById('ee-salary-override-amount') ? document.getElementById('ee-salary-override-amount').value : '') || 0,
         salaryOverrideReason:  document.getElementById('ee-salary-override-reason') ? document.getElementById('ee-salary-override-reason').value : '',
+        // v48 — per-employee increment override. Writes blank string back when
+        // "Use company policy" is selected (NOT 'POLICY' / 'DEFAULT' strings).
+        ...(function(){
+          var modeEl = document.querySelector('input[name="ee-eo-mode"]:checked');
+          var mode = modeEl ? modeEl.value : '';
+          var out = { incrementMode: mode, empIncrementFlat: '', empIncrementPct: '' };
+          if (mode === 'CUSTOM_FLAT') out.empIncrementFlat = parseFloat(document.getElementById('ee-eo-flat-input')?.value) || 0;
+          if (mode === 'CUSTOM_PCT')  out.empIncrementPct  = parseFloat(document.getElementById('ee-eo-pct-input')?.value)  || 0;
+          return out;
+        })(),
       };
       const newPin=document.getElementById('ee-pin').value;
       if(newPin){payload.pin=newPin;}
@@ -6065,6 +6353,10 @@ async function showEditEmpModal(empId) {
     }},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
   ]);
+  // v48: fire the override-preview once after the Edit modal DOM is in place so
+  // the read-only "Effective increment at next cycle: ₹X" line reflects the
+  // pre-filled radio + values immediately (no need to click any input first).
+  setTimeout(function(){ if (typeof _v48RefreshEoPreview === 'function') _v48RefreshEoPreview('ee'); }, 50);
 }
 
 async function archiveEmp(empId) {
@@ -11304,6 +11596,20 @@ async function renderSettings() {
       </div>
       <!-- Increment sub-panel -->
       <div class="comp-sub-panel" id="comp-sp-increment">
+        <!-- v48: Master ON/OFF toggle owns the whole panel. When OFF, no
+             employee receives any automatic increment regardless of per-level
+             settings. Manual promotion-triggered cycle resets are unaffected. -->
+        <div class="settings-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Auto-Increment Engine
+              <span class="info-tooltip" title="Master switch. When OFF, no employee receives any automatic increment, regardless of per-level settings. Manual increments via promotion are unaffected.">ℹ</span>
+            </label>
+            <select class="form-input" id="cfg-INCREMENT_ENABLED" onchange="_v48UpdateIncrementPanelDisabledStyle()">
+              <option value="true">ON — increments accrue automatically</option>
+              <option value="false">OFF — no auto-increments anywhere</option>
+            </select>
+          </div>
+        </div>
         <div class="settings-grid">
           <div class="form-group">
             <label class="form-label">Increment Period (months) <span class="info-tooltip" title="How often an eligible employee receives an increment at the same level. Default: 6 months. Example: a worker joining 1-Jan becomes eligible for their first increment on 1-Jul.">ℹ</span></label>
@@ -11326,46 +11632,72 @@ async function renderSettings() {
             <input class="form-input" type="number" id="cfg-MAX_INCREMENT_CYCLES" min="0" max="8" placeholder="4">
           </div>
         </div>
+        <!-- v48: Increment multipliers for 11hr / 12hr columns. DELIBERATELY
+             SEPARATE from SHIFT_RATIO_11HR / SHIFT_RATIO_12HR (which scale BASE
+             salary, edited in the Salary Ladder section). Editing either input
+             below triggers an autoRecomputeIncrementShifts pass for every level. -->
+        <div class="settings-grid" id="comp-increment-mult-grid" style="margin-top:14px;display:none">
+          <div class="form-group">
+            <label class="form-label">Increment Multiplier — 11hr
+              <span class="info-tooltip" title="Multiplier applied to the 9hr Flat increment amount to derive the 11hr increment column. Default 1.10. This scales only the per-cycle INCREMENT amount, not the base salary. Base-salary scaling for 11hr shifts is governed by SHIFT_RATIO_11HR and is editable separately in the Salary Ladder section.">ℹ</span>
+            </label>
+            <input class="form-input" type="number" id="cfg-INCREMENT_MULT_11HR" min="0.01" step="0.01" placeholder="1.10" oninput="_v48RecomputeAllIncrementShifts()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Increment Multiplier — 12hr
+              <span class="info-tooltip" title="Multiplier applied to the 9hr Flat increment amount to derive the 12hr increment column. Default 1.20. This scales only the per-cycle INCREMENT amount, not the base salary. Base-salary scaling for 12hr shifts is governed by SHIFT_RATIO_12HR and is editable separately in the Salary Ladder section.">ℹ</span>
+            </label>
+            <input class="form-input" type="number" id="cfg-INCREMENT_MULT_12HR" min="0.01" step="0.01" placeholder="1.20" oninput="_v48RecomputeAllIncrementShifts()">
+          </div>
+        </div>
         <!-- v43 W4.2: per-level flat increment table. Visible only when INCREMENT_TYPE=Flat (loadCompSettings toggles visibility).
-             Keys INCREMENT_9HR_L10..L6 already exist in COMP_CONFIG_DEFAULTS (gas:8324-8328); this UI surfaces them. -->
+             Keys INCREMENT_9HR_L10..L6 already exist in COMP_CONFIG_DEFAULTS (gas:8324-8328); this UI surfaces them.
+             v48: added "Apply at this level" leading column wired to INCREMENT_APPLIES_L*.
+             v48: 11hr/12hr column-header text is now derived from INCREMENT_MULT_*. -->
         <div id="comp-increment-per-level" style="margin-top:14px;display:none">
           <div style="font-size:12px;color:var(--gold);margin-bottom:6px;font-weight:600">
             Per-Level Flat Increment (9hr base)
-            <span class="info-tooltip" title="Per-level flat increment values (Type = Flat only). Each L-level can have a different ₹ raise per 6-month cycle. Backend keys: INCREMENT_9HR_L10..L6. 11hr/12hr columns auto-scale (×1.10 / ×1.20).">ℹ</span>
+            <span class="info-tooltip" title="Per-level flat increment values (Type = Flat only). Each L-level can have a different ₹ raise per 6-month cycle. Backend keys: INCREMENT_9HR_L10..L6. 11hr/12hr columns auto-scale via INCREMENT_MULT_11HR / INCREMENT_MULT_12HR.">ℹ</span>
           </div>
           <table class="comp-ladder-table">
             <thead><tr>
+              <th>Apply <span class="info-tooltip" title="When unchecked, this level's auto-increment is skipped even when the master switch is ON and the cadence has elapsed. Backend key: INCREMENT_APPLIES_L{level}.">ℹ</span></th>
               <th>Level</th>
               <th>Flat ₹ (9hr)</th>
-              <th>11hr (auto ×1.10)</th>
-              <th>12hr (auto ×1.20)</th>
+              <th>11hr (auto × <span id="inc-mult-11hr-disp">1.10</span>)</th>
+              <th>12hr (auto × <span id="inc-mult-12hr-disp">1.20</span>)</th>
             </tr></thead>
             <tbody>
-              <tr>
+              <tr id="inc-row-L10">
+                <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L10" onchange="_v48UpdatePerLevelDisabledStyle('L10')"></td>
                 <td style="font-weight:700;color:var(--gold)">L10</td>
                 <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L10" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L10')"></td>
                 <td style="color:var(--gray-light)"><span id="inc-L10-11-disp">—</span></td>
                 <td style="color:var(--gray-light)"><span id="inc-L10-12-disp">—</span></td>
               </tr>
-              <tr>
+              <tr id="inc-row-L9">
+                <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L9" onchange="_v48UpdatePerLevelDisabledStyle('L9')"></td>
                 <td style="font-weight:700;color:var(--gold)">L9</td>
                 <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L9" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L9')"></td>
                 <td style="color:var(--gray-light)"><span id="inc-L9-11-disp">—</span></td>
                 <td style="color:var(--gray-light)"><span id="inc-L9-12-disp">—</span></td>
               </tr>
-              <tr>
+              <tr id="inc-row-L8">
+                <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L8" onchange="_v48UpdatePerLevelDisabledStyle('L8')"></td>
                 <td style="font-weight:700;color:var(--gold)">L8</td>
                 <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L8" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L8')"></td>
                 <td style="color:var(--gray-light)"><span id="inc-L8-11-disp">—</span></td>
                 <td style="color:var(--gray-light)"><span id="inc-L8-12-disp">—</span></td>
               </tr>
-              <tr>
+              <tr id="inc-row-L7">
+                <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L7" onchange="_v48UpdatePerLevelDisabledStyle('L7')"></td>
                 <td style="font-weight:700;color:var(--gold)">L7</td>
                 <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L7" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L7')"></td>
                 <td style="color:var(--gray-light)"><span id="inc-L7-11-disp">—</span></td>
                 <td style="color:var(--gray-light)"><span id="inc-L7-12-disp">—</span></td>
               </tr>
-              <tr>
+              <tr id="inc-row-L6">
+                <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L6" onchange="_v48UpdatePerLevelDisabledStyle('L6')"></td>
                 <td style="font-weight:700;color:var(--gold)">L6</td>
                 <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L6" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L6')"></td>
                 <td style="color:var(--gray-light)"><span id="inc-L6-11-disp">—</span></td>
@@ -11374,7 +11706,7 @@ async function renderSettings() {
             </tbody>
           </table>
         </div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['INCREMENT_PERIOD_MONTHS','INCREMENT_TYPE','INCREMENT_PERCENTAGE','MAX_INCREMENT_CYCLES','INCREMENT_9HR_L10','INCREMENT_9HR_L9','INCREMENT_9HR_L8','INCREMENT_9HR_L7','INCREMENT_9HR_L6'])">💾 Save Increment Settings</button>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['INCREMENT_ENABLED','INCREMENT_PERIOD_MONTHS','INCREMENT_TYPE','INCREMENT_PERCENTAGE','MAX_INCREMENT_CYCLES','INCREMENT_MULT_11HR','INCREMENT_MULT_12HR','INCREMENT_9HR_L10','INCREMENT_9HR_L9','INCREMENT_9HR_L8','INCREMENT_9HR_L7','INCREMENT_9HR_L6','INCREMENT_APPLIES_L10','INCREMENT_APPLIES_L9','INCREMENT_APPLIES_L8','INCREMENT_APPLIES_L7','INCREMENT_APPLIES_L6'])">💾 Save Increment Settings</button>
       </div>
       <!-- Promotion Windows sub-panel -->
       <div class="comp-sub-panel" id="comp-sp-promo">
@@ -13176,8 +13508,11 @@ function downloadXLSX(filename, sheetName, headers, rows=[]) {
 // `key` is a normalised header substring (lowercased, alnum-only) to match
 // against; `options` is the list to drop into the Excel data-validation list.
 // Existing callers don't pass this — backward compatible.
-function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, validValues, extraDropdowns) {
+function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, validValues, extraDropdowns, templateExtras) {
   const wb = XLSX.utils.book_new();
+  // v49 audit-fix M1: templateExtras is OPTIONAL (Employee template only). When null
+  // (all other templates) every branch below is skipped → byte-for-byte unchanged output.
+  const _extras = templateExtras || {};
 
   // ── Sheet 1: Template with sample rows ─────────────────────
   const wsData = [headers, ...sampleRows];
@@ -13303,6 +13638,45 @@ function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, vali
     });
   });
 
+  // ── v49 audit-fix M1: custom HH:MM data validations for time columns ────────
+  // Mirrors the shipped v3 .xlsx defense on shiftStart / shiftEnd. Brings the
+  // Employee template's DV count to 16 (14 list + 2 custom). Skipped for all other
+  // templates (timeColumns is empty/undefined there).
+  if (Array.isArray(_extras.timeColumns) && _extras.timeColumns.length) {
+    _extras.timeColumns.forEach(tc => {
+      const tci = headers.indexOf(tc);
+      if (tci < 0) return;
+      const L = XLSX.utils.encode_col(tci);
+      ws['!dataValidations'].push({
+        type: 'custom',
+        allowBlank: true,
+        showErrorMessage: true,
+        errorStyle: 'warning',
+        errorTitle: 'Invalid time',
+        error: 'Enter time as HH:MM in 24-hour format, e.g. 09:00 or 19:30.',
+        showInputMessage: true,
+        promptTitle: 'Time (HH:MM)',
+        prompt: '24-hour clock, e.g. 09:00, 14:30, 22:00',
+        sqref: `${L}2:${L}${DATA_ROWS + 1}`,
+        formula1: `OR(${L}2="",AND(LEN(${L}2)=5,ISNUMBER(VALUE(LEFT(${L}2,2))),MID(${L}2,3,1)=":",ISNUMBER(VALUE(RIGHT(${L}2,2))),VALUE(LEFT(${L}2,2))<24,VALUE(RIGHT(${L}2,2))<60))`,
+      });
+    });
+  }
+
+  // ── v49 audit-fix M1: force @-format (text) on every Template cell ───────────
+  // Matches the v3 .xlsx defense so HH:MM / PIN / Aadhaar / dates never auto-coerce
+  // to numbers or serial dates on open/edit. Opt-in (textFormat) — other templates
+  // keep their default General formatting.
+  if (_extras.textFormat) {
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = XLSX.utils.encode_cell({r, c});
+        if (!ws[cell]) ws[cell] = {v:''};
+        ws[cell].z = '@';
+      }
+    }
+  }
+
   // Auto-width columns
   ws['!cols'] = headers.map((h,i) => ({
     wch: Math.max(String(h||'').length + 4, colDropMap[i] ? 22 : 14)
@@ -13360,6 +13734,25 @@ function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, vali
     }
     vvws['!cols'] = [{wch:32},{wch:68},{wch:40}];
     XLSX.utils.book_append_sheet(wb, vvws, 'Valid_Values_Reference');
+  }
+
+  // ── v49 audit-fix M1: hidden Schema sheet (template-header → backend-key map) ─
+  // Reproduces the shipped v3 .xlsx Schema sheet so the in-app download is
+  // structurally identical. Opt-in (schemaRows) — other templates omit it.
+  if (Array.isArray(_extras.schemaRows) && _extras.schemaRows.length) {
+    const scws = XLSX.utils.aoa_to_sheet(_extras.schemaRows);
+    // Header row styling (row 0 = the column titles).
+    ['A1','B1','C1','D1'].forEach(ref => {
+      if (!scws[ref]) scws[ref] = {v:''};
+      scws[ref].s = {font:{bold:true,color:{rgb:'FFFFFF'}}, fill:goldFill, alignment:centerAlign};
+    });
+    scws['!cols'] = [{wch:42},{wch:34},{wch:10},{wch:46}];
+    XLSX.utils.book_append_sheet(wb, scws, 'Schema');
+    if (!wb.Workbook) wb.Workbook = {};
+    if (!wb.Workbook.Sheets) wb.Workbook.Sheets = [];
+    const _scIdx = wb.SheetNames.indexOf('Schema');
+    if (!wb.Workbook.Sheets[_scIdx]) wb.Workbook.Sheets[_scIdx] = {};
+    wb.Workbook.Sheets[_scIdx].Hidden = 1; // hidden, like v3
   }
 
   // ── Write file ──────────────────────────────────────────────────────────
@@ -13422,19 +13815,23 @@ function downloadBulkTemplate() {
   if (!t) return;
   if (t.sampleRows && t.sampleRows.length) {
     // v42 Item F: pass through any caller-supplied dynamic dropdowns.
-    downloadBulkTemplateRich(t.filename, 'Template', t.headers, t.sampleRows, t.validValues||[], t.extraDropdowns||[]);
+    // v49 audit-fix M1: pass through optional templateExtras (Employee template only).
+    downloadBulkTemplateRich(t.filename, 'Template', t.headers, t.sampleRows, t.validValues||[], t.extraDropdowns||[], t.templateExtras||null);
   } else {
     downloadXLSX(t.filename, 'Template', t.headers);
   }
 }
 
 // Show a modal to bulk-import from Excel
-async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml, sampleRows, validValues, extraDropdowns) {
+async function openBulkImportModal(title, templateHeaders, templateFilename, rowProcessor, confirmAction, extraHtml, sampleRows, validValues, extraDropdowns, templateExtras) {
   let parsedRows = [];
   // Store template data in window global to avoid JSON.stringify issues with HTML attributes
   // v42 Item F: extraDropdowns is an array of {key, options} rules merged into DROPDOWN_MAP
   // at template-download time (used by bulkImportEmployees for live Orgs values).
-  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename, sampleRows: sampleRows||[], validValues: validValues||[], extraDropdowns: extraDropdowns||[] };
+  // v49 audit-fix M1: templateExtras is an OPTIONAL object {textFormat, timeColumns, schemaRows}
+  // used only by the Employee template to emit a v3-identical .xlsx (text cells, HH:MM DV,
+  // hidden Schema sheet). Other templates pass nothing → byte-for-byte unchanged output.
+  window._currentBulkTemplate = { headers: templateHeaders, filename: templateFilename, sampleRows: sampleRows||[], validValues: validValues||[], extraDropdowns: extraDropdowns||[], templateExtras: templateExtras||null };
   const html = `
   <div style="font-size:13px">
     <p style="color:var(--gray-light);margin-bottom:8px">
@@ -13601,12 +13998,20 @@ async function refreshCurrentTab() {
 
 // ─── Bulk Import launchers ───────────────────────────────────────────────────
 function _excelTimeToHHMM(v) {
-  // FIX-02: handles string HH:mm, AM/PM strings, decimal fractions, AND Date objects
+  // FIX-02: handles string HH:mm, AM/PM strings, decimal fractions, AND Date objects.
   if (v === null || v === undefined || v === '') return '';
-  // Date object branch: XLSX.js cellDates:true converts time cells to Date
-  // Time-only values are relative to 1899-12-30 (Excel epoch), use UTC hours/minutes
+  // Date object branch: XLSX.js cellDates:true converts time cells to Date.
+  // v47 bulk-import shift-time fix: SheetJS 0.18.5 builds the Date via the LOCAL
+  // constructor (new Date(y,m,d,H,M,S)), so the LOCAL getters return the cell's
+  // wall-clock H/M directly. Earlier versions of this code used getUTCHours/
+  // getUTCMinutes which (for time-only cells at Excel epoch 1899-12-30) applied
+  // V8's historical IMT offset (-5h21m for Asia/Kolkata in 1899) and corrupted
+  // every shift time by exactly that amount — e.g. 19:00 → 13:38, 08:00 → 02:38.
+  // Live shift handlers (12-hour picker, manual edit modal) were unaffected;
+  // only the bulk-import path went through this function. See decision log
+  // 2026.05.20_HRMS_BulkImportShiftTimeBug_v1.md for the full trace.
   if (v instanceof Date) {
-    const h = v.getUTCHours(), m = v.getUTCMinutes();
+    const h = v.getHours(), m = v.getMinutes();
     if (h === 0 && m === 0) return ''; // midnight = empty/unset, trigger default
     return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
   }
@@ -13688,14 +14093,18 @@ async function bulkImportEmployees() {
     'managerId (Name (ID) or raw ID)',
     'referredBy (Name (ID) of existing employee)',
     'leavePolicyGroup',
+    // ── v49 audit-fix M1/H3: 3 increment-override columns (match the shipped v3 .xlsx) ──
+    'incrementMode',
+    'empIncrementFlat',
+    'empIncrementPct',
   ];
   const sampleRows = [
-    // Row 1: factory wage worker example (24 v41 values + 13 v42 values = 37 cells)
+    // Row 1: factory wage worker example. v49: +3 override cells (blank = use company policy).
     ['AZ_EMP_0056','Ravi Kumar','L4',18000,1234,'09:00','19:00',10,'Sunday','','9876543210','ravi.kumar@example.com','Production','Workforce','2025-01-15','1995-06-20','Male','123456789012',90,0,500,9,'Wage Shift Office','Example row — delete before importing',
-     'Night Shift A', 0, 6, '', '', '', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Printing', projectOpts[0]||'General', '', '', '', ''],
-    // Row 2: office staff example
+     'Night Shift A', 0, 6, '', '', '', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Printing', projectOpts[0]||'General', '', '', '', '', '', '', ''],
+    // Row 2: office staff example. v49: shows a CUSTOM_FLAT override (₹1200/cycle) as a worked example.
     ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Supervisor','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office manager — example row',
-     '', 250, 5, 'UAN12345678', 'ESI98765432', 'Sector 18, Noida, UP 201301', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Admin', projectOpts[0]||'General', empSample, empSample, '', 'Staff'],
+     '', 250, 5, 'UAN12345678', 'ESI98765432', 'Sector 18, Noida, UP 201301', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Admin', projectOpts[0]||'General', empSample, empSample, '', 'Staff', 'CUSTOM_FLAT', 1200, ''],
   ];
   const validValues = [
     ['level *','L1, L2, L3, L4, L5, L6, L7, L8, L9, L10','L1=lowest (helper), L10=senior management'],
@@ -13724,6 +14133,10 @@ async function bulkImportEmployees() {
     ['managerId','Name (ID) or raw ID','Same format as supervisorId. Existing employee — leave blank if unknown.'],
     ['referredBy','Name (ID) of existing employee','Triggers referral-bonus payout to that employee. Set once at hire — cannot be edited later.'],
     ['leavePolicyGroup','Free text — must match a configured group','Examples: "Staff", "Executive", "Managerial". Drives annual leave quotas. Leave blank for default.'],
+    // ── v49 audit-fix M1: increment-override reference (mirrors the v3 .xlsx Valid_Values_Reference) ──
+    ['incrementMode','Blank or one of: OFF, CUSTOM_FLAT, CUSTOM_PCT','Per-employee override for the auto-increment engine. Blank = follow company policy (DEFAULT). OFF = no auto-increments. CUSTOM_FLAT = a fixed ₹ amount per cycle (fill empIncrementFlat). CUSTOM_PCT = a % of current salary per cycle (fill empIncrementPct).'],
+    ['empIncrementFlat','Number (₹). Only read when incrementMode = CUSTOM_FLAT','Custom flat increment in rupees per cycle. Ignored unless incrementMode = CUSTOM_FLAT.'],
+    ['empIncrementPct','Decimal 0..1 — e.g. 0.07 = 7%. Only read when incrementMode = CUSTOM_PCT','Custom percentage increment per cycle as a fraction (0.05 = 5%). Applied to current salary. Ignored unless incrementMode = CUSTOM_PCT.'],
   ];
   // v43 W3.6: refactored Employees Column Guide to use the same buildColumnGuide(spec)
   // pattern as Transactions and Petty Cash. Single-source-of-truth EMP_COL_GUIDE array
@@ -13769,6 +14182,10 @@ async function bulkImportEmployees() {
     { label:'managerId',                        required:false, desc:'"Name (ID)" or raw ID of existing employee' },
     { label:'referredBy',                       required:false, desc:'Existing employee who referred this hire (triggers referral bonus)' },
     { label:'leavePolicyGroup',                 required:false, desc:'Staff / Executive / Managerial / etc.' },
+    // ── v49 audit-fix M1: increment-override columns ──
+    { label:'incrementMode',                    required:false, desc:'Blank = company policy. OFF / CUSTOM_FLAT / CUSTOM_PCT for a per-employee override.' },
+    { label:'empIncrementFlat',                 required:false, desc:'₹ per cycle — only when incrementMode = CUSTOM_FLAT' },
+    { label:'empIncrementPct',                  required:false, desc:'Decimal 0..1 (0.07 = 7%) — only when incrementMode = CUSTOM_PCT' },
   ];
   // Soft drift-check: warn in console if the guide doesn't list as many columns as the
   // template has. Doesn't break the import — just surfaces a future code-review nudge.
@@ -13784,7 +14201,64 @@ async function bulkImportEmployees() {
     { key:'zone',       options: zoneOpts },
     { key:'department', options: departmentOpts },
     { key:'project',    options: projectOpts },
+    // ── v49 audit-fix M1: finite-list dropdowns to match the shipped v3 .xlsx (16 DVs total) ──
+    { key:'incrementMode',   options: ['','OFF','CUSTOM_FLAT','CUSTOM_PCT'] },
+    { key:'workDaysPerWeek', options: ['5','6','7'] },
+    { key:'leavePolicyGroup',options: ['Staff','Workforce','Management'] },
   ];
+  // v49 audit-fix M1 + M3: backend-key + type metadata for the hidden Schema sheet,
+  // zipped against `headers` so column 1 always matches the template header text exactly.
+  // Row 37 (referredBy) maps to the TWO real backend keys (M3 fix) — the importer splits
+  // the single "Name (ID)" cell into referredByName + referredByCode.
+  const SCHEMA_META = [
+    ['id (or auto-generated)','no','text'],
+    ['name','YES','text'],
+    ['level','YES','enum L1..L10'],
+    ['salary','YES','integer INR'],
+    ['pin','YES','text (4-digit)'],
+    ['shiftStart','no','text HH:MM 24-hour'],
+    ['shiftEnd','no','text HH:MM 24-hour'],
+    ['dailyHours','no','integer'],
+    ['weeklyOff1','no','enum day name'],
+    ['weeklyOff2','no','enum day name or blank'],
+    ['mobile','no','text (10-digit)'],
+    ['email','no','text email'],
+    ['dept','no','text (legacy)'],
+    ['category','no','enum'],
+    ['doj','no','text YYYY-MM-DD'],
+    ['dob','no','text YYYY-MM-DD'],
+    ['gender','no','enum'],
+    ['aadhaar','no','text (12-digit)'],
+    ['noticeperiodDays','no','integer days'],
+    ['nightShiftAllowance','no','integer INR'],
+    ['travelAllowance','no','integer INR'],
+    ['otBaseHours','no','integer hours'],
+    ['employmentType','no','enum'],
+    ['notes','no','text'],
+    ['group','no','text'],
+    ['billableRate','no','number INR/hr'],
+    ['workDaysPerWeek','no','enum 5|6|7'],
+    ['uan','no','text'],
+    ['esiNumber','no','text'],
+    ['address','no','text'],
+    ['factory','no','text (matches Orgs)'],
+    ['zone','no','text (matches Orgs)'],
+    ['department','no','text (matches Orgs)'],
+    ['project','no','text (matches Orgs)'],
+    ['supervisorId','no','text "Name (ID)" or ID'],
+    ['managerId','no','text "Name (ID)" or ID'],
+    ['referredByName + referredByCode','no','text "Name (ID)" → split into 2 keys'], // v49 M3 fix (was 'referredBy')
+    ['leavePolicyGroup','no','enum or blank'],
+    ['incrementMode','no','enum: blank | OFF | CUSTOM_FLAT | CUSTOM_PCT'],
+    ['empIncrementFlat','no','number INR (used only when incrementMode = CUSTOM_FLAT)'],
+    ['empIncrementPct','no','decimal 0..1 (used only when incrementMode = CUSTOM_PCT)'],
+  ];
+  const templateExtras = {
+    textFormat: true, // emit @-format (text) cells so HH:MM / PIN / Aadhaar etc. never auto-coerce
+    timeColumns: ['shiftStart (e.g. 09:00)','shiftEnd (e.g. 19:00)'], // custom HH:MM data validation
+    schemaRows: [['column header (template)','backend key (Employees sheet)','required','data type'],
+                 ...headers.map((h, i) => [h, ...(SCHEMA_META[i] || ['','no','text'])])],
+  };
   // v42 Item F: extractEmpId — parses "Name (ID)" → returns the ID portion.
   // Defined inline so the row-mapper closure is self-contained; mirror of the
   // helper used by the manual Add Employee modal at html:5684.
@@ -13835,6 +14309,17 @@ async function bulkImportEmployees() {
     const _refMatch = refRaw.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
     const referredByName = _refMatch ? _refMatch[1].trim() : '';
     const referredByCode = _refMatch ? _refMatch[2].trim() : (refRaw || '');
+    // v49 audit-fix H3: per-employee increment override columns (AM/AN/AO in the v3+
+    // template). Validate the enum here so a bad value rejects the row with a clear
+    // message (same gate the Edit-modal radios enforce structurally), then mirror the
+    // modal's payload shape so bulk overrides flow through the SAME persistence path
+    // (addEmployee → handleAddEmployee). Blank mode = "use company policy".
+    const _incMode = String(row['incrementMode']||'').trim();
+    const _INC_MODES = ['','OFF','CUSTOM_FLAT','CUSTOM_PCT'];
+    if (_INC_MODES.indexOf(_incMode) < 0) throw new Error(`Invalid incrementMode "${_incMode}" — use blank, OFF, CUSTOM_FLAT, or CUSTOM_PCT`);
+    let _incFlat = '', _incPct = '';
+    if (_incMode === 'CUSTOM_FLAT') _incFlat = parseFloat(row['empIncrementFlat'])||0;
+    if (_incMode === 'CUSTOM_PCT')  _incPct  = parseFloat(row['empIncrementPct'])||0;
     return {
       customId: row['employeeCode (optional, e.g. AZ_EMP_0056)']||'',
       name: row['name *'], level: lvl, salary: row['salary *'], pin: String(row['pin *']),
@@ -13867,8 +14352,12 @@ async function bulkImportEmployees() {
       managerId:    extractEmpId(row['managerId (Name (ID) or raw ID)']||''),
       ...(referredByCode ? {referredByName, referredByCode} : {}),
       leavePolicyGroup: row['leavePolicyGroup']||'',
+      // v49 audit-fix H3 — per-employee increment override (blank mode = company policy).
+      incrementMode: _incMode,
+      empIncrementFlat: _incFlat,
+      empIncrementPct: _incPct,
     };
-  }, 'addEmployee', fieldGuide, sampleRows, validValues, extraDropdowns);
+  }, 'addEmployee', fieldGuide, sampleRows, validValues, extraDropdowns, templateExtras);
 }
 
 function bulkImportTransactions() {
@@ -15594,6 +16083,19 @@ function buildV31SlipLines(salaryData) {
   if (salaryData.v31PromoNote) {
     lines.push({label: 'Salary Split (Promotion): ' + salaryData.v31PromoNote, amount: Math.round(salaryData.v31PromoSalaryAdj || 0), type:'note'});
   }
+  // v47 GAS / v48 HTML — per-employee increment override note. Single 'note'-type
+  // line below the OT / Night / Bonus block. Existing slip lines untouched.
+  // Only renders when the employee has a non-blank incrementMode.
+  var _ovMode = String(salaryData.incrementOverrideMode || '');
+  if (_ovMode === 'OFF') {
+    lines.push({label: 'Increment policy: Opted out of auto-increments', amount: 0, type: 'note'});
+  } else if (_ovMode === 'CUSTOM_FLAT') {
+    var _flat = Math.round(parseFloat(salaryData.incrementOverrideFlat || 0));
+    lines.push({label: 'Increment policy: Custom flat Rs ' + _flat + ' per cycle', amount: 0, type: 'note'});
+  } else if (_ovMode === 'CUSTOM_PCT') {
+    var _pct = (parseFloat(salaryData.incrementOverridePct || 0) * 100).toFixed(2).replace(/\.?0+$/, '');
+    lines.push({label: 'Increment policy: Custom ' + _pct + '% per cycle', amount: 0, type: 'note'});
+  }
   return lines;
 }
 
@@ -15896,25 +16398,139 @@ function syncOTDivisorFromPerDay() {
   }
 })();
 
+// v49 audit-fix L: single source of truth for the per-cycle increment-shift multiplier
+// FALLBACKS. These are used only when the cfg-INCREMENT_MULT_* input is blank (e.g. the
+// very first render before Compensation settings hydrate from the backend). The live
+// values are always read from the inputs first; the constants just replace the previous
+// in-line magic 1.10 / 1.20 literals so the default lives in exactly one place. NOTE:
+// these are PER-CYCLE INCREMENT multipliers, deliberately distinct from the base-salary
+// SHIFT_RATIO_11HR / SHIFT_RATIO_12HR scaling used by the Salary Ladder editor.
+const INCREMENT_MULT_11HR_DEFAULT = 1.10;
+const INCREMENT_MULT_12HR_DEFAULT = 1.20;
+
 // v43 W4.2: per-level increment auto-recompute. Mirrors autoRecomputeShifts pattern.
+// v48: hard-coded 1.10 / 1.20 replaced with reads from cfg-INCREMENT_MULT_11HR /
+// cfg-INCREMENT_MULT_12HR (with the same defaults). The displayed column headers
+// also update to show the live multiplier.
 function autoRecomputeIncrementShifts(level) {
   var inc9El = document.getElementById('cfg-INCREMENT_9HR_' + level);
   if (!inc9El) return;
   var inc9 = parseFloat(inc9El.value) || 0;
-  var inc11 = Math.round(inc9 * 1.10 / 10) * 10; // round to ₹10
-  var inc12 = Math.round(inc9 * 1.20 / 10) * 10;
+  var m11 = parseFloat(document.getElementById('cfg-INCREMENT_MULT_11HR')?.value) || INCREMENT_MULT_11HR_DEFAULT;
+  var m12 = parseFloat(document.getElementById('cfg-INCREMENT_MULT_12HR')?.value) || INCREMENT_MULT_12HR_DEFAULT;
+  var inc11 = Math.round(inc9 * m11 / 10) * 10; // round to ₹10
+  var inc12 = Math.round(inc9 * m12 / 10) * 10;
   var d11 = document.getElementById('inc-' + level + '-11-disp');
   var d12 = document.getElementById('inc-' + level + '-12-disp');
   if (d11) d11.textContent = inc9 > 0 ? '₹' + inc11 : '—';
   if (d12) d12.textContent = inc9 > 0 ? '₹' + inc12 : '—';
 }
 
+// v48: recompute every level row + refresh the column-header multiplier display.
+// Fires when either cfg-INCREMENT_MULT_11HR or cfg-INCREMENT_MULT_12HR changes.
+function _v48RecomputeAllIncrementShifts() {
+  try {
+    var m11 = parseFloat(document.getElementById('cfg-INCREMENT_MULT_11HR')?.value) || INCREMENT_MULT_11HR_DEFAULT;
+    var m12 = parseFloat(document.getElementById('cfg-INCREMENT_MULT_12HR')?.value) || INCREMENT_MULT_12HR_DEFAULT;
+    var d11h = document.getElementById('inc-mult-11hr-disp');
+    var d12h = document.getElementById('inc-mult-12hr-disp');
+    if (d11h) d11h.textContent = m11.toFixed(2);
+    if (d12h) d12h.textContent = m12.toFixed(2);
+    ['L10','L9','L8','L7','L6'].forEach(function(lv){ autoRecomputeIncrementShifts(lv); });
+  } catch(e) { console.error('_v48RecomputeAllIncrementShifts:', e); }
+}
+
+// v48: grey out the row for a level when its "Apply" checkbox is unchecked.
+// Visual signal only; the actual gating happens server-side via
+// resolveIncrementForEmployee branch 5. Idempotent — safe to call on every render.
+function _v48UpdatePerLevelDisabledStyle(level) {
+  try {
+    var levels = level ? [level] : ['L10','L9','L8','L7','L6'];
+    levels.forEach(function(lv){
+      var cb = document.getElementById('cfg-INCREMENT_APPLIES_' + lv);
+      var row = document.getElementById('inc-row-' + lv);
+      var input = document.getElementById('cfg-INCREMENT_9HR_' + lv);
+      var d11 = document.getElementById('inc-' + lv + '-11-disp');
+      var d12 = document.getElementById('inc-' + lv + '-12-disp');
+      var on = cb ? !!cb.checked : true;
+      if (row) row.style.opacity = on ? '1' : '0.45';
+      if (input) input.disabled = !on;
+      if (d11) d11.style.textDecoration = on ? 'none' : 'line-through';
+      if (d12) d12.style.textDecoration = on ? 'none' : 'line-through';
+    });
+  } catch(e) { console.error('_v48UpdatePerLevelDisabledStyle:', e); }
+}
+
+// v48: show/hide the "Custom flat" and "Custom percentage" reveal inputs based
+// on the selected radio in the Add Employee / Edit Employee modal's Increment
+// Policy section. `prefix` = 'e' (Add) or 'ee' (Edit). Idempotent.
+function _v48ToggleEoFields(prefix) {
+  try {
+    var modeEl = document.querySelector('input[name="' + prefix + '-eo-mode"]:checked');
+    var mode = modeEl ? modeEl.value : '';
+    var flatWrap = document.getElementById(prefix + '-eo-flat-wrap');
+    var pctWrap  = document.getElementById(prefix + '-eo-pct-wrap');
+    if (flatWrap) flatWrap.style.display = (mode === 'CUSTOM_FLAT') ? 'block' : 'none';
+    if (pctWrap)  pctWrap.style.display  = (mode === 'CUSTOM_PCT')  ? 'block' : 'none';
+    _v48RefreshEoPreview(prefix);
+  } catch(e) { console.error('_v48ToggleEoFields:', e); }
+}
+
+// v48: live "Effective increment at next cycle: ₹X" preview under the radios.
+// Pulls current salary from the form's e-sal / ee-sal field so the percentage
+// preview is meaningful even before the row exists in the backend.
+function _v48RefreshEoPreview(prefix) {
+  try {
+    var modeEl = document.querySelector('input[name="' + prefix + '-eo-mode"]:checked');
+    var mode = modeEl ? modeEl.value : '';
+    var sal = parseFloat(document.getElementById(prefix + '-sal')?.value) || 0;
+    var preview = document.getElementById(prefix + '-eo-preview');
+    if (!preview) return;
+    if (mode === 'OFF') {
+      preview.textContent = 'Effective increment at next cycle: ₹0 (opted out)';
+    } else if (mode === 'CUSTOM_FLAT') {
+      var f = parseFloat(document.getElementById(prefix + '-eo-flat-input')?.value) || 0;
+      preview.textContent = 'Effective increment at next cycle: ₹' + Math.round(f) + ' (custom flat)';
+    } else if (mode === 'CUSTOM_PCT') {
+      var p = parseFloat(document.getElementById(prefix + '-eo-pct-input')?.value) || 0;
+      preview.textContent = 'Effective increment at next cycle: ₹' + Math.round(sal * p) + ' (custom ' + (p*100).toFixed(2).replace(/\.?0+$/,'') + '% of current ₹' + Math.round(sal) + ')';
+    } else {
+      preview.textContent = 'Effective increment at next cycle: per company policy (see Settings → Compensation → Increments)';
+    }
+  } catch(e) { console.error('_v48RefreshEoPreview:', e); }
+}
+
+// v48: grey out the entire Increments panel except the master toggle itself
+// when INCREMENT_ENABLED='false'. Visual signal only — backend gates are the
+// authority. Idempotent.
+function _v48UpdateIncrementPanelDisabledStyle() {
+  try {
+    var sel = document.getElementById('cfg-INCREMENT_ENABLED');
+    var on = sel ? sel.value !== 'false' : true;
+    var panel = document.getElementById('comp-sp-increment');
+    if (!panel) return;
+    // Grey out every form-group / table BELOW the master toggle's grid.
+    var blocks = panel.querySelectorAll('.settings-grid, #comp-increment-mult-grid, #comp-increment-per-level');
+    // Skip the FIRST settings-grid (which owns the master toggle).
+    Array.prototype.forEach.call(blocks, function(el, i){
+      if (i === 0) return;
+      el.style.opacity = on ? '1' : '0.45';
+      var inputs = el.querySelectorAll('input, select, textarea, button');
+      Array.prototype.forEach.call(inputs, function(c){ c.disabled = !on; });
+    });
+  } catch(e) { console.error('_v48UpdateIncrementPanelDisabledStyle:', e); }
+}
+
 // v43 W4.2: show/hide per-level increment table based on INCREMENT_TYPE value.
+// v48: also show/hide the new multiplier grid (it only applies to Flat type).
 function syncIncrementTypeVisibility() {
   var typeEl = document.getElementById('cfg-INCREMENT_TYPE');
   var perLevelBlock = document.getElementById('comp-increment-per-level');
   if (!typeEl || !perLevelBlock) return;
-  perLevelBlock.style.display = (typeEl.value === 'Flat') ? 'block' : 'none';
+  var show = (typeEl.value === 'Flat');
+  perLevelBlock.style.display = show ? 'block' : 'none';
+  var multGrid = document.getElementById('comp-increment-mult-grid');
+  if (multGrid) multGrid.style.display = show ? 'grid' : 'none';
 }
 
 // v43 W3.11: cache the backend-sourced descriptions across sub-tab switches so we
@@ -16040,6 +16656,13 @@ async function loadCompSettings() {
         el.querySelectorAll('option').forEach(function(o) {
           o.selected = (String(o.value) === String(merged[key]));
         });
+      } else if (el.type === 'checkbox') {
+        // v48: per-level INCREMENT_APPLIES_L* checkboxes are stored as the
+        // strings 'true' / 'false' in COMP_CONFIG; hydrate .checked accordingly.
+        // Default to checked when value is missing or unparseable so existing
+        // deploys see no regression.
+        var v = String(merged[key] || 'true').toLowerCase();
+        el.checked = (v === 'true' || v === '1' || v === 'yes' || v === 'on');
       } else {
         el.value = merged[key];
       }
@@ -16055,7 +16678,13 @@ async function loadCompSettings() {
     initCompLadderEditor();
     hydrateCompensationTooltips();  // v43 W3.11
     // v43 W4.2: recompute per-level increment displays after loading + bind type-change listener.
-    ['L10','L9','L8','L7','L6'].forEach(function(lvl) { autoRecomputeIncrementShifts(lvl); });
+    // v48: route through _v48RecomputeAllIncrementShifts so the column-header
+    // multiplier display + grey-out style + master-toggle disabled style all
+    // reflect the freshly-loaded values.
+    if (typeof _v48RecomputeAllIncrementShifts === 'function') _v48RecomputeAllIncrementShifts();
+    else ['L10','L9','L8','L7','L6'].forEach(function(lvl) { autoRecomputeIncrementShifts(lvl); });
+    if (typeof _v48UpdatePerLevelDisabledStyle === 'function') _v48UpdatePerLevelDisabledStyle();
+    if (typeof _v48UpdateIncrementPanelDisabledStyle === 'function') _v48UpdateIncrementPanelDisabledStyle();
     syncIncrementTypeVisibility();
     var incTypeEl = document.getElementById('cfg-INCREMENT_TYPE');
     if (incTypeEl && incTypeEl.dataset.w4bound !== '1') {
@@ -16186,6 +16815,10 @@ async function saveCompSettings(keys) {
     if (!el) return;
     if (key === 'OT_WORKING_DAYS_DIVISOR' && el.dataset.numeric) {
       updates[key] = el.dataset.numeric;
+    } else if (el.type === 'checkbox') {
+      // v48: per-level INCREMENT_APPLIES_L* checkboxes — persist as 'true' / 'false' strings
+      // (matching the same string format used for INCREMENT_ENABLED and LOYALTY_WALLET_ENABLED).
+      updates[key] = el.checked ? 'true' : 'false';
     } else {
       updates[key] = el.value;
     }
