@@ -1510,7 +1510,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v52-2026-05'; // v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v54-2026-05'; // v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2268,7 +2268,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v52';
+window.HRMS_VERSION = 'v54';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -6971,80 +6971,274 @@ async function saveAttendanceAdjustment(empId, date) {
 }
 
 // ─── S5.4: Bulk Hours Entry Modal ───────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// v54 Items 2 & 3: shared "filterable employee multi-select" helpers (used by the
+// Bulk Hours Entry and Bulk Leave modals). Rows carry data-bulk-prefix + data-* so
+// one set of filter/select helpers serves both modals. window._bulkEmpList is set by
+// each modal to the SAME employee array used to build its rows, so row index aligns.
+// ═══════════════════════════════════════════════════════════════════════════════
+function _bulkFilterOptions(emps) {
+  const uniq = arr => Array.from(new Set(arr.filter(Boolean))).sort();
+  return {
+    factory: uniq(emps.map(e => e.factory)),
+    zone:    uniq(emps.map(e => e.zone)),
+    dept:    uniq(emps.map(e => e.department || e.dept)),
+    level:   uniq(emps.map(e => e.level)),
+  };
+}
+function _bulkFilterBar(prefix) {
+  const o = _bulkFilterOptions(window._bulkEmpList || []);
+  const sel = (id, label, vals) => `<select id="${prefix}-f-${id}" class="form-input" style="font-size:11px;padding:4px 6px;min-width:108px" onchange="_bulkApplyFilter('${prefix}')"><option value="">${label}: All</option>${vals.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('')}</select>`;
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+    ${sel('factory','Factory',o.factory)}${sel('zone','Zone',o.zone)}${sel('dept','Dept',o.dept)}${sel('level','Level',o.level)}
+    <input id="${prefix}-f-search" class="form-input" style="font-size:11px;padding:4px 6px;min-width:150px" placeholder="Search name / ID…" oninput="_bulkApplyFilter('${prefix}')">
+  </div>`;
+}
+function _bulkApplyFilter(prefix) {
+  const fv = id => (document.getElementById(prefix + '-f-' + id)?.value || '').toLowerCase();
+  const f = { factory: fv('factory'), zone: fv('zone'), dept: fv('dept'), level: fv('level') };
+  const q = fv('search');
+  document.querySelectorAll('[data-bulk-prefix="' + prefix + '"]').forEach(tr => {
+    const d = tr.dataset;
+    let show = true;
+    if (f.factory && (d.factory || '').toLowerCase() !== f.factory) show = false;
+    if (f.zone    && (d.zone    || '').toLowerCase() !== f.zone)    show = false;
+    if (f.dept    && (d.dept    || '').toLowerCase() !== f.dept)    show = false;
+    if (f.level   && (d.level   || '').toLowerCase() !== f.level)   show = false;
+    if (q && (d.search || '').indexOf(q) < 0) show = false;
+    tr.style.display = show ? '' : 'none';
+  });
+  _bulkUpdateSelCount(prefix);
+}
+function _bulkSelectAll(prefix, checked) {
+  document.querySelectorAll('[data-bulk-prefix="' + prefix + '"]').forEach(tr => {
+    if (tr.style.display === 'none') return; // only visible rows
+    const cb = tr.querySelector('.' + prefix + '-cb'); if (cb) cb.checked = checked;
+  });
+  _bulkUpdateSelCount(prefix);
+}
+function _bulkUpdateSelCount(prefix) {
+  const n = document.querySelectorAll('[data-bulk-prefix="' + prefix + '"] .' + prefix + '-cb:checked').length;
+  const el = document.getElementById(prefix + '-sel-count'); if (el) el.textContent = n + ' selected';
+}
+function _bulkSelectedIdx(prefix) {
+  return Array.from(document.querySelectorAll('[data-bulk-prefix="' + prefix + '"] .' + prefix + '-cb:checked')).map(cb => parseInt(cb.dataset.idx));
+}
+function _bulkVisibleIdx(prefix) {
+  return Array.from(document.querySelectorAll('[data-bulk-prefix="' + prefix + '"]'))
+    .filter(tr => tr.style.display !== 'none')
+    .map(tr => parseInt(tr.querySelector('.' + prefix + '-cb')?.dataset.idx))
+    .filter(i => !isNaN(i));
+}
+function _bulkEmpRowAttrs(prefix, e, i) {
+  const dept = (e.department || e.dept || '');
+  const search = ((e.name || '') + ' ' + (e.id || '')).toLowerCase();
+  return 'data-bulk-prefix="' + prefix + '" data-idx="' + i + '"'
+    + ' data-factory="' + escHtml(e.factory || '') + '" data-zone="' + escHtml(e.zone || '')
+    + '" data-dept="' + escHtml(dept) + '" data-level="' + escHtml(e.level || '')
+    + '" data-search="' + escHtml(search) + '"';
+}
+function _dowName(dateStr) {
+  const D = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const d = new Date(dateStr + 'T00:00:00');
+  return isNaN(d.getTime()) ? '' : D[d.getDay()];
+}
+
+// ─── v54 Item 2: Bulk Hours Entry — variable fields + selection + filter ───────────
 async function showBulkHoursModal() {
   const emps = window._attEmps || State.employees || [];
   if (!emps.length) { toast('No employees loaded', 'warning'); return; }
+  window._bulkEmpList = emps;
   const now = new Date();
-  const todayStr_ = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const todayStr_ = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const statusOpts = '<option value="P">P</option><option value="UL">UL</option><option value="IL">IL</option><option value="WO">WO</option><option value="H">H</option><option value="LWP">LWP</option>';
   const rows = emps.map((e,i) =>
-    '<tr>'
-    + '<td style="font-size:11px">'+escHtml(e.name||e.id)+'</td>'
-    + '<td style="font-size:11px">'+escHtml(e.id)+'</td>'
-    + '<td><input id="bhe-ci-'+i+'" class="form-input" style="font-size:11px;padding:3px 6px;width:80px" type="time" value="09:00"></td>'
-    + '<td><input id="bhe-co-'+i+'" class="form-input" style="font-size:11px;padding:3px 6px;width:80px" type="time" value="18:00"></td>'
-    + '<td><input id="bhe-st-'+i+'" class="form-input" style="font-size:11px;padding:3px 6px;width:70px" type="number" min="0" max="24" step="0.5" placeholder="Hrs"></td>'
-    + '<td><select id="bhe-stat-'+i+'" class="form-input" style="font-size:11px;padding:3px 6px">'
-    + '<option value="P" selected>P</option><option value="UL">UL</option><option value="IL">IL</option>'
-    + '<option value="WO">WO</option><option value="H">H</option><option value="LWP">LWP</option>'
-    + '</select></td>'
+    '<tr ' + _bulkEmpRowAttrs('bhe', e, i) + '>'
+    + '<td style="width:28px;text-align:center"><input type="checkbox" class="bhe-cb" data-idx="' + i + '" style="accent-color:var(--gold)" onchange="_bulkUpdateSelCount(\'bhe\')"></td>'
+    + '<td style="font-size:11px">' + escHtml(e.name || e.id) + '</td>'
+    + '<td style="font-size:11px">' + escHtml(e.id) + '</td>'
+    + '<td><input id="bhe-ci-' + i + '" class="form-input" style="font-size:11px;padding:3px 6px;width:80px" type="time" value="09:00"></td>'
+    + '<td><input id="bhe-co-' + i + '" class="form-input" style="font-size:11px;padding:3px 6px;width:80px" type="time" value="18:00"></td>'
+    + '<td><input id="bhe-st-' + i + '" class="form-input" style="font-size:11px;padding:3px 6px;width:64px" type="number" min="0" max="24" step="0.5" placeholder="Hrs"></td>'
+    + '<td><select id="bhe-stat-' + i + '" class="form-input" style="font-size:11px;padding:3px 6px">' + statusOpts + '</select></td>'
     + '</tr>'
   ).join('');
+  const ctrlInput = (id, type, ph, extra) => '<input id="' + id + '" class="form-input" type="' + type + '" ' + (extra||'') + ' style="font-size:11px;padding:3px 6px;width:84px" placeholder="' + ph + '">';
   const html = '<div style="font-size:13px">'
-    + '<div class="form-row" style="margin-bottom:10px">'
-    + '<div class="form-group"><label class="form-label">Date</label>'
-    + '<input id="bhe-date" class="form-input" type="date" value="'+todayStr_+'"></div>'
+    + '<div class="form-row" style="margin-bottom:8px">'
+    + '<div class="form-group"><label class="form-label">Date</label><input id="bhe-date" class="form-input" type="date" value="' + todayStr_ + '"></div>'
     + '</div>'
-    + '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
-    + '<button class="btn btn-dark btn-sm" onclick="_bheSetAll(\'ci\',\'09:00\')">Set All CI 9AM</button>'
-    + '<button class="btn btn-dark btn-sm" onclick="_bheSetAll(\'co\',\'18:00\')">Set All CO 6PM</button>'
-    + '<button class="btn btn-dark btn-sm" onclick="_bheSetAll(\'st\',\'9\')">Fill 9h All</button>'
+    + _bulkFilterBar('bhe')
+    // Variable control bar — apply any value to ALL visible or only SELECTED rows
+    + '<div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:6px;padding:8px 10px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px">'
+    + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;color:var(--gray-light);min-width:64px">Clock-In</span>' + ctrlInput('bhe-bulk-ci','time','') + '<button class="btn btn-dark btn-sm" onclick="_bheApply(\'ci\',\'all\')">Apply to All</button><button class="btn btn-dark btn-sm" onclick="_bheApply(\'ci\',\'selected\')">Apply to Selected</button></div>'
+    + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;color:var(--gray-light);min-width:64px">Clock-Out</span>' + ctrlInput('bhe-bulk-co','time','') + '<button class="btn btn-dark btn-sm" onclick="_bheApply(\'co\',\'all\')">Apply to All</button><button class="btn btn-dark btn-sm" onclick="_bheApply(\'co\',\'selected\')">Apply to Selected</button></div>'
+    + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;color:var(--gray-light);min-width:64px">Hours</span>' + ctrlInput('bhe-bulk-st','number','Hrs','min="0" max="24" step="0.5"') + '<button class="btn btn-dark btn-sm" onclick="_bheApply(\'st\',\'all\')">Apply to All</button><button class="btn btn-dark btn-sm" onclick="_bheApply(\'st\',\'selected\')">Apply to Selected</button></div>'
+    + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;color:var(--gray-light);min-width:64px">Status</span><select id="bhe-bulk-stat" class="form-input" style="font-size:11px;padding:3px 6px;width:84px">' + statusOpts + '</select><button class="btn btn-dark btn-sm" onclick="_bheApply(\'stat\',\'all\')">Apply to All</button><button class="btn btn-dark btn-sm" onclick="_bheApply(\'stat\',\'selected\')">Apply to Selected</button></div>'
     + '</div>'
-    + '<div style="max-height:350px;overflow-y:auto;border:1px solid var(--dark3);border-radius:4px">'
+    + '<div style="max-height:330px;overflow-y:auto;border:1px solid var(--dark3);border-radius:4px">'
     + '<table class="az-table" style="font-size:11px"><thead><tr>'
+    + '<th style="width:28px;text-align:center"><input type="checkbox" id="bhe-all" style="accent-color:var(--gold)" onchange="_bulkSelectAll(\'bhe\',this.checked)" title="Select all visible"></th>'
     + '<th>Name</th><th>ID</th><th>Clock-In</th><th>Clock-Out</th><th>Hours</th><th>Status</th>'
-    + '</tr></thead><tbody>'+rows+'</tbody></table>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>'
     + '</div>'
-    + '<div class="form-group" style="margin-top:10px"><label class="form-label" style="color:var(--red)">Reason * (mandatory)</label>'
+    + '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">'
+    + '<span id="bhe-sel-count" style="font-size:11px;color:var(--gold)">0 selected</span>'
+    + '<label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="bhe-skipoff" checked style="accent-color:var(--gold)"> Skip weekly-offs / holidays</label>'
+    + '<label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="bhe-overwrite" style="accent-color:var(--gold)"> Overwrite existing records for this date</label>'
+    + '</div>'
+    + '<div class="form-group" style="margin-top:8px"><label class="form-label" style="color:var(--red)">Reason * (mandatory)</label>'
     + '<input id="bhe-reason" class="form-input" placeholder="Bulk entry reason…"></div>'
     + '</div>';
   showModal('📋 Bulk Hours Entry', html, [
-    {label:'Save All', cls:'btn-gold', cb:saveBulkHoursEntry},
+    {label:'Save All Visible', cls:'btn-gold', cb:saveBulkHoursEntry},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
   ]);
+  _bulkUpdateSelCount('bhe');
 }
 
-function _bheSetAll(field, val) {
-  const emps = window._attEmps || [];
-  emps.forEach((e,i) => { const el = document.getElementById('bhe-'+field+'-'+i); if(el) el.value=val; });
+// Apply the value typed in a control-bar field to ALL visible (or only SELECTED) rows.
+function _bheApply(field, scope) {
+  const ctrl = document.getElementById('bhe-bulk-' + field);
+  const val = ctrl ? ctrl.value : '';
+  _bheSetField(field, val, scope);
+}
+// Generalised setter (replaces v52 _bheSetAll). scope ∈ {all, selected}; all = visible rows.
+function _bheSetField(field, val, scope) {
+  const idxs = (scope === 'selected') ? _bulkSelectedIdx('bhe') : _bulkVisibleIdx('bhe');
+  if (scope === 'selected' && !idxs.length) { toast('Tick some rows first', 'warning'); return; }
+  idxs.forEach(i => { const el = document.getElementById('bhe-' + field + '-' + i); if (el) el.value = val; });
 }
 
 async function saveBulkHoursEntry() {
   const date = document.getElementById('bhe-date')?.value || '';
   const reason = document.getElementById('bhe-reason')?.value?.trim() || '';
-  if (!date) { toast('Select a date','warning'); return; }
-  if (!reason) { toast('Reason is mandatory','warning'); return; }
-  const emps = window._attEmps || [];
-  const records = emps.map((e,i) => {
-    const stat = document.getElementById('bhe-stat-'+i)?.value || 'P';
-    const ci = document.getElementById('bhe-ci-'+i)?.value || '';
-    const co = document.getElementById('bhe-co-'+i)?.value || '';
-    const hrs = parseFloat(document.getElementById('bhe-st-'+i)?.value||'0')||0;
-    return {
-      empId:e.id, date, status:stat,
-      clockIn:(['P','EW'].includes(stat)&&ci) ? date+' '+ci+':00' : '',
-      clockOut:(['P','EW'].includes(stat)&&co) ? date+' '+co+':00' : '',
-      hoursOverride: hrs||null, reason
-    };
+  if (!date) { toast('Select a date', 'warning'); return; }
+  if (!reason) { toast('Reason is mandatory', 'warning'); return; }
+  const skipOff = document.getElementById('bhe-skipoff')?.checked !== false;
+  const overwrite = !!document.getElementById('bhe-overwrite')?.checked;
+  const emps = window._bulkEmpList || [];
+  const dow = _dowName(date);
+  const records = [];
+  let offSkipped = 0;
+  // Save only the rows currently VISIBLE (filtered), capturing values before any confirm swap.
+  _bulkVisibleIdx('bhe').forEach(i => {
+    const e = emps[i]; if (!e) return;
+    if (skipOff && (dow === String(e.weeklyOff1 || '') || dow === String(e.weeklyOff2 || ''))) { offSkipped++; return; }
+    const stat = document.getElementById('bhe-stat-' + i)?.value || 'P';
+    const ci = document.getElementById('bhe-ci-' + i)?.value || '';
+    const co = document.getElementById('bhe-co-' + i)?.value || '';
+    const hrs = parseFloat(document.getElementById('bhe-st-' + i)?.value || '0') || 0;
+    records.push({
+      empId: e.id, date, status: stat,
+      clockIn:  (['P','EW'].includes(stat) && ci) ? date + ' ' + ci + ':00' : '',
+      clockOut: (['P','EW'].includes(stat) && co) ? date + ' ' + co + ':00' : '',
+      hoursOverride: hrs || null, reason,
+      overrideHoliday: !skipOff   // when not skipping off-days, also write on holidays
+    });
   });
-  // v44 Workstream D: pre-v44 this handler silently overwrote existing rows.
-  // The new Backfill Imports flow (Settings → Backfill) defaults to no-overwrite
-  // for safety. This single-day kiosk path is intentionally an authoritative
-  // correction — opt back in via allowOverwrite:true to preserve old behaviour.
-  const res = await API.call('bulkAttendanceEntry', {records, adminCode:State.adminUser, reason, allowOverwrite:true});
-  if (!res || !res.ok) { toast(res?.error||'Error','error'); return; }
+  if (!records.length) { toast(offSkipped ? 'All visible rows are weekly-offs/holidays (skipped)' : 'No rows to save', 'warning'); return; }
+  const summary = 'About to write attendance for <strong>' + records.length + '</strong> employee(s) on <strong>' + date + '</strong>.'
+    + (offSkipped ? '<br>' + offSkipped + ' row(s) skipped as weekly-off/holiday.' : '')
+    + '<br>Existing records will be <strong>' + (overwrite ? 'OVERWRITTEN' : 'left untouched (skipped)') + '</strong>.';
+  if (!(await confirm2(summary))) return;
+  const res = await API.call('bulkAttendanceEntry', {records, adminCode: State.adminUser, reason, allowOverwrite: overwrite});
+  if (!res || !res.ok) { toast(res?.error || 'Error', 'error'); return; }
   closeModal();
-  toast('Bulk entry saved — '+(res.count||records.length)+' records','success');
+  toast('Bulk hours saved — ' + (res.written || 0) + ' added, ' + (res.updated || 0) + ' updated, ' + (res.skipped || 0) + ' skipped', 'success', 5000);
 }
+
+// ─── v54 Item 3: Bulk Leave marking — filterable multi-select + date range ─────────
+async function showBulkLeaveModal() {
+  const emps = (State.employees || []).filter(e => e.status === 'Active');
+  if (!emps.length) { toast('No active employees loaded', 'warning'); return; }
+  window._bulkEmpList = emps;
+  // Pull leave types from the LIVE list (do not hardcode a subset).
+  let leaveTypes = [];
+  try {
+    const r = await API.call('getLeaveTypes');
+    if (r && r.ok && Array.isArray(r.leaveTypes)) {
+      leaveTypes = r.leaveTypes.map(x => ({code: String(x.Code || x.code || ''), name: String(x.Name || x.name || x.Code || '')})).filter(x => x.code);
+    }
+  } catch(e) {}
+  if (!leaveTypes.length) { // network-failure fallback only
+    leaveTypes = [['CL','Casual Leave'],['SL','Sick Leave'],['PL','Paid Leave'],['EL','Earned Leave'],['IL','Informed Leave'],['UL','Uninformed Leave']].map(a => ({code:a[0], name:a[1]}));
+  }
+  const typeOpts = leaveTypes.map(lt => '<option value="' + escHtml(lt.code) + '">' + escHtml(lt.code + ' — ' + lt.name) + '</option>').join('');
+  const rows = emps.map((e,i) =>
+    '<tr ' + _bulkEmpRowAttrs('ble', e, i) + '>'
+    + '<td style="width:28px;text-align:center"><input type="checkbox" class="ble-cb" data-idx="' + i + '" style="accent-color:var(--gold)" onchange="_bulkUpdateSelCount(\'ble\')"></td>'
+    + '<td style="font-size:11px">' + escHtml(e.name || e.id) + '</td>'
+    + '<td style="font-size:11px">' + escHtml(e.id) + '</td>'
+    + '<td style="font-size:11px">' + escHtml(e.level || '') + '</td>'
+    + '<td style="font-size:11px">' + escHtml(e.department || e.dept || '') + '</td>'
+    + '</tr>'
+  ).join('');
+  const html = '<div style="font-size:13px">'
+    + '<div class="form-row" style="margin-bottom:6px">'
+    + '<div class="form-group"><label class="form-label">From</label><input id="ble-from" class="form-input" type="date" value="' + todayStr() + '"></div>'
+    + '<div class="form-group"><label class="form-label">To</label><input id="ble-to" class="form-input" type="date" value="' + todayStr() + '"></div>'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:6px">'
+    + '<div class="form-group"><label class="form-label">Leave Type</label><select id="ble-type" class="form-input">' + typeOpts + '</select></div>'
+    + '<div class="form-group"><label class="form-label">Auto-approve?</label><select id="ble-auto" class="form-input"><option value="yes">Yes — pre-approve</option><option value="no">No — send for approval</option></select></div>'
+    + '</div>'
+    + '<div class="form-group" style="margin-bottom:6px"><label class="form-label" style="color:var(--red)">Reason / Note * (mandatory)</label><input id="ble-reason" class="form-input" placeholder="Reason for leave (mandatory)…"></div>'
+    + _bulkFilterBar('ble')
+    + '<div style="max-height:300px;overflow-y:auto;border:1px solid var(--dark3);border-radius:4px">'
+    + '<table class="az-table" style="font-size:11px"><thead><tr>'
+    + '<th style="width:28px;text-align:center"><input type="checkbox" id="ble-all" style="accent-color:var(--gold)" onchange="_bulkSelectAll(\'ble\',this.checked)" title="Select all visible"></th>'
+    + '<th>Name</th><th>ID</th><th>Level</th><th>Dept</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>'
+    + '</div>'
+    + '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">'
+    + '<span id="ble-sel-count" style="font-size:11px;color:var(--gold)">0 selected</span>'
+    + '<label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ble-skipoff" checked style="accent-color:var(--gold)"> Skip weekly-offs / holidays</label>'
+    + '<label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ble-overwrite" style="accent-color:var(--gold)"> Overwrite existing attendance</label>'
+    + '</div>'
+    + '<div style="font-size:10px;color:var(--gray-light);margin-top:6px">Employees who already have a leave overlapping the range are always skipped (safe). Overwrite replaces plain attendance only.</div>'
+    + '</div>';
+  showModal('📋 Bulk Leave Marking', html, [
+    {label:'Mark Leave', cls:'btn-gold', cb:saveBulkLeaveEntry},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal},
+  ]);
+  _bulkUpdateSelCount('ble');
+}
+
+async function saveBulkLeaveEntry() {
+  const from = document.getElementById('ble-from')?.value || '';
+  const to = document.getElementById('ble-to')?.value || '';
+  const leaveCode = document.getElementById('ble-type')?.value || '';
+  const reason = document.getElementById('ble-reason')?.value?.trim() || '';
+  const autoApprove = document.getElementById('ble-auto')?.value === 'yes';
+  const skipOffDays = document.getElementById('ble-skipoff')?.checked !== false;
+  const overwrite = !!document.getElementById('ble-overwrite')?.checked;
+  if (!from || !to) { toast('Select a date range', 'warning'); return; }
+  if (from > to) { toast('From date must not be after To date', 'warning'); return; }
+  if (!leaveCode) { toast('Select a leave type', 'warning'); return; }
+  if (!reason) { toast('Reason is mandatory', 'warning'); return; }
+  const emps = window._bulkEmpList || [];
+  const empIds = _bulkSelectedIdx('ble').map(i => emps[i]?.id).filter(Boolean);
+  if (!empIds.length) { toast('Tick at least one employee', 'warning'); return; }
+  // Days in range (inclusive)
+  let days = 1;
+  try { days = Math.round((new Date(to + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000) + 1; } catch(e) {}
+  const summary = 'Mark <strong>' + escHtml(leaveCode) + '</strong> for <strong>' + empIds.length + '</strong> employee(s) across <strong>' + days + '</strong> day(s) (' + from + ' → ' + to + ').'
+    + '<br>' + (autoApprove ? 'Leaves will be <strong>auto-approved</strong>.' : 'Leaves will be <strong>sent for approval</strong>.')
+    + '<br>Weekly-offs / holidays will be <strong>' + (skipOffDays ? 'skipped' : 'included') + '</strong>. Employees with an existing leave in this range are skipped.';
+  if (!(await confirm2(summary))) return;
+  const res = await API.call('bulkLeaveEntry', {
+    empIds, fromDate: from, toDate: to, leaveCode, reason,
+    autoApprove, skipOffDays, overwrite,
+    adminUser: State.adminUser || State.adminRole || 'admin'
+  });
+  if (!res || !res.ok) { toast(res?.error || 'Error', 'error'); return; }
+  const c = res.counts || {};
+  closeModal();
+  toast('Bulk leave: ' + (c.created || 0) + ' created' + (autoApprove ? ' / ' + (c.approved || 0) + ' approved' : '') + ', ' + ((c.skipped_conflict || 0) + (c.skipped_offday || 0)) + ' skipped, ' + (c.failed || 0) + ' failed', 'success', 6000);
+  await renderLeaves();
+}
+
 
 // ─── S6.2: Timesheet Filters ────────────────
 async function applyTimesheetFilters() {
@@ -7156,6 +7350,7 @@ async function renderLeaves() {
   html+=`<div class="section-hdr" style="margin-top:16px"><div class="section-title">All Leaves (${all.length})</div>
     <div class="section-actions">
       <button class="btn btn-gold btn-sm" onclick="showAdminLeaveModal()">+ Add Leave</button>
+      <button class="btn btn-gold btn-sm" onclick="showBulkLeaveModal()">+ Bulk Leave</button>
       <button class="btn btn-dark btn-sm" onclick="bulkImportLeaves()">📥 Bulk Import</button>
     </div></div>
   <div class="filters-bar">
@@ -14010,8 +14205,52 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
       window._bulkImportMode = importMode; // read by mode-aware row processors
       const total = parsedRows.length;
       const importLog = []; // {rowNum, name, status, error}
-      // Chunk imports to avoid hanging the browser (5 parallel calls per chunk)
-      const CHUNK = 5;
+      // v54 Item 1: Employees go through a SINGLE server-side batch endpoint (one lock,
+      // all rows) instead of parallel per-row POSTs — this is what fixes the recurring
+      // "System busy" lock starvation. The other templates use the sequential loop below.
+      if (confirmAction === 'addEmployee') {
+        const statusEl0 = document.getElementById('bulk-status');
+        if (statusEl0) { statusEl0.textContent = `Importing ${total} employees in one batch…`; statusEl0.style.color='var(--gold)'; }
+        const rowsOut = [], rowMeta = [];
+        parsedRows.forEach((row, idx) => {
+          const rowNum = idx + 1;
+          const label = row['name *'] || row['name'] || row['employeeCode (optional, e.g. AZ_EMP_0056)'] || `Row ${rowNum}`;
+          try {
+            const payload = rowProcessor(row);
+            if (!payload) { importLog.push({rowNum, label, status:'fail', error:'Row skipped — missing required fields'}); return; }
+            payload.importMode = importMode;
+            rowsOut.push(payload); rowMeta.push({rowNum, label});
+          } catch(e) { importLog.push({rowNum, label, status:'fail', error:e.message||'Invalid row'}); }
+        });
+        if (rowsOut.length) {
+          try {
+            const res = await API.call('bulkUpsertEmployees', {rows: rowsOut, importMode, adminUser: State.adminUser||State.adminRole||'admin'});
+            if (res && res.ok && Array.isArray(res.results)) {
+              res.results.forEach((r, k) => {
+                const meta = rowMeta[k] || {rowNum: k+1, label: (r.ref || ('Row ' + (k+1)))};
+                if (r.status === 'added')         { ok++;       importLog.push({rowNum:meta.rowNum, label:meta.label, status:'ok',       error:''}); }
+                else if (r.status === 'updated')  { updated++;  importLog.push({rowNum:meta.rowNum, label:meta.label, status:'updated',  error:''}); }
+                else if (r.status === 'replaced') { replaced++; importLog.push({rowNum:meta.rowNum, label:meta.label, status:'replaced', error:''}); }
+                else if (r.status === 'skipped')  { skipped++;  importLog.push({rowNum:meta.rowNum, label:meta.label, status:'skip',     error:r.reason||'Skipped — already exists'}); }
+                else                              {             importLog.push({rowNum:meta.rowNum, label:meta.label, status:'fail',     error:r.reason||'Failed'}); }
+              });
+            } else {
+              rowMeta.forEach(m => importLog.push({rowNum:m.rowNum, label:m.label, status:'fail', error:(res&&res.error)||'Batch import failed'}));
+            }
+          } catch(e) {
+            rowMeta.forEach(m => importLog.push({rowNum:m.rowNum, label:m.label, status:'fail', error:e.message||'Network error'}));
+          }
+        }
+        const fail = total - ok - updated - replaced - skipped;
+        closeModal();
+        window._bulkRows = [];
+        window._bulkImportMode = 'add';
+        await refreshCurrentTab();
+        showBulkImportReport(importLog, ok, fail, total, skipped, updated, replaced);
+        return;
+      }
+      // Sequential loop for the other four templates (Transactions/Leaves/PettyCash/Holidays).
+      const CHUNK = 1; // v54 Item 1: sequential — never fire parallel locked writes
       for (let i=0; i<total; i+=CHUNK) {
         const chunk = parsedRows.slice(i, i+CHUNK);
         const statusEl = document.getElementById('bulk-status');
