@@ -1510,7 +1510,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v51-2026-05'; // v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v52-2026-05'; // v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2268,7 +2268,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v51';
+window.HRMS_VERSION = 'v52';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -11828,7 +11828,7 @@ async function renderSettings() {
           <br>
           <strong style="color:var(--gold)">Trigger:</strong> per-tenure-year fixed amount, posted monthly when this program is the active loyalty model.
           <br>
-          <strong style="color:var(--gold)">Affects:</strong> LoyaltyWallet sheet (totalAccumulated · currentBalance · monthlyCreditsLog) · LoyaltyWallet_Adjustments (performance holds/reductions) · kiosk wallet card · Config_Audit (when master selector changes). Withdrawal % and timing are read from the seeded keys (40 / 60 after 6M / 12M waits).
+          <strong style="color:var(--gold)">Affects:</strong> LoyaltyWallet sheet (totalAccumulated · currentBalance · monthlyCreditsLog) · LoyaltyWallet_Adjustments (performance holds/reductions) · kiosk wallet card · Config_Audit (when master selector changes). Withdrawal % and timing are now configurable below under <strong style="color:var(--gold)">Withdrawal Vesting Schedule</strong> (Cumulative or Tiered + Cooldown). Existing installs keep the legacy 40%@6M / 60%@12M behaviour until a schedule is saved.
         </div>
         <div id="tenure-wallet-active-status" style="font-size:12px;color:var(--gold);padding:6px 10px;margin-bottom:10px;background:var(--dark2);border-radius:4px;line-height:1.6">
           ⚠ <span id="tenure-wallet-status-state">…</span> · Change in <strong>Settings → 💎 Loyalty Programs</strong>.
@@ -11854,6 +11854,43 @@ async function renderSettings() {
                remain seeded in COMP_CONFIG_DEFAULTS (40 / 60) so
                getLoyaltyWalletStatus continues to function until the v46
                re-route. See header v45 TODO block in gas_backend_v45.gs. -->
+        </div>
+        <!-- v52 Item 1: Tenure-Based Wallet Withdrawal Vesting editor. Reuses the
+             Level-Based Retention Bonus tier-editor components (lbAddMS / lbAddTieredFirst /
+             lbAddTieredSubsequent / lbRemove* / lbToggleModel) via a reserved 'WALLET' token,
+             so there is ONE tier-editor implementation. Populated by renderWalletVesting()
+             from loadCompSettings(); saved by saveWalletVesting() into CompensationConfig. -->
+        <div id="wal-vesting-editor" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
+          <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:6px">Withdrawal Vesting Schedule
+            <span class="info-tooltip" title="Controls HOW MUCH of the wallet an employee can withdraw and WHEN. Cumulative: each monthly credit is its own deposit with its own clock - the schedule applies per deposit. Tiered + Cooldown: the first withdrawal picks a wait/percentage tier; after any withdrawal all later withdrawals follow the Cooldown tiers, applied to the current balance.">i</span>
+          </div>
+          <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px;line-height:1.6">
+            Same vesting structure as the Level-Based Retention Bonus, now configurable for the wallet. The <strong>Min Tenure</strong> field above still gates the very first withdrawal. Existing balances and monthly credits are never changed by editing this schedule.
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <label class="form-label" style="margin:0">Vesting Model</label>
+            <select class="form-input" id="lb-model-WALLET" onchange="lbToggleModel('WALLET')" style="width:200px;font-size:12px">
+              <option value="Cumulative">Cumulative Vesting</option>
+              <option value="Tiered">Tiered + Cooldown</option>
+            </select>
+          </div>
+          <div id="lb-cum-block-WALLET" style="display:none">
+            <div style="font-size:11px;color:var(--gold-light);margin-bottom:4px;font-weight:600">Per-Deposit Vesting Milestones <span class="info-tooltip" title="Each monthly wallet credit becomes Y% withdrawable after X months from that deposit. The schedule applies per deposit, not to the running total.">i</span></div>
+            <div id="lb-ms-container-WALLET"></div>
+            <button class="btn btn-dark btn-sm" style="margin-top:4px;font-size:10px" onclick="lbAddMS('WALLET')" title="Add another per-deposit vesting milestone.">+ Add Milestone</button>
+          </div>
+          <div id="lb-tier-block-WALLET" style="display:none">
+            <div style="font-size:11px;color:var(--gold-light);margin-bottom:3px;font-weight:600">First Withdrawal Options <span class="info-tooltip" title="The employee can choose ONE of these options for their first withdrawal. Longer waits unlock larger percentages.">i</span></div>
+            <div id="lb-tf-container-WALLET"></div>
+            <button class="btn btn-dark btn-sm" style="margin-top:2px;font-size:10px" onclick="lbAddTieredFirst('WALLET')">+ Add Tier</button>
+            <div style="font-size:11px;color:var(--gold-light);margin:8px 0 3px;font-weight:600">Subsequent Withdrawal - Cooldown Options <span class="info-tooltip" title="After any withdrawal, the employee must wait the configured cooldown before withdrawing again. The chosen cooldown determines the percentage of the current balance.">i</span></div>
+            <div id="lb-ts-container-WALLET"></div>
+            <button class="btn btn-dark btn-sm" style="margin-top:2px;font-size:10px" onclick="lbAddTieredSubsequent('WALLET')">+ Add Tier</button>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn btn-gold btn-sm" onclick="saveWalletVesting()">Save Wallet Vesting Schedule</button>
+            <span id="wal-vesting-status" style="margin-left:8px;font-size:12px"></span>
+          </div>
         </div>
         <!-- v45 W-C3 advisory SUPERSEDED in v46 W2 by the explanation + status block
              at the top of this panel. (Kept the deferred-TODO note in gas header.) -->
@@ -13940,6 +13977,17 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
       Required columns are marked with <strong style="color:var(--gold)">*</strong>
     </p>
     ${extraHtml||''}
+    <div id="bulk-import-mode-wrap" style="margin:10px 0;padding:10px 12px;background:var(--dark3);border-radius:6px">
+      <label class="form-label" style="display:block;margin-bottom:4px">Import Mode
+        <span class="info-tooltip" title="Add only = new records are added, existing records are skipped (safe default). Add or update = existing records have the columns you filled in updated (blank cells keep their current value). Replace = existing records are overwritten by the uploaded row (blank cells still keep their current value).">i</span>
+      </label>
+      <select class="form-input" id="bulk-import-mode" onchange="updateBulkImportCaution()" style="max-width:360px">
+        <option value="add">Add only (skip existing) - safe default</option>
+        <option value="update">Add or update existing</option>
+        <option value="replace">Replace existing</option>
+      </select>
+      <div id="bulk-import-caution" style="margin-top:8px;font-size:12px;line-height:1.5"></div>
+    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">
       <button class="btn btn-dark btn-sm" onclick="downloadBulkTemplate()">📥 Download Template (.xlsx)</button>
       <label class="bulk-btn" style="margin:0">
@@ -13956,6 +14004,10 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
       if (!parsedRows.length) { toast('No rows to import','warning'); return; }
       let ok=0;
       let skipped=0; // v43 W3.3: dup-skip counter
+      let updated=0;  // v52 Item 2: update-existing counter
+      let replaced=0; // v52 Item 2: replace-existing counter
+      const importMode = document.getElementById('bulk-import-mode')?.value || 'add';
+      window._bulkImportMode = importMode; // read by mode-aware row processors
       const total = parsedRows.length;
       const importLog = []; // {rowNum, name, status, error}
       // Chunk imports to avoid hanging the browser (5 parallel calls per chunk)
@@ -13973,15 +14025,18 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
               importLog.push({rowNum, label, status:'fail', error:'Row skipped — missing required fields'});
               return false;
             }
+            payload.importMode = importMode; // v52 Item 2
             const res = await API.call(confirmAction, payload);
             if(res.ok) {
-              // v43 W3.3: dedup skip — backend signalled duplicate by setting res.duplicate=true.
-              // Report as a "skip" line (not a fail, not a successful add) so the user sees how
-              // many were de-duplicated vs. how many actually imported.
+              // v43 W3.3 / v52 Item 2: classify the row by what the backend actually did —
+              // duplicate skip, update, replace, or a fresh add — so the report can show
+              // distinct Added / Updated / Replaced / Skipped / Failed counts.
               if (res.duplicate === true) {
                 importLog.push({rowNum, label, status:'skip', error: res.message || 'Duplicate — already exists'});
                 return 'skip';
               }
+              if (res.replaced === true) { importLog.push({rowNum, label, status:'replaced', error:''}); return 'replaced'; }
+              if (res.updated === true)  { importLog.push({rowNum, label, status:'updated',  error:''}); return 'updated'; }
               importLog.push({rowNum, label, status:'ok', error:''});
               return true;
             } else {
@@ -13994,20 +14049,25 @@ async function openBulkImportModal(title, templateHeaders, templateFilename, row
             return false;
           }
         }));
-        // v43 W3.3: tally three buckets — true (added), 'skip' (duplicate), false (failed)
-        ok      += results.filter(r => r === true).length;
-        skipped += results.filter(r => r === 'skip').length;
+        // v52 Item 2: tally five buckets — added / updated / replaced / skipped / failed.
+        ok       += results.filter(r => r === true).length;
+        updated  += results.filter(r => r === 'updated').length;
+        replaced += results.filter(r => r === 'replaced').length;
+        skipped  += results.filter(r => r === 'skip').length;
         await new Promise(r=>setTimeout(r,50));
       }
-      const fail = total - ok - skipped;
+      const fail = total - ok - updated - replaced - skipped;
       closeModal();
       window._bulkRows = [];
+      window._bulkImportMode = 'add';
       await refreshCurrentTab();
-      // v43 W3.3: pass skipped count to the report so users see dup-skip totals
-      showBulkImportReport(importLog, ok, fail, total, skipped);
+      // v52 Item 2: pass updated/replaced counts so the report shows the full breakdown.
+      showBulkImportReport(importLog, ok, fail, total, skipped, updated, replaced);
     }},
     {label:'Cancel', cls:'btn-dark', cb:()=>{window._bulkRows=[];closeModal();}},
   ]);
+  // v52 Item 2: seed the Import Mode caption to match the default ('Add only').
+  updateBulkImportCaution();
   window._bulkRows = [];
 }
 
@@ -14034,15 +14094,32 @@ async function handleBulkFileSelect(input, previewId, statusId) {
   }
 }
 
+// ─── v52 Item 2: Import Mode caution copy (mode-aware) ───────────────────────
+function updateBulkImportCaution() {
+  const sel = document.getElementById('bulk-import-mode');
+  const box = document.getElementById('bulk-import-caution');
+  if (!sel || !box) return;
+  const mode = sel.value;
+  if (mode === 'update') {
+    box.innerHTML = '<span style="color:var(--orange)">\u26a0 Matching records will be <strong>updated</strong> with the columns you filled in. Blank cells keep the existing value. A blank PIN keeps the current PIN. This cannot be undone - every change is written to the Audit Log.</span>';
+  } else if (mode === 'replace') {
+    box.innerHTML = '<span style="color:var(--red)">\u26a0 Matching records will be <strong>replaced</strong> by the uploaded row. Blank cells keep the existing value (no accidental wipes); a blank PIN keeps the current PIN. This cannot be undone - every change is written to the Audit Log.</span>';
+  } else {
+    box.innerHTML = '<span style="color:var(--green)">\u2713 Existing records are skipped - nothing is overwritten. New records are added.</span>';
+  }
+}
+
 // ─── Bulk Import Report Modal ────────────────────────────────────────────────
 // v43 W3.3: added optional 5th arg `skipped` for dedup-skip totals.
-function showBulkImportReport(log, ok, fail, total, skipped) {
-  skipped = skipped || 0;
+function showBulkImportReport(log, ok, fail, total, skipped, updated, replaced) {
+  skipped = skipped || 0; updated = updated || 0; replaced = replaced || 0; // v52 Item 2
   const rows = log.map((r,i) => {
-    const icon = r.status==='ok' ? '✅' : (r.status==='skip' ? '⏭' : '❌');
-    let cellColor = 'var(--green)', cellText = 'Imported successfully';
-    if (r.status === 'fail')  { cellColor = 'var(--red)';  cellText = r.error; }
-    if (r.status === 'skip')  { cellColor = 'var(--orange)'; cellText = r.error || 'Skipped (duplicate)'; }
+    const icon = r.status==='ok' ? '✅' : (r.status==='updated' ? '✏️' : (r.status==='replaced' ? '♻️' : (r.status==='skip' ? '⏭' : '❌')));
+    let cellColor = 'var(--green)', cellText = 'Added successfully';
+    if (r.status === 'updated')  { cellColor = 'var(--gold)';   cellText = 'Updated existing record'; }
+    if (r.status === 'replaced') { cellColor = 'var(--gold)';   cellText = 'Replaced existing record'; }
+    if (r.status === 'fail')     { cellColor = 'var(--red)';    cellText = r.error; }
+    if (r.status === 'skip')     { cellColor = 'var(--orange)'; cellText = r.error || 'Skipped (duplicate)'; }
     return `<tr style="border-bottom:1px solid var(--dark3)">
       <td style="padding:4px 6px;color:var(--gray-light)">${r.rowNum}</td>
       <td style="padding:4px 6px">${icon} ${escHtml(r.label)}</td>
@@ -14050,8 +14127,10 @@ function showBulkImportReport(log, ok, fail, total, skipped) {
     </tr>`;
   }).join('');
   const summary = `<div style="margin-bottom:10px;font-size:13px">
-    <span style="color:var(--green);font-weight:700">✅ ${ok} imported</span>
-    ${skipped>0?`&nbsp;|&nbsp;<span style="color:var(--orange);font-weight:700">⏭ ${skipped} duplicates skipped</span>`:''}
+    <span style="color:var(--green);font-weight:700">✅ ${ok} added</span>
+    ${updated>0?`&nbsp;|&nbsp;<span style="color:var(--gold);font-weight:700">✏️ ${updated} updated</span>`:''}
+    ${replaced>0?`&nbsp;|&nbsp;<span style="color:var(--gold);font-weight:700">♻️ ${replaced} replaced</span>`:''}
+    ${skipped>0?`&nbsp;|&nbsp;<span style="color:var(--orange);font-weight:700">⏭ ${skipped} skipped</span>`:''}
     ${fail>0?`&nbsp;|&nbsp;<span style="color:var(--red);font-weight:700">❌ ${fail} failed</span>`:''}
     &nbsp;|&nbsp;<span style="color:var(--gray-light)">Total: ${total}</span>
   </div>`;
@@ -14067,10 +14146,11 @@ function showBulkImportReport(log, ok, fail, total, skipped) {
   </div>
   ${fail>0?`<div style="margin-top:10px;font-size:11px;color:var(--gold-light)">⚠ Failed rows were <strong>not</strong> imported. Fix the errors and re-upload only the failed rows.</div>`:''}
   ${skipped>0?`<div style="margin-top:6px;font-size:11px;color:var(--gold-light)">⏭ Skipped rows already existed in the system — re-importing is safe and creates no duplicates.</div>`:''}
+  ${(updated+replaced)>0?`<div style="margin-top:6px;font-size:11px;color:var(--gold-light)">✏️ Updated / ♻️ replaced rows matched an existing record and were changed per the chosen Import Mode. Every change was written to the Audit Log.</div>`:''}
   </div>`;
-  const titleSummary = skipped > 0
-    ? `${ok} added / ${skipped} skipped / ${total} Total`
-    : `${ok}/${total} Rows Successful`;
+  const titleSummary = (updated + replaced) > 0
+    ? `${ok} added / ${updated} updated / ${replaced} replaced / ${total} total`
+    : (skipped > 0 ? `${ok} added / ${skipped} skipped / ${total} Total` : `${ok}/${total} Rows Successful`);
   showModal(
     `📊 Import Report — ${titleSummary}`,
     html,
@@ -14369,6 +14449,64 @@ async function bulkImportEmployees() {
     return m ? m[1].trim() : String(val).trim();
   }
   openBulkImportModal('👥 Bulk Import Employees', headers, 'ArtzFolio_Employee_Template.xlsx', row => {
+    // v52 Item 2: in Add or update / Replace mode, match an existing employee by
+    // employeeCode and send ONLY the columns the sheet actually filled in — blank cells
+    // are omitted so the backend keeps the current value (a blank PIN keeps the existing
+    // PIN). name/level/salary/pin are NOT required here, so the owner can upload just the
+    // columns they want to fix (e.g. corrected shift times). Routed through the existing
+    // handleUpdateEmployee allow-list path on the backend. Add mode is unchanged below.
+    const _mode = (typeof window !== 'undefined' && window._bulkImportMode) || 'add';
+    if (_mode === 'update' || _mode === 'replace') {
+      const _code = String(row['employeeCode (optional, e.g. AZ_EMP_0056)'] || '').trim().toUpperCase();
+      if (!_code) throw new Error('Update/Replace mode needs employeeCode to match an existing employee');
+      const out = { customId: _code, importMode: _mode };
+      const _has = (cell) => { const v = row[cell]; return v !== undefined && v !== null && String(v).trim() !== ''; };
+      const _set = (cell, key, tf) => { if (_has(cell)) out[key] = tf ? tf(row[cell]) : row[cell]; };
+      if (_has('level *')) { const lvl = String(row['level *']).trim().toUpperCase(); if (!['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].includes(lvl)) throw new Error(`Invalid level "${lvl}" — use L1–L10`); out.level = lvl; }
+      if (_has('pin *'))   { const ps = String(row['pin *']).trim(); if (!/^\d{4}$/.test(ps)) throw new Error(`PIN must be exactly 4 digits, got "${ps}" — leave blank to keep existing`); out.pin = ps; }
+      _set('name *', 'name');
+      _set('salary *', 'salary');
+      _set('shiftStart (e.g. 09:00)', 'shiftStart', v => _excelTimeToHHMM(v));
+      _set('shiftEnd (e.g. 19:00)', 'shiftEnd', v => _excelTimeToHHMM(v));
+      _set('dailyHours', 'dailyHours');
+      _set('workDaysPerWeek', 'workDaysPerWeek');
+      _set('weeklyOff1', 'weeklyOff1');
+      _set('weeklyOff2', 'weeklyOff2');
+      _set('mobile', 'mobile');
+      _set('email', 'email');
+      if (_has('dept') || _has('department')) { const dv = (row['department'] || row['dept'] || '').toString().trim(); out.dept = dv; out.department = dv; }
+      _set('category', 'category');
+      _set('doj (YYYY-MM-DD)', 'doj');
+      _set('dob (YYYY-MM-DD)', 'dob');
+      _set('gender', 'gender');
+      _set('aadhaar', 'aadhaar');
+      _set('noticeperiodDays', 'noticeperiodDays');
+      _set('nightShiftAllowance', 'nightShiftAllowance');
+      _set('travelAllowance', 'travelAllowance');
+      _set('otBaseHours', 'otBaseHours');
+      _set('employmentType', 'employmentType');
+      _set('notes', 'notes');
+      _set('group', 'group');
+      _set('billableRate', 'billableRate');
+      _set('uan', 'uan');
+      _set('esiNumber', 'esiNumber');
+      _set('address', 'address');
+      _set('factory', 'factory');
+      _set('zone', 'zone');
+      _set('project', 'project');
+      _set('leavePolicyGroup', 'leavePolicyGroup');
+      _set('supervisorId (Name (ID) or raw ID)', 'supervisorId', v => extractEmpId(v));
+      _set('managerId (Name (ID) or raw ID)', 'managerId', v => extractEmpId(v));
+      // referredBy is intentionally NOT updatable here — it is set once at hire.
+      if (_has('incrementMode')) {
+        const im = String(row['incrementMode']).trim();
+        if (['','OFF','CUSTOM_FLAT','CUSTOM_PCT'].indexOf(im) < 0) throw new Error(`Invalid incrementMode "${im}" — use blank, OFF, CUSTOM_FLAT, or CUSTOM_PCT`);
+        out.incrementMode = im;
+        if (im === 'CUSTOM_FLAT' && _has('empIncrementFlat')) out.empIncrementFlat = parseFloat(row['empIncrementFlat']) || 0;
+        if (im === 'CUSTOM_PCT'  && _has('empIncrementPct'))  out.empIncrementPct  = parseFloat(row['empIncrementPct'])  || 0;
+      }
+      return out;
+    }
     // Validate required fields — throw with specific message so import report shows which field is missing
     const missing = [];
     if (!row['name *'])   missing.push('name');
@@ -16717,6 +16855,80 @@ async function hydrateCompensationTooltips() {
 // v43 W3.12: rewritten to merge backend defaults on top of an empty CompensationConfig
 // so admins see meaningful values immediately on a fresh install. Defaults banner +
 // first-time-setup banner (W3.13) auto-show when the sheet is empty.
+// ── v52 Item 1: Tenure-Based Wallet vesting editor (render + save) ───────────
+// Reuses the Level-Based Retention Bonus tier-editor row builders (lbAddMS,
+// lbAddTieredFirst, lbAddTieredSubsequent) and lbToggleModel via the reserved
+// 'WALLET' token, so the wallet uses the SAME tier-editor implementation as the LB.
+// Persists into CompensationConfig (4 keys) via setCompensationConfig.
+function renderWalletVesting(cfg) {
+  cfg = cfg || {};
+  const sel = document.getElementById('lb-model-WALLET');
+  if (!sel) return; // panel not in the DOM (e.g. non-owner view)
+  // Blank model (every pre-v52 install) => show the legacy 40/60 schedule under the
+  // Tiered model so the owner can SEE and edit today's behaviour. Saving persists it.
+  const savedModel = String(cfg['LOYALTY_WALLET_VESTING_MODEL'] || '').trim();
+  sel.value = (savedModel === 'Cumulative') ? 'Cumulative' : 'Tiered';
+  const _p6  = parseFloat(cfg['LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT']);
+  const _p12 = parseFloat(cfg['LOYALTY_WALLET_WITHDRAW_AFTER_12M_PCT']);
+  const p6  = isFinite(_p6)  ? _p6  : 40;
+  const p12 = isFinite(_p12) ? _p12 : 60;
+  const fb = [{months:6, withdrawable_pct:p6}, {months:12, withdrawable_pct:p12}];
+  const parse = (j, dflt) => { try { const a = JSON.parse(j); return (Array.isArray(a) && a.length) ? a : dflt; } catch(e) { return dflt; } };
+  const cum   = parse(cfg['LOYALTY_WALLET_CUMULATIVE_SCHEDULE_JSON'], fb);
+  const first = parse(cfg['LOYALTY_WALLET_TIERED_FIRST_OPTIONS_JSON'], fb);
+  const sub   = parse(cfg['LOYALTY_WALLET_TIERED_SUBSEQUENT_OPTIONS_JSON'], fb);
+  // Clear each container, then rebuild rows via the shared LB builders and overwrite
+  // the freshly-added row's month/pct inputs with the saved values.
+  const cumC = document.getElementById('lb-ms-container-WALLET');
+  if (cumC) { cumC.innerHTML = ''; cum.forEach((m,k) => { lbAddMS('WALLET');
+    const mo = document.getElementById('lb-months-WALLET-'+k), pc = document.getElementById('lb-pct-WALLET-'+k);
+    if (mo) mo.value = m.months || 6; if (pc) pc.value = m.withdrawable_pct || m.pct || 0; }); }
+  const tfC = document.getElementById('lb-tf-container-WALLET');
+  if (tfC) { tfC.innerHTML = ''; first.forEach((m,k) => { lbAddTieredFirst('WALLET');
+    const mo = document.getElementById('lb-tf-months-WALLET-'+k), pc = document.getElementById('lb-tf-pct-WALLET-'+k);
+    if (mo) mo.value = m.months || 6; if (pc) pc.value = m.withdrawable_pct || m.pct || 0; }); }
+  const tsC = document.getElementById('lb-ts-container-WALLET');
+  if (tsC) { tsC.innerHTML = ''; sub.forEach((m,k) => { lbAddTieredSubsequent('WALLET');
+    const mo = document.getElementById('lb-ts-months-WALLET-'+k), pc = document.getElementById('lb-ts-pct-WALLET-'+k);
+    if (mo) mo.value = m.months || 6; if (pc) pc.value = m.withdrawable_pct || m.pct || 0; }); }
+  lbToggleModel('WALLET');
+}
+
+async function saveWalletVesting() {
+  const statusEl = document.getElementById('wal-vesting-status');
+  const setStatus = (h) => { if (statusEl) statusEl.innerHTML = h; };
+  const model = String(document.getElementById('lb-model-WALLET')?.value || 'Tiered');
+  // Collect by walking the actual month inputs in DOM order (robust to removed rows).
+  const collect = (containerId, monthPrefix, pctPrefix) => {
+    const c = document.getElementById(containerId);
+    if (!c) return [];
+    const out = [];
+    c.querySelectorAll('input[id^="' + monthPrefix + '"]').forEach((mEl) => {
+      const idxPart = mEl.id.substring(monthPrefix.length);
+      const pEl = document.getElementById(pctPrefix + idxPart);
+      const mo = parseInt(mEl.value || 0);
+      const pc = parseFloat(pEl ? pEl.value : 0) || 0;
+      if (mo > 0 && pc > 0) out.push({months: mo, withdrawable_pct: pc});
+    });
+    return out;
+  };
+  const cum   = collect('lb-ms-container-WALLET', 'lb-months-WALLET-', 'lb-pct-WALLET-');
+  const first = collect('lb-tf-container-WALLET', 'lb-tf-months-WALLET-', 'lb-tf-pct-WALLET-');
+  const sub   = collect('lb-ts-container-WALLET', 'lb-ts-months-WALLET-', 'lb-ts-pct-WALLET-');
+  if (model === 'Cumulative' && !cum.length)   { toast('Add at least one vesting milestone', 'error'); return; }
+  if (model === 'Tiered' && !first.length)     { toast('Tiered model needs at least one first-withdrawal option', 'error'); return; }
+  const updates = {
+    LOYALTY_WALLET_VESTING_MODEL: model,
+    LOYALTY_WALLET_CUMULATIVE_SCHEDULE_JSON: JSON.stringify(cum),
+    LOYALTY_WALLET_TIERED_FIRST_OPTIONS_JSON: JSON.stringify(first),
+    LOYALTY_WALLET_TIERED_SUBSEQUENT_OPTIONS_JSON: JSON.stringify(sub),
+  };
+  setStatus('Saving...');
+  const res = await API.call('setCompensationConfig', {updates});
+  if (res && res.ok) { setStatus('<span style="color:var(--green)">Wallet vesting schedule saved.</span>'); toast('Wallet vesting schedule saved', 'success'); }
+  else { setStatus('<span style="color:var(--red)">' + escHtml((res && res.error) || 'Save failed') + '</span>'); toast((res && res.error) || 'Save failed', 'error'); }
+}
+
 async function loadCompSettings() {
   try {
     const cfgRes = await API.call('getAllCompensationConfig');
@@ -16769,6 +16981,7 @@ async function loadCompSettings() {
       instAmtEl.value = n > 0 ? Math.round(parseFloat(totalEl.value || 0) / n) : 0;
     }
     initCompLadderEditor();
+    try { renderWalletVesting(merged); } catch(e) { console.error('renderWalletVesting:', e); }
     hydrateCompensationTooltips();  // v43 W3.11
     // v43 W4.2: recompute per-level increment displays after loading + bind type-change listener.
     // v48: route through _v48RecomputeAllIncrementShifts so the column-header
