@@ -1510,7 +1510,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v49-2026-05'; // v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v51-2026-05'; // v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2268,7 +2268,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v49';
+window.HRMS_VERSION = 'v51';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -5479,7 +5479,7 @@ async function renderEmployees(filter='') {
       ${canEdit?`<button class="btn btn-gold btn-sm" onclick="showAddEmpModal()">+ Add Employee</button>`:''}
       ${canEdit?`<button class="btn btn-dark btn-sm" onclick="bulkImportEmployees()">📥 Bulk Import</button>`:''}
       <button class="btn btn-dark btn-sm" onclick="exportCSV(State.employees,'employees')">📤 Export CSV</button>
-      <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Employees.xlsx','Employees',['id','name','dept','level','salary','mobile','shiftStart','shiftEnd','weeklyOff1','weeklyOff2','doj','status'],State.employees.map(e=>[e.id,e.name,e.dept,e.level,e.salary,e.mobile,e.shiftStart,e.shiftEnd,e.weeklyOff1,e.weeklyOff2,e.doj,e.status]))">📊 Export Excel</button>
+      <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Employees.xlsx','Employees',['id','name','dept','level','salary','mobile','shiftStart','shiftEnd','weeklyOff1','weeklyOff2','doj','status'],State.employees.map(e=>[e.id,e.name,e.dept,e.level,e.salary,e.mobile,e.shiftStart,e.shiftEnd,e.weeklyOff1,e.weeklyOff2,e.doj,e.status]),['id','mobile','shiftStart','shiftEnd','doj'])">📊 Export Excel</button>
     </div>
   </div>
   <div id="emp-bulk-bar" style="display:none;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;gap:12px;flex-wrap:wrap">
@@ -8490,7 +8490,7 @@ function exportStatutoryXLSX(year, month) {
     const headers=['Employee','ID','Dept','Level','Gross Salary','Emp PF','Er PF','Emp ESI','Er ESI','Prof Tax','TDS','Total Emp Deduction','Total Er Contribution'];
     const data=res.employees.map(e=>[e.empName,e.empId,e.dept,e.level,e.grossSalary,e.pfEmployee,e.pfEmployer,e.esiEmployee,e.esiEmployer,e.professionalTax,e.tds,e.totalDeductionEmployee,e.totalDeductionEmployer]);
     const mName=new Date(year,month-1).toLocaleString('en-IN',{month:'short',year:'numeric'}).replace(' ','_');
-    downloadXLSX(`ArtzFolio_Statutory_${mName}.xlsx`,'Statutory',headers,data);
+    downloadXLSX(`ArtzFolio_Statutory_${mName}.xlsx`,'Statutory',headers,data,['ID']);
   }).catch(e => { toast('Network error. Please try again.','error'); console.error(e); });
 }
 
@@ -9263,7 +9263,7 @@ function exportReportExcel() {
   if(!data.length){toast('No data to export','warning');return;}
   const headers=Object.keys(data[0]);
   const rows=data.map(r=>headers.map(h=>r[h]||''));
-  downloadXLSX(`ArtzFolio_Report_${window._reportType||'data'}_${todayStr()}.xlsx`, 'Report', headers, rows);
+  downloadXLSX(`ArtzFolio_Report_${window._reportType||'data'}_${todayStr()}.xlsx`, 'Report', headers, rows, headers.filter(h=>/id|date|time|code|mobile|phone|aadhaar|uan|esi|pin/i.test(h)));
 }
 
 function sortReportBy(col) {
@@ -9379,7 +9379,7 @@ function exportTrackedTime() {
   if(!rows.length){toast('No data to export','warning');return;}
   const headers=['Date','Employee','Dept','ClockIn','ClockOut','WorkHours','OTHours','Activity','Project','ActivityNote','BillableRate','BillableAmount'];
   const data=rows.map(r=>[r.date,r.empName,r.dept,r.clockIn,r.clockOut,(r.workMinutes/60).toFixed(2),(r.otMinutes/60).toFixed(2),r.activity,r.project,r.activityNote,r.billableRate,r.billableAmount]);
-  downloadXLSX(`ArtzFolio_TrackedTime_${todayStr()}.xlsx`,'Tracked Time',headers,data);
+  downloadXLSX(`ArtzFolio_TrackedTime_${todayStr()}.xlsx`,'Tracked Time',headers,data,['Date','ClockIn','ClockOut']);
 }
 
 // ═══════════════════════════════════════════
@@ -9691,7 +9691,7 @@ function exportPCExcel() {
       e.approvedBy||'', e.approvalDate||'', e.note||''
     ]);
     downloadXLSX(`ArtzFolio_PettyCash_${window._pcMonth||todayStr().substring(0,7)}.xlsx`,
-      'Petty Cash', headers, data);
+      'Petty Cash', headers, data, ['ID','Date','Approval Date']);
   }).catch(e => { toast('Network error. Please try again.','error'); console.error(e); });
 }
 
@@ -10567,7 +10567,7 @@ async function renderSettings() {
         <button class="btn btn-dark btn-sm" onclick="event.stopPropagation();fixHolidayData()" title="Run this once if dates are showing as names in the table — it auto-corrects the column order in your Google Sheet">🔧 Fix Holiday Data</button>
         <button class="btn btn-dark btn-sm" onclick="event.stopPropagation();loadDefaultHolidays()" title="Load all major Indian 2026 holidays">🇮🇳 Load Indian Defaults</button>
         <button class="btn btn-dark btn-sm" onclick="event.stopPropagation();bulkImportHolidays()">📥 Bulk Import</button>
-        <button class="btn btn-dark btn-sm" onclick='event.stopPropagation();downloadXLSX("ArtzFolio_Holidays.xlsx","Holidays",["date","name","type","applicableTo"],${JSON.stringify(hols.map(h=>[h.date,h.name,h.type,h.applicableTo]))})'>📤 Export</button>
+        <button class="btn btn-dark btn-sm" onclick='event.stopPropagation();downloadXLSX("ArtzFolio_Holidays.xlsx","Holidays",["date","name","type","applicableTo"],${JSON.stringify(hols.map(h=>[h.date,h.name,h.type,h.applicableTo]))},["date"])'>📤 Export</button>
       </span>
       <span class="settings-card-chevron">▼</span>
     </div>
@@ -10827,6 +10827,20 @@ async function renderSettings() {
     <div style="margin-top:12px;font-size:11px;color:var(--gray-light)">
       <strong>What is JSON backup?</strong> It is a complete copy of all your data (employees, attendance, salary records, transactions, points) saved as a file on your computer. If your Google account is ever inaccessible or your data needs to move to a new Google Sheet, you import this file to restore everything. Think of it like a photocopy of all your records.
     </div>
+    </div>
+  </div>
+
+  <!-- v51: System Self-Test (additive; new UI only — no existing DOM IDs touched) -->
+  <div class="settings-section">
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-selftest')">🩺 System Self-Test <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-selftest" class="settings-card-body">
+    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
+      Runs live sanity checks — frontend↔backend version match, required configuration keys present, and an increment-resolver smoke test. Green = healthy, red = needs attention. Read-only; this changes nothing.
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gold btn-sm" id="selftest-run-btn" onclick="runSelfTestPanel()">🩺 Run Self-Test</button>
+    </div>
+    <div id="selftest-results" style="margin-top:12px;font-size:12px"></div>
     </div>
   </div>
 
@@ -12522,6 +12536,46 @@ async function runLBAccrualConfirm() {
 }
 
 // ─── Danger Zone functions ───────────────────────────────────────────────────
+// v51 additive: System Self-Test panel. Read-only live sanity checks rendered green/red
+// into #selftest-results. New UI only — touches no existing DOM IDs or business logic.
+async function runSelfTestPanel() {
+  const box = document.getElementById('selftest-results');
+  const btn = document.getElementById('selftest-run-btn');
+  if (btn) btn.disabled = true;
+  if (box) box.innerHTML = '<span style="color:var(--gold-light)">Running self-test…</span>';
+  const checks = [];
+  try {
+    const res = await API.call('runSelfTest', {});
+    if (!res || !res.ok) {
+      if (box) box.innerHTML = '<span style="color:var(--red)">Self-test backend call failed: ' + escHtml((res && res.error) || 'unknown') + '</span>';
+      if (btn) btn.disabled = false;
+      return;
+    }
+    const client = (typeof window !== 'undefined' && window.HRMS_VERSION) || 'unknown';
+    const server = res.serverVersion || 'unknown';
+    checks.push({ name: 'Frontend ↔ backend version match', pass: client === server,
+                  detail: 'client ' + client + ' / server ' + server });
+    (res.checks || []).forEach(c => checks.push(c));
+  } catch (e) {
+    if (box) box.innerHTML = '<span style="color:var(--red)">Self-test error: ' + escHtml(e.message || String(e)) + '</span>';
+    if (btn) btn.disabled = false;
+    return;
+  }
+  const allPass = checks.every(c => c.pass);
+  const rows = checks.map(c =>
+    '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:6px;margin-bottom:4px;background:' +
+    (c.pass ? 'rgba(46,125,50,0.12)' : 'rgba(183,28,28,0.15)') + '">' +
+    '<span style="font-weight:700;color:' + (c.pass ? 'var(--green)' : 'var(--red)') + '">' + (c.pass ? '✅' : '❌') + '</span>' +
+    '<span><strong>' + escHtml(c.name) + '</strong>' +
+    (c.detail ? '<br><span style="color:var(--gray-light);font-size:11px">' + escHtml(c.detail) + '</span>' : '') +
+    '</span></div>'
+  ).join('');
+  if (box) box.innerHTML =
+    '<div style="margin-bottom:8px;font-weight:700;color:' + (allPass ? 'var(--green)' : 'var(--red)') + '">' +
+    (allPass ? '✅ All checks passed' : '❌ One or more checks failed') + '</div>' + rows;
+  if (btn) btn.disabled = false;
+}
+
 async function repairSettingsData() {
   if (State.adminRole !== 'owner') { toast('Owner access required','error'); return; }
   requireOwnerPin(async () => {
@@ -13479,7 +13533,7 @@ async function importBackup(input) {
   reset();
 }
 
-function downloadXLSX(filename, sheetName, headers, rows=[]) {
+function downloadXLSX(filename, sheetName, headers, rows=[], textCols) {
   // Bug 51: Guard against XLSX library not loaded (CDN failure)
   if (typeof XLSX === 'undefined') {
     toast('Excel library not loaded. Try refreshing or use CSV export instead.', 'error', 5000);
@@ -13497,6 +13551,21 @@ function downloadXLSX(filename, sheetName, headers, rows=[]) {
   }
   // Auto-width columns
   ws['!cols'] = headers.map(h=>({wch: Math.max(String(h||'').length+4, 14)}));
+  // v50: opt-in @-format text protection for identifier/date columns so Excel
+  // stops coercing IDs / UAN / ESI / PINs / dates on export. textCols = array of
+  // header names (or 0-based indices). Omitted -> unchanged (numbers stay numeric).
+  if (Array.isArray(textCols) && textCols.length) {
+    const _tcIdx = textCols.map(tc => typeof tc === 'number' ? tc : headers.indexOf(tc)).filter(i => i >= 0);
+    const _tcRange = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    _tcIdx.forEach(c => {
+      for (let r = _tcRange.s.r; r <= _tcRange.e.r; r++) {
+        const _cell = XLSX.utils.encode_cell({r, c});
+        if (!ws[_cell]) continue;
+        ws[_cell].z = '@';
+        if (ws[_cell].v !== undefined && ws[_cell].v !== null) { ws[_cell].t = 's'; ws[_cell].v = String(ws[_cell].v); }
+      }
+    });
+  }
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
   XLSX.writeFile(wb, filename);
 }
@@ -13611,7 +13680,7 @@ function downloadBulkTemplateRich(filename, sheetName, headers, sampleRows, vali
 
   // ── Data validations — rows 2–200 (leaves row 1 as header) ──────────────
   // XLSX spec: ws['!dataValidations'] = array of validation objects
-  const DATA_ROWS = 200; // apply dropdown to first 200 data rows
+  const DATA_ROWS = Math.max(200, Array.isArray(sampleRows) ? sampleRows.length : 0); // v50: cover all pre-filled rows (e.g. attendance backfill); >=200 for blank templates
   ws['!dataValidations'] = ws['!dataValidations'] || [];
 
   Object.entries(colDropMap).forEach(([ci, {letter, options}]) => {
@@ -13781,6 +13850,38 @@ function buildColumnGuide(spec) {
       ${spec.map(c => `<span><strong style="color:${c.required ? 'var(--gold)' : 'var(--off-white)'}">${escHtml(c.label)}</strong> — ${escHtml(c.desc || '')}${c.valid ? ` <em style="color:var(--gray)">(${escHtml(c.valid)})</em>` : ''}</span>`).join('')}
     </div>
   </details>`;
+}
+
+// v50 template-v3 overhaul: ONE shared template-builder. Each bulk-import declares a
+// single COLUMN_SPEC array; this derives headers / sampleRows / validValues /
+// extraDropdowns / templateExtras (text-format + HH:MM time DV + hidden Schema sheet) /
+// Column Guide from it. Eliminates the per-template parallel-array copy-paste that
+// caused the M1/H3 drift class. The renderer is downloadBulkTemplateRich (unchanged).
+// COLUMN_SPEC entry: { label, key, required, sample, sample2, desc, valid, note,
+//   type, dropdown:[...], timeCol:true }
+function buildBulkTemplateSpec(spec, opts) {
+  opts = opts || {};
+  const headers = spec.map(c => c.label);
+  // Two worked example rows (row 2 falls back to row 1 when sample2 is absent).
+  const sampleRows = [
+    spec.map(c => c.sample !== undefined ? c.sample : ''),
+    spec.map(c => c.sample2 !== undefined ? c.sample2 : (c.sample !== undefined ? c.sample : '')),
+  ];
+  const validValues = spec.filter(c => c.valid).map(c => [c.label, c.valid, c.note || '']);
+  // Finite-list dropdowns keyed on each column's normalised label so the DV attaches to
+  // exactly that column and overrides any static DROPDOWN_MAP collision.
+  const extraDropdowns = spec
+    .filter(c => Array.isArray(c.dropdown) && c.dropdown.length)
+    .map(c => ({ key: String(c.label).toLowerCase().replace(/[^a-z0-9]/g, ''), options: c.dropdown }));
+  const timeColumns = spec.filter(c => c.timeCol).map(c => c.label);
+  const schemaRows = [['column header (template)', 'backend key', 'required', 'data type'],
+    ...spec.map(c => [c.label, c.key || '', c.required ? 'YES' : 'no', c.type || 'text'])];
+  const templateExtras = {
+    textFormat: opts.textFormat !== false, // default ON - v3 standard (opt-out only)
+    timeColumns: timeColumns,
+    schemaRows: schemaRows,
+  };
+  return { headers, sampleRows, validValues, extraDropdowns, templateExtras, fieldGuide: buildColumnGuide(spec) };
 }
 
 // Parse an uploaded Excel/CSV file and return array of objects keyed by header row
@@ -14361,44 +14462,38 @@ async function bulkImportEmployees() {
 }
 
 function bulkImportTransactions() {
-  // v42 Item I (scoped): single source of truth for Transaction bulk import.
-  // headers / sampleRows / validValues / Column Guide modal all derive from this spec.
+  // v50: single COLUMN_SPEC -> buildBulkTemplateSpec derives every layer (headers,
+  // samples, Valid_Values_Reference, in-cell DV for `type`, @-format text cells, hidden
+  // Schema sheet, Column Guide). Backend handleAddTransaction (header-driven write) reads
+  // empId/date/type/amount/note/approvedBy - every template column is persisted; no drop.
   const empSamples = (State.employees||[]).slice(0,2).map(e=>`${e.id} (${e.name})`);
   const TRANS_COLS = [
-    { label:'empId * (code or name)', required:true,  sample:empSamples[0]||'AZ_EMP_0002 (Ramesh Kumar)',
-      desc:'Employee — code OR full name', valid:'AZ_EMP_XXXX or employee name',
-      note:'Use employee code (e.g. AZ_EMP_0002) OR full name (e.g. Ramesh Kumar) — both accepted' },
-    { label:'date *',                 required:true,  sample:'2026-04-10',
-      desc:'Transaction date',          valid:'YYYY-MM-DD',
-      note:'e.g. 2026-04-15' },
-    { label:'type *',                 required:true,  sample:'Advance',
-      desc:'Transaction type',
+    { label:'empId * (code or name)', key:'empId', required:true, type:'text (employee code or name)',
+      sample:empSamples[0]||'AZ_EMP_0002 (Ramesh Kumar)', sample2:empSamples[1]||'AZ_EMP_0005 (Sunita Devi)',
+      desc:'Employee - code OR full name', valid:'AZ_EMP_XXXX or employee name',
+      note:'Use employee code (e.g. AZ_EMP_0002) OR full name (e.g. Ramesh Kumar) - both accepted' },
+    { label:'date *', key:'date', required:true, type:'text YYYY-MM-DD',
+      sample:'2026-04-10', sample2:'2026-04-12', desc:'Transaction date', valid:'YYYY-MM-DD', note:'e.g. 2026-04-15' },
+    { label:'type *', key:'type', required:true, type:'enum',
+      sample:'Advance', sample2:'Bonus', desc:'Transaction type',
       valid:'Advance, Loan, LoanRepayment, Bonus, Penalty, DamageRecovery, LateFine, KYCFee, PINReactivationFee, Increment',
-      note:'Advance/Loan/Penalty = deductions; Bonus/Increment = additions' },
-    { label:'amount *',               required:true,  sample:5000,
-      desc:'Amount in ₹',               valid:'Number without commas',
-      note:'e.g. 5000 (not ₹5,000)' },
-    { label:'note',                   required:false, sample:'April advance payment requested by employee',
+      note:'Advance/Loan/Penalty = deductions; Bonus/Increment = additions',
+      dropdown:['Advance','Loan','LoanRepayment','Bonus','Penalty','DamageRecovery','LateFine','KYCFee','PINReactivationFee','Increment'] },
+    { label:'amount *', key:'amount', required:true, type:'number INR',
+      sample:5000, sample2:2000, desc:'Amount in ₹', valid:'Number without commas', note:'e.g. 5000 (not ₹5,000)' },
+    { label:'note', key:'note', required:false, type:'text',
+      sample:'April advance payment requested by employee', sample2:'Q1 performance bonus - example row',
       desc:'Free-text reason / reference', valid:'Any text' },
-    { label:'approvedBy',             required:false, sample:'Owner',
-      desc:'Who approved this transaction', valid:'Owner / Manager / Admin name',
+    { label:'approvedBy', key:'approvedBy', required:false, type:'text',
+      sample:'Owner', sample2:'Owner', desc:'Who approved this transaction', valid:'Owner / Manager / Admin name',
       note:'Defaults to current admin user if blank' },
   ];
-  const headers = TRANS_COLS.map(c => c.label);
-  // Two example rows — first uses TRANS_COLS.sample, second is a hand-tweaked variant.
-  const sampleRows = [
-    TRANS_COLS.map(c => c.sample),
-    [empSamples[1]||'AZ_EMP_0005 (Sunita Devi)', '2026-04-12', 'Bonus', 2000, 'Q1 performance bonus — example row', 'Owner'],
-  ];
-  const validValues = TRANS_COLS
-    .filter(c => c.valid)
-    .map(c => [c.label, c.valid, c.note || '']);
+  const t = buildBulkTemplateSpec(TRANS_COLS);
   openBulkImportModal(
     `💸 Bulk Import Transactions`,
-    headers, 'ArtzFolio_Transaction_Template.xlsx',
+    t.headers, 'ArtzFolio_Transaction_Template_v50.xlsx',
     row => {
       if (!row['empId * (code or name)'] || !row['date *'] || !row['type *'] || !row['amount *']) return null;
-      // Resolve empId — accept code or name
       const raw = String(row['empId * (code or name)']).trim();
       const emp = (State.employees||[]).find(e=>e.id===raw||e.name.toLowerCase()===raw.toLowerCase()||raw.includes(e.id));
       const empId = emp ? emp.id : raw;
@@ -14406,29 +14501,38 @@ function bulkImportTransactions() {
               amount:parseFloat(row['amount *'])||0, note:row['note']||'',
               approvedBy:row['approvedBy']||State.adminUser||'Admin', status:'Applied',
               dedupOnImport: true /* v43 W3.3 */};
-    }, 'addTransaction', buildColumnGuide(TRANS_COLS), sampleRows, validValues);
+    }, 'addTransaction', t.fieldGuide, t.sampleRows, t.validValues, t.extraDropdowns, t.templateExtras);
 }
 
 function bulkImportLeaves() {
-  // v42 Item G: header 'type *' renamed to 'leaveType *' so DROPDOWN_MAP key
-  // 'leavetype' (substring match on lowercased+alnum-stripped header) still
-  // applies the IL/SL/PL/EL/UL dropdown here, and the Transaction template's
-  // unchanged 'type *' header no longer mis-matches the same dropdown.
-  const headers = ['empId * (code or name)','leaveType *','startDate *','endDate *','note','urgency'];
+  // v50: single COLUMN_SPEC -> buildBulkTemplateSpec. DV on leaveType + urgency, @-format
+  // text cells, hidden Schema sheet, Column Guide. Backend handleRequestLeave reads
+  // empId/type/startDate/endDate/note/urgency - every column persisted; no silent drop.
   const empSamples = (State.employees||[]).slice(0,2).map(e=>`${e.id} (${e.name})`);
-  const sampleRows = [
-    [empSamples[0]||'AZ_EMP_0003 (Mohan Lal)', 'IL', '2026-04-20', '2026-04-22', 'Family function — example row', 'normal'],
-    [empSamples[1]||'AZ_EMP_0007 (Anita Singh)','SL', '2026-04-25', '2026-04-25', 'Sick — doctor visit', 'urgent'],
+  const LEAVE_COLS = [
+    { label:'empId * (code or name)', key:'empId', required:true, type:'text (employee code or name)',
+      sample:empSamples[0]||'AZ_EMP_0003 (Mohan Lal)', sample2:empSamples[1]||'AZ_EMP_0007 (Anita Singh)',
+      desc:'Employee - code OR full name', valid:'AZ_EMP_XXXX or employee name',
+      note:'Use employee code OR full name - both accepted' },
+    { label:'leaveType *', key:'type', required:true, type:'enum',
+      sample:'IL', sample2:'SL', desc:'Leave type code', valid:'IL, IHL, UL, UHL, SL, PL',
+      note:'IL=Informed Leave; IHL=Half Day Informed; UL=Uninformed; UHL=Half Uninformed; SL=Sick; PL=Paid',
+      dropdown:['IL','IHL','UL','UHL','SL','PL'] },
+    { label:'startDate *', key:'startDate', required:true, type:'text YYYY-MM-DD',
+      sample:'2026-04-20', sample2:'2026-04-25', desc:'Leave start date', valid:'YYYY-MM-DD',
+      note:'Same date for single-day leave' },
+    { label:'endDate *', key:'endDate', required:true, type:'text YYYY-MM-DD',
+      sample:'2026-04-22', sample2:'2026-04-25', desc:'Leave end date', valid:'YYYY-MM-DD', note:'Must be >= startDate' },
+    { label:'note', key:'note', required:false, type:'text',
+      sample:'Family function - example row', sample2:'Sick - doctor visit', desc:'Reason / note', valid:'Any text' },
+    { label:'urgency', key:'urgency', required:false, type:'enum',
+      sample:'normal', sample2:'urgent', desc:'Urgency flag', valid:'normal, urgent', note:'Leave blank for normal',
+      dropdown:['normal','urgent'] },
   ];
-  const validValues = [
-    ['empId *','AZ_EMP_XXXX or employee name','Use employee code OR full name — both accepted'],
-    ['leaveType *','IL, IHL, UL, UHL, SL, PL','IL=Informed Leave; IHL=Half Day Informed; UL=Uninformed; UHL=Half Uninformed; SL=Sick; PL=Paid'],
-    ['startDate / endDate *','YYYY-MM-DD','Both must be filled. Same date for single-day leave.'],
-    ['urgency','normal, urgent','Leave blank for normal'],
-  ];
+  const t = buildBulkTemplateSpec(LEAVE_COLS);
   openBulkImportModal(
     `📋 Bulk Import Leaves`,
-    headers, 'ArtzFolio_Leave_Template.xlsx',
+    t.headers, 'ArtzFolio_Leave_Template_v50.xlsx',
     row => {
       if (!row['empId * (code or name)'] || !row['leaveType *'] || !row['startDate *'] || !row['endDate *']) return null;
       const raw = String(row['empId * (code or name)']).trim();
@@ -14438,7 +14542,7 @@ function bulkImportLeaves() {
               startDate:row['startDate *'], endDate:row['endDate *'],
               note:row['note']||'', urgency:row['urgency']||'normal',
               dedupOnImport: true /* v43 W3.3 */};
-    }, 'requestLeave', null, sampleRows, validValues);
+    }, 'requestLeave', t.fieldGuide, t.sampleRows, t.validValues, t.extraDropdowns, t.templateExtras);
 }
 
 // v42 Item H: bulk import for Petty Cash. Backend handleAddPettyCash already
@@ -14450,8 +14554,10 @@ function bulkImportLeaves() {
 // (Item I scoped) so headers / sampleRows / validValues / Column Guide modal
 // stay in lock-step.
 function bulkImportPettyCash() {
-  // Build category dropdown values from the live Settings list, falling back
-  // to the same defaults shown in the manual Add Entry form.
+  // v50: single COLUMN_SPEC -> buildBulkTemplateSpec. Category + type DV (category list
+  // from live Settings), @-format text cells, hidden Schema sheet, Column Guide. Backend
+  // handleAddPettyCash (header-driven) reads date/type/category/amount/description/paidTo/
+  // note - every column persisted; no silent drop. Receipt photo not supported in bulk.
   let categories = [];
   try {
     const raw = State.settings?.pettyCashCategories || LS.g('pettyCashCategories');
@@ -14463,52 +14569,34 @@ function bulkImportPettyCash() {
                   'Salary Advance (Employee)','Vendor Payment','Other'];
   }
   const PC_COLS = [
-    { label:'date *',          required:true,  sample:'2026-05-08',
-      desc:'Date of the petty cash event', valid:'YYYY-MM-DD',
-      note:'e.g. 2026-05-08' },
-    { label:'type *',          required:true,  sample:'OUT',
-      desc:'Cash direction',              valid:'IN, OUT',
-      note:'IN = cash received into the box; OUT = cash paid from the box' },
-    { label:'category *',      required:true,  sample:categories[0]||'Office Supplies',
-      desc:'Spend / receipt category',    valid:categories.join(', '),
-      note:'Categories come from Settings → Petty Cash. Free text accepted but you can keep it consistent with the dropdown.' },
-    { label:'amount *',        required:true,  sample:1500,
-      desc:'Amount in ₹',                 valid:'Number without commas',
-      note:'e.g. 1500 (not ₹1,500)' },
-    { label:'description *',   required:true,  sample:'Stationery purchase for office',
-      desc:'What the spend / receipt was for', valid:'Any text',
-      note:'Required — at least a short description' },
-    { label:'paidTo',          required:false, sample:'Sharma Stationers',
+    { label:'date *', key:'date', required:true, type:'text YYYY-MM-DD', sample:'2026-05-08', sample2:'2026-05-09',
+      desc:'Date of the petty cash event', valid:'YYYY-MM-DD', note:'e.g. 2026-05-08' },
+    { label:'type *', key:'type', required:true, type:'enum IN|OUT', sample:'OUT', sample2:'IN',
+      desc:'Cash direction', valid:'IN, OUT', note:'IN = cash received into the box; OUT = cash paid from the box',
+      dropdown:['IN','OUT'] },
+    { label:'category *', key:'category', required:true, type:'text (matches Settings)',
+      sample:categories[0]||'Office Supplies', sample2:categories[0]||'Office Supplies',
+      desc:'Spend / receipt category', valid:categories.join(', '),
+      note:'Categories come from Settings -> Petty Cash. Free text accepted but keep it consistent with the dropdown.',
+      dropdown:categories },
+    { label:'amount *', key:'amount', required:true, type:'number INR', sample:1500, sample2:500,
+      desc:'Amount in ₹', valid:'Number without commas', note:'e.g. 1500 (not ₹1,500)' },
+    { label:'description *', key:'description', required:true, type:'text',
+      sample:'Stationery purchase for office', sample2:'Reimbursement from owner',
+      desc:'What the spend / receipt was for', valid:'Any text', note:'Required - at least a short description' },
+    { label:'paidTo', key:'paidTo', required:false, type:'text', sample:'Sharma Stationers', sample2:'Owner',
       desc:'Vendor / payee / payer name', valid:'Any text',
       note:'For OUT entries: who you paid. For IN entries: who you received from.' },
-    { label:'note',            required:false, sample:'Quarterly stocking — example row',
-      desc:'Additional free-text note',   valid:'Any text' },
+    { label:'note', key:'note', required:false, type:'text',
+      sample:'Quarterly stocking - example row', sample2:'Top-up - example row',
+      desc:'Additional free-text note', valid:'Any text' },
   ];
-  const headers = PC_COLS.map(c => c.label);
-  const sampleRows = [
-    PC_COLS.map(c => c.sample),
-    ['2026-05-09','IN', categories[0]||'Office Supplies', 500, 'Reimbursement from owner', 'Owner', 'Top-up — example row'],
-  ];
-  const validValues = PC_COLS
-    .filter(c => c.valid)
-    .map(c => [c.label, c.valid, c.note || '']);
-  // Document the receipt-photo limitation in the reference sheet (per brief).
-  validValues.push(['receiptPhoto', 'NOT supported in bulk import',
+  const t = buildBulkTemplateSpec(PC_COLS);
+  t.validValues.push(['receiptPhoto', 'NOT supported in bulk import',
     'Bulk imports cannot attach receipt images. Open each imported entry in the manual edit flow to upload the photo afterwards.']);
-  // v42 Item H: dynamic dropdowns for THIS template only. Critical: the bare
-  // 'category *' header would otherwise substring-match DROPDOWN_MAP's static
-  // 'category' key (Workforce/Supervisor/Management) and show employee
-  // categories — wrong list. We override with PC categories here, and add a
-  // local-only 'type' key for IN/OUT so users get an in-cell dropdown.
-  // DROPDOWN_MAP is rebuilt per call inside downloadBulkTemplateRich, so this
-  // override does NOT leak into Employees or Transactions templates.
-  const extraDropdowns = [
-    { key:'category', options: categories },
-    { key:'type',     options: ['IN','OUT'] },
-  ];
   openBulkImportModal(
     `💵 Bulk Import Petty Cash`,
-    headers, 'ArtzFolio_PettyCash_Template.xlsx',
+    t.headers, 'ArtzFolio_PettyCash_Template_v50.xlsx',
     row => {
       const date = row['date *'];
       const type = String(row['type *']||'').trim().toUpperCase();
@@ -14523,29 +14611,34 @@ function bulkImportPettyCash() {
         note: row['note'] || '',
         recordedBy: State.adminUser || State.adminRole || 'admin',
         dedupOnImport: true /* v43 W3.3 */
-        // receiptBase64 / receiptMime intentionally absent — receipts attached later via manual edit.
       };
     },
-    'addPettyCash', buildColumnGuide(PC_COLS), sampleRows, validValues, extraDropdowns);
+    'addPettyCash', t.fieldGuide, t.sampleRows, t.validValues, t.extraDropdowns, t.templateExtras);
 }
 
 async function bulkImportHolidays() {
-  const headers = ['date *','name *','type','applicableTo'];
-  const sampleRows = [
-    ['2026-08-15', 'Independence Day', 'National', 'All'],
-    ['2026-10-02', 'Gandhi Jayanti', 'National', 'All'],
-    ['2026-05-01', 'Labour Day / May Day', 'Company', 'All'],
+  // v50: single COLUMN_SPEC -> buildBulkTemplateSpec. DV on type + applicableTo, @-format
+  // text cells, hidden Schema sheet, Column Guide. Backend handleAddHoliday (header-driven)
+  // reads date/name/type/applicableTo - every column persisted; no silent drop.
+  const HOL_COLS = [
+    { label:'date *', key:'date', required:true, type:'text YYYY-MM-DD', sample:'2026-08-15', sample2:'2026-10-02',
+      desc:'Holiday date', valid:'YYYY-MM-DD', note:'e.g. 2026-08-15 - Year-Month-Day format' },
+    { label:'name *', key:'name', required:true, type:'text', sample:'Independence Day', sample2:'Gandhi Jayanti',
+      desc:'Holiday name', valid:'Any text' },
+    { label:'type', key:'type', required:false, type:'enum', sample:'National', sample2:'National',
+      desc:'Holiday classification', valid:'National, Regional, Company, Optional',
+      note:'National=Gazetted; Company=ArtzFolio-specific; Regional=state holiday',
+      dropdown:['National','Regional','Company','Optional'] },
+    { label:'applicableTo', key:'applicableTo', required:false, type:'enum', sample:'All', sample2:'All',
+      desc:'Who the holiday applies to', valid:'All, Workforce, Staff, Management', note:'Leave blank or use All for everyone',
+      dropdown:['All','Workforce','Staff','Management'] },
   ];
-  const validValues = [
-    ['date *','YYYY-MM-DD','e.g. 2026-08-15 — Year-Month-Day format'],
-    ['type','National, Regional, Company, Optional','National=Gazetted; Company=ArtzFolio-specific; Regional=state holiday'],
-    ['applicableTo','All, Workforce, Staff, Management','Leave blank or use All for everyone'],
-  ];
-  openBulkImportModal('📅 Bulk Import Holidays', headers, 'ArtzFolio_Holiday_Template.xlsx', row => {
+  const t = buildBulkTemplateSpec(HOL_COLS);
+  openBulkImportModal('📅 Bulk Import Holidays', t.headers, 'ArtzFolio_Holiday_Template_v50.xlsx', row => {
     if (!row['date *'] || !row['name *']) return null;
     return {date:row['date *'], name:row['name *'], type:row['type']||'National', applicableTo:row['applicableTo']||'All',
             dedupOnImport: true /* v43 W3.3 */};
-  }, 'addHoliday', null, sampleRows, validValues);
+  }, 'addHoliday', t.fieldGuide, t.sampleRows, t.validValues, t.extraDropdowns, t.templateExtras);
 }
 
 // ─── Indian Default Holidays ─────────────────────────────────────────────────
@@ -17173,7 +17266,22 @@ function bfDownloadAttendanceTemplate() {
   if (days > 92) { toast('Range cannot exceed 92 days', 'error'); return; }
   const emps = (State.employees||[]).filter(e => e.status === 'Active' || e.status === 'Notice Period');
   if (!emps.length) { toast('No active employees to template', 'warning'); return; }
-  const headers = ['empId','empName','date','status','clockIn','clockOut','hoursOverride','notes'];
+  // v50: upgraded from bare downloadXLSX to the shared v3 builder - adds a status DV
+  // dropdown, HH:MM time validation, @-format text cells (dates/ids/times never coerce),
+  // a Valid_Values_Reference + hidden Schema sheet. Rows are pre-filled per employee x date.
+  // Backend handleBulkAttendanceEntry reads empId/date/status/clockIn/clockOut/
+  // hoursOverride/notes - every column persisted; no silent drop.
+  const ATT_BF_COLS = [
+    { label:'empId', key:'empId', required:true, type:'text', desc:'Employee code (pre-filled)', valid:'AZ_EMP_XXXX', note:'Pre-filled - do not edit' },
+    { label:'empName', key:'(display only - not imported)', required:false, type:'text (not imported)', desc:'Employee name (reference only)', valid:'Pre-filled - ignored on import', note:'Display helper; the importer keys on empId.' },
+    { label:'date', key:'date', required:true, type:'text YYYY-MM-DD', desc:'Attendance date (pre-filled)', valid:'YYYY-MM-DD', note:'Pre-filled - do not edit' },
+    { label:'status', key:'status', required:true, type:'enum', desc:'Attendance status code', valid:_v44ValidStatuses.join(', '), note:'Required - pick from the dropdown', dropdown:_v44ValidStatuses.slice() },
+    { label:'clockIn', key:'clockIn', required:false, type:'text HH:MM', desc:'Clock-in time (optional)', valid:'HH:MM 24-hour', note:'e.g. 09:00', timeCol:true },
+    { label:'clockOut', key:'clockOut', required:false, type:'text HH:MM', desc:'Clock-out time (optional)', valid:'HH:MM 24-hour', note:'e.g. 19:00', timeCol:true },
+    { label:'hoursOverride', key:'hoursOverride', required:false, type:'number hours', desc:'Manual hours (optional)', valid:'Number', note:'Overrides clock times when set' },
+    { label:'notes', key:'notes', required:false, type:'text', desc:'Free-text note (optional)', valid:'Any text' },
+  ];
+  const headers = ATT_BF_COLS.map(c => c.label);
   const rows = [];
   emps.forEach(e => {
     _v44IterDates(from, to, function(dt) {
@@ -17183,8 +17291,9 @@ function bfDownloadAttendanceTemplate() {
       rows.push([e.id, e.name, dt, '', '', '', '', '']);
     });
   });
-  downloadXLSX('ArtzFolio_Attendance_Backfill_' + from + '_to_' + to + '.xlsx',
-    'Attendance', headers, rows);
+  const t = buildBulkTemplateSpec(ATT_BF_COLS);
+  downloadBulkTemplateRich('ArtzFolio_Attendance_Backfill_' + from + '_to_' + to + '_v50.xlsx',
+    'Attendance', headers, rows, t.validValues, t.extraDropdowns, t.templateExtras);
 }
 
 function bfHandleAttendanceFile(ev) {
@@ -17300,9 +17409,29 @@ async function bfCommitAttendance() {
 }
 
 function bfDownloadLeaveTemplate() {
-  const headers = ['empId','leaveType','fromDate','toDate','days','reason','approvedBy','approvedOn','status'];
-  const sample = [['EMP001','SL','2026-04-15','2026-04-16',2,'Fever','Manager-Anil','2026-04-14','Approved']];
-  downloadXLSX('ArtzFolio_Leave_Backfill_template.xlsx', 'Leaves', headers, sample);
+  // v50: upgraded from bare downloadXLSX to the shared v3 builder - adds a leaveType DV,
+  // @-format text cells, Valid_Values_Reference + hidden Schema sheet, Column Guide.
+  // Backend handleBulkLeaveBackfill reads empId/leaveType/fromDate/toDate/days/reason/
+  // approvedBy/approvedOn. NOTE: backfilled leave is ALWAYS recorded as Approved - the
+  // `status` column is informational only (documented in the column desc + VVR); the
+  // server forces Approved by design (business rule unchanged).
+  const LEAVE_BF_COLS = [
+    { label:'empId', key:'empId', required:true, type:'text', sample:'EMP001', desc:'Employee code', valid:'AZ_EMP_XXXX', note:'Existing employee code' },
+    { label:'leaveType', key:'leaveType', required:true, type:'enum', sample:'SL', desc:'Leave type code', valid:'IL, IHL, UL, UHL, SL, PL, EL, ML, PTL, BL, CL',
+      note:'Recorded against these dates', dropdown:['IL','IHL','UL','UHL','SL','PL','EL','ML','PTL','BL','CL'] },
+    { label:'fromDate', key:'fromDate', required:true, type:'text YYYY-MM-DD', sample:'2026-04-15', desc:'Leave start', valid:'YYYY-MM-DD' },
+    { label:'toDate', key:'toDate', required:true, type:'text YYYY-MM-DD', sample:'2026-04-16', desc:'Leave end', valid:'YYYY-MM-DD', note:'Must be >= fromDate' },
+    { label:'days', key:'days', required:false, type:'number', sample:2, desc:'Total days (optional)', valid:'Number', note:'Auto-calculated from the date range if blank' },
+    { label:'reason', key:'reason', required:false, type:'text', sample:'Fever', desc:'Reason / note', valid:'Any text' },
+    { label:'approvedBy', key:'approvedBy', required:false, type:'text', sample:'Manager-Anil', desc:'Who approved', valid:'Any name', note:'Defaults to the importing admin if blank' },
+    { label:'approvedOn', key:'approvedOn', required:false, type:'text YYYY-MM-DD', sample:'2026-04-14', desc:'Approval date', valid:'YYYY-MM-DD', note:'Defaults to today if blank' },
+    { label:'status', key:'(informational only - server forces Approved)', required:false, type:'informational only', sample:'Approved',
+      desc:'Informational only - all backfilled leave is recorded as Approved',
+      valid:'Approved (informational only)',
+      note:'All backfilled leave is recorded as Approved regardless of this value. The importer does not honor this column.' },
+  ];
+  const t = buildBulkTemplateSpec(LEAVE_BF_COLS);
+  downloadBulkTemplateRich('ArtzFolio_Leave_Backfill_Template_v50.xlsx', 'Leaves', t.headers, t.sampleRows, t.validValues, t.extraDropdowns, t.templateExtras);
 }
 
 function bfHandleLeaveFile(ev) {
