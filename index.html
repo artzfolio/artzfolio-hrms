@@ -1333,7 +1333,11 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
     <div class="nav-item" data-tab="compmgmt" onclick="switchTab('compmgmt')"><span class="nav-icon">💼</span>Compensation</div>
     <div class="nav-item" data-tab="otclaims" onclick="switchTab('otclaims')"><span class="nav-icon">⏱</span>OT Claims</div>
     <div class="nav-item" data-tab="promotions" onclick="switchTab('promotions')"><span class="nav-icon">🎯</span>Promotions</div>
-    <div class="nav-item" data-tab="leavemgmt" onclick="switchTab('leavemgmt')"><span class="nav-icon">📅</span>Leave Management</div>
+    <!-- v55 unification: "Leave Management" tab RETIRED. It rendered the duplicate Leave_Requests
+         store (System B). All leave activity now flows through "Leaves" (full ledger) + "Approvals"
+         (pending queue), both backed by the canonical Leaves store. Hidden, not deleted, so it's
+         reversible; existing Leave_Requests rows are preserved on the sheet. -->
+    <div class="nav-item" data-tab="leavemgmt" onclick="switchTab('leavemgmt')" style="display:none" title="Retired in v55 — use Leaves + Approvals"><span class="nav-icon">📅</span>Leave Management</div>
     <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')"><span class="nav-icon">🤝</span>FnF / Exit</div>
     <div class="nav-item" data-tab="reports" onclick="switchTab('reports')"><span class="nav-icon">📈</span>Reports</div>
     <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')"><span class="nav-icon">⏱</span>Tracked Time</div>
@@ -1510,7 +1514,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v54-2026-05'; // v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v56-2026-05'; // v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2268,7 +2272,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v54';
+window.HRMS_VERSION = 'v56';
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -7325,28 +7329,13 @@ async function renderLeaves() {
   const all=allRes.leaves||[];
   const badge=document.getElementById('badge-leaves');
   if(badge){badge.textContent=pending.length;badge.style.display=pending.length?'inline-block':'none';}
+  // v55 BUG-E: the duplicate "Pending Approvals" cards block was REMOVED. Pending leaves were
+  // shown here AND in the All Leaves table below AND in the Approvals tab (3× the same record).
+  // Leaves = the full LEDGER (every status, editable). Approvals = the pending action QUEUE
+  // with multi-stage routing. A one-line pointer keeps the link without the duplication.
   let html=`
-  <div class="section-hdr"><div class="section-title">Leave Management</div></div>`;
-  if (pending.length) {
-    html+=`<div style="margin-bottom:20px"><div class="section-title" style="color:var(--orange);margin-bottom:10px">⏳ Pending Approvals (${pending.length})</div>`;
-    pending.forEach(l=>{
-      html+=`<div style="background:var(--dark2);border:1px solid var(--orange);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
-        <div style="flex:1;min-width:200px">
-          <strong>${escHtml(l.empName||l.empId)}</strong>
-          <span style="margin-left:8px" class="badge badge-gold">${escHtml(l.empLevel)}</span>
-          <div style="font-size:12px;color:var(--gray-light)">${escHtml(l.empDept)} | ${statusBadge(l.type)}</div>
-          <div style="font-size:12px;margin-top:4px">${fmtDate(l.startDate)} → ${fmtDate(l.endDate)} <strong>(${l.totalDays} days)</strong></div>
-          ${l.note?`<div style="font-size:11px;color:var(--gray-light)">"${escHtml(l.note)}"</div>`:''}
-          ${parseInt(l.totalDays)>3?`<div style="font-size:11px;color:var(--orange)">⚠ >3 days — requires L5+ approval</div>`:''}
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-green btn-sm" onclick="approveLeave('${escHtml(l.id)}',true)">✓ Approve</button>
-          <button class="btn btn-red btn-sm" onclick="approveLeave('${escHtml(l.id)}',false)">✗ Reject</button>
-        </div>
-      </div>`;
-    });
-    html+='</div>';
-  }
+  <div class="section-hdr"><div class="section-title" title="The full leave LEDGER — every leave of every status, all editable/cancellable. To action pending requests with supervisor→manager→owner routing, use the Approvals tab.">Leave Management <span style="font-size:11px;color:var(--gray-light);font-weight:400">— full ledger</span></div></div>
+  ${pending.length?`<div style="background:rgba(184,150,12,0.12);border:1px solid var(--gold-dim);border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:var(--gold)">⏳ <strong>${pending.length}</strong> pending request${pending.length!==1?'s':''} — action them in the <a href="#" onclick="switchTab('approvals');return false;" style="color:var(--gold);text-decoration:underline">Approvals queue</a>, or directly in the table below.</div>`:''}`;
   html+=`<div class="section-hdr" style="margin-top:16px"><div class="section-title">All Leaves (${all.length})</div>
     <div class="section-actions">
       <button class="btn btn-gold btn-sm" onclick="showAdminLeaveModal()">+ Add Leave</button>
@@ -7359,8 +7348,10 @@ async function renderLeaves() {
   </div>
   <div id="leave-bulk-bar" style="display:none;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;gap:10px;flex-wrap:wrap">
     <span id="leave-bulk-count" style="font-size:13px;color:var(--gold);font-weight:600">0 selected</span>
-    <button class="btn btn-green btn-sm" onclick="bulkLeaveAction('approve')">✓ Approve Selected</button>
-    <button class="btn btn-red btn-sm" onclick="bulkLeaveAction('reject')">✗ Reject Selected</button>
+    <button class="btn btn-green btn-sm" title="Approve selected (multi-stage routing applies)" onclick="bulkLeaveAction('approve')">✓ Approve</button>
+    <button class="btn btn-red btn-sm" title="Reject selected (reverses attendance + balance if approved)" onclick="bulkLeaveAction('reject')">✗ Reject</button>
+    <button class="btn btn-dark btn-sm" title="Send selected back to Pending (reverses attendance + balance if approved)" onclick="bulkLeaveAction('revert')">↩ Revert</button>
+    <button class="btn btn-dark btn-sm" title="Cancel selected (reverses attendance + balance if approved)" style="color:var(--red)" onclick="bulkLeaveAction('cancel')">🚫 Cancel</button>
     <button class="btn btn-dark btn-sm" onclick="clearLeaveSelection()">✕ Clear</button>
   </div>
   <div class="table-wrap">
@@ -7370,6 +7361,7 @@ async function renderLeaves() {
         <th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Requested</th><th>Approved By</th><th>Actions</th>
       </tr></thead>
       <tbody id="leaves-tbody">`;
+  window._allLeaves = all; // v55 BUG-F: lets showEditLeaveModal() find a leave by id
   all.forEach(l=>{
     const lEmp=(State.employees||[]).find(e=>e.id===l.empId);
     let rosterWeek='';
@@ -7379,8 +7371,24 @@ async function renderLeaves() {
         if (!isNaN(sd.getTime())) rosterWeek=getWeekStart(sd);
       } catch(e) {}
     }
-    html+=`<tr data-leave-id="${escHtml(l.id)}" data-leave-status="${escHtml(l.status)}">
-      <td style="width:30px"><input type="checkbox" class="leave-cb" value="${escHtml(l.id)}" style="accent-color:var(--gold)" onchange="updateLeaveBulkBar()"></td>
+    // v55 BUG-F: EVERY leave is editable/cancellable/revertible regardless of status.
+    const lid=escHtml(l.id); const st=l.status||'';
+    let acts='';
+    if(st==='Pending'){
+      acts+=`<button class="btn btn-green btn-sm" title="Approve" onclick="approveLeave('${lid}',true)">✓</button>
+        <button class="btn btn-red btn-sm" title="Reject" onclick="approveLeave('${lid}',false)">✗</button>`;
+    } else if(st==='Approved'){
+      acts+=`<button class="btn btn-dark btn-sm" title="Revert to Pending (undoes attendance + balance)" onclick="revertLeave('${lid}')">↩</button>
+        <button class="btn btn-red btn-sm" title="Reject (undoes attendance + balance)" onclick="approveLeave('${lid}',false)">✗</button>`;
+    } else { // Rejected / Cancelled
+      acts+=`<button class="btn btn-dark btn-sm" title="Re-open → Pending" onclick="revertLeave('${lid}')">↩</button>`;
+    }
+    acts+=`<button class="btn btn-dark btn-sm" title="Edit dates / type / note (returns to Pending)" onclick="showEditLeaveModal('${lid}')">✎</button>`;
+    if(st!=='Cancelled') acts+=`<button class="btn btn-dark btn-sm" title="Cancel this leave (undoes attendance + balance if approved)" style="color:var(--red)" onclick="adminCancelLeave('${lid}')">🚫</button>`;
+    acts+=`<button class="btn btn-dark btn-sm" title="View week in Roster" onclick="viewLeaveInRoster('${escHtml(rosterWeek)}')">📋</button>
+      <button class="btn btn-dark btn-sm" title="View employee payroll transactions" onclick="viewEmpTransactions('${escHtml(l.empId)}','','')" style="font-size:10px">💸</button>`;
+    html+=`<tr data-leave-id="${lid}" data-leave-status="${escHtml(l.status)}">
+      <td style="width:30px"><input type="checkbox" class="leave-cb" value="${lid}" style="accent-color:var(--gold)" onchange="updateLeaveBulkBar()"></td>
       <td><strong>${escHtml(lEmp?.name||l.empId)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(l.empId)}</span></td>
       <td>${statusBadge(l.type)}</td>
       <td>${fmtDate(l.startDate)}</td>
@@ -7389,12 +7397,7 @@ async function renderLeaves() {
       <td>${statusBadge(l.status)}</td>
       <td style="font-size:11px">${fmtDT(l.requestDate)}</td>
       <td style="font-size:11px">${escHtml(l.approvedBy||'—')}</td>
-      <td style="white-space:nowrap">
-        ${l.status==='Pending'?`<button class="btn btn-green btn-sm" onclick="approveLeave('${escHtml(l.id)}',true)">✓</button>
-        <button class="btn btn-red btn-sm" onclick="approveLeave('${escHtml(l.id)}',false)">✗</button>`:''}
-        <button class="btn btn-dark btn-sm" title="View week in Roster" onclick="viewLeaveInRoster('${escHtml(rosterWeek)}')">📋</button>
-        <button class="btn btn-dark btn-sm" title="View employee payroll transactions" onclick="viewEmpTransactions('${escHtml(l.empId)}','','')" style="font-size:10px">💸</button>
-      </td>
+      <td style="white-space:nowrap">${acts}</td>
     </tr>`;
   });
   html+=`</tbody></table></div>`;
@@ -7437,13 +7440,78 @@ function clearLeaveSelection() {
   if(allCb) allCb.checked=false;
   updateLeaveBulkBar();
 }
+// v56 AUD-IDEM-001: per-leave in-flight guard so a rapid double-click can't double-advance a
+// multi-stage approval (or fire two reverts/cancels). Returns false if already busy.
+function _leaveActionBegin(key){ window._leaveBusy = window._leaveBusy || new Set(); if (window._leaveBusy.has(key)) return false; window._leaveBusy.add(key); return true; }
+function _leaveActionEnd(key){ if (window._leaveBusy) window._leaveBusy.delete(key); }
+
 async function approveLeave(leaveId, approved) {
-  // Bug CC: must send approverRole so multi-stage approval chain is respected
-  const approverRole = State.adminRole==='owner'?'owner':State.adminRole==='manager'?'manager':'supervisor';
-  const note=approved?`Approved by ${State.adminUser}`:`Rejected by ${State.adminUser}`;
-  const res=await API.call('approveLeave',{leaveId,approved,approvedBy:State.adminUser,note,approverRole});
-  if(res.ok){toast(approved?'✓ Leave approved':'Leave rejected',approved?'success':'info');await renderLeaves();}
-  else toast(res.error||'Error','error');
+  const _k = 'lv:'+leaveId; if (!_leaveActionBegin(_k)) return;   // AUD-IDEM-001
+  try {
+    // Bug CC: must send approverRole so multi-stage approval chain is respected
+    const approverRole = State.adminRole==='owner'?'owner':State.adminRole==='manager'?'manager':'supervisor';
+    const note=approved?`Approved by ${State.adminUser}`:`Rejected by ${State.adminUser}`;
+    const res=await API.call('approveLeave',{leaveId,approved,approvedBy:State.adminUser,note,approverRole});
+    if(res.ok){toast(approved?'✓ Leave approved':'Leave rejected',approved?'success':'info');await renderLeaves();if(typeof refreshApprovalsBadge==='function')refreshApprovalsBadge();}
+    else toast(res.error||'Error','error');
+  } finally { _leaveActionEnd(_k); }
+}
+
+// v55 BUG-F: revert any leave back to Pending (server undoes attendance + balance if it was Approved).
+async function revertLeave(leaveId) {
+  const _k = 'lv:'+leaveId; if (!_leaveActionBegin(_k)) return;   // AUD-IDEM-001
+  try {
+    const res = await API.call('revertLeave', {leaveId, reviewedBy: State.adminUser});
+    if (res.ok) {
+      toast('↩ Leave reverted to Pending' + (res.reversedAttendance ? ' (attendance + balance reversed)' : ''), 'info');
+      await renderLeaves(); if (typeof refreshApprovalsBadge === 'function') refreshApprovalsBadge();
+    } else toast(res.error || 'Error', 'error');
+  } finally { _leaveActionEnd(_k); }
+}
+
+// v55 BUG-F: admin/owner cancel for any leave (no manager gate; cascades reversal if Approved).
+async function adminCancelLeave(leaveId) {
+  if (!await confirm2('Cancel this leave?\nIf it was approved, its attendance + leave balance will be reversed.')) return;
+  const _k = 'lv:'+leaveId; if (!_leaveActionBegin(_k)) return;   // AUD-IDEM-001
+  try {
+    const res = await API.call('adminCancelLeave', {leaveId, reviewedBy: State.adminUser});
+    if (res.ok) {
+      toast('🚫 Leave cancelled' + (res.reversedAttendance ? ' (attendance + balance reversed)' : ''), 'info');
+      await renderLeaves(); if (typeof refreshApprovalsBadge === 'function') refreshApprovalsBadge();
+    } else toast(res.error || 'Error', 'error');
+  } finally { _leaveActionEnd(_k); }
+}
+
+// v55 BUG-F: edit a leave's dates / type / note. Server reverses prior Approved effects,
+// recomputes working days, and returns it to Pending for re-approval.
+function showEditLeaveModal(leaveId) {
+  const l = (window._allLeaves || []).find(x => String(x.id) === String(leaveId));
+  if (!l) { toast('Leave not found — reloading', 'warning'); renderLeaves(); return; }
+  const emp = (State.employees || []).find(e => e.id === l.empId);
+  const html = `<div style="font-size:13px">
+    <div style="margin-bottom:8px;color:var(--gray-light)">${escHtml(emp?.name||l.empId)} <span style="font-size:11px">(${escHtml(l.empId)})</span> · current status: <strong>${escHtml(l.status||'')}</strong></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">From</label><input id="el-from" class="form-input" type="date" value="${escHtml(String(l.startDate||'').slice(0,10))}"></div>
+      <div class="form-group"><label class="form-label">To</label><input id="el-to" class="form-input" type="date" value="${escHtml(String(l.endDate||'').slice(0,10))}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Type</label>
+      <select id="el-type" class="form-input">${['IL','IHL','SL','PL','UL'].map(t=>`<option value="${t}" ${l.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Note</label><input id="el-note" class="form-input" value="${escHtml(l.note||'')}"></div>
+    <div style="font-size:11px;color:var(--orange)">Saving returns this leave to <strong>Pending</strong> for re-approval. Any approved attendance/balance is reversed first. IL = unpaid (LWP).</div>
+  </div>`;
+  showModal('✎ Edit Leave', html, [
+    {label:'Save Changes', cls:'btn-gold', cb:async()=>{
+      const startDate=document.getElementById('el-from').value;
+      const endDate=document.getElementById('el-to').value;
+      const type=document.getElementById('el-type').value;
+      const note=document.getElementById('el-note').value;
+      if(!startDate||!endDate){toast('From and To are required','warning');return;}
+      const res=await API.call('editLeave',{leaveId, startDate, endDate, type, note, reviewedBy:State.adminUser});
+      if(res.ok){closeModal();toast(`✓ Leave updated (${res.totalDays} day${res.totalDays!==1?'s':''}) — now Pending`, 'success');await renderLeaves();if(typeof refreshApprovalsBadge==='function')refreshApprovalsBadge();}
+      else toast(res.error||'Error','error');
+    }},
+    {label:'Close', cls:'btn-dark', cb:closeModal},
+  ]);
 }
 
 function showAdminLeaveModal() {
@@ -7850,7 +7918,7 @@ async function renderRoster() {
       <select id="roster-month-sel" class="filter-input" onchange="onRosterMonthYearChange()">${monthOpts}</select>
       <select id="roster-year-sel" class="filter-input" onchange="onRosterMonthYearChange()">${yearOpts}</select>
       <select id="roster-week-sel" class="filter-input" onchange="loadRosterForWeek(this.value)">${weekOpts}</select>
-      <button class="btn btn-gold btn-sm" onclick="saveAndPublishRoster()">💾 Save & Publish</button>
+      <button class="btn btn-gold btn-sm" title="Saves the entire roster for the current view. Leave codes (IL/UL/SL/PL/IHL) are sent to the Approvals queue as pending leave requests in the Leaves ledger." onclick="saveRoster()">💾 Save Roster</button>
       <button class="btn btn-dark btn-sm" onclick="downloadRosterPDF()">📄 PDF / Print</button>
       <button class="btn btn-dark btn-sm" onclick="exportRosterCSV()">📊 CSV</button>
     </div>
@@ -7887,16 +7955,24 @@ function buildWeeklyRosterHTML(emps, roster, weekStart, codes) {
         <td>${i+1}</td>
         <td><strong>${escHtml(emp.name.split(' ')[0])}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(emp.id)}</span></td>
         <td style="font-size:11px">${escHtml(emp.dept)}</td>
-        ${['mon','tue','wed','thu','fri','sat','sun'].map(d=>`
-          <td class="roster-cell"><select class="form-input" id="r-${escHtml(emp.id)}-${d}" style="background:${getRosterCellColor(row[d]||'')};color:var(--white);width:55px;padding:3px 2px;font-size:10px" onchange="this.style.background=getRosterCellColor(this.value)">
-            ${codes.map(c=>`<option value="${c}" style="background:var(--dark2)" ${(row[d]||'')===(c||'')?'selected':''}>${c||'—'}</option>`).join('')}
-          </select></td>`).join('')}
+        ${(()=>{const _WOK={mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
+          return ['mon','tue','wed','thu','fri','sat','sun'].map(d=>{
+            // BUG-B: weekly view now shows the SAME per-employee weekly-off default as monthly,
+            // sourced from emp.weeklyOff1/weeklyOff2 (single source of truth). Saved cells win.
+            const _full=_WOK[d];
+            const _isEmpWO=(_full.toLowerCase()===String(emp.weeklyOff1||'Sunday').toLowerCase())||(emp.weeklyOff2&&_full.toLowerCase()===String(emp.weeklyOff2).toLowerCase());
+            const cv=row[d]||(_isEmpWO?'WO':'');
+            return `<td class="roster-cell"><select class="form-input" id="r-${escHtml(emp.id)}-${d}" style="background:${getRosterCellColor(cv)};color:var(--white);width:55px;padding:3px 2px;font-size:10px" onchange="this.style.background=getRosterCellColor(this.value)">
+            ${codes.map(c=>`<option value="${c}" style="background:var(--dark2)" ${cv===(c||'')?'selected':''}>${c||'—'}</option>`).join('')}
+          </select></td>`;
+          }).join('');
+        })()}
         <td><input class="form-input" id="rn-${escHtml(emp.id)}" style="width:100px;font-size:10px" value="${escHtml(row.notes||'')}" placeholder="notes…"></td>
       </tr>`;
     }).join('')}</tbody>
   </table></div>
-  <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-    <button class="btn btn-gold" onclick="saveAllRoster('${escHtml(weekStart)}')">💾 Save All Weekly Roster</button>
+  <div style="margin-top:12px;font-size:11px;color:var(--gray-light)">
+    Use <strong>💾 Save Roster</strong> at the top to save. Blank cells default to each person's weekly-off (WO).
   </div>`;
 }
 
@@ -7941,8 +8017,8 @@ async function buildMonthlyRosterHTML(emps, year, month) {
     <thead><tr><th>#</th><th>Employee</th>${dayHeaders}<th>Notes</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>
-  <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-    <button class="btn btn-gold" onclick="saveMonthlyRoster(${year},${month})">💾 Save Monthly Roster</button>
+  <div style="margin-top:12px;font-size:11px;color:var(--gray-light)">
+    Use <strong>💾 Save Roster</strong> at the top to save this month. Blank cells default to each person's weekly-off (WO).
   </div>`;
 }
 
@@ -8012,22 +8088,20 @@ async function saveMonthlyRoster(year, month) {
   toast(`✓ Monthly roster saved (${saved} week-rows)`, 'success');
 }
 
-async function saveAndPublishRoster() {
+// v55: single, clearly-labelled roster save. Replaces the confusing pair of buttons
+// ("Save & Publish" + "Save All Weekly Roster"). The old System-B "publish" step
+// (auto-approving leaves into Leave_Requests) is RETIRED — roster leave codes now flow
+// to Approvals as Pending in the canonical Leaves store. Weekly path reloads the SAVED
+// week so the grid re-paints persisted state (proves the save stuck — BUG-A).
+async function saveRoster() {
   if(window._rosterView==='monthly') {
     const month=parseInt(document.getElementById('roster-month-sel')?.value||new Date().getMonth()+1);
     const year=parseInt(document.getElementById('roster-year-sel')?.value||new Date().getFullYear());
     await saveMonthlyRoster(year,month);
-    // Bug 8B: publish to Leaves sheet
-    const pRes = await API.call('publishRoster', {weekStart:'', empId:''});
-    if (!pRes.ok) { toast('Warning: roster saved but leave publish failed: '+(pRes.error||''), 'warning'); return; }
-    toast(`✓ Roster published! ${pRes.published||0} leave record(s) synced to Leaves sheet.`, 'success', 5000);
   } else {
     const weekStart = document.getElementById('roster-week-sel')?.value||getWeekStart(new Date());
-    await saveAllRoster(weekStart);
-    // Bug 8B: publish to Leaves sheet
-    const pRes = await API.call('publishRoster', {weekStart, empId:''});
-    if (!pRes.ok) { toast('Warning: roster saved but leave publish failed: '+(pRes.error||''), 'warning'); return; }
-    toast(`✓ Roster published! ${pRes.published||0} leave record(s) synced to Leaves sheet.`, 'success', 5000);
+    const ok = await saveAllRoster(weekStart);
+    if (ok) await loadRosterForWeek(weekStart);
   }
 }
 
@@ -8172,7 +8246,9 @@ function getWeekStart(d) {
 }
 
 async function saveAllRoster(weekStart) {
-  const emps=State.employees.filter(e=>e.status==='Active');
+  // v56 AUD-ROSTER-001: iterate the SAME employee set the grid was built from (window._rosterEmps)
+  // so no rendered row is dropped if State.employees differs in set/order. Falls back to State.
+  const emps=((window._rosterEmps && window._rosterEmps.length) ? window._rosterEmps : (State.employees||[])).filter(e=>e.status==='Active');
   const days=['mon','tue','wed','thu','fri','sat','sun'];
   // Compute date strings for each day of the week
   const ws=new Date(weekStart+'T00:00:00');
@@ -8183,37 +8259,43 @@ async function saveAllRoster(weekStart) {
   const leaveCodes=['IL','UL','SL','PL','IHL','UHL'];
   const leaveRequests=[];
 
-  const promises=emps.map(emp=>{
-    const update={weekStart, empId:emp.id, preparedBy:State.adminUser,
+  // BUG-A fix: build ALL roster rows and persist them in ONE batched, server-locked call
+  // (was: N parallel updateRoster calls that starved a single script lock and silently failed,
+  //  while the toast always said "saved"). Returns false on failure so the caller won't reload.
+  const rows=emps.map(emp=>{
+    const row={weekStart, empId:emp.id, preparedBy:State.adminUser,
       notes:document.getElementById(`rn-${emp.id}`)?.value||''};
     days.forEach((d,i)=>{
       const val=document.getElementById(`r-${emp.id}-${d}`)?.value||'';
-      update[d]=val;
+      row[d]=val;
       if(leaveCodes.includes(val)) {
         leaveRequests.push({empId:emp.id, type:val, startDate:dayDates[i], endDate:dayDates[i],
           note:'Auto-created from roster', urgency:'normal', source:'roster'});
       }
     });
-    return API.call('updateRoster',update);
+    return row;
   });
-  await Promise.all(promises);
+  const res=await API.call('updateRosterBatch',{rows});
+  if(!res.ok){ toast('Roster save FAILED: '+(res.error||'unknown')+' — nothing was saved, please retry.','error',6000); return false; }
 
-  // Auto-create leave requests for leave-coded cells (skip if already exists)
-  if(leaveRequests.length>0) {
-    let created=0, skipped=0;
-    for(const req of leaveRequests) {
-      const res=await API.call('requestLeave',req);
-      if(res.ok) created++; else skipped++;
-    }
-    toast(`✓ Roster saved | ${created} leave request${created!==1?'s':''} auto-created${skipped?' ('+skipped+' already existed)':''}`, 'success', 5000);
-  } else {
-    toast('✓ Roster saved for week '+weekStart,'success');
+  // Auto-create leave requests for leave-coded cells. Server dedups by emp+overlapping range
+  // (BUG-C) → re-saves return {duplicate:true} and are skipped, not stacked. Pending leaves
+  // land in Approvals (the System-B auto-approve "publish" path is retired in v55).
+  let created=0, skipped=0, failed=0;
+  for(const req of leaveRequests) {
+    try {
+      const lr=await API.call('requestLeave',req);
+      if(lr.ok && lr.duplicate) skipped++;
+      else if(lr.ok) created++;
+      else failed++;
+    } catch(e){ failed++; }
   }
-}
-
-async function publishRoster() {
-  await saveAllRoster(document.getElementById('roster-week-sel')?.value||getWeekStart(new Date()));
-  toast('✓ Roster published! Share with team.','success',5000);
+  const parts=[`✓ Roster saved (${res.saved} row${res.saved!==1?'s':''})`];
+  if(created) parts.push(`${created} leave${created!==1?'s':''} → Approvals`);
+  if(skipped) parts.push(`${skipped} duplicate${skipped!==1?'s':''} skipped`);
+  if(failed)  parts.push(`${failed} leave${failed!==1?'s':''} failed`);
+  toast(parts.join(' | '), failed?'warning':'success', 5000);
+  return true;
 }
 
 // Pull approved leaves into the currently-visible roster grid
@@ -8353,7 +8435,7 @@ async function generateAllSalaries() {
       <td style="color:var(--red)">${advTotal?`<span title="Advance: ₹${Math.round(s.advances||0).toLocaleString('en-IN')}${s.loans?'\nLoans: ₹'+Math.round(s.loans||0).toLocaleString('en-IN'):''}${s.penalties?'\nPenalties: ₹'+Math.round(s.penalties||0).toLocaleString('en-IN'):''}">- ${fmtMoney(advTotal)}</span>`:''}</td>
       <td style="color:var(--green)">${s.otEarnings?'+ '+fmtMoney(s.otEarnings):''}</td>
       <td style="color:var(--green)">${(s.performanceBonus||s.bonuses)?'+ '+fmtMoney((parseFloat(s.performanceBonus||0)+parseFloat(s.bonuses||0))):''}</td>
-      <td style="font-weight:900;font-size:1rem;color:var(--gold)">${fmtMoney(s.netSalary)}</td>
+      <td style="font-weight:900;font-size:1rem;color:${parseFloat(s.netSalary)<0?'var(--red)':'var(--gold)'}" title="${parseFloat(s.netSalary)<0?'Negative = LOP/over-deduction recoverable from this employee (carries to next month)':'Net payable'}">${fmtMoney(s.netSalary)}${parseFloat(s.netSalary)<0?'<br><span style="font-size:9px;font-weight:600">Recoverable (LOP)</span>':''}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-gold btn-sm" title="Download PDF Slip" onclick="downloadSalarySlipPDF(window['_slipData_${sid}'])">📄</button>
         <button class="btn btn-dark btn-sm" title="Share via WhatsApp" onclick="shareSlipWhatsApp(window['_slipData_${sid}'])">📱</button>
@@ -16178,26 +16260,32 @@ async function adminLeaveAction(reqId, action) {
 }
 
 async function bulkLeaveAction(action) {
+  // v55 BUG-D fix: unified to the canonical Leaves store (System A). The Leaves table
+  // checkboxes (.leave-cb) carry the System-A leave `id`. (.lm-chk belongs to the retired
+  // Leave Management table — harvested for back-compat but that tab is hidden in v55.)
   const checked = [
-    ...Array.from(document.querySelectorAll('.lm-chk:checked')).map(c => c.value),
-    ...Array.from(document.querySelectorAll('.leave-cb:checked')).map(c => c.value)
+    ...Array.from(document.querySelectorAll('.leave-cb:checked')).map(c => c.value),
+    ...Array.from(document.querySelectorAll('.lm-chk:checked')).map(c => c.value)
   ].filter((v, i, arr) => arr.indexOf(v) === i); // deduplicate
-  if (!checked.length) { toast('Select at least one request', 'error'); return; }
+  if (!checked.length) { toast('Select at least one leave', 'error'); return; }
   let notes = '';
   if (action === 'reject') {
     notes = await _askRejectionReason('Reject ' + checked.length + ' Selected');
     if (notes === null) return;
+  } else if (action === 'cancel') {
+    // v55 BUG-F: destructive bulk cancel — confirm first (reverses attendance + balance if approved).
+    if (!await confirm2(`Cancel ${checked.length} selected leave(s)?\nApproved ones will have their attendance + balance reversed.`)) return;
   }
-  const res = await API.call('bulkLeaveAction', {reqIds: checked, action, reviewedBy: State.adminRole, notes});
+  // Was: API.call('bulkLeaveAction', {reqIds…}) → Leave_Requests lookup → could never match
+  // System-A ids → "0 done, N failed". Now routes to the System-A batch handler
+  // (action ∈ approve | reject | revert | cancel).
+  const res = await API.call('bulkApproveLeaves', {leaveIds: checked, action, reviewedBy: State.adminUser, userId: State.adminUser, notes});
   if (res.ok) {
-    // v36 fix BUG-19 surface: show success/failure split if backend returns aggregated counts
     const ok = res.processed || 0;
     const fail = res.failed || 0;
-    const msg = fail > 0 ? `${ok} ${action}d, ${fail} failed` : `${ok} request(s) ${action}d`;
+    const msg = fail > 0 ? `${ok} ${action}d, ${fail} failed` : `${ok} leave(s) ${action}d`;
     toast(msg, fail > 0 ? 'warning' : 'success');
-    // v36 fix BUG-74: render only the active tab to avoid double flicker
-    if (State.currentTab === 'leave-management') await renderLeaveManagement();
-    else await renderLeaves();
+    await renderLeaves();
     if (typeof refreshApprovalsBadge === 'function') refreshApprovalsBadge();
   } else {
     toast(res.error||'Error','error');
@@ -16545,9 +16633,11 @@ function buildV31SlipLines(salaryData) {
       lines.push({label: (b['Bonus Type']||'Bonus') + ' — ' + (b['Applicable Month']||''), amount: Math.round(parseFloat(b['Bonus Amount']||0)), type:'earning'});
     });
   }
-  // LWP deduction
+  // Unpaid / LWP days. v55: under the subtractive model the rupee impact is netted INSIDE
+  // "Earned Salary" above, so this is an informational note (amount 0) — adding it as a
+  // separate deduction would double-count.
   if (parseFloat(salaryData.lwpDays || 0) > 0) {
-    lines.push({label:'LWP Deduction (' + salaryData.lwpDays + ' day(s))', amount: -Math.round(salaryData.lwpDeduction || 0), type:'deduction'});
+    lines.push({label:'Unpaid / LWP: ' + salaryData.lwpDays + ' day(s) — already netted in Earned Salary above', amount: 0, type:'note'});
   }
   // Promotion pro-rate note
   if (salaryData.v31PromoNote) {
@@ -16565,6 +16655,11 @@ function buildV31SlipLines(salaryData) {
   } else if (_ovMode === 'CUSTOM_PCT') {
     var _pct = (parseFloat(salaryData.incrementOverridePct || 0) * 100).toFixed(2).replace(/\.?0+$/, '');
     lines.push({label: 'Increment policy: Custom ' + _pct + '% per cycle', amount: 0, type: 'note'});
+  }
+  // v56 §1.5: when net is negative, surface it as a clearly-labelled recoverable amount (LOP /
+  // over-deduction) rather than a silent minus. (Full recovery-ledger carry-forward is a v57 item.)
+  if (parseFloat(salaryData.netSalary || 0) < 0) {
+    lines.push({label: 'Recoverable (LOP) — net payable is negative; carry/recover next month', amount: Math.round(salaryData.netSalary), type: 'deduction'});
   }
   return lines;
 }
