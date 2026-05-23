@@ -1523,7 +1523,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v68-2026-05'; // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v72-2026-05'; // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -1964,6 +1964,13 @@ async function updateHolApplicableToValue(idOrDate, applicableTo) {
 function fmtTime(ts) {
   if (!ts) return '—';
   try {
+    // v70 Phase 3.1: repair legacy DOUBLED-DATE values ("2026-05-22 2026-05-22 18:00:00") by taking
+    // the LAST date + time, so the clock renders cleanly instead of the raw doubled string. Clean
+    // single-date values normalise to the same thing (no change); bare times skip this.
+    if (typeof ts === 'string') {
+      const _mm = ts.match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
+      if (_mm) ts = _mm[1] + 'T' + _mm[2];
+    }
     // Accept "HH:MM", "HH:MM:SS", or full date-time strings
     let d;
     if (typeof ts === 'string' && ts.match(/^\d{1,2}:\d{2}/)) {
@@ -1974,6 +1981,30 @@ function fmtTime(ts) {
     if (isNaN(d)) return ts;
     return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true,timeZone:'Asia/Kolkata'});
   } catch { return ts; }
+}
+// v70 Phase 3.1: robust worked-minutes — use stored workMinutes; if NaN/missing/≤0, recompute from
+// clockIn/clockOut (handles legacy doubled-date + NaN rows). Used by the attendance grid, the
+// multi-employee table and the Timesheet so hours render correctly everywhere and never show "NaN".
+function _v70ParseClock(v) {
+  if (!v) return null;
+  const s = String(v);
+  const mm = s.match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2}(?::\d{2})?)/);  // first date+time (repairs doubled-date)
+  let d;
+  if (mm) d = new Date(mm[1] + 'T' + mm[2]);
+  else { const tm = s.match(/^(\d{1,2}:\d{2}(?::\d{2})?)/); d = tm ? new Date('2000-01-01T' + tm[1]) : new Date(s.replace(' ', 'T')); }
+  return isNaN(d) ? null : d;
+}
+function _v70WorkMins(rec) {
+  if (!rec) return 0;
+  const wm = parseInt(rec.workMinutes);
+  if (isFinite(wm) && wm > 0) return wm;
+  const ci = _v70ParseClock(rec.clockIn), co = _v70ParseClock(rec.clockOut);
+  if (ci && co) { const diff = (co - ci) / 60000; if (isFinite(diff) && diff > 0) return Math.round(diff); }
+  return 0;
+}
+function _v70HrsCell(rec) {
+  const wm = _v70WorkMins(rec);
+  return wm > 0 ? (Math.floor(wm / 60) + 'h' + String(wm % 60).padStart(2, '0') + 'm') : '—';
 }
 function fmtTimeSS(ts) {
   // Alias for fmtTime (same, includes seconds)
@@ -2281,7 +2312,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v68';  // v68 Stage-2C — Universal edit/cancel/revert cascade: one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade is automatic via existing derivations. No money-path logic changed.
+window.HRMS_VERSION = 'v72';  // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -5361,7 +5392,7 @@ async function renderTimesheets(offset) {
       const cls = lt==='UL' ? 'absent' : 'leave';
       return `<span class="ts-hours ${cls}">${lt}</span>`;
     }
-    const wm=parseInt(rec.workMinutes||0);
+    const wm=_v70WorkMins(rec);  // v70 Phase 3.1: recompute from clock times if workMinutes is NaN/missing (fixes Timesheet "no hours")
     const ot=parseInt(rec.otMinutes||0);
     const dur=fmtHHMM(wm);
     return `<span class="ts-hours ${ot>0?'ot':''}" title="${ot>0?'OT: '+fmtHHMM(ot):''}">${dur}</span>`;
@@ -5369,10 +5400,11 @@ async function renderTimesheets(offset) {
 
   let html=`
   <div class="section-hdr" style="margin-bottom:14px">
-    <div class="section-title">⏱ Timesheets
+    <div class="section-title" data-help="Read-only WEEK overview of attendance. This is the same data as the Attendance tab — to EDIT a day, filter, or see a full-month grid, use Attendance &amp; Timesheets (it has a Grid view too).">⏱ Timesheets <span style="font-size:11px;color:var(--gray-light);font-weight:400">— read-only week view</span>
       <span style="font-size:12px;color:var(--gray-light);font-weight:400;margin-left:8px">${dates[0].getDate()} ${monthNames[dates[0].getMonth()]} – ${dates[6].getDate()} ${monthNames[dates[6].getMonth()]} ${dates[6].getFullYear()}</span>
     </div>
     <div class="section-actions">
+      <button class="btn btn-dark btn-sm" onclick="switchTab('attendance')" data-help="Open the editable Attendance page (filters, manual entry, full-month Grid, CSV) — same data.">✏ Edit in Attendance →</button>
       <button class="btn btn-dark btn-sm" onclick="renderTimesheets(${_tsWeekOffset-1})">← Prev</button>
       <button class="btn btn-dark btn-sm" onclick="renderTimesheets(0)">This Week</button>
       <button class="btn btn-dark btn-sm" onclick="renderTimesheets(${_tsWeekOffset+1})">Next →</button>
@@ -6758,10 +6790,13 @@ async function renderAttendance() {
   </div>` : '';
   let html = `
   <div class="section-hdr">
-    <div class="section-title">Attendance Management</div>
+    <div class="section-title" data-help="Attendance = view, edit & manage daily records (manual entry, bulk hours, clock controls). The Timesheets tab is the read-only WEEK-grid overview of this SAME Attendance data — these are two views of one store, not separate systems.">Attendance &amp; Timesheets <span style="font-size:11px;color:var(--gray-light);font-weight:400">— edit records here; the Timesheets tab is the read-only week view of the same data</span></div>
     <div class="section-actions">
+      <span style="font-size:11px;color:var(--gray-light);margin-right:2px">View:</span>
+      <button class="btn btn-gold btn-sm" id="att-view-records" onclick="setAttViewMode('records')" data-help="Flat list — one row per employee-day with clock-in/out, hours, late & OT.">📋 Records</button>
+      <button class="btn btn-dark btn-sm" id="att-view-grid" onclick="setAttViewMode('grid')" data-help="Jibble-style matrix — employees down, days across; each cell shows the day's hours/status (hover for clock-in/out + late + OT).">📅 Grid</button>
       ${isOwnerOrMgr?'<button class="btn btn-dark btn-sm" onclick="showBulkHoursModal()" title="Record attendance for a chosen date — pick individual / multiple / all employees, with an overwrite option. Separate from the Emergency NOW clock controls.">📋 Bulk Hours Entry (chosen date)</button>':''}
-      <button class="btn btn-dark btn-sm" onclick="exportFilteredTimesheet()">⬇ Export CSV</button>
+      <button class="btn btn-dark btn-sm" onclick="exportAttendanceCSV()">⬇ Export CSV</button>
     </div>
   </div>
   ${emergencyPanel}
@@ -6887,7 +6922,7 @@ async function renderAttendanceGrid(empId, year, month, emps) {
       <td>${rec&&rec.clockOut?fmtTime(rec.clockOut):'—'}</td>
       <td class="att-${status}"${isLWP?' style="background:rgba(183,28,28,0.18)"':''}>${statusBadge(status||'—')}${rec ? _v44BackfillBadge(rec.note||'') : ''}</td>
       <td style="font-size:11px">${rec&&parseInt(rec.lateMinutes)>0?`<span style="color:var(--orange)">${rec.lateMinutes}m</span>`:'—'}</td>
-      <td style="font-size:11px">${rec&&rec.workMinutes?`${Math.floor(rec.workMinutes/60)}h${rec.workMinutes%60}m`:'—'}${rec&&parseInt(rec.otMinutes)>0?` <span style="background:var(--orange);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;white-space:nowrap">OT ${rec.otMinutes}m</span>`:''}</td>
+      <td style="font-size:11px">${rec?_v70HrsCell(rec):'—'}${rec&&parseInt(rec.otMinutes)>0?` <span style="background:var(--orange);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;white-space:nowrap">OT ${rec.otMinutes}m</span>`:''}</td>
       <td style="font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis">${rec&&rec.locationNote?escHtml(rec.locationNote):'—'}</td>
       <td><button class="btn btn-dark btn-sm" onclick="showAttendanceEditModal('${escHtml(empId)}','${escHtml(ds)}')">✏</button></td>
     </tr>`;
@@ -7505,9 +7540,95 @@ async function applyTimesheetFilters() {
   if (empId) {
     await renderAttendanceGrid(empId, yr, mo, window._attEmps||State.employees||[]);
     _filterAttRows();
+  } else if ((window._attViewMode || 'records') === 'grid') {
+    await renderAttendanceMatrix(yr, mo);   // v71 Phase 3.2: Jibble-style employee×day grid
   } else {
     await renderAttendanceMultiTable(yr, mo);
   }
+}
+
+// v71 Phase 3.2: toggle the multi-employee view between the Records table and the Grid matrix
+// (both share the one filter bar). Re-renders via applyTimesheetFilters.
+function setAttViewMode(m) {
+  window._attViewMode = (m === 'grid') ? 'grid' : 'records';
+  const rb = document.getElementById('att-view-records'), gb = document.getElementById('att-view-grid');
+  if (rb) rb.className = 'btn btn-sm ' + (window._attViewMode === 'records' ? 'btn-gold' : 'btn-dark');
+  if (gb) gb.className = 'btn btn-sm ' + (window._attViewMode === 'grid' ? 'btn-gold' : 'btn-dark');
+  applyTimesheetFilters();
+}
+
+// v71 Phase 3.2: Jibble-style attendance GRID matrix (employees × days) for the filtered set. Same data
+// source as the Records table (read-only getAttendanceMonthBulk) + v70 clean-time/hours helpers. Each
+// cell shows the day's hours (or status); hover for clock-in/out + late + OT. Right-most Total column.
+async function renderAttendanceMatrix(year, month) {
+  const container = document.getElementById('att-grid-container');
+  if (!container) return;
+  container.innerHTML = '<div class="loading-spinner"></div>';
+  const sel = document.getElementById('att-emp-sel');
+  const empIds = sel ? Array.from(sel.options).filter(o=>o.value).map(o=>o.value) : [];
+  const dept = document.getElementById('att-dept-sel')?.value || '';
+  let res = null;
+  try { res = await API.call('getAttendanceMonthBulk', {year, month, empIds, dept}); }
+  catch(e) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml('Could not load attendance: '+(e&&e.message||e))+'</p></div>'; return; }
+  if (!res || !res.ok) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml((res&&res.error)||'Could not load attendance')+'</p></div>'; return; }
+  const _score = r => (r.clockIn?2:0) + (r.clockOut?2:0) + (parseInt(r.workMinutes)>0?1:0) + (r.status?1:0);
+  const recByKey = {};
+  (res.records||[]).forEach(r => { const k = String(r.empId)+'|'+String(r.date).slice(0,10); if (!recByKey[k] || _score(r) > _score(recByKey[k])) recByKey[k] = r; });
+  window._attMultiRecords = Object.keys(recByKey).map(k => recByKey[k]);   // so Export CSV works from Grid too
+  const q = (document.getElementById('att-search-inp')?.value||'').trim().toLowerCase();
+  const statFilter = document.getElementById('att-status-sel')?.value || '';
+  const emps = (res.employees||[]).filter(e => { if (q) { const hay=(String(e.name||'')+' '+String(e.id||'')).toLowerCase(); if (hay.indexOf(q)<0) return false; } return true; });
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const monthLabel = new Date(year, month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+  if (!emps.length) { container.innerHTML = `<div class="section-hdr" style="margin-top:4px"><div class="section-title">Grid — ${escHtml(monthLabel)}</div></div><div class="empty-state"><div class="empty-icon">📭</div><p>No employees in scope — pick a Department or clear Search.</p></div>`; return; }
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let head = '<th style="position:sticky;left:0;background:var(--dark3);z-index:2;text-align:left;min-width:130px">Employee</th>';
+  for (let d=1; d<=daysInMonth; d++) { const ds = year+'-'+String(month).padStart(2,'0')+'-'+String(d).padStart(2,'0'); head += '<th style="min-width:30px;font-size:9px;padding:2px;text-align:center">'+d+'<br><span style="color:var(--gray-light)">'+days[new Date(ds).getDay()]+'</span></th>'; }
+  head += '<th style="min-width:48px;text-align:center">Total</th>';
+  let body = '';
+  emps.forEach(e => {
+    let row = '<td style="position:sticky;left:0;background:var(--dark2);z-index:1;text-align:left;font-size:11px"><strong>'+escHtml(e.name||e.id)+'</strong><br><span style="font-size:9px;color:var(--gray)">'+escHtml(e.id)+'</span></td>';
+    let totMin = 0;
+    for (let d=1; d<=daysInMonth; d++) {
+      const ds = year+'-'+String(month).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const rec = recByKey[String(e.id)+'|'+ds];
+      let cell = '<span style="color:var(--dark3)">·</span>', bg = '', title = '';
+      if (rec && !(statFilter && rec.status !== statFilter)) {
+        const wm = _v70WorkMins(rec); totMin += wm;
+        const ot = parseInt(rec.otMinutes||0), late = parseInt(rec.lateMinutes||0);
+        if (wm > 0) { cell = (wm/60).toFixed(1); bg = ot>0 ? 'rgba(245,124,0,0.22)' : 'rgba(67,160,71,0.18)'; }
+        else if (rec.status) { cell = escHtml(rec.status); }
+        title = (rec.clockIn?fmtTime(rec.clockIn):'—')+' → '+(rec.clockOut?fmtTime(rec.clockOut):'—')+(late>0?' · late '+late+'m':'')+(ot>0?' · OT '+ot+'m':'');
+      }
+      row += '<td style="padding:2px;font-size:9px;text-align:center'+(bg?(';background:'+bg):'')+'" title="'+escHtml(title)+'">'+cell+'</td>';
+    }
+    row += '<td style="font-size:10px;font-weight:700;text-align:center">'+(totMin>0?(totMin/60).toFixed(1)+'h':'—')+'</td>';
+    body += '<tr>'+row+'</tr>';
+  });
+  container.innerHTML = `
+  <div class="section-hdr" style="margin-top:4px"><div class="section-title" data-help="Jibble-style matrix of the SAME attendance data. Cell = the day's worked hours (green) / OT (orange) / leave-status; hover a cell for clock-in/out + late + OT. Right column = month total. Switch to Records for a flat editable list.">Grid — ${escHtml(monthLabel)} <span style="font-size:11px;color:var(--gray-light);font-weight:400">(${emps.length} staff · employees × days)</span></div></div>
+  <div class="table-wrap att-grid-wrap" style="overflow-x:auto"><table class="az-table att-grid" style="font-size:10px"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+// v71 Phase 3.2: unified CSV export — single employee → the day grid; multi/grid → the filtered records.
+function exportAttendanceCSV() {
+  const empId = document.getElementById('att-emp-sel')?.value || '';
+  if (empId) return exportFilteredTimesheet();
+  const recs = window._attMultiRecords || [];
+  if (!recs.length) { toast('Apply Filters first — nothing to export', 'warning'); return; }
+  const yr = document.getElementById('att-yr-sel')?.value || '', mo = document.getElementById('att-mo-sel')?.value || '';
+  const rows = [['Employee','ID','Dept','Date','Status','Clock In','Clock Out','Work Hours','OT Minutes','Late Minutes','Adjusted']];
+  recs.slice().sort((a,b)=> (String(a.empName)+a.date) < (String(b.empName)+b.date) ? -1 : 1).forEach(r => {
+    const wm = _v70WorkMins(r);
+    rows.push([r.empName||'', r.empId||'', r.dept||'', String(r.date).slice(0,10), r.status||'',
+      r.clockIn?fmtTime(r.clockIn):'', r.clockOut?fmtTime(r.clockOut):'',
+      wm?(wm/60).toFixed(2):'', r.otMinutes||'', r.lateMinutes||'',
+      (String(r.manualEdit).toLowerCase()==='true'?'yes':'')]);
+  });
+  const csv = rows.map(r => r.map(c => '"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'Attendance_'+yr+'-'+String(mo).padStart(2,'0')+'.csv'; a.click(); URL.revokeObjectURL(url);
 }
 
 // v65 Issue 8: multi-employee monthly attendance table for the filtered set. Pulls records via the
@@ -7524,7 +7645,16 @@ async function renderAttendanceMultiTable(year, month) {
   try { res = await API.call('getAttendanceMonthBulk', {year, month, empIds, dept}); }
   catch(e) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml('Could not load attendance: '+(e&&e.message||e))+'</p></div>'; return; }
   if (!res || !res.ok) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml((res&&res.error)||'Could not load attendance')+'</p></div>'; return; }
-  const records = res.records || [];
+  // v70 Phase 3.1: de-duplicate legacy double-rows — keep ONE row per employee+date (prefer the row
+  // with the most data: clock-in/out > work-minutes > a status). New writes can't dupe (findAttendanceRowIdx
+  // matches), but old data may have a populated + a blank row per day.
+  const _score = r => (r.clockIn?2:0) + (r.clockOut?2:0) + (parseInt(r.workMinutes)>0?1:0) + (r.status?1:0);
+  const _byKey = {};
+  (res.records || []).forEach(r => {
+    const k = String(r.empId) + '|' + String(r.date).slice(0,10);
+    if (!_byKey[k] || _score(r) > _score(_byKey[k])) _byKey[k] = r;
+  });
+  const records = Object.keys(_byKey).map(k => _byKey[k]);
   window._attMultiRecords = records;
   const statFilter = document.getElementById('att-status-sel')?.value || '';
   const otFilter   = document.getElementById('att-ot-sel')?.value || '';
@@ -7558,7 +7688,7 @@ async function renderAttendanceMultiTable(year, month) {
       <td class="att-${escHtml(r.status||'')}">${statusBadge(r.status||'—')}</td>
       <td style="font-size:11px">${r.clockIn?fmtTime(r.clockIn):'—'}</td>
       <td style="font-size:11px">${r.clockOut?fmtTime(r.clockOut):'—'}</td>
-      <td style="font-size:11px">${r.workMinutes?Math.floor(r.workMinutes/60)+'h'+(r.workMinutes%60)+'m':'—'}${parseInt(r.otMinutes||0)>0?` <span style="background:var(--orange);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;white-space:nowrap">OT ${r.otMinutes}m</span>`:''}</td>
+      <td style="font-size:11px">${_v70HrsCell(r)}${parseInt(r.otMinutes||0)>0?` <span style="background:var(--orange);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;white-space:nowrap">OT ${r.otMinutes}m</span>`:''}</td>
       <td style="font-size:11px">${parseInt(r.lateMinutes||0)>0?`<span style="color:var(--orange)">${r.lateMinutes}m</span>`:'—'}</td>
       <td style="font-size:11px">${adj?'✏ yes':'—'}</td>
       <td><button class="btn btn-dark btn-sm" onclick="showAttendanceEditModal('${escHtml(r.empId)}','${escHtml(r.date)}')">✏</button></td>
@@ -11086,7 +11216,7 @@ async function renderSettings() {
       ${cfgFieldTip('late2Max','Late Tier 2 Max (minutes — half-day deduction)','Late arrival between Tier 1 limit and this value results in a 0.5 day salary deduction. E.g. value 30 = 16–30 min late → -0.5 day.')}
       ${cfgFieldTip('late3Max','Late Tier 3 Max (minutes — full day deduction)','Late arrival beyond Tier 2 limit up to this value results in a 1-day deduction. Above this threshold = 2-day deduction.')}
       ${cfgFieldTip('otBaseHours','OT Base Hours (hours of OT = 1 extra day pay)','Number of overtime hours that equals one additional paid day. E.g. 9 means every 9 hours of accumulated OT = 1 extra daily pay at the OT multiplier rate.')}
-      ${cfgFieldTip('ulPenaltyDays','UL Penalty Multiplier (1 UL = X days deducted)','Uninformed Leave (UL) penalty: for every 1 day of UL, this many days are deducted from salary. Default: 2. So 1 UL = 2 days salary deducted.')}
+      <!-- v69 Phase 1.1: removed the ORPHAN duplicate cfg-ulPenaltyDays binding that lived here (it carried a stale "Default: 2" hint and was the FIRST cfg-ulPenaltyDays in the DOM, so getElementById read it instead of the real one). The canonical UL-penalty input lives in the v58 "Uninformed-Leave penalty + Sandwich Rule" card below (correct "default 1" tooltip). This removal clears the v44 duplicate-binding red banner. SAFE: same config key, value unchanged. -->
       ${cfgFieldTip('maxLeaveDaysAutoApprove','Max Leave Days for Supervisor Auto-Approval','Leave requests up to this many days can be approved by a supervisor. Requests beyond this require Owner/Admin approval.')}
       ${cfgFieldTip('pinBlockAfter','PIN Block After N Wrong Attempts','Number of consecutive wrong PIN attempts before the employee\'s PIN is blocked. Employee must pay the reactivation fee to unblock.')}
       ${cfgFieldTip('pinReactivationFee','PIN Reactivation Fee (₹)','Amount deducted from salary when a blocked PIN is reactivated by admin. This is recorded as a PINReactivationFee transaction.')}
@@ -11108,13 +11238,7 @@ async function renderSettings() {
       ${cfgFieldTip('otMinHoursThreshold','Min OT Hours Per Day (minimum to count toward OT bank)','A daily shift must exceed this many hours of overtime before it contributes to the OT bank. E.g. value 2 means only days with ≥2 hours of OT are counted. Prevents tiny overruns from accumulating.')}
       ${levelPickerField('otEligibleLevels','OT Pay Eligible Levels',cfg['otEligibleLevels']||'L6,L7,L8,L9,L10')}
       ${levelPickerField('nightShiftEligibleLevels','Night Shift Pay Eligible Levels',cfg['nightShiftEligibleLevels']||'L6,L7,L8,L9,L10')}
-      <!-- v40 §7d: legacy otMultiplier deprecated — kept read-only for slip-history compatibility -->
-      <div class="form-group">
-        <label class="form-label">OT Pay Multiplier <span style="color:var(--orange);font-size:10px;font-weight:600">(DEPRECATED in v40)</span>
-          <span class="info-tooltip" title="Legacy multiplier — superseded by 'OT Hours Equivalent to One Day's Pay' in the OT &amp; Extra Day Policy card. Retained only for backward compatibility with v39 and earlier records. Does NOT drive any active calculation in v40.">ℹ</span>
-        </label>
-        <input class="form-input" type="number" id="cfg-otMultiplier" value="${cfg['otMultiplier']||1.5}" step="0.1" readonly style="opacity:0.6;cursor:not-allowed">
-      </div>
+      <!-- v69 Phase 1.3: removed the DEPRECATED "OT Pay Multiplier" (cfg-otMultiplier) display field — it drove NO calculation (the engine uses 'OT Hours = 1 day's pay' via getOTHoursPerDayPay). The stored config value is untouched (savePolicySettings only writes inputs that still exist, via its if(el) guard). The real OT/Night pay formula is rebuilt in Phase 2 (v70). OT base-hours / min-OT / per-day denominator live in the "OT and Extra Day Policy" card. -->
       ${cfgFieldTip('nightShiftMultiplier','Night Shift Allowance Multiplier (per-employee base × this rate)','Each eligible employee has a "Night Shift Allowance" set in their profile (₹/month). This multiplier is applied to that base amount at month-end. E.g. employee base ₹500, multiplier 1.5 → ₹750 added to salary.')}
     </div>
     <div style="margin-top:14px">
@@ -11193,13 +11317,18 @@ async function renderSettings() {
       <div class="form-group">
         <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-sandwichEnabled" ${cfg['sandwichEnabled']!=='false'?'checked':''}> Sandwich rule ON <span class="info-tooltip" title="A weekly-off/holiday bracketed by leave on BOTH sides (≥1 sandwiching leave) becomes 1 unpaid day, no penalty, no balance used. Both sides exempt-paid (PL/ML/PTL/BL/COL/SOL) = not sandwiched. No holiday exemption.">ℹ</span></label>
       </div>
+      <!-- v69 Phase 1.4: free-text leave-code inputs replaced with tick-boxes sourced from the Leave-Types
+           registry (_v69PopulateLeaveCodeBoxes, called post-render). The hidden input keeps the same id +
+           CSV value so the existing save (updates['sandwichSandwichingCodes']=el.value) works unchanged. -->
       <div class="form-group">
-        <label class="form-label">Sandwiching leave codes (trigger)</label>
-        <input id="cfg-sandwichSandwichingCodes" class="form-input" type="text" value="${escHtml(cfg['sandwichSandwichingCodes']||'UL,IL,IHL,UHL,CL,SL,EL')}" placeholder="UL,IL,IHL,UHL,CL,SL,EL">
+        <label class="form-label">Sandwiching leave codes (trigger) <span class="info-tooltip" title="Tick the leave types that, when they bracket a weekly-off/holiday on BOTH sides, turn that off-day into one UNPAID sandwich day (no penalty, no balance used). Sourced live from your Leave Types registry.">ℹ</span></label>
+        <div id="sandwich-sandwiching-box" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span style="font-size:11px;color:var(--gray-light)">Loading leave types…</span></div>
+        <input type="hidden" id="cfg-sandwichSandwichingCodes" value="${escHtml(cfg['sandwichSandwichingCodes']||'UL,IL,IHL,UHL,CL,SL,EL')}">
       </div>
       <div class="form-group">
-        <label class="form-label">Exempt paid-leave codes (never trigger sandwich)</label>
-        <input id="cfg-sandwichExemptCodes" class="form-input" type="text" value="${escHtml(cfg['sandwichExemptCodes']||'PL,ML,PTL,BL,COL,SOL')}" placeholder="PL,ML,PTL,BL,COL,SOL">
+        <label class="form-label">Exempt paid-leave codes (never trigger sandwich) <span class="info-tooltip" title="Tick the PAID leave types that should NEVER cause a sandwich. If a bracketing off-run has these on both sides, the off-days stay paid as normal.">ℹ</span></label>
+        <div id="sandwich-exempt-box" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span style="font-size:11px;color:var(--gray-light)">Loading leave types…</span></div>
+        <input type="hidden" id="cfg-sandwichExemptCodes" value="${escHtml(cfg['sandwichExemptCodes']||'PL,ML,PTL,BL,COL,SOL')}">
       </div>
       <div class="form-group">
         <label class="form-label">Duration Format</label>
@@ -12490,12 +12619,7 @@ async function renderSettings() {
         </label>
         <input class="form-input" type="number" id="cfg-otBaseHoursPolicy" value="${cfg['otBaseHoursPolicy']||9}" step="0.5" min="1">
       </div>
-      <div class="form-group">
-        <label class="form-label">Regular OT Multiplier <span style="color:var(--orange);font-size:10px;font-weight:600">(DEPRECATED)</span>
-          <span class="info-tooltip" title="Legacy multiplier — superseded by 'OT Hours Equivalent to One Day's Pay'. Retained only for backward compatibility with v39 and earlier records. Does NOT drive any active calculation in v40.">ℹ</span>
-        </label>
-        <input class="form-input" type="number" id="cfg-otMultiplierRegular" value="${cfg['otMultiplierRegular']||1.222222}" step="0.000001" min="0" readonly style="opacity:0.6;cursor:not-allowed">
-      </div>
+      <!-- v69 Phase 1.3: removed the DEPRECATED "Regular OT Multiplier" (cfg-otMultiplierRegular = 1.222222) display field — superseded in v40 by 'OT Hours = 1 day's pay'. The save no longer writes this key (line removed from saveV31OTSettings); the stored value is left untouched for any legacy slip-history read. Phase 2 (v70) replaces the OT/Night formula entirely. -->
       <div class="form-group">
         <label class="form-label">Company Holiday Extra Day Multiplier
           <span class="info-tooltip" title="Pay multiplier for working a full day on a declared company holiday. ArtzFolio policy: a multiplier of 1 means the employee earns one additional day's pay (i.e., total = 2 days for that day, since holiday salary is already in the monthly salary). Formula: per-day salary × Multiplier. With 'Actual days in month' selected, the divisor changes per month.">ℹ</span>
@@ -13233,6 +13357,8 @@ async function renderSettings() {
   // v44 Workstream E2: scan for duplicate cfg-* bindings and surface a banner.
   // Runs on every Settings render so adding a new card is auto-checked.
   if (typeof _v44ScanDuplicateConfigBindings === 'function') _v44ScanDuplicateConfigBindings();
+  // v69 Phase 1.4: replace the sandwich/exempt free-text inputs with tick-boxes from the Leave-Types registry.
+  if (typeof _v69PopulateLeaveCodeBoxes === 'function') _v69PopulateLeaveCodeBoxes();
   // v45 Workstream E5: render the PA-bonus applicable-levels status line on first load.
   if (typeof _v45UpdatePABonusStatusLine === 'function') _v45UpdatePABonusStatusLine();
   // v46 W2: hydrate the LOYALTY_ACTIVE_MODEL dropdown + 3 status lines.
@@ -14256,14 +14382,20 @@ async function loadBonusPolicies() {
   if (!res || !res.ok) { box.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load bonus policies.</div>'; return; }
   window._bonusPolicies = res;
   const p = res.policies || {};
+  // v69 Phase 1.5: auto-eligible levels are now L1–L10 TICK-BOXES (was a free-text CSV). A hidden input
+  // keeps the same id (bp-auto-<type>) + CSV value so saveBonusPolicies reads it unchanged.
+  const LEVELS = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
   const sw = (type, label, desc) => {
     const on = !!(p[type] && p[type].enabled);
     const auto = (p[type] && p[type].auto) || '';
+    const sel = new Set(String(auto).split(',').map(s => s.trim()).filter(Boolean));
+    const chips = LEVELS.map(L => '<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;background:var(--dark3);border-radius:5px;padding:2px 6px;cursor:pointer"><input type="checkbox" value="' + L + '" ' + (sel.has(L) ? 'checked' : '') + ' onchange="_v69SyncBonusAuto(\'' + type + '\')"> ' + L + '</label>').join('');
     return '<div style="background:var(--dark2);border-radius:8px;padding:10px 12px;margin-bottom:8px">'
       + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700"><input type="checkbox" id="bp-en-' + type + '" ' + (on ? 'checked' : '') + ' style="accent-color:var(--gold);width:16px;height:16px"> ' + label + '</label>'
       + '<div style="font-size:11px;color:var(--gray-light);margin:4px 0 6px 24px">' + desc + '</div>'
-      + '<div style="margin-left:24px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)">Auto-eligible levels (CSV, blank = all):</span>'
-      + '<input id="bp-auto-' + type + '" class="form-input" style="width:170px;font-size:11px;padding:3px 6px" value="' + escHtml(String(auto)) + '" placeholder="e.g. L6,L7,L8"></div>'
+      + '<div style="margin-left:24px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)" title="Tick the levels auto-eligible for this bonus. NONE ticked = ALL levels eligible. Per-employee overrides (Manage per-employee eligibility) always win over this rule.">Auto-eligible levels (none = all):</span>'
+      + '<span id="bp-auto-chips-' + type + '" style="display:inline-flex;flex-wrap:wrap;gap:4px">' + chips + '</span>'
+      + '<input type="hidden" id="bp-auto-' + type + '" value="' + escHtml(String(auto)) + '"></div>'
       + '</div>';
   };
   box.innerHTML =
@@ -14271,9 +14403,12 @@ async function loadBonusPolicies() {
     + sw('Perf', '📈 Performance Bonus', 'Monthly points × rate, added to salary (existing points settings still apply).')
     + sw('Loyalty', '💎 Long-term Loyalty Wallet', 'Monthly retention credit to the loyalty wallet.')
     + sw('Joining', '🎁 Joining Bonus', 'One-time joining bonus paid in installments.')
-    + '<div style="background:var(--dark2);border-radius:8px;padding:10px 12px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">'
-    + '<div><label class="form-label" style="font-size:12px">Joining bonus total (₹)</label><input id="bp-joining-total" class="form-input" type="number" min="0" style="width:130px" value="' + escHtml(String(res.joiningTotal || '10000')) + '"></div>'
-    + '<div><label class="form-label" style="font-size:12px">Per installment (₹)</label><input id="bp-joining-inst" class="form-input" type="number" min="0" style="width:130px" value="' + escHtml(String(res.joiningInstallment || '2500')) + '"></div>'
+    // v69 Phase 1.2: joining amount is now READ-ONLY here (single source of truth = the Joining Bonus
+    // card, which also owns the installment schedule). Both used the same JOINING_BONUS_TOTAL /
+    // JOINING_BONUS_INSTALLMENT_AMOUNT keys, so this removes the confusing second editable copy.
+    + '<div style="background:var(--dark2);border-radius:8px;padding:10px 12px">'
+    + '<div style="font-size:12px;color:var(--gray-light);margin-bottom:4px">🎁 Joining bonus amount <span class="info-tooltip" title="Edited in the Joining Bonus card (Compensation settings), which also sets the installment schedule + eligibility threshold. Shown here read-only so the two places can never disagree — both use the same JOINING_BONUS_TOTAL / JOINING_BONUS_INSTALLMENT_AMOUNT config.">ℹ</span></div>'
+    + '<div style="font-size:13px">Total <strong>₹' + escHtml(String(res.joiningTotal || '10000')) + '</strong> &nbsp;·&nbsp; per installment <strong>₹' + escHtml(String(res.joiningInstallment || '2500')) + '</strong> &nbsp;<span style="font-size:11px;color:var(--gray-light)">(read-only — edit in the <strong>Joining Bonus</strong> card)</span></div>'
     + '</div>';
 }
 
@@ -14285,8 +14420,9 @@ async function saveBonusPolicies() {
   });
   const payload = {
     policies: { PA: get('PA'), Perf: get('Perf'), Loyalty: get('Loyalty'), Joining: get('Joining') },
-    joiningTotal: document.getElementById('bp-joining-total')?.value || '',
-    joiningInstallment: document.getElementById('bp-joining-inst')?.value || '',
+    // v69 Phase 1.2: joiningTotal/joiningInstallment are NO LONGER sent from here — the Joining Bonus
+    // card is the single editor. handleSaveBonusPolicies only writes them when present, so omitting
+    // them leaves the stored JOINING_BONUS_* values untouched.
     changedBy: State.adminUser || 'admin'
   };
   const res = await API.call('saveBonusPolicies', payload);
@@ -17385,7 +17521,7 @@ async function saveV31OTSettings() {
     perDayDivisor: _cfgVal('cfg-perDayDivisor','Actual'),
     otHoursPerDayPay: _cfgVal('cfg-otHoursPerDayPay','9'),
     otBaseHoursPolicy: _cfgVal('cfg-otBaseHoursPolicy','9'),
-    otMultiplierRegular: _cfgVal('cfg-otMultiplierRegular','1.222222'),
+    // v69 Phase 1.3: otMultiplierRegular (DEPRECATED) input removed → no longer written here; stored value left untouched.
     otMultiplierCompanyHoliday: _cfgVal('cfg-otMultiplierCompanyHoliday','1'),
     otMultiplierWeeklyOff: _cfgVal('cfg-otMultiplierWeeklyOff','1'),
     otMultiplierNational: _cfgVal('cfg-otMultiplierNational','1'),
@@ -18363,69 +18499,41 @@ async function initCompLadderEditor() {
     var res = await API.call('getSalaryLadder');
     if (!res.ok) { container.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load ladder data.</div>'; return; }
     var rows = res.rows || [];
-    var levels = ['L10','L9','L8','L7','L6'];
-    // v43 W3.12: if the sheet returned 0 rows, treat as fresh install and render with seed values.
-    var usingSeed = rows.length === 0;
-    // v62: columns are now data-driven from SHIFT_HOURS_SET. 9hr Morning + Night are
-    // editable per level; every other configured shift auto-derives from the 9hr base
-    // × that shift's SHIFT_RATIO_<N>HR (set in Settings → Compensation → Shift Slabs).
-    var _shifts  = _shiftHoursList();                              // e.g. [8,9,10,11,12]
-    var _ratios  = (State.shiftConfig && State.shiftConfig.ratios) || {};
-    var _incMults = (State.shiftConfig && State.shiftConfig.incMults) || {};
-    var _nonBase = _shifts.filter(function(h){ return h !== 9; });
-    // v62: Shift Slabs configuration panel — owner edits the offered set + per-slab
-    // salary ratio / increment multiplier. Saved via setCompensationConfig (SHIFT_HOURS_SET
-    // + SHIFT_RATIO_<N>HR + INCREMENT_MULT_<N>HR), then the ladder columns re-render.
-    var slabHtml = '<div style="background:var(--dark2);border-radius:8px;padding:12px;margin-bottom:14px">' +
-      '<div style="font-weight:700;font-size:13px;margin-bottom:6px">⚙ Shift Slabs Configuration</div>' +
-      '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">The shift-hour lengths your company offers. <strong>9 is the base</strong> (ratio 1). Each other shift\'s salary = 9hr × its ratio; its increment = 9hr increment × its multiplier. To add a NEW shift (e.g. 8 or 10): add it to the list, Save once (defaults to ratio 1), then set its ratio and Save again.</div>' +
-      '<label class="form-label" style="font-size:12px">Shift hours offered (comma-separated)</label>' +
-      '<input id="shift-slabs-set" class="form-input" value="' + _shifts.join(',') + '" placeholder="9,11,12" style="max-width:220px">' +
-      '<table style="width:auto;border-collapse:collapse;font-size:12px;margin-top:10px"><thead><tr style="color:var(--gray-light)"><th style="text-align:left;padding:4px 10px 4px 0">Shift</th><th style="text-align:left;padding:4px 10px">Salary ratio (×9hr)</th><th style="text-align:left;padding:4px 10px">Increment ×</th></tr></thead><tbody>';
-    _nonBase.forEach(function(h) {
-      var rt = parseFloat(_ratios[h]) || 1;
-      var im = parseFloat(_incMults[h]) || 1;
-      slabHtml += '<tr><td style="padding:4px 10px 4px 0;font-weight:700">' + h + 'hr</td>' +
-        '<td style="padding:4px 10px"><input type="number" step="0.01" min="0" id="shift-ratio-' + h + '" value="' + rt + '" class="form-input" style="width:90px;padding:3px 6px"></td>' +
-        '<td style="padding:4px 10px"><input type="number" step="0.01" min="0" id="shift-incmult-' + h + '" value="' + im + '" class="form-input" style="width:90px;padding:3px 6px"></td></tr>';
-    });
-    slabHtml += '</tbody></table>' +
-      '<button class="btn btn-gold btn-sm" style="margin-top:10px" onclick="saveShiftSlabs()">💾 Save Shift Slabs</button>' +
+    var levels = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
+    // v72 Phase 2 (redesign): DIRECT SALARY MATRIX. The percentage/ratio model is GONE — every
+    // Level × shift × Morning/Night cell is typed directly. SHIFT_HOURS_SET still defines WHICH
+    // shifts exist (the columns); there is no ratio / increment-multiplier anywhere.
+    var _shifts = _shiftHoursList();   // e.g. [9,11,12]
+    function _ladderVal(level, h, night) {
+      var r = rows.find(function(x){ return String(x.level) === level && parseInt(x.shiftHours) === parseInt(h); }) || {};
+      var v = parseFloat(night ? r.nightSalary : r.morningSalary);
+      // fresh-install seed (9hr only, L6–L10) so a brand-new empty sheet isn't entirely blank
+      if ((!v || isNaN(v)) && rows.length === 0 && parseInt(h) === 9 && LADDER_SEED[level]) v = night ? LADDER_SEED[level].night : LADDER_SEED[level].morning;
+      return (v && !isNaN(v)) ? v : '';
+    }
+    // Shifts-offered panel — just WHICH shift lengths exist (no ratios/percentages).
+    var shiftSetHtml = '<div style="background:var(--dark2);border-radius:8px;padding:12px;margin-bottom:14px">' +
+      '<div style="font-weight:700;font-size:13px;margin-bottom:6px">⚙ Shifts offered</div>' +
+      '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">The shift-hour lengths your company offers (9 is always included). Add or remove hours, click <strong>Save shifts</strong>, then type each salary directly in the matrix below. <strong>No ratios or percentages</strong> — you set every number yourself from your own Excel.</div>' +
+      '<label class="form-label" style="font-size:12px">Shift hours (comma-separated)</label> ' +
+      '<input id="shift-slabs-set" class="form-input" value="' + _shifts.join(',') + '" placeholder="9,11,12" style="max-width:200px;display:inline-block"> ' +
+      '<button class="btn btn-dark btn-sm" onclick="saveShiftSet()">💾 Save shifts</button>' +
       '</div>';
-    var html = slabHtml + '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">Editable: 9hr Morning + 9hr Night per level. Other shift columns auto-derive from the 9hr base × that shift\'s ratio. Configured shift set: <strong>' + _shifts.join(', ') + ' hrs</strong>.</div>';
-    html += '<table class="comp-ladder-table"><thead><tr>' +
-      '<th>Level</th>' +
-      '<th>9hr Morning (₹) <span class="info-tooltip" title="Default monthly salary for this level on a 9-hour MORNING shift. Editing here changes the default for new hires; existing employees keep their saved salary unless you click Recompute Salaries from Ladder in Admin → Bulk Operations.">ℹ</span></th>' +
-      '<th>9hr Night (₹) <span class="info-tooltip" title="Default monthly salary for this level on a 9-hour NIGHT shift. Per Excel: night base is INDEPENDENT of morning, not a fixed multiplier — set each level explicitly.">ℹ</span></th>';
-    _nonBase.forEach(function(h) {
-      var rt = parseFloat(_ratios[h]) || 1;
-      html += '<th>' + h + 'hr M (auto) <span class="info-tooltip" title="Auto-derived from 9hr Morning × Shift Ratio ' + h + 'hr (currently ' + rt + '). Edit the ratio in Settings → Compensation → Shift Slabs.">ℹ</span></th>' +
-              '<th>' + h + 'hr N (auto) <span class="info-tooltip" title="Auto-derived from 9hr Night × Shift Ratio ' + h + 'hr (currently ' + rt + ').">ℹ</span></th>';
-    });
+    var html = shiftSetHtml +
+      '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">Type the exact monthly salary for each <strong>Level × Shift</strong> (Morning &amp; Night). These are the defaults for new hires, shift changes and the <em>Recompute Salaries from Ladder</em> action — editing a cell does NOT change an existing employee\'s saved pay (each employee\'s own salary can also differ within a level). Configured shifts: <strong>' + _shifts.join(', ') + ' hrs</strong>.</div>' +
+      '<div class="table-wrap" style="overflow-x:auto"><table class="comp-ladder-table"><thead><tr><th>Level</th>';
+    _shifts.forEach(function(h) { html += '<th>' + h + 'hr Morning (₹)</th><th>' + h + 'hr Night (₹)</th>'; });
     html += '</tr></thead><tbody>';
     levels.forEach(function(level) {
-      // SalaryLadder sheet columns: level, shiftHours, morningSalary, nightSalary (all lowercase from sheetToObjects)
-      var r9  = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 9; }) || {};
-      // v43 W3.12 + W4.1: fall back to seed for BOTH morning and night if no row for this level
-      var base9M = parseFloat(r9.morningSalary) || (usingSeed && LADDER_SEED[level] ? LADDER_SEED[level].morning : 0);
-      var base9N = parseFloat(r9.nightSalary)   || (usingSeed && LADDER_SEED[level] ? LADDER_SEED[level].night   : 0);
-      html += '<tr>' +
-        '<td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
-        '<td><input type="number" class="form-input" id="ladder-' + level + '-9" value="' + (base9M || '') +
-          '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:100px;padding:4px 6px"></td>' +
-        '<td><input type="number" class="form-input" id="ladder-' + level + '-9-night" value="' + (base9N || '') +
-          '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:100px;padding:4px 6px"></td>';
-      _nonBase.forEach(function(h) {
-        var rt = parseFloat(_ratios[h]) || 1;
-        var rr = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === h; }) || {};
-        var dM = parseFloat(rr.morningSalary) || (base9M ? Math.round(base9M * rt / 100) * 100 : 0);
-        var dN = parseFloat(rr.nightSalary)   || (base9N ? Math.round(base9N * rt / 100) * 100 : 0);
-        html += '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-' + h + '-disp">' + fmtINR(dM) + '</span></td>' +
-                '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-' + h + '-night-disp">' + fmtINR(dN) + '</span></td>';
+      html += '<tr><td style="font-weight:700;color:var(--gold)">' + level + '</td>';
+      _shifts.forEach(function(h) {
+        html += '<td><input type="number" class="form-input" id="ladder-' + level + '-' + h + '" value="' + _ladderVal(level, h, false) + '" step="100" min="0" style="width:95px;padding:4px 6px"></td>' +
+                '<td><input type="number" class="form-input" id="ladder-' + level + '-' + h + '-night" value="' + _ladderVal(level, h, true) + '" step="100" min="0" style="width:95px;padding:4px 6px"></td>';
       });
       html += '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>' +
+      '<button class="btn btn-gold" style="margin-top:12px" onclick="saveCompLadder()">💾 Save Salary Matrix</button>';
     container.innerHTML = html;
     // v43 W3.11: hydrate tooltips for the freshly-inserted ladder cells
     hydrateCompensationTooltips();
@@ -18676,6 +18784,51 @@ function _v44ScanDuplicateConfigBindings() {
       banner.style.display = 'block';
     }
   } catch(e) { console.warn('[v44] dup-scan error:', e); }
+}
+
+// ── v69 Phase 1.4: render sandwich/exempt leave-code TICK-BOXES from the Leave-Types registry ──
+// Replaces the old free-text inputs. The hidden input (#cfg-sandwich*Codes) holds the CSV the save
+// reads; checkbox toggles rebuild it. Out-of-registry saved codes are preserved (never silently dropped).
+async function _v69PopulateLeaveCodeBoxes() {
+  if (!document.getElementById('sandwich-sandwiching-box')) return; // card not on screen
+  let types = [];
+  try {
+    const r = await API.call('getLeaveTypes', { activeOnly: true });
+    if (r && r.ok && Array.isArray(r.leaveTypes)) {
+      types = r.leaveTypes.map(x => ({ code: String(x.Code || x.code || '').trim(), name: String(x.Name || x.name || x.Code || x.code || '').trim() })).filter(x => x.code);
+    }
+  } catch (e) { /* fall back below */ }
+  if (!types.length) {
+    types = [['UL','Uninformed Leave'],['IL','Informed Leave'],['IHL','Informed Half Leave'],['UHL','Uninformed Half Leave'],['CL','Casual Leave'],['SL','Sick Leave'],['EL','Earned Leave'],['PL','Paid Leave'],['ML','Maternity Leave'],['PTL','Paternity Leave'],['BL','Bereavement Leave'],['COL','Comp-Off Leave'],['SOL','Study/Exam Leave']].map(a => ({ code: a[0], name: a[1] }));
+  }
+  [['sandwich-sandwiching-box','cfg-sandwichSandwichingCodes'], ['sandwich-exempt-box','cfg-sandwichExemptCodes']].forEach(function(pair) {
+    const box = document.getElementById(pair[0]), hid = document.getElementById(pair[1]);
+    if (!box || !hid) return;
+    const sel = new Set(String(hid.value || '').split(',').map(s => s.trim()).filter(Boolean));
+    box.innerHTML = types.map(function(t) {
+      const ck = sel.has(t.code) ? 'checked' : '';
+      return '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;background:var(--dark2);border:1px solid var(--dark3);border-radius:6px;padding:3px 9px;cursor:pointer"><input type="checkbox" value="' + escHtml(t.code) + '" ' + ck + ' onchange="_v69SyncLeaveCodeHidden(\'' + pair[0] + '\',\'' + pair[1] + '\')"> ' + escHtml(t.code) + ' — ' + escHtml(t.name) + '</label>';
+    }).join('');
+    const known = new Set(types.map(t => t.code));
+    const extra = Array.from(sel).filter(c => !known.has(c));
+    if (extra.length) box.innerHTML += '<span style="font-size:10px;color:var(--orange)" title="Saved codes not in the current Leave-Types registry — kept so nothing is silently dropped.">+ kept: ' + escHtml(extra.join(', ')) + '</span>';
+  });
+}
+function _v69SyncLeaveCodeHidden(boxId, hiddenId) {
+  const box = document.getElementById(boxId), hid = document.getElementById(hiddenId);
+  if (!box || !hid) return;
+  const checked = Array.from(box.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value);
+  const prev = new Set(String(hid.value || '').split(',').map(s => s.trim()).filter(Boolean));
+  const known = new Set(Array.from(box.querySelectorAll('input[type=checkbox]')).map(c => c.value));
+  const extra = Array.from(prev).filter(c => !known.has(c)); // preserve out-of-registry saved codes
+  hid.value = checked.concat(extra).join(',');
+}
+
+// ── v69 Phase 1.5: rebuild the hidden bp-auto-<type> CSV from the ticked level chips ──
+function _v69SyncBonusAuto(type) {
+  const wrap = document.getElementById('bp-auto-chips-' + type), hid = document.getElementById('bp-auto-' + type);
+  if (!wrap || !hid) return;
+  hid.value = Array.from(wrap.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value).join(',');
 }
 
 // ── v44 Workstream E4: Bulk Backfill provenance badge helper ──────────
@@ -19142,38 +19295,41 @@ async function approveWalletAdjustment(adjustmentId, decision) {
 // `{level, shiftHours, morningSalary, nightSalary}`. Backend accepts both new and
 // legacy `{baseSalary}` shapes (handleSaveSalaryLadder is backward-compatible).
 async function saveCompLadder() {
-  var levels = ['L10','L9','L8','L7','L6'];
-  // v62: write a row for every configured shift-hour. 9hr from the inputs; each non-9
-  // shift = 9hr base × its SHIFT_RATIO_<N>HR. For the default set 9,11,12 (ratios
-  // 1.10/1.20) this is identical to the pre-v62 save. Ratios from State.shiftConfig.
-  var ratios = (State.shiftConfig && State.shiftConfig.ratios) || {};
+  // v72 Phase 2: DIRECT MATRIX — collect every typed cell (Level × shift × Morning/Night). No ratios.
+  // A row is written only when at least one value is entered (blank rows = unused level/shift, skipped).
+  var levels = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
   var shifts = _shiftHoursList();
   var rows = [];
-  var valid = true;
   levels.forEach(function(level) {
-    var morningEl = document.getElementById('ladder-' + level + '-9');
-    var nightEl   = document.getElementById('ladder-' + level + '-9-night');
-    if (!morningEl || !nightEl) return;
-    var base9M = Math.round(parseFloat(morningEl.value) || 0);
-    var base9N = Math.round(parseFloat(nightEl.value) || 0);
-    if (base9M <= 0 || base9N <= 0) {
-      toast('Enter valid morning AND night salary for ' + level, 'error');
-      valid = false; return;
-    }
     shifts.forEach(function(h) {
-      if (h === 9) { rows.push({level: level, shiftHours: 9, morningSalary: base9M, nightSalary: base9N}); }
-      else {
-        var rt = parseFloat(ratios[h]) || 1;
-        rows.push({level: level, shiftHours: h,
-                   morningSalary: Math.round(base9M * rt / 100) * 100,
-                   nightSalary:   Math.round(base9N * rt / 100) * 100});
-      }
+      var mEl = document.getElementById('ladder-' + level + '-' + h);
+      var nEl = document.getElementById('ladder-' + level + '-' + h + '-night');
+      var m = mEl ? Math.round(parseFloat(mEl.value) || 0) : 0;
+      var n = nEl ? Math.round(parseFloat(nEl.value) || 0) : 0;
+      if (m > 0 || n > 0) rows.push({ level: level, shiftHours: h, morningSalary: m, nightSalary: n });
     });
   });
-  if (!valid) return;
-  var res = await API.call('saveSalaryLadder', {rows: rows});
-  if (res.ok) { toast('✓ Salary ladder saved', 'success'); initCompLadderEditor(); }
+  if (!rows.length) { toast('Enter at least one salary first', 'warning'); return; }
+  var res = await API.call('saveSalaryLadder', { rows: rows });
+  if (res.ok) { toast('✓ Salary matrix saved (' + rows.length + ' rows)', 'success'); initCompLadderEditor(); }
   else toast(res.error || 'Save failed', 'error');
+}
+
+// v72 Phase 2: save ONLY which shift-hours are offered (SHIFT_HOURS_SET). No ratios / increment-mults.
+// Re-renders the matrix so a newly-added shift gets blank columns to type into (no auto-derivation).
+async function saveShiftSet() {
+  var el = document.getElementById('shift-slabs-set');
+  var csv = (el ? String(el.value) : '9,11,12').trim() || '9,11,12';
+  var set = csv.split(',').map(function(s){ return parseInt(String(s).trim(), 10); }).filter(function(n){ return !isNaN(n) && n > 0; });
+  if (set.indexOf(9) < 0) set.unshift(9);            // 9 is always offered (the base shift)
+  set = Array.from(new Set(set)).sort(function(a, b){ return a - b; });
+  if (set.length > 12) { toast('Too many shifts (max 12)', 'error'); return; }
+  var res = await API.call('setCompensationConfig', { updates: { 'SHIFT_HOURS_SET': set.join(',') }, modifiedBy: State.adminUser || 'admin' });
+  if (res && res.ok) {
+    toast('✓ Shifts saved: ' + set.join(', ') + ' hrs. Now type the salaries below.', 'success');
+    await loadShiftConfig();
+    initCompLadderEditor();   // re-render the matrix with the new shift columns
+  } else { toast((res && res.error) || 'Save failed', 'error'); }
 }
 
 // v62: save the configurable shift-hour set + per-slab ratios / increment multipliers.
@@ -19550,9 +19706,8 @@ async function renderSalaryLadderViewer() {
     var res = await API.call('getSalaryLadder');
     if (!res.ok) { el.innerHTML = '<div style="color:var(--red);padding:16px">Failed: ' + escHtml(res.error || 'Error') + '</div>'; return; }
     var rows = res.rows || [];
-    var levels = ['L10','L9','L8','L7','L6'];
+    var levels = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];   // v72: show all levels
     var shifts = _shiftHoursList();
-    var ratios = (State.shiftConfig && State.shiftConfig.ratios) || {};
     var html = '<div style="font-size:12px;color:var(--gray-light);margin-bottom:10px">Read-only view. Edit in Settings → Compensation.</div>' +
       '<table class="comp-ladder-table"><thead><tr><th>Level</th>' +
       shifts.map(function(h){ return '<th>' + h + 'hr ' + (h === 9 ? '(base)' : 'Morning') + '</th>'; }).join('') +
@@ -19562,7 +19717,7 @@ async function renderSalaryLadderViewer() {
       html += '<tr><td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
         shifts.map(function(h){ return '<td>' + fmtINR(getBase(h)) + '</td>'; }).join('') + '</tr>';
     });
-    var _disc = shifts.filter(function(h){ return h !== 9; }).map(function(h){ return h + 'hr = 9hr × ' + (parseFloat(ratios[h]) || 1); }).join('  |  ');
+    var _disc = shifts.filter(function(h){ return h !== 9; }).map(function(h){ return h + 'hr (set directly)'; }).join('  |  ');
     html += '</tbody></table>' +
       '<div class="comp-disclaimer" style="margin-top:12px">' + (_disc || 'Base 9hr only') + ' (rounded to nearest ₹100)</div>';
     el.innerHTML = html;
