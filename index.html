@@ -1523,7 +1523,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v72-2026-05'; // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v73-2026-05'; // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2312,7 +2312,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v72';  // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v73';  // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -11136,9 +11136,12 @@ async function renderSettings() {
     const ALL_LEVELS = ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'];
     const chips = ALL_LEVELS.map(l => {
       const isSel = selected.includes(l);
-      return `<label class="level-chip ${isSel?'selected':''}" onclick="toggleLevelChip(this,'cfg-${escHtml(key)}')">
-        <input type="checkbox" value="${l}" ${isSel?'checked':''}/>${l}
-      </label>`;
+      // v73 D1 fix: span-chip with data-val + single click handler. The v72 <label> wrapped a
+      // real <input type=checkbox>, so one click ran toggleLevelChip, then the label's native
+      // activation fired a synthetic checkbox click that bubbled back to the label and ran the
+      // handler AGAIN -> .selected toggled twice (net zero) -> the hidden CSV never changed.
+      // No inner checkbox = no double-fire. role=button + aria-pressed for accessibility.
+      return `<span class="level-chip${isSel?' selected':''}" role="button" tabindex="0" aria-pressed="${isSel?'true':'false'}" data-val="${l}" onclick="toggleLevelChip(this,'cfg-${escHtml(key)}')" onkeydown="if(event.key==='Enter'){event.preventDefault();toggleLevelChip(this,'cfg-${escHtml(key)}')}">${l}</span>`;
     }).join('');
     return `<div class="form-group" style="grid-column:span 2"><label class="form-label">${escHtml(label)}</label>
       <input type="hidden" id="cfg-${escHtml(key)}" value="${escHtml(selectedCsv||'')}">
@@ -11150,10 +11153,19 @@ async function renderSettings() {
        scanner finds a real duplicate. Initial state hidden. -->
   <div id="v44-cfg-dup-banner" style="display:none;background:rgba(220,50,50,0.15);border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:6px;margin-bottom:10px;font-size:12px;font-weight:600"></div>
   <!-- v43 W3.10: sticky Expand All / Collapse All toolbar -->
-  <div class="settings-toolbar" style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;position:sticky;top:0;background:var(--dark1);padding:10px 0;z-index:5;border-bottom:1px solid var(--dark3)">
-    <button class="btn btn-secondary" onclick="expandAllSettingsCards()" style="font-size:12px;padding:6px 12px">▼ Expand All</button>
-    <button class="btn btn-secondary" onclick="collapseAllSettingsCards()" style="font-size:12px;padding:6px 12px">▶ Collapse All</button>
+  <div class="settings-toolbar" style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:12px;position:sticky;top:0;background:var(--dark1);padding:10px 0;z-index:5;border-bottom:1px solid var(--dark3)">
+    <!-- v73 D7: visible version badge — previously the version lived only in window.HRMS_VERSION + the silent mismatch check, shown nowhere in the UI. -->
+    <span title="App version" style="font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.5px">ArtzFolio HRMS ${window.HRMS_VERSION}</span>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" onclick="expandAllSettingsCards()" style="font-size:12px;padding:6px 12px">▼ Expand All</button>
+      <button class="btn btn-secondary" onclick="collapseAllSettingsCards()" style="font-size:12px;padding:6px 12px">▶ Collapse All</button>
+    </div>
   </div>
+  <!-- v73 D8: Settings horizontal top tabs. Non-destructive — the ~33 settings cards keep their
+       existing markup; _v73AssignSettingsTabs() tags each top-level .settings-section with a
+       data-settings-tab at runtime and switchSettingsTab() show/hides them. Unknown cards fall
+       back to the Panel tab so nothing is ever orphaned. -->
+  <div id="v73-settings-tabbar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${_V73_SETTINGS_TABS.map(function(t){return '<button type="button" class="btn" data-tab="'+t.id+'" role="tab" aria-selected="false" onclick="switchSettingsTab(\''+t.id+'\')" style="font-size:12px;padding:6px 12px;background:var(--dark3);color:var(--white);border:1px solid var(--dark3)">'+t.label+'</button>';}).join('')}</div>
   <!-- Connection Settings -->
   <div class="settings-section">
     <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-connection')">
@@ -11208,7 +11220,7 @@ async function renderSettings() {
         </div>
         <div style="font-size:11px;color:var(--gray-light);margin-top:6px">Use "Send Test Email" to verify that OTP delivery works for each role before employees use Forgot Password. If it fails, the GAS script must be redeployed as a <strong>New Deployment</strong> to re-authorize email permissions.</div>
       </div>
-      ${cfgFieldTip('gracePeriod','Grace Period (minutes)','Minutes after shift start where late arrival is not penalised. Default: 5. E.g. shift at 9AM + 5 min grace = no penalty if clocked in by 9:05AM.')}
+      ${cfgFieldTip('gracePeriod','Grace Period (minutes)','Minutes after shift start where late arrival is not penalised for PAY/late-deduction purposes. Default: 5. E.g. shift at 9AM + 5 min grace = no penalty if clocked in by 9:05AM. This is the attendance/pay grace period — SEPARATE from the "PA-bonus late grace" in the Bonus Policy card, which only affects the Perfect Attendance Bonus.')}
       ${cfgField('payDay','Salary Pay Day (date of month)')}
       ${cfgFieldTip('extendedCutoff','Extended Period (1st–Nth of next month)','Attendance from the 1st to this date of the following month is included in the previous month\'s salary calculation. E.g. value 7 means Aug salary includes attendance up to Sept 7.')}
       ${cfgFieldTip('kioskTimeout','Kiosk Auto-Return (seconds)','Seconds of inactivity before the kiosk automatically returns to PIN entry screen and logs out the current employee. Default: 60.')}
@@ -11235,7 +11247,7 @@ async function renderSettings() {
     </div>
     <div class="settings-section-title" style="margin-top:18px">⏱ Overtime & Night Shift Pay Settings</div>
     <div class="settings-grid">
-      ${cfgFieldTip('otMinHoursThreshold','Min OT Hours Per Day (minimum to count toward OT bank)','A daily shift must exceed this many hours of overtime before it contributes to the OT bank. E.g. value 2 means only days with ≥2 hours of OT are counted. Prevents tiny overruns from accumulating.')}
+      ${cfgFieldTip('otMinHoursThreshold','Payroll OT-bank threshold — Min OT Hours/Day to count toward the bank','PAYROLL ACCOUNTING THRESHOLD used at month-end by the salary engine. A day must have MORE than this many OT hours before that overtime is added to the OT bank for payroll. E.g. 2 = only days with at least 2 OT hours count. SEPARATE from the per-shift Minimum OT Hours in Compensation → OT Policy, which is the KIOSK data-entry hard-block (the least OT a worker may submit at the clock). Two different mechanisms: this one affects pay; that one limits what can be entered.')}
       ${levelPickerField('otEligibleLevels','OT Pay Eligible Levels',cfg['otEligibleLevels']||'L6,L7,L8,L9,L10')}
       ${levelPickerField('nightShiftEligibleLevels','Night Shift Pay Eligible Levels',cfg['nightShiftEligibleLevels']||'L6,L7,L8,L9,L10')}
       <!-- v69 Phase 1.3: removed the DEPRECATED "OT Pay Multiplier" (cfg-otMultiplier) display field — it drove NO calculation (the engine uses 'OT Hours = 1 day's pay' via getOTHoursPerDayPay). The stored config value is untouched (savePolicySettings only writes inputs that still exist, via its if(el) guard). The real OT/Night pay formula is rebuilt in Phase 2 (v70). OT base-hours / min-OT / per-day denominator live in the "OT and Extra Day Policy" card. -->
@@ -11811,23 +11823,12 @@ async function renderSettings() {
     </div>
   </div>
 
-  <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">💰 SALARY & PAYROLL</div>
-  <!-- Salary Bands (v40 §2: input visibility + tooltips) -->
-  <div class="settings-section">
-    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-salary-bands')">💰 Salary Bands by Level <span class="settings-card-chevron">▼</span></div>
-      <div id="settings-body-salary-bands" class="settings-card-body">
-    <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">These are reference ranges. Employees can have any salary within or outside these bands.</div>
-    ${bands.map(b=>`
-    <div class="band-row">
-      <div class="band-level" title="Employee level. L1 is the highest (e.g., Founder/Director), increasing numbers indicate junior roles.">${escHtml(b.level)}<span class="info-tooltip" title="Employee level. L1 is the highest (e.g., Founder/Director), increasing numbers indicate junior roles." style="margin-left:4px">ℹ</span></div>
-      <div><label class="form-label" style="font-size:10px">Male Min <span class="info-tooltip" title="Lower bound of the suggested monthly CTC range for this level for male employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-mm-${b.level}" type="number" value="${b.maleMin||0}"></div>
-      <div><label class="form-label" style="font-size:10px">Male Max <span class="info-tooltip" title="Upper bound of the suggested monthly CTC range for this level for male employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-mx-${b.level}" type="number" value="${b.maleMax||0}"></div>
-      <div><label class="form-label" style="font-size:10px">Female Min <span class="info-tooltip" title="Lower bound of the suggested monthly CTC range for this level for female employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-fm-${b.level}" type="number" value="${b.femaleMin||0}"></div>
-      <div><label class="form-label" style="font-size:10px">Female Max <span class="info-tooltip" title="Upper bound of the suggested monthly CTC range for this level for female employees. Reference only — actual salaries can be set outside this range.">ℹ</span></label><input class="form-input" id="b-fx-${b.level}" type="number" value="${b.femaleMax||0}"></div>
-      <button class="btn btn-dark btn-sm" title="Saves only this level's band to the database." onclick="saveBand('${escHtml(b.level)}')">Save</button>
-    </div>`).join('')}
-    </div>
-  </div>
+  <!-- v73 D4: "Salary Bands by Level" card REMOVED — it was an orphan reference. Phase-0 audit proved
+       no pay path reads SalaryBands (autoFillLevelDefaults uses a hard-coded LEVEL_DEFAULTS table;
+       calcMonthlySalary / getSalaryForEmployee / computeSalaryFromLadder use the Salary Matrix).
+       The underlying SalaryBands sheet, saveBand(), getSalaryBands and backup/reseed code are left
+       untouched (lowest risk). The "💰 SALARY & PAYROLL" section banner went with it (this was its
+       only card). The bands variable in this template is now unused — harmless. -->
 
   <div style="display:inline-block;background:rgba(184,150,12,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;margin:18px 0 6px">🕒 TIME & ATTENDANCE</div>
   <!-- Holidays -->
@@ -12096,8 +12097,11 @@ async function renderSettings() {
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-gold btn-sm" id="selftest-run-btn" onclick="runSelfTestPanel()">🩺 Run Self-Test</button>
+      <!-- v73 D7: one-click salary safety test — runs the golden-master regression (mode:verify) so the owner can confirm pay maths are unchanged after any release. -->
+      <button class="btn btn-gold btn-sm" id="salary-safety-btn" onclick="runSalarySafetyTest()" title="Re-runs the salary engine over the fixed golden-master roster and checks every figure is unchanged from the recorded baseline. Read-only — changes nothing.">💰 Run Salary Safety Test</button>
     </div>
     <div id="selftest-results" style="margin-top:12px;font-size:12px"></div>
+    <div id="salary-safety-results" style="margin-top:12px;font-size:12px"></div>
     </div>
   </div>
 
@@ -12183,9 +12187,9 @@ async function renderSettings() {
     <div style="background:var(--dark3);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--gray-light);line-height:1.7">
       ArtzFolio runs <strong style="color:var(--gold)">two</strong> loyalty-credit systems. Only one accrues new credits at a time (or both, if you prefer — that is the current default).
       <br><br>
-      <strong style="color:var(--gold)">Level-Based Retention Bonus</strong> — a per-LEVEL monthly bonus (L1–L10) that vests over time with cohort schedules. Lives below as <em>💎 Level-Based Retention Bonus</em>.
+      <strong style="color:var(--gold)">Level-Based Retention Bonus</strong> — a per-LEVEL monthly bonus (L1–L10) that vests over time with cohort schedules. Shown on this <strong>Bonuses &amp; Promotion</strong> tab as <em>💎 Level-Based Retention Bonus</em>.
       <br>
-      <strong style="color:var(--gold)">Tenure-Based Monthly Wallet</strong> — a per-TENURE-YEAR monthly credit (Y1–Y5+) gated by max-leaves with optional performance adjustments. Lives in <em>Settings → Compensation → Tenure-Based Wallet</em>.
+      <strong style="color:var(--gold)">Tenure-Based Monthly Wallet</strong> — a per-TENURE-YEAR monthly credit (Y1–Y5+) gated by max-leaves with optional performance adjustments. Its editor lives in the Compensation card (<strong>Salaries &amp; Pay</strong> tab): <em>Settings → Compensation → Tenure-Based Wallet</em>.
       <br><br>
       Existing balances on both ledgers are preserved no matter which model is active. Employees can still withdraw what they have already earned from either ledger.
     </div>
@@ -12620,23 +12624,13 @@ async function renderSettings() {
         <input class="form-input" type="number" id="cfg-otBaseHoursPolicy" value="${cfg['otBaseHoursPolicy']||9}" step="0.5" min="1">
       </div>
       <!-- v69 Phase 1.3: removed the DEPRECATED "Regular OT Multiplier" (cfg-otMultiplierRegular = 1.222222) display field — superseded in v40 by 'OT Hours = 1 day's pay'. The save no longer writes this key (line removed from saveV31OTSettings); the stored value is left untouched for any legacy slip-history read. Phase 2 (v70) replaces the OT/Night formula entirely. -->
-      <div class="form-group">
-        <label class="form-label">Company Holiday Extra Day Multiplier
-          <span class="info-tooltip" title="Pay multiplier for working a full day on a declared company holiday. ArtzFolio policy: a multiplier of 1 means the employee earns one additional day's pay (i.e., total = 2 days for that day, since holiday salary is already in the monthly salary). Formula: per-day salary × Multiplier. With 'Actual days in month' selected, the divisor changes per month.">ℹ</span>
-        </label>
-        <input class="form-input" type="number" id="cfg-otMultiplierCompanyHoliday" value="${cfg['otMultiplierCompanyHoliday']||1}" step="0.1" min="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Weekly Off Extra Day Multiplier
-          <span class="info-tooltip" title="Pay multiplier for working a full day on a weekly off. ArtzFolio policy: weekly off pay is already in monthly salary, so a multiplier of 1 means the employee earns one additional day's pay (i.e., total = 2 days for that Sunday). Formula: per-day salary × Multiplier.">ℹ</span>
-        </label>
-        <input class="form-input" type="number" id="cfg-otMultiplierWeeklyOff" value="${cfg['otMultiplierWeeklyOff']||1}" step="0.1" min="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label">National / Gazetted Holiday Multiplier
-          <span class="info-tooltip" title="Pay multiplier for working a full day on a gazetted national holiday. ArtzFolio policy: 1 means one extra day's pay over and above the regular monthly salary. Formula: per-day salary × Multiplier.">ℹ</span>
-        </label>
-        <input class="form-input" type="number" id="cfg-otMultiplierNational" value="${cfg['otMultiplierNational']||1}" step="0.1" min="0">
+      <!-- v73 D3: removed the 3 Extra-Day pay multiplier knobs (Company Holiday / Weekly Off / National).
+           Phase-0 audit proved them inert - handleExtraDayClaim (GAS) always pays exactly ONE extra day
+           (multiplier hard-coded = 1); these inputs fed only the on-screen preview, which the v73 D3a fix
+           already pinned to 1. Removing them ends the "preview disagrees with paid amount" trap.
+           saveV31OTSettings no longer writes the 3 keys; stored values are left untouched. -->
+      <div class="form-group" style="grid-column:1/-1">
+        <div style="font-size:11px;color:var(--gray-light);background:var(--dark3);border-radius:6px;padding:8px 12px;line-height:1.6">ℹ <strong>Extra-day pay = one additional day's pay</strong> (per-day salary x 1) for working a Company Holiday, Weekly Off or National Holiday - ArtzFolio policy uses no multiplier. The per-day rate follows your "Per-Day Salary Denominator" setting above. <em>(The old per-day-type multiplier knobs were inert and have been removed.)</em></div>
       </div>
       <div class="form-group">
         <label class="form-label">Maximum OT Hours Claimable Per Day
@@ -12760,8 +12754,8 @@ async function renderSettings() {
         <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyLate" ${cfg['paBonus_disqualifyLate']!=='false'?'checked':''}> Any unapproved late arrival</label>
       </div>
       <div class="form-group" style="margin-top:10px;max-width:260px">
-        <label class="form-label" style="font-size:12px">Late grace (minutes, 0 = strict)
-          <span class="info-tooltip" title="Late arrivals up to this many minutes are forgiven for Perfect Attendance Bonus purposes. Default 0 means even 1 minute late forfeits the bonus.">ℹ</span>
+        <label class="form-label" style="font-size:12px">PA-bonus late grace (minutes, 0 = strict)
+          <span class="info-tooltip" title="PERFECT-ATTENDANCE BONUS ONLY. Late arrivals up to this many minutes are forgiven when deciding the Perfect Attendance Bonus. Default 0 = even 1 minute late forfeits the bonus. This is SEPARATE from the attendance 'Grace Period' (Settings → Time & Attendance), which controls late-coming PAY deductions — the two serve different purposes and are intentionally distinct.">ℹ</span>
         </label>
         <input class="form-input" type="number" id="cfg-paBonus_lateGraceMinutes" value="${cfg['paBonus_lateGraceMinutes']||0}" min="0">
       </div>
@@ -12873,9 +12867,12 @@ async function renderSettings() {
       </div>
       <!-- Salary Ladder sub-panel -->
       <div class="comp-sub-panel active" id="comp-sp-ladder">
-        <p class="comp-settings-subtitle">Edit base 9-hour morning salaries. 11hr and 12hr values auto-compute when you change any 9hr value.</p>
+        <!-- v73 D2 UI: removed the contradictory "auto-compute" subtitle (the matrix is type-every-cell,
+             no ratios/%) AND the duplicate static "Save Salary Ladder" button. initCompLadderEditor
+             injects the matrix's OWN single "Save Salary Matrix" button (+ the "No ratios/percentages"
+             copy). One editor, one save button now. (The GAS save-round-trip / schema-guard part of
+             D2 is a separate Slice-2 item — see decision_log.) -->
         <div id="comp-ladder-editor">Loading…</div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompLadder()">💾 Save Salary Ladder</button>
       </div>
       <!-- Increment sub-panel -->
       <div class="comp-sub-panel" id="comp-sp-increment">
@@ -12919,77 +12916,56 @@ async function renderSettings() {
              SEPARATE from SHIFT_RATIO_11HR / SHIFT_RATIO_12HR (which scale BASE
              salary, edited in the Salary Ladder section). Editing either input
              below triggers an autoRecomputeIncrementShifts pass for every level. -->
-        <div class="settings-grid" id="comp-increment-mult-grid" style="margin-top:14px;display:none">
-          <div class="form-group">
-            <label class="form-label">Increment Multiplier — 11hr
-              <span class="info-tooltip" title="Multiplier applied to the 9hr Flat increment amount to derive the 11hr increment column. Default 1.10. This scales only the per-cycle INCREMENT amount, not the base salary. Base-salary scaling for 11hr shifts is governed by SHIFT_RATIO_11HR and is editable separately in the Salary Ladder section.">ℹ</span>
-            </label>
-            <input class="form-input" type="number" id="cfg-INCREMENT_MULT_11HR" min="0.01" step="0.01" placeholder="1.10" oninput="_v48RecomputeAllIncrementShifts()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Increment Multiplier — 12hr
-              <span class="info-tooltip" title="Multiplier applied to the 9hr Flat increment amount to derive the 12hr increment column. Default 1.20. This scales only the per-cycle INCREMENT amount, not the base salary. Base-salary scaling for 12hr shifts is governed by SHIFT_RATIO_12HR and is editable separately in the Salary Ladder section.">ℹ</span>
-            </label>
-            <input class="form-input" type="number" id="cfg-INCREMENT_MULT_12HR" min="0.01" step="0.01" placeholder="1.20" oninput="_v48RecomputeAllIncrementShifts()">
-          </div>
-        </div>
+        <!-- v73 D3: removed the "Increment Multiplier - 11hr / - 12hr" knobs (cfg-INCREMENT_MULT_11HR/12HR).
+             Phase-0 audit F4 proved them display-only - resolveIncrementForEmployee (GAS) reads the stored
+             incrementValue directly, NOT 9hr x multiplier. The increment table below now shows only the actual
+             per-level increment (no auto-scaled 11hr/12hr columns). syncIncrementTypeVisibility / _v48* funcs
+             null-guard the removed elements; INCREMENT_MULT_* dropped from the save list. -->
         <!-- v43 W4.2: per-level flat increment table. Visible only when INCREMENT_TYPE=Flat (loadCompSettings toggles visibility).
              Keys INCREMENT_9HR_L10..L6 already exist in COMP_CONFIG_DEFAULTS (gas:8324-8328); this UI surfaces them.
              v48: added "Apply at this level" leading column wired to INCREMENT_APPLIES_L*.
              v48: 11hr/12hr column-header text is now derived from INCREMENT_MULT_*. -->
         <div id="comp-increment-per-level" style="margin-top:14px;display:none">
           <div style="font-size:12px;color:var(--gold);margin-bottom:6px;font-weight:600">
-            Per-Level Flat Increment (9hr base)
-            <span class="info-tooltip" title="Per-level flat increment values (Type = Flat only). Each L-level can have a different ₹ raise per 6-month cycle. Backend keys: INCREMENT_9HR_L10..L6. 11hr/12hr columns auto-scale via INCREMENT_MULT_11HR / INCREMENT_MULT_12HR.">ℹ</span>
+            Per-Level Flat Increment (₹ per cycle)
+            <span class="info-tooltip" title="Per-level flat increment values (Type = Flat only). Each L-level can have a different rupee raise per cycle. Backend keys: INCREMENT_9HR_L10..L6. v73: the 11hr/12hr auto-scaled columns were removed (display-only multipliers); the engine reads the stored increment value directly.">ℹ</span>
           </div>
           <table class="comp-ladder-table">
             <thead><tr>
               <th>Apply <span class="info-tooltip" title="When unchecked, this level's auto-increment is skipped even when the master switch is ON and the cadence has elapsed. Backend key: INCREMENT_APPLIES_L{level}.">ℹ</span></th>
               <th>Level</th>
-              <th>Flat ₹ (9hr)</th>
-              <th>11hr (auto × <span id="inc-mult-11hr-disp">1.10</span>)</th>
-              <th>12hr (auto × <span id="inc-mult-12hr-disp">1.20</span>)</th>
+              <th>Flat ₹ Increment per cycle</th>
             </tr></thead>
             <tbody>
               <tr id="inc-row-L10">
                 <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L10" onchange="_v48UpdatePerLevelDisabledStyle('L10')"></td>
                 <td style="font-weight:700;color:var(--gold)">L10</td>
-                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L10" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L10')"></td>
-                <td style="color:var(--gray-light)"><span id="inc-L10-11-disp">—</span></td>
-                <td style="color:var(--gray-light)"><span id="inc-L10-12-disp">—</span></td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L10" min="0" step="50" style="width:110px"></td>
               </tr>
               <tr id="inc-row-L9">
                 <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L9" onchange="_v48UpdatePerLevelDisabledStyle('L9')"></td>
                 <td style="font-weight:700;color:var(--gold)">L9</td>
-                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L9" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L9')"></td>
-                <td style="color:var(--gray-light)"><span id="inc-L9-11-disp">—</span></td>
-                <td style="color:var(--gray-light)"><span id="inc-L9-12-disp">—</span></td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L9" min="0" step="50" style="width:110px"></td>
               </tr>
               <tr id="inc-row-L8">
                 <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L8" onchange="_v48UpdatePerLevelDisabledStyle('L8')"></td>
                 <td style="font-weight:700;color:var(--gold)">L8</td>
-                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L8" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L8')"></td>
-                <td style="color:var(--gray-light)"><span id="inc-L8-11-disp">—</span></td>
-                <td style="color:var(--gray-light)"><span id="inc-L8-12-disp">—</span></td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L8" min="0" step="50" style="width:110px"></td>
               </tr>
               <tr id="inc-row-L7">
                 <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L7" onchange="_v48UpdatePerLevelDisabledStyle('L7')"></td>
                 <td style="font-weight:700;color:var(--gold)">L7</td>
-                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L7" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L7')"></td>
-                <td style="color:var(--gray-light)"><span id="inc-L7-11-disp">—</span></td>
-                <td style="color:var(--gray-light)"><span id="inc-L7-12-disp">—</span></td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L7" min="0" step="50" style="width:110px"></td>
               </tr>
               <tr id="inc-row-L6">
                 <td style="text-align:center"><input type="checkbox" id="cfg-INCREMENT_APPLIES_L6" onchange="_v48UpdatePerLevelDisabledStyle('L6')"></td>
                 <td style="font-weight:700;color:var(--gold)">L6</td>
-                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L6" min="0" step="50" style="width:110px" oninput="autoRecomputeIncrementShifts('L6')"></td>
-                <td style="color:var(--gray-light)"><span id="inc-L6-11-disp">—</span></td>
-                <td style="color:var(--gray-light)"><span id="inc-L6-12-disp">—</span></td>
+                <td><input class="form-input" type="number" id="cfg-INCREMENT_9HR_L6" min="0" step="50" style="width:110px"></td>
               </tr>
             </tbody>
           </table>
         </div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['INCREMENT_ENABLED','INCREMENT_PERIOD_MONTHS','INCREMENT_TYPE','INCREMENT_PERCENTAGE','MAX_INCREMENT_CYCLES','INCREMENT_MULT_11HR','INCREMENT_MULT_12HR','INCREMENT_9HR_L10','INCREMENT_9HR_L9','INCREMENT_9HR_L8','INCREMENT_9HR_L7','INCREMENT_9HR_L6','INCREMENT_APPLIES_L10','INCREMENT_APPLIES_L9','INCREMENT_APPLIES_L8','INCREMENT_APPLIES_L7','INCREMENT_APPLIES_L6'])">💾 Save Increment Settings</button>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['INCREMENT_ENABLED','INCREMENT_PERIOD_MONTHS','INCREMENT_TYPE','INCREMENT_PERCENTAGE','MAX_INCREMENT_CYCLES','INCREMENT_9HR_L10','INCREMENT_9HR_L9','INCREMENT_9HR_L8','INCREMENT_9HR_L7','INCREMENT_9HR_L6','INCREMENT_APPLIES_L10','INCREMENT_APPLIES_L9','INCREMENT_APPLIES_L8','INCREMENT_APPLIES_L7','INCREMENT_APPLIES_L6'])">💾 Save Increment Settings</button>
       </div>
       <!-- Promotion Windows sub-panel -->
       <div class="comp-sub-panel" id="comp-sp-promo">
@@ -13006,6 +12982,12 @@ async function renderSettings() {
       </div>
       <!-- OT Policy sub-panel -->
       <div class="comp-sub-panel" id="comp-sp-ot">
+        <!-- v73 D6: clarified that this per-shift "Minimum OT Hours" is the KIOSK DATA-ENTRY hard-block
+             (least OT a worker may submit), distinct from the payroll "OT-bank threshold" (otMinHoursThreshold,
+             Settings -> Overtime & Night Shift Pay) used by the month-end salary engine. The 9hr kiosk block now
+             reads OT_MIN_HOURS_9HR via State.shiftConfig.otMins instead of a hard-coded 4.5 - display now
+             matches enforcement. -->
+        <div style="font-size:11px;color:var(--gray-light);background:var(--dark3);border-radius:6px;padding:8px 12px;line-height:1.6;margin-bottom:10px">ℹ <strong>Kiosk OT-entry minimums</strong> — the least overtime a worker may submit at the clock, per shift length. This is a data-entry block, <strong>not</strong> a pay calculation. The separate <em>"Min OT Hours Per Day"</em> in Settings → Overtime &amp; Night Shift Pay is the payroll OT-bank threshold used at month-end — a different mechanism.</div>
         <div class="settings-grid">
           <div class="form-group" style="grid-column:span 2">
             <label class="form-label" style="color:var(--red)">9-Hour Shift Minimum OT Hours — HARD MINIMUM — System will block OT entries below this value for 9-hour shift employees. <span class="info-tooltip" title="HARD MINIMUM OT hours for 9-hour shift employees. Blocks OT entries below this. Example: 4.5 means OT entries of 1, 2, 3, or 4 hours are rejected. Prevents trivial OT logging.">ℹ</span></label>
@@ -13028,16 +13010,12 @@ async function renderSettings() {
               Driven by Per-Day Salary Denominator in Settings → Organization &amp; Locale. To change, edit that dropdown.
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Shift Ratio 11hr ÷ 9hr × 90% <span class="info-tooltip" title="11hr salary = 9hr base × this ratio. Default 1.10 (11hr earns 10% more). The &quot;× 90%&quot; in the field label reflects an efficiency factor — full 11/9 ratio (1.22) is reduced to 1.10. Editing this recomputes ALL 11hr morning AND night salaries.">ℹ</span></label>
-            <input class="form-input" type="number" id="cfg-SHIFT_RATIO_11HR" step="0.01" min="0.1">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Shift Ratio 12hr ÷ 9hr × 90% <span class="info-tooltip" title="12hr salary = 9hr base × this ratio. Default 1.20. Editing recomputes ALL 12hr morning AND night salaries.">ℹ</span></label>
-            <input class="form-input" type="number" id="cfg-SHIFT_RATIO_12HR" step="0.01" min="0.1">
-          </div>
+          <!-- v73 D3: removed the "Shift Ratio 11hr/12hr div 9hr x 90%" knobs (cfg-SHIFT_RATIO_11HR/12HR).
+               Phase-0 audit F4 proved them display-only - computeSalaryFromLadder (GAS) reads the stored
+               per-cell salary in the Salary Matrix directly, NOT 9hr x ratio. No frontend code reads these
+               inputs. SHIFT_RATIO_* dropped from this card's save list; stored values left untouched. -->
         </div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['OT_MIN_HOURS_9HR','OT_MIN_HOURS_11HR','OT_MIN_HOURS_12HR','OT_WORKING_DAYS_DIVISOR','SHIFT_RATIO_11HR','SHIFT_RATIO_12HR'])">💾 Save OT Policy</button>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['OT_MIN_HOURS_9HR','OT_MIN_HOURS_11HR','OT_MIN_HOURS_12HR','OT_WORKING_DAYS_DIVISOR'])">💾 Save OT Policy</button>
       </div>
       <!-- Joining Bonus sub-panel -->
       <div class="comp-sub-panel" id="comp-sp-jbonus">
@@ -13320,17 +13298,13 @@ async function renderSettings() {
           <option value="Anniversary" ${cfg['leaveYearStart']==='Anniversary'?'selected':''}>Employee Joining Anniversary</option>
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Maternity Leave Duration (days)
-          <span class="info-tooltip" title="Total paid maternity leave days as per your policy. Indian law mandates a minimum of 182 days for establishments with 10+ employees.">ℹ</span>
-        </label>
-        <input class="form-input" type="number" id="cfg-mlDuration" value="${cfg['mlDuration']||182}" min="1">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Paternity Leave Duration (days)
-          <span class="info-tooltip" title="Total paid paternity leave days. Not legally mandated in India for private sector — set per your company policy.">ℹ</span>
-        </label>
-        <input class="form-input" type="number" id="cfg-ptlDuration" value="${cfg['ptlDuration']||15}" min="1">
+      <!-- v73 D5: removed the duplicate Maternity/Paternity Leave Duration fields. They duplicated
+           (and diverged from — PTL was 2 here vs 15 in the table) the ML/PTL rows in the Leave Types
+           Configuration table below, which is now the single source of truth for every leave type's
+           Days/Year. cfg-mlDuration / cfg-ptlDuration are no longer written by saveV31LeaveSettings;
+           any stored value is left untouched and nothing in the leave/payroll engine reads them. -->
+      <div class="form-group" style="grid-column:1/-1">
+        <div style="font-size:11px;color:var(--gray-light);background:var(--dark3);border-radius:6px;padding:8px 12px;line-height:1.6">ℹ Maternity (ML) &amp; Paternity (PTL) durations are now set in the <strong>Leave Types Configuration</strong> table below (the <strong>Days/Year</strong> column) — the single source of truth.</div>
       </div>
     </div>
     <div style="margin-top:20px">
@@ -13351,6 +13325,9 @@ async function renderSettings() {
     </div>
   </div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
+  // v73 D8: tag each settings card with its tab + show the active tab (restore last, default Salaries & Pay).
+  _v73AssignSettingsTabs();
+  (function(){ var _t; try { _t = localStorage.getItem('hrms_v73_settings_tab'); } catch(e){} switchSettingsTab(_V73_SETTINGS_TABS.some(function(x){return x.id===_t;}) ? _t : 'salaries'); })();
   // v43 W3.9: restore per-card collapse state from localStorage. Runs AFTER DOM
   // insertion so the .settings-card-body lookup matches the freshly-rendered nodes.
   initSettingsCardState();
@@ -13375,6 +13352,72 @@ async function renderSettings() {
   // v40 §6a: populate the per-level referral bonus inputs (was an empty div in v39).
   setTimeout(() => renderReferralBonusByLevelTable(), 100);
 }
+
+/* v73-d8-start */
+// v73 D8: Settings horizontal top tabs. Card-level grouping — a few cards bundle topics
+// (e.g. Policy Configuration, Compensation) and are filed under their dominant tab; a
+// field-level split is a later refinement. Unknown keys default to Panel (never orphaned).
+const _V73_SETTINGS_TABS = [
+  { id:'salaries',  label:'\uD83D\uDCB0 Salaries & Pay' },
+  { id:'shifts',    label:'\u23F1 Shifts & Time' },
+  { id:'bonuses',   label:'\uD83C\uDF81 Bonuses & Promotion' },
+  { id:'leaves',    label:'\uD83C\uDF34 Leaves' },
+  { id:'employees', label:'\uD83D\uDC64 Employees' },
+  { id:'panel',     label:'\uD83D\uDEE0 Panel / Master' },
+  { id:'danger',    label:'\u26A0 Danger Zone' }
+];
+const _V73_SETTINGS_TAB_MAP = {
+  'settings-body-connection':'panel', 'settings-body-policy':'shifts', 'settings-body-company':'panel',
+  'settings-body-locale':'panel', 'settings-body-2fa':'panel', 'settings-body-automation':'shifts',
+  'settings-body-role-access':'employees', 'settings-body-emp-dashboard':'employees',
+  'settings-body-points':'bonuses', 'settings-body-loyalty-milestones':'bonuses',
+  'settings-body-holidays':'leaves', 'settings-body-org-structure':'panel',
+  'settings-body-emp-id-format':'employees', 'settings-body-statutory':'salaries',
+  'settings-body-petty-cash':'panel', 'settings-body-whatsapp-sms':'panel',
+  'settings-body-backup':'danger', 'settings-body-selftest':'danger', 'settings-body-maintenance':'danger',
+  'settings-body-loyalty-programs':'bonuses', 'settings-body-loyalty-vesting':'bonuses',
+  'settings-body-danger-token':'danger', 'settings-body-mid-month':'danger', 'settings-body-backfill':'danger',
+  'settings-body-danger-zone':'danger', 'settings-body-ot-extraday':'salaries',
+  'settings-body-promotion':'bonuses', 'settings-body-bonus-policies':'bonuses', 'settings-body-bonus':'bonuses',
+  'settings-body-referral':'bonuses', 'comp-settings-section':'salaries',
+  'settings-body-notice-exit':'leaves', 'settings-body-leave-management':'leaves'
+};
+// Derive a card key: its element id if mapped (comp-settings-section), else the
+// settings-body-XXX from its title's toggleCard(...) handler.
+function _v73CardKey(card) {
+  if (card.id && _V73_SETTINGS_TAB_MAP.hasOwnProperty(card.id)) return card.id;
+  var t = card.querySelector('.settings-section-title[onclick*="toggleCard"]') || card.querySelector('[onclick*="toggleCard("]');
+  if (t) { var m = (t.getAttribute('onclick')||'').match(/toggleCard\('([^']+)'\)/); if (m) return m[1]; }
+  return card.id || null;
+}
+// Tag every top-level settings card with its tab. Unknown -> panel (never orphaned).
+function _v73AssignSettingsTabs() {
+  var root = document.getElementById('admin-tab-content');
+  if (!root) return;
+  root.querySelectorAll('.settings-section').forEach(function(card){
+    var key = _v73CardKey(card);
+    var tab = (key && _V73_SETTINGS_TAB_MAP[key]) || 'panel';
+    if (!key || !_V73_SETTINGS_TAB_MAP[key]) console.warn('[HRMS v73 D8] settings card not mapped -> Panel:', key);
+    card.dataset.settingsTab = tab;
+  });
+}
+// Show only the chosen tab; highlight its button; persist the choice.
+function switchSettingsTab(tab) {
+  window._v73ActiveSettingsTab = tab;
+  try { localStorage.setItem('hrms_v73_settings_tab', tab); } catch(e){}
+  var root = document.getElementById('admin-tab-content');
+  if (!root) return;
+  root.querySelectorAll('.settings-section').forEach(function(card){
+    card.style.display = (card.dataset.settingsTab === tab) ? '' : 'none';
+  });
+  document.querySelectorAll('#v73-settings-tabbar [data-tab]').forEach(function(btn){
+    var on = btn.getAttribute('data-tab') === tab;
+    btn.style.background = on ? 'var(--gold)' : 'var(--dark3)';
+    btn.style.color = on ? 'var(--dark)' : 'var(--white)';
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+}
+/* v73-d8-end */
 
 // v40 §6a: build per-level INR inputs in the referral-bonus-by-level-table div.
 // Levels mirror the Salary Bands (L1..L10). The amounts are stored in the existing
@@ -14824,16 +14867,44 @@ async function runAutoMarkPresent() {
 
 // Toggle level chip selection and sync hidden input
 function toggleLevelChip(chip, hiddenId) {
+  // v73 D1 fix: span-chip model. Toggle the chip's own .selected, then rebuild the hidden CSV
+  // from every selected chip's data-val. No inner checkbox + no <label> = no synthetic-click
+  // double-fire (the v72 bug that net-zeroed the toggle so the hidden value never changed).
   chip.classList.toggle('selected');
-  const checked = chip.classList.contains('selected');
-  const cb = chip.querySelector('input[type=checkbox]');
-  if (cb) cb.checked = checked;
-  // Rebuild hidden input value from all chips in the same picker
+  const on = chip.classList.contains('selected');
+  chip.setAttribute('aria-pressed', on ? 'true' : 'false');
   const picker = chip.closest('.level-picker');
   if (!picker) return;
-  const vals = Array.from(picker.querySelectorAll('label.selected input[type=checkbox]')).map(c=>c.value);
+  const vals = Array.from(picker.querySelectorAll('.level-chip.selected')).map(c => c.getAttribute('data-val'));
   const hidden = document.getElementById(hiddenId);
   if (hidden) hidden.value = vals.join(',');
+}
+
+// v73 D7: owner-runnable salary safety test. Calls the existing salaryGoldenMaster handler
+// (mode:'verify') and shows a plain ✅/⚠ result. Read-only — it computes over a fixed golden-master
+// roster and compares to the recorded baseline; it changes no employee data.
+async function runSalarySafetyTest() {
+  const out = document.getElementById('salary-safety-results');
+  const btn = document.getElementById('salary-safety-btn');
+  if (out) out.innerHTML = '<span style="color:var(--gray-light)">Running salary safety test…</span>';
+  if (btn) btn.disabled = true;
+  try {
+    const res = await API.call('salaryGoldenMaster', { mode: 'verify' });
+    if (res && res.ok && res.baselined) {
+      if (out) out.innerHTML = '<span style="color:var(--gold);font-weight:700">ℹ Baseline recorded (' + (res.rows || 0) + ' rows). No baseline existed before — run this again any time to confirm pay maths stayed the same.</span>';
+    } else if (res && res.ok) {
+      if (out) out.innerHTML = '<span style="color:var(--green);font-weight:700">✅ Pay maths unchanged — ' + (res.passed || 0) + '/' + (res.total || 0) + ' salary figures match the recorded baseline.</span>';
+    } else if (res && res.failed) {
+      if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Pay maths CHANGED — ' + res.failed + ' of ' + (res.total || 0) + ' figures differ from baseline. Do NOT deploy salary changes until reviewed.</span>';
+    } else {
+      const msg = (res && (res.error || res.message)) || 'unknown error';
+      if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Safety test could not run: ' + escHtml(String(msg)) + '</span>';
+    }
+  } catch (e) {
+    if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Could not run the safety test: ' + escHtml(String(e)) + '</span>';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ─── Excel / bulk utilities ──────────────────────────────────────────────────
@@ -16433,9 +16504,13 @@ function calcOTLive() {
   if (hours <= 0 || hours > maxHours) { bd.style.display = 'none'; btns.style.display = 'none'; return; }
   // v34: 9-hour shift hard block — minimum 4.5 OT hours
   const shiftHrs = parseFloat(emp.dailyHours) || 9;
-  if (shiftHrs <= 9 && hours < 4.5) {
+  // v73 D6: de-magic the hard-coded 4.5 - read the per-shift kiosk minimum from State.shiftConfig.otMins
+  // (hydrated from OT_MIN_HOURS_<shift>HR; default 9hr=4.5). Same shiftHrs<=9 scope as before; with the
+  // default config this is byte-identical. OT_MIN_HOURS_* is now the single source for this block.
+  const _otMin = (State.shiftConfig && State.shiftConfig.otMins && State.shiftConfig.otMins[shiftHrs] != null) ? State.shiftConfig.otMins[shiftHrs] : 4.5;
+  if (shiftHrs <= 9 && hours < _otMin) {
     bd.style.display = '';
-    bd.innerHTML = '<div style="color:var(--red);font-weight:700">⚠ Minimum OT for 9-hour shift is 4.5 hours. Cannot submit less.</div>';
+    bd.innerHTML = '<div style="color:var(--red);font-weight:700">⚠ Minimum OT for ' + shiftHrs + '-hour shift is ' + _otMin + ' hours. Cannot submit less.</div>';
     btns.style.display = 'none';
     return;
   }
@@ -16462,13 +16537,11 @@ function calcExtraDayLive() {
   if (!emp) return;
   const basic = parseFloat(emp.salary) || 0;
   const dayType = (document.querySelector('input[name="ed-day-type"]:checked') || {}).value || 'Company Holiday';
-  // v40 §7d: ArtzFolio policy — all three multipliers default to 1.
-  const multiplierMap = {
-    'Company Holiday':  parseFloat(State.settings && State.settings['otMultiplierCompanyHoliday'] || 1),
-    'Weekly Off':       parseFloat(State.settings && State.settings['otMultiplierWeeklyOff'] || 1),
-    'National Holiday': parseFloat(State.settings && State.settings['otMultiplierNational'] || 1),
-  };
-  const multiplier = multiplierMap[dayType] || 1;
+  // v73 D3a: the server (handleExtraDayClaim) ALWAYS pays exactly one full day — multiplier = 1
+  // (ArtzFolio policy; the per-day-type knobs were force-reset to 1 and are inert). The old preview
+  // multiplied by those inert config knobs, so it could DISAGREE with what actually gets paid.
+  // Use 1 here so the preview matches the server to the rupee.
+  const multiplier = 1;
   // v40 §7b: per-day denominator from `perDayDivisor` (default Actual = days in current month)
   const _v40Divisor = getPerDayDivisor();
   const dailyRate = basic / _v40Divisor;
@@ -16491,7 +16564,9 @@ async function submitOTClaim(claimMethod) {
   if (hours <= 0) { toast('Enter valid OT hours', 'error'); return; }
   // v34: 9-hour shift hard block
   const shiftHrs = parseFloat(emp.dailyHours) || 9;
-  if (shiftHrs <= 9 && hours < 4.5) { toast('Minimum OT for 9-hour shift employees is 4.5 hours', 'error'); return; }
+  // v73 D6: read per-shift kiosk minimum (OT_MIN_HOURS_*) instead of hard-coded 4.5; same scope/behavior at default.
+  const _otMin = (State.shiftConfig && State.shiftConfig.otMins && State.shiftConfig.otMins[shiftHrs] != null) ? State.shiftConfig.otMins[shiftHrs] : 4.5;
+  if (shiftHrs <= 9 && hours < _otMin) { toast('Minimum OT for ' + shiftHrs + '-hour shift employees is ' + _otMin + ' hours', 'error'); return; }
   const ok = await confirm2(`Submit OT claim for ${hours} hours?\nClaim Method: ${claimMethod === 'Instant' ? 'Claim Now (Instant Payment)' : 'Add to Monthly Salary'}`);
   if (!ok) return;
   const res = await API.call('submitOTClaim', {empId: emp.id, otHours: hours, claimMethod, date: todayStr()});
@@ -17522,9 +17597,7 @@ async function saveV31OTSettings() {
     otHoursPerDayPay: _cfgVal('cfg-otHoursPerDayPay','9'),
     otBaseHoursPolicy: _cfgVal('cfg-otBaseHoursPolicy','9'),
     // v69 Phase 1.3: otMultiplierRegular (DEPRECATED) input removed → no longer written here; stored value left untouched.
-    otMultiplierCompanyHoliday: _cfgVal('cfg-otMultiplierCompanyHoliday','1'),
-    otMultiplierWeeklyOff: _cfgVal('cfg-otMultiplierWeeklyOff','1'),
-    otMultiplierNational: _cfgVal('cfg-otMultiplierNational','1'),
+    // v73 D3: extra-day multiplier knobs removed from UI (inert; handleExtraDayClaim pays exactly 1 extra day) -> no longer written.
     otMaxHoursPerDay: _cfgVal('cfg-otMaxHoursPerDay','12'),
     otAllowInstant: _cfgVal('cfg-otAllowInstant','No'),
     otRequiresApproval: _cfgVal('cfg-otRequiresApproval','Yes'),
@@ -17625,8 +17698,8 @@ async function saveV31LeaveSettings() {
   // saved in the Time & Attendance card via savePolicySettings().
   const updates = {
     leaveYearStart: _cfgVal('cfg-leaveYearStart','January 1'),
-    mlDuration: _cfgVal('cfg-mlDuration','182'),
-    ptlDuration: _cfgVal('cfg-ptlDuration','15'),
+    // v73 D5: mlDuration / ptlDuration removed — the Leave Types Configuration table (Days/Year for
+    // ML & PTL) is the single source of truth. Stored values are left untouched (not overwritten).
   };
   const res = await API.call('updateSettings', {settings: updates});
   if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
