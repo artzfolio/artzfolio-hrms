@@ -582,6 +582,13 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
 .tooltip-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--dark3);color:var(--gray-light);font-size:10px;margin-left:4px;cursor:help;position:relative;vertical-align:middle}
 .tooltip-icon:hover::after,.tooltip-icon.active::after{content:attr(data-tooltip-text);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);background:var(--dark1);color:var(--gold);padding:6px 10px;border-radius:6px;font-size:11px;font-weight:normal;white-space:normal;width:min(240px,calc(100vw - 40px));border:1px solid var(--dark3);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:50;pointer-events:none;line-height:1.4;text-align:left}
 .tooltip-icon:hover::before,.tooltip-icon.active::before{content:'';position:absolute;left:50%;bottom:calc(100% + 1px);transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--dark1);z-index:51}
+/* v65 Issue 6: reusable [data-help] tooltip — a single fixed-position bubble (escapes sidebar/table
+   overflow clipping) shown by the delegated _v65HelpTip handler on hover/focus of ANY [data-help]
+   element. Works on dynamically-rendered content (innerHTML) with no per-element wiring. */
+[data-help]{cursor:help}
+#dataHelpTip{position:fixed;z-index:9999;max-width:min(300px,calc(100vw - 24px));background:var(--dark1,#1a1a1a);color:var(--gold,#c8924a);border:1px solid var(--dark3,#333);border-radius:6px;padding:7px 11px;font-size:11px;line-height:1.45;font-weight:400;text-align:left;box-shadow:0 6px 18px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .08s ease;display:none;white-space:normal}
+#dataHelpTip.show{display:block;opacity:1}
+.help-badge{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--dark3,#333);color:var(--gray-light,#aaa);font-size:10px;font-weight:700;margin-left:5px;cursor:help;vertical-align:middle}
 /* v34: Compensation Module */
 .comp-card{background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:16px;margin-bottom:14px}
 .comp-card h4{font-size:13px;font-weight:700;color:var(--gold);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--dark3)}
@@ -1060,24 +1067,24 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
           </div>
         </div>
 
-        <!-- Quick action buttons row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <button class="action-btn secondary" onclick="showLeaveRequest()">
+        <!-- Quick action buttons row (v62: each gated by the employee-dashboard section toggles) -->
+        <div id="ess-quick-actions" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button id="ess-btn-leave" class="action-btn secondary" onclick="showLeaveRequest()">
             📅 <span class="en">Request Leave</span><span class="hi">छुट्टी अनुरोध</span>
           </button>
-          <button class="action-btn secondary" onclick="showEarnings()">
+          <button id="ess-btn-earnings" class="action-btn secondary" onclick="showEarnings()">
             💰 <span class="en">My Earnings</span><span class="hi">मेरी कमाई</span>
           </button>
-          <button class="action-btn secondary" onclick="showAdvanceRequest()">
+          <button id="ess-btn-advance" class="action-btn secondary" onclick="showAdvanceRequest()">
             🤝 <span class="en">Request Advance</span><span class="hi">अग्रिम अनुरोध</span>
           </button>
-          <button class="action-btn secondary" onclick="showLeaveEncashRequest()">
+          <button id="ess-btn-encash" class="action-btn secondary" onclick="showLeaveEncashRequest()">
             💸 <span class="en">Leave Encashment</span><span class="hi">छुट्टी नकदीकरण</span>
           </button>
-          <button class="action-btn secondary" onclick="showESSPayslips()">
+          <button id="ess-btn-payslips" class="action-btn secondary" onclick="showESSPayslips()">
             📄 <span class="en">My Payslips</span><span class="hi">मेरी सैलरी स्लिप</span>
           </button>
-          <button class="action-btn secondary" onclick="showESSAttendance()">
+          <button id="ess-btn-attendance" class="action-btn secondary" onclick="showESSAttendance()">
             🗓 <span class="en">My Attendance</span><span class="hi">मेरी हाज़िरी</span>
           </button>
         </div>
@@ -1314,37 +1321,39 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
       <div id="admin-brand-role"></div>
     </div>
     <div class="nav-section">Operations</div>
-    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
-    <div class="nav-item" data-tab="approvals" onclick="switchTab('approvals')"><span class="nav-icon">✅</span>Approvals<span class="nav-badge" id="badge-approvals" style="display:none">0</span></div>
-    <div class="nav-item" data-tab="timesheets" onclick="switchTab('timesheets')"><span class="nav-icon">⏱</span>Timesheets</div>
-    <div class="nav-item" data-tab="attendance" onclick="switchTab('attendance')"><span class="nav-icon">📅</span>Attendance</div>
-    <div class="nav-item" data-tab="leaves" onclick="switchTab('leaves')"><span class="nav-icon">🏖</span>Leaves<span class="nav-badge" id="badge-leaves" style="display:none">0</span></div>
-    <div class="nav-item" data-tab="roster" onclick="switchTab('roster')"><span class="nav-icon">📋</span>Roster</div>
+    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')" data-help="At-a-glance overview — headcount, today's attendance, pending approvals and quick links."><span class="nav-icon">📊</span>Dashboard</div>
+    <div class="nav-item" data-tab="approvals" onclick="switchTab('approvals')" data-help="The single action queue for pending leave requests, with supervisor → manager → owner routing."><span class="nav-icon">✅</span>Approvals<span class="nav-badge" id="badge-approvals" style="display:none">0</span></div>
+    <div class="nav-item" data-tab="timesheets" onclick="switchTab('timesheets')" data-help="Per-employee worked-hours view across a chosen date range."><span class="nav-icon">⏱</span>Timesheets</div>
+    <div class="nav-item" data-tab="attendance" onclick="switchTab('attendance')" data-help="Daily attendance grid + full filter bar (single employee OR all/department); manual entry, bulk hours and emergency clock controls."><span class="nav-icon">📅</span>Attendance</div>
+    <div class="nav-item" data-tab="leaves" onclick="switchTab('leaves')" data-help="Full leave ledger — every leave of every status; view, edit, cancel. Approve pending ones in the Approvals tab."><span class="nav-icon">🏖</span>Leaves<span class="nav-badge" id="badge-leaves" style="display:none">0</span></div>
+    <div class="nav-item" data-tab="roster" onclick="switchTab('roster')" data-help="Weekly / monthly shift roster; approved leaves appear as markers."><span class="nav-icon">📋</span>Roster</div>
     <div class="nav-section">Employees</div>
-    <div class="nav-item" data-tab="employees" onclick="switchTab('employees')"><span class="nav-icon">👥</span>Employees</div>
-    <div class="nav-item" data-tab="transactions" onclick="switchTab('transactions')"><span class="nav-icon">💳</span>Transactions</div>
-    <div class="nav-item" data-tab="pettycash" onclick="switchTab('pettycash')"><span class="nav-icon">💵</span>Petty Cash</div>
+    <div class="nav-item" data-tab="employees" onclick="switchTab('employees')" data-help="Add, edit and archive staff — salary, level, shift hours, weekly-offs and bonus eligibility."><span class="nav-icon">👥</span>Employees</div>
+    <div class="nav-item" data-tab="transactions" onclick="switchTab('transactions')" data-help="Manual money entries only — advances, loans, bonuses, penalties you add by hand. Payroll-computed deductions (UL penalty, late, sandwich) are NOT listed here; see the salary register/slip tooltip for those."><span class="nav-icon">💳</span>Manual Transactions</div>
+    <div class="nav-item" data-tab="pettycash" onclick="switchTab('pettycash')" data-help="Petty-cash expenses in / out, with receipts and approval."><span class="nav-icon">💵</span>Petty Cash</div>
     <div class="nav-section">Performance</div>
-    <div class="nav-item" data-tab="points" onclick="switchTab('points')"><span class="nav-icon">⭐</span>Points</div>
+    <div class="nav-item" data-tab="points" onclick="switchTab('points')" data-help="Gamification points and weekly leaderboards; optional points-to-salary performance bonus."><span class="nav-icon">⭐</span>Points</div>
     <div class="nav-section">Payroll & Reports</div>
-    <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')"><span class="nav-icon">💰</span>Payroll</div>
-    <div class="nav-item" data-tab="bonustracker" onclick="switchTab('bonustracker')"><span class="nav-icon">💎</span>Loyalty Bonus Tracker</div>
-    <div class="nav-item" data-tab="bonusmgmt" onclick="switchTab('bonusmgmt')"><span class="nav-icon">🎁</span>Bonus Management</div>
-    <div class="nav-item" data-tab="compmgmt" onclick="switchTab('compmgmt')"><span class="nav-icon">💼</span>Compensation</div>
-    <div class="nav-item" data-tab="otclaims" onclick="switchTab('otclaims')"><span class="nav-icon">⏱</span>OT Claims</div>
-    <div class="nav-item" data-tab="promotions" onclick="switchTab('promotions')"><span class="nav-icon">🎯</span>Promotions</div>
+    <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')" data-help="Generate, save and view the monthly salary register + slips. Picking a month shows the last SAVED register instantly; click Recompute for live figures."><span class="nav-icon">💰</span>Payroll</div>
+    <div class="nav-item" data-tab="bonustracker" onclick="switchTab('bonustracker')" data-help="Long-term loyalty-wallet vesting tracked per employee."><span class="nav-icon">💎</span>Loyalty Bonus Tracker</div>
+    <div class="nav-item" data-tab="bonusmgmt" onclick="switchTab('bonusmgmt')" data-help="Configure and assign the four bonuses — Perfect Attendance, Performance, Loyalty Wallet and Joining."><span class="nav-icon">🎁</span>Bonus Management</div>
+    <div class="nav-item" data-tab="compmgmt" onclick="switchTab('compmgmt')" data-help="Salary bands by level, the increment ladder and configurable shift-hour slabs."><span class="nav-icon">💼</span>Compensation</div>
+    <div class="nav-item" data-tab="otclaims" onclick="switchTab('otclaims')" data-help="Submit → approve → pay overtime claims. This is the sole OT path (OT Pre-Approval was retired in v64)."><span class="nav-icon">⏱</span>OT Claims</div>
+    <div class="nav-item" data-tab="promotions" onclick="switchTab('promotions')" data-help="Schedule and apply promotions; salary is pro-rated across the effective date."><span class="nav-icon">🎯</span>Promotions</div>
+    <div class="nav-item" data-tab="compoff" onclick="switchTab('compoff')" data-help="Comp-off (compensatory off) ledger — earn (manual or auto from extra-work days) → approve → consume as a paid day off → encash for money. Unused credits expire after the configured window; the balance is offered into Full & Final."><span class="nav-icon">🔄</span>Comp-Off</div>
+    <div class="nav-item" data-tab="recovery" onclick="switchTab('recovery')" data-help="Recovery ledger — when a month's net pay is negative (Recoverable LOP), the owed amount carries forward and is recovered from a later month's pay. Idempotent; never double-recovers."><span class="nav-icon">🔁</span>Recovery</div>
     <!-- v55 unification: "Leave Management" tab RETIRED. It rendered the duplicate Leave_Requests
          store (System B). All leave activity now flows through "Leaves" (full ledger) + "Approvals"
          (pending queue), both backed by the canonical Leaves store. Hidden, not deleted, so it's
          reversible; existing Leave_Requests rows are preserved on the sheet. -->
     <div class="nav-item" data-tab="leavemgmt" onclick="switchTab('leavemgmt')" style="display:none" title="Retired in v55 — use Leaves + Approvals"><span class="nav-icon">📅</span>Leave Management</div>
-    <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')"><span class="nav-icon">🤝</span>FnF / Exit</div>
-    <div class="nav-item" data-tab="reports" onclick="switchTab('reports')"><span class="nav-icon">📈</span>Reports</div>
-    <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')"><span class="nav-icon">⏱</span>Tracked Time</div>
+    <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')" data-help="Exit alerts (3-consecutive-UL), archive / restore, and Full & Final settlement."><span class="nav-icon">🤝</span>FnF / Exit</div>
+    <div class="nav-item" data-tab="reports" onclick="switchTab('reports')" data-help="Exportable attendance, payroll and leave reports."><span class="nav-icon">📈</span>Reports</div>
+    <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')" data-help="Activity / project time tracking across employees."><span class="nav-icon">⏱</span>Tracked Time</div>
     <div class="nav-section">System</div>
-    <div class="nav-item" data-tab="activities" onclick="switchTab('activities')"><span class="nav-icon">🏷</span>Activities</div>
-    <div class="nav-item" data-tab="auditlog" onclick="switchTab('auditlog')"><span class="nav-icon">📋</span>Audit Log</div>
-    <div class="nav-item" data-tab="settings" onclick="switchTab('settings')"><span class="nav-icon">⚙</span>Settings</div>
+    <div class="nav-item" data-tab="activities" onclick="switchTab('activities')" data-help="Define billable activities / projects used by Tracked Time."><span class="nav-icon">🏷</span>Activities</div>
+    <div class="nav-item" data-tab="auditlog" onclick="switchTab('auditlog')" data-help="Immutable log of every change — who did what, and when."><span class="nav-icon">📋</span>Audit Log</div>
+    <div class="nav-item" data-tab="settings" onclick="switchTab('settings')" data-help="Company config, leave & payroll policies, statutory rates, bonus policies and the system self-test."><span class="nav-icon">⚙</span>Settings</div>
     <div id="admin-sidebar-footer">
       <button class="btn btn-dark btn-sm" style="width:100%;margin-bottom:6px" id="btn-back-kiosk" onclick="goBackToKiosk()">← Kiosk Mode</button>
       <button class="btn btn-dark btn-sm" style="width:100%" onclick="adminLogout()">Logout</button>
@@ -1514,7 +1523,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v56-2026-05'; // v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v68-2026-05'; // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2272,7 +2281,51 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v56';
+window.HRMS_VERSION = 'v68';  // v68 Stage-2C — Universal edit/cancel/revert cascade: one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade is automatic via existing derivations. No money-path logic changed.
+
+// ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
+// Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
+// of ANY element carrying a data-help="..." attribute. Fixed positioning escapes the sidebar / table
+// overflow that would clip a CSS ::after tooltip, and delegation means dynamically-rendered content
+// (innerHTML) gets tooltips with zero per-element wiring. Text is set via textContent (no HTML inject).
+(function(){
+  let tip = null, hideTimer = null;
+  function ensureTip(){
+    if (tip) return tip;
+    tip = document.createElement('div');
+    tip.id = 'dataHelpTip';
+    (document.body || document.documentElement).appendChild(tip);
+    return tip;
+  }
+  function show(el){
+    const txt = el.getAttribute('data-help');
+    if (!txt) return;
+    const t = ensureTip();
+    t.textContent = txt;
+    t.classList.add('show');
+    const r = el.getBoundingClientRect();
+    const tw = t.offsetWidth, th = t.offsetHeight;
+    // Prefer to the RIGHT (ideal for sidebar nav); fall back to left, then centered above/below.
+    let left = r.right + 8, top = r.top + (r.height - th) / 2;
+    if (left + tw > window.innerWidth - 8) {
+      left = r.left - tw - 8;
+      if (left < 8) {
+        left = Math.min(Math.max(8, r.left + (r.width - tw) / 2), window.innerWidth - tw - 8);
+        top  = (r.bottom + th + 8 < window.innerHeight) ? r.bottom + 8 : r.top - th - 8;
+      }
+    }
+    t.style.left = Math.round(left) + 'px';
+    t.style.top  = Math.round(Math.min(Math.max(8, top), window.innerHeight - th - 8)) + 'px';
+  }
+  function hide(){ if (tip) tip.classList.remove('show'); }
+  function closestHelp(e){ return e.target && e.target.closest ? e.target.closest('[data-help]') : null; }
+  document.addEventListener('mouseover', function(e){ const el = closestHelp(e); if (el){ clearTimeout(hideTimer); show(el); } });
+  document.addEventListener('mouseout',  function(e){ if (closestHelp(e)){ hideTimer = setTimeout(hide, 60); } });
+  document.addEventListener('focusin',   function(e){ const el = closestHelp(e); if (el) show(el); });
+  document.addEventListener('focusout',  hide);
+  window.addEventListener('scroll', hide, true);   // never strand the fixed bubble on scroll/resize
+  window.addEventListener('resize', hide);
+})();
 
 // ═══════════════════════════════════════════
 // GPS MODULE
@@ -2850,6 +2903,58 @@ async function handleAuthResult(res) {
   showEmployeeCard(res, pos);
 }
 
+// ─── v62: Employee Dashboard access control (client) ───────────────────────────
+// Reads the master + per-section toggles from State.settings. ABSENT/'' = enabled,
+// so the kiosk behaves exactly as pre-v62 until the admin opts in via Settings →
+// Employee Dashboard. Salary is ALSO gated server-side (getESSData + the ess:true
+// salary endpoints); this client gate prevents the cards/buttons from rendering or
+// even fetching. Punch in/out, notice banner, employment status and My-Info are
+// CORE and never gated by these toggles.
+function empDashOn(key) {
+  const v = (window.State && State.settings) ? State.settings[key] : undefined;
+  return v === undefined || v === null || v === '' || String(v) === 'true';
+}
+function empDashEnabled() { return empDashOn('empDashboardEnabled'); }
+// Returns the resolved per-section map (each = master AND its own toggle).
+function empDashSections() {
+  const m = empDashEnabled();
+  return {
+    salary:     m && empDashOn('empDashSalary'),
+    leaves:     m && empDashOn('empDashLeaves'),
+    attendance: m && empDashOn('empDashAttendance'),
+    bonus:      m && empDashOn('empDashBonus'),
+    promotion:  m && empDashOn('empDashPromotion'),
+    points:     m && empDashOn('empDashPoints')
+  };
+}
+// Force off-section cards/buttons hidden. IMPORTANT: only ever HIDES (when a section
+// is off) so it can't override a render function's eligibility decision (e.g. the
+// Points card is L8–L10 only). Clears stale visible state when switching kiosk users.
+function applyEmpDashboardVisibility() {
+  const S = empDashSections();
+  const hideIfOff = (id, on) => { if (!on) { const el = document.getElementById(id); if (el) el.style.display = 'none'; } };
+  // Per-section mini-cards
+  hideIfOff('ec-points-card',          S.points);
+  hideIfOff('ec-points-ineligible',    S.points);
+  hideIfOff('ec-milestone-card',       S.points);
+  hideIfOff('ec-lb-card',              S.bonus);
+  hideIfOff('ec-pending-bonuses-card', S.bonus);
+  hideIfOff('ec-promotion-card',       S.promotion);
+  hideIfOff('ec-comp-card',            S.salary);
+  hideIfOff('ec-ot-calc-card',         S.salary);
+  hideIfOff('ec-leaves-card',          S.leaves);
+  // Quick-action buttons (no eligibility logic — safe to set explicitly)
+  const setBtn = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+  setBtn('ess-btn-leave',      S.leaves);
+  setBtn('ess-btn-encash',     S.leaves);
+  setBtn('ess-btn-earnings',   S.salary);
+  setBtn('ess-btn-advance',    S.salary);
+  setBtn('ess-btn-payslips',   S.salary);
+  setBtn('ess-btn-attendance', S.attendance);
+  setBtn('ess-quick-actions',  S.leaves || S.salary || S.attendance);
+  return S;
+}
+
 async function showEmployeeCard(res, pos) {
   const emp = res.employee;
   const rec = res.todayRecord;
@@ -2892,21 +2997,26 @@ async function showEmployeeCard(res, pos) {
     if (dist<=radius) { gpsEl.className='gps-indicator gps-ok'; gpsTxt.textContent=`✓ ${Math.round(dist)}m — ${tt('gpsOk')}`; }
     else { gpsEl.className='gps-indicator gps-warn'; gpsTxt.textContent=`⚠ ${Math.round(dist)}m — ${tt('gpsWarn')}`; }
   }
-  // Action buttons
+  // Action buttons (core punch — NEVER gated by dashboard toggles)
   buildActionButtons(rec, emp);
-  // Milestone
-  showMilestoneCard(res.milestoneInfo);
-  // Points
-  showPointsCard(res.pointsInfo, emp);
-  // v30: Loyalty Bonus card — load async, non-blocking
-  showLoyaltyBonusCard(emp.id, emp.status);
+  // v62: resolve the employee-dashboard section map and clear any stale card state.
+  const _essDash = applyEmpDashboardVisibility();
+  // Milestone + Points (Points section)
+  if (_essDash.points) {
+    showMilestoneCard(res.milestoneInfo);
+    showPointsCard(res.pointsInfo, emp);
+  }
+  // v30: Loyalty Bonus card — load async, non-blocking (Bonus section)
+  if (_essDash.bonus) showLoyaltyBonusCard(emp.id, emp.status);
   // v31: OT calculator, leaves card, pending bonuses, notice banner, promotion card
-  loadV31KioskCards(emp);
-  // v34: Compensation card
-  loadCompKiosk(emp.id);
-  // Leave & Holiday info panel
-  buildLeaveInfoCard(res, emp);
-  // My Info & Rules panel
+  // (gated per-section INSIDE loadV31KioskCards so the always-on notice/employment
+  //  cards still render while off-section blocks are skipped — avoids async re-show)
+  loadV31KioskCards(emp, _essDash);
+  // v34: Compensation card (Salary section) — skipped when off so salary isn't fetched
+  if (_essDash.salary) loadCompKiosk(emp.id);
+  // Leave & Holiday info panel (Leaves section)
+  if (_essDash.leaves) buildLeaveInfoCard(res, emp);
+  // My Info & Rules panel (core — never gated)
   buildMyInfoCard(emp);
   // Show card, hide keypad
   document.getElementById('emp-card').classList.add('visible');
@@ -3956,7 +4066,9 @@ async function refreshEmpCard() {
       State.currentEmpRecord.missedClockOutYesterday = res.missedClockOutYesterday || null;
       buildActionButtons(res.todayRecord, State.currentEmp);
       document.getElementById('ec-balance').innerHTML = buildBalanceHtml(res.balance, res.todayRecord);
-      buildLeaveInfoCard(res, State.currentEmp);
+      // v62: keep the Leaves card gated on refresh, then re-enforce section visibility
+      if (empDashSections().leaves) buildLeaveInfoCard(res, State.currentEmp);
+      applyEmpDashboardVisibility();
     }
   } catch(e) {
     console.error('refreshEmpCard failed:', e);
@@ -3973,10 +4085,17 @@ async function showEarnings() {
   try {
     [balRes, salRes] = await Promise.all([
       API.call('getBalance',{empId}),
-      API.call('calcSalary',{empId, year:now.getFullYear(), month:now.getMonth()+1, extended:false}),
+      API.call('calcSalary',{empId, year:now.getFullYear(), month:now.getMonth()+1, extended:false, ess:true}),  // v62: ess-context salary gate
     ]);
   } catch(e) {
     toast('Network error — could not load earnings','error');
+    resetKioskTimer();
+    return;
+  }
+  // v62: server returns {restricted:true} when the admin has hidden the Salary
+  // section (defense-in-depth — the button is normally hidden too).
+  if (salRes && salRes.restricted) {
+    showModal('💰 My Earnings', '<p style="color:var(--gray-light)">Salary view is currently turned off by the administrator.</p>');
     resetKioskTimer();
     return;
   }
@@ -4798,6 +4917,8 @@ async function switchTab(tab) {
       case 'compmgmt':    await renderCompMgmt(); break;
       case 'otclaims':    await renderOTClaims(); break;
       case 'promotions':  await renderPromotions(); break;
+      case 'compoff':     await renderCompOff(); break;   // v66 Stage-2A
+      case 'recovery':    await renderRecovery(); break;  // v67 Stage-2B
       case 'leavemgmt':   await renderLeaveManagement(); break;
     }
   } catch(e) {
@@ -4808,16 +4929,83 @@ async function switchTab(tab) {
 // ═══════════════════════════════════════════
 // APPROVALS INBOX TAB
 // ═══════════════════════════════════════════
+// ── v60 EXIT WORKFLOW UI ── 3-consecutive-UL absconding alerts. Read-only fetch; the owner token
+// is auto-injected by API.call for owner-authenticated sessions. No automatic action — owner decides.
+async function loadExitAlerts() {
+  const area = document.getElementById('exit-alerts-area');
+  if (!area) return;
+  try {
+    const now = new Date();
+    const res = await API.call('getExitAlerts', {year: now.getFullYear(), month: now.getMonth()+1});
+    const alerts = (res && res.alerts) || [];
+    if (!alerts.length) { area.innerHTML = ''; return; }
+    area.innerHTML = `<div style="background:rgba(229,57,53,0.12);border:1px solid var(--red);border-radius:8px;padding:12px 14px;margin-bottom:16px">
+      <div style="font-weight:700;color:var(--red);margin-bottom:8px">🚨 Uninformed-absence alerts (${alerts.length}) — ${escHtml(String(alerts[0].threshold))}+ consecutive UL day(s). No automatic action has been taken.</div>
+      ${alerts.map(a => `<div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:6px;padding:10px 12px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <div style="flex:1;min-width:220px">
+          <strong>${escHtml(a.empName||a.empId)}</strong> <span style="font-size:10px;color:var(--gray)">${escHtml(a.empId)}</span>
+          <div style="font-size:12px;color:var(--gray-light)">${escHtml(String(a.consecutiveUL))} consecutive UL day(s) · last present: ${escHtml(a.lastPresentDay||'—')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-red btn-sm" title="Mark Left (Absconding) and open a prefilled Full & Final DRAFT for your review. Nothing is paid automatically." onclick="exitArchive('${escHtml(a.empId)}','${escHtml(a.lastPresentDay||'')}',${parseInt(a.consecutiveUL)||3})">Archive → FnF draft</button>
+          <button class="btn btn-gold btn-sm" title="Keep Active and classify day-4-onward as approved or unapproved leave." onclick="exitContinue('${escHtml(a.empId)}')">Continue (classify)</button>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  } catch (e) { area.innerHTML = ''; }
+}
+async function exitArchive(empId, lastPresentDay, ulDays) {
+  if (window._exitBusy) return;
+  const lwd = prompt('Last working day (YYYY-MM-DD) — leave as the last present day shown:', lastPresentDay || '');
+  if (lwd === null) return;
+  if (!await confirm2(`Archive ${empId} as ABSCONDING and create a prefilled Full & Final DRAFT?\n• Salary up to ${lwd||'today'} minus the ${Math.min(parseInt(ulDays)||3,3)}-day UL penalty\n• Full notice-period recovery applied\n• Leave encashment forfeited\nNothing is paid automatically — you review/finalise the draft in FnF/Exit.`)) return;
+  window._exitBusy = true;
+  try {
+    const res = await API.call('confirmAbscondArchive', {empId, lwd: (lwd||''), abscondUlDays: parseInt(ulDays)||3});
+    if (res.ok) { toast(res.already ? 'Already archived' : '✓ Archived (Absconding) + FnF draft created — review it in FnF/Exit', 'success', 5000); await renderApprovals(); }
+    else toast(res.error || 'Error', 'error');
+  } finally { window._exitBusy = false; }
+}
+async function exitContinue(empId) {
+  if (window._exitBusy) return;
+  const from = prompt('Classify the absence FROM date (day 4 onward, YYYY-MM-DD):', ''); if (!from) return;
+  const to = prompt('…TO date (YYYY-MM-DD):', from); if (!to) return;
+  const type = prompt('Leave type for day 4+  (paid: PL/SL/EL/CL/ML  ·  unpaid: IL/UL/LWP):', 'IL'); if (!type) return;
+  const approve = await confirm2(`Mark ${from} … ${to} as ${type.toUpperCase()} and APPROVE it now?\n(Cancel = record as Pending for approval later.)`);
+  window._exitBusy = true;
+  try {
+    const res = await API.call('exitContinueClassify', {empId, fromDate: from, toDate: to, leaveType: type.toUpperCase(), approve});
+    if (res.ok) { toast('✓ Day-4+ classified as ' + type.toUpperCase() + (approve ? ' (approved)' : ' (pending)'), 'success', 5000); await renderApprovals(); }
+    else toast(res.error || 'Error', 'error');
+  } finally { window._exitBusy = false; }
+}
+// Reverse an archive done in error: restore to Active + void the draft FnF. (Callable from the
+// FnF/Exit or archived-employee view; the backend is idempotent.)
+async function exitRestore(empId) {
+  if (window._exitBusy) return;
+  if (!await confirm2(`Restore ${empId} to ACTIVE and VOID the draft Full & Final? Use this only if archived in error.`)) return;
+  window._exitBusy = true;
+  try {
+    const res = await API.call('restoreFromArchive', {empId});
+    if (res.ok) {
+      toast('✓ Restored to Active; ' + (res.voidedFnF||0) + ' draft FnF voided', 'success', 5000);
+      // v61: refresh whichever view we're in (FnF/Exit restore list vs Approvals alert panel).
+      if (document.getElementById('fnf-restore-section')) { if (typeof loadFnFRestore==='function') await loadFnFRestore(); if (typeof loadFnFRecords==='function') loadFnFRecords(); }
+      else { await renderApprovals(); }
+    }
+    else toast(res.error || 'Error', 'error');
+  } finally { window._exitBusy = false; }
+}
+
 async function renderApprovals() {
-  const [leaveRes, transRes, otRes, pendAttRes] = await Promise.all([
+  // v64 item 7: OT Pre-Approval retired — getOTRequests dropped (OT Claims is the OT path).
+  const [leaveRes, transRes, pendAttRes] = await Promise.all([
     API.call('getPendingLeaves'),
     API.call('getTransactions', {status:'Pending'}),
-    API.call('getOTRequests', {status:'Pending'}),
     API.call('getPendingAttendance', {status:'Pending'}),
   ]);
   const pendingLeaves = leaveRes.leaves||[];
   const pendingTrans  = transRes.transactions||[];
-  const pendingOT     = otRes.requests||[];
   const pendingAttendance = pendAttRes.pending||[];
 
   // Separate transaction types
@@ -4826,7 +5014,7 @@ async function renderApprovals() {
   const exitApps       = pendingTrans.filter(t=>t.type==='ExitApplication');
   const otherRequests  = pendingTrans.filter(t=>!['Advance','LeaveEncashment','ExitApplication'].includes(t.type));
 
-  const totalPending = pendingLeaves.length + advances.length + encashments.length + exitApps.length + otherRequests.length + pendingOT.length + pendingAttendance.length;
+  const totalPending = pendingLeaves.length + advances.length + encashments.length + exitApps.length + otherRequests.length + pendingAttendance.length;
 
   // Update sidebar badge
   const badge = document.getElementById('badge-approvals');
@@ -4884,33 +5072,17 @@ async function renderApprovals() {
   }
 
   let html = `<div class="section-hdr"><div class="section-title">Approvals Inbox</div>
-    <div class="section-actions"><button class="btn btn-dark btn-sm" onclick="renderApprovals()">↺ Refresh</button></div></div>`;
+    <div class="section-actions"><button class="btn btn-dark btn-sm" onclick="renderApprovals()">↺ Refresh</button></div></div>
+    <div id="exit-alerts-area"></div>`;
 
   if (totalPending === 0) {
     html += `<div class="empty-state"><div class="empty-icon">✅</div><p>No pending approvals. All caught up!</p></div>`;
     document.getElementById('admin-tab-content').innerHTML = html;
+    loadExitAlerts(); // v60: absconding alerts can exist even with no pending approvals
     return;
   }
 
-  function otRow(r) {
-    return `<div style="background:var(--dark2);border:1px solid var(--blue-light);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
-      <div style="flex:1;min-width:200px">
-        <strong>${escHtml(r.empName||r.empId)}</strong>
-        ${r.dept  ? `<span class="badge badge-blue"  style="margin-left:6px">${escHtml(r.dept)}</span>`  : ''}
-        ${r.level ? `<span class="badge badge-orange" style="margin-left:4px">${escHtml(r.level)}</span>` : ''}
-        <span style="font-size:10px;color:var(--gray);margin-left:6px">${escHtml(r.empId||'')}</span>
-        <div style="font-size:12px;color:var(--gray-light);margin-top:4px">
-          📅 OT Date: <strong>${fmtDate(r.otDate)}</strong> &nbsp;⏱ Requested Hours: <strong>${escHtml(r.expectedHours||'')}</strong>
-        </div>
-        ${r.reason?`<div style="font-size:11px;color:var(--gray-light);margin-top:2px">"${escHtml(r.reason)}"</div>`:''}
-        <div style="font-size:10px;color:var(--gray);margin-top:4px">Submitted by: ${escHtml(r.requestedBy||r.empId)} on ${fmtDT(r.requestDate)}</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-green btn-sm" onclick="approvalsApproveOT('${escHtml(r.id)}',true)">✓ Approve OT</button>
-        <button class="btn btn-red btn-sm" onclick="approvalsApproveOT('${escHtml(r.id)}',false)">✗ Reject</button>
-      </div>
-    </div>`;
-  }
+  // v64 item 7: removed otRow + the OT Pre-Approval card — that flow is retired (OT Claims is the OT path).
 
   function pendingAttRow(r) {
     return `<div style="background:var(--dark2);border:1px solid var(--blue);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
@@ -4932,7 +5104,6 @@ async function renderApprovals() {
   }
 
   html += approvalCard('⏱ Kiosk Attendance Requests', pendingAttendance, pendingAttRow);
-  html += approvalCard('🕐 OT Pre-Approval Requests', pendingOT, otRow);
   html += approvalCard('🏖 Leave Requests', pendingLeaves, leaveRow);
   html += approvalCard('🤝 Advance Requests', advances, t => transRow(t,'Approve','btn-green','approvalsApproveTransaction'));
   html += approvalCard('💸 Leave Encashment', encashments, t => transRow(t,'Approve','btn-green','approvalsApproveTransaction'));
@@ -4940,6 +5111,7 @@ async function renderApprovals() {
   if (otherRequests.length) html += approvalCard('📋 Other Requests', otherRequests, t => transRow(t,'Approve','btn-green','approvalsApproveTransaction'));
 
   document.getElementById('admin-tab-content').innerHTML = html;
+  loadExitAlerts(); // v60: 3-consecutive-UL absconding alerts
 }
 
 async function approvePendingAtt(pendingId, action) {
@@ -4967,53 +5139,18 @@ async function approvalsApproveTransaction(txId, approved) {
   else toast(res.error||'Error','error');
 }
 
-async function approvalsApproveOT(otId, approved) {
-  let res;
-  if (approved) {
-    res = await API.call('approveOT', {id: otId, approvedBy: State.adminUser});
-    if (res && res.ok) {
-      toast('✓ OT Request Approved — WhatsApp sent', 'success', 4000);
-      await renderApprovals();
-    } else {
-      toast((res && res.error) || 'Error processing OT request', 'error');
-    }
-  } else {
-    // Bug fix: replace native prompt() (blocked in kiosk/fullscreen) with in-app modal
-    await new Promise(resolve => {
-      showModal('Reject OT Request', `
-        <div class="form-group">
-          <label class="form-label">Reason for rejection (optional)</label>
-          <input id="ot-reject-reason" class="form-input" placeholder="Enter reason…" autocomplete="off">
-        </div>`, [
-        {label:'Reject', cls:'btn-sm', cb: async () => {
-          const reason = document.getElementById('ot-reject-reason')?.value || '';
-          closeModal();
-          res = await API.call('rejectOT', {id: otId, approvedBy: State.adminUser, reason});
-          if (res && res.ok) {
-            toast('OT Request Rejected', 'info', 4000);
-            await renderApprovals();
-          } else {
-            toast((res && res.error) || 'Error processing OT request', 'error');
-          }
-          resolve();
-        }, style:'background:var(--red);color:#fff'},
-        {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
-      ]);
-      setTimeout(() => document.getElementById('ot-reject-reason')?.focus(), 100);
-    });
-  }
-}
+// v64 item 7: removed approvalsApproveOT (OT Pre-Approval approve/reject) — flow retired; OT Claims
+// has its own approveOTClaim/rejectOTClaim on the OT Claims tab.
 
 // Also update the approvals badge count during dashboard load
 async function refreshApprovalsBadge() {
   try {
-    const [leaveRes, transRes, otRes, attRes] = await Promise.all([
+    const [leaveRes, transRes, attRes] = await Promise.all([
       API.call('getPendingLeaves'),
       API.call('getTransactions', {status:'Pending'}),
-      API.call('getOTRequests', {status:'Pending'}),
       API.call('getPendingAttendance'),
-    ]);
-    const total = (leaveRes.leaves||[]).length + (transRes.transactions||[]).length + (otRes.requests||[]).length + (attRes.pending||[]).length;
+    ]);  // v64 item 7: OT Pre-Approval retired — getOTRequests dropped from the badge count
+    const total = (leaveRes.leaves||[]).length + (transRes.transactions||[]).length + (attRes.pending||[]).length;
     const badge = document.getElementById('badge-approvals');
     if (badge) { badge.textContent = total; badge.style.display = total ? 'inline-block' : 'none'; }
   } catch {}
@@ -5851,8 +5988,37 @@ function autoFillLevelDefaults(level) {
   if (dhEl  && !dhEl.value)  dhEl.value  = d.dailyHours;
 }
 
+// ─── v62: configurable shift-hour slabs (client) ───────────────────────────────
+// The offered shift-hour set is data-driven (SHIFT_HOURS_SET on the server). These
+// helpers populate the employee Add/Edit dropdowns and are refreshed via
+// loadShiftConfig() when those modals open. Falls back to 9,11,12 if not yet loaded.
+function _shiftHoursList() {
+  return (window.State && State.shiftConfig && Array.isArray(State.shiftConfig.shiftHours) && State.shiftConfig.shiftHours.length)
+    ? State.shiftConfig.shiftHours : [9, 11, 12];
+}
+function shiftHoursOptionsHtml(sel) {
+  sel = parseInt(sel) || 9;
+  return _shiftHoursList().map(function(h) {
+    return '<option value="' + h + '"' + (h === sel ? ' selected' : '') + '>' + h + ' hours' + (h === 9 ? ' (base)' : '') + '</option>';
+  }).join('');
+}
+function shiftTypeOptionsHtml(sel) {
+  sel = String(sel || 'Morning');
+  return ['Morning', 'Night'].map(function(t) {
+    return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+}
+async function loadShiftConfig() {
+  try {
+    const res = await API.call('getShiftHoursConfig', {});
+    if (res && res.ok && Array.isArray(res.shiftHours) && res.shiftHours.length) { State.shiftConfig = res; }
+  } catch (e) { /* keep whatever we have */ }
+  if (!State.shiftConfig) State.shiftConfig = { shiftHours: [9, 11, 12], ratios: {9:1, 11:1.10, 12:1.20}, incMults: {9:1, 11:1.10, 12:1.20}, otMins: {9:4.5, 11:1, 12:1} };
+  return State.shiftConfig;
+}
+
 async function showAddEmpModal() {
-  const [orgsRes, empsRes] = await Promise.all([API.call('getOrgs'), API.call('getEmployees',{status:'Active'})]);
+  const [orgsRes, empsRes] = await Promise.all([API.call('getOrgs'), API.call('getEmployees',{status:'Active'}), loadShiftConfig()]);
   const orgs = orgsRes.orgs||[];
   const allEmps = empsRes.employees||[];
   const factoryOpts = orgs.filter(o=>o.type==='factory').map(o=>`<option>${escHtml(o.name)}</option>`).join('');
@@ -5905,6 +6071,12 @@ async function showAddEmpModal() {
   <div class="form-row">
     <div class="form-group"><label class="form-label">Daily Work Hours</label><input id="e-dh" class="form-input" type="number" value="10"></div>
     <div class="form-group"><label class="form-label">Work Days/Week</label><input id="e-wd" class="form-input" type="number" value="6" min="1" max="7"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Shift Hours <span style="color:var(--gray-light);font-weight:400">(salary slab)</span></label>
+      <select id="e-shifthours" class="form-input">${shiftHoursOptionsHtml(9)}</select></div>
+    <div class="form-group"><label class="form-label">Shift Type</label>
+      <select id="e-shifttype" class="form-input">${shiftTypeOptionsHtml('Morning')}</select></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Weekly Off 1</label>
@@ -6042,6 +6214,7 @@ async function showAddEmpModal() {
         customId:document.getElementById('e-customid').value.trim(),
         pin, shiftStart:document.getElementById('e-ss').value,
         shiftEnd:document.getElementById('e-se').value, dailyHours:document.getElementById('e-dh').value,
+        shiftHours:document.getElementById('e-shifthours')?.value||9, shiftType:document.getElementById('e-shifttype')?.value||'Morning',  // v62: configurable shift slab
         workDaysPerWeek:document.getElementById('e-wd').value,
         weeklyOff1:document.getElementById('e-wo1').value, weeklyOff2:document.getElementById('e-wo2').value,
         mobile:document.getElementById('e-mob').value, doj:document.getElementById('e-doj').value,
@@ -6107,6 +6280,7 @@ async function showEditEmpModal(empId) {
     API.call('getEmployee',{empId, ownerToken: State._dzToken||''}),
     API.call('getOrgs'),
     API.call('getEmployees',{status:'Active'}),
+    loadShiftConfig(),   // v62: refresh the configurable shift-hour set for the dropdown
   ]);
   if (!res.ok) { toast('Not found','error'); return; }
   const e=res.employee;
@@ -6235,6 +6409,12 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">OT Base Hours (per extra day)</label><input id="ee-otbase" class="form-input" type="number" value="${e.otBaseHours||9}"></div>
     <div class="form-group"><label class="form-label">Daily Work Hours</label><input id="ee-dh" class="form-input" type="number" value="${e.dailyHours||10}"></div>
   </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Shift Hours <span style="color:var(--gray-light);font-weight:400">(salary slab)</span></label>
+      <select id="ee-shifthours" class="form-input">${shiftHoursOptionsHtml(e.shiftHours||9)}</select></div>
+    <div class="form-group"><label class="form-label">Shift Type</label>
+      <select id="ee-shifttype" class="form-input">${shiftTypeOptionsHtml(e.shiftType||'Morning')}</select></div>
+  </div>
   <div class="form-group"><label class="form-label">Address</label><input id="ee-addr" class="form-input" value="${escHtml(e.address||'')}"></div>
   <div class="form-group"><label class="form-label">Notes</label><input id="ee-notes" class="form-input" value="${escHtml(e.notes||'')}"></div>
   <!-- v31: Referral and Leave Policy fields (v40 §6c: read-only once a non-blank value is saved) -->
@@ -6311,6 +6491,7 @@ async function showEditEmpModal(empId) {
         travelAllowance:document.getElementById('ee-travel').value,
         otBaseHours:document.getElementById('ee-otbase').value,
         dailyHours:document.getElementById('ee-dh').value,
+        shiftHours:document.getElementById('ee-shifthours')?.value||9, shiftType:document.getElementById('ee-shifttype')?.value||'Morning',  // v62: configurable shift slab
         // v31 fields
         referredByName:document.getElementById('ee-refname').value,
         referredByCode:document.getElementById('ee-refcode').value,
@@ -6562,15 +6743,16 @@ async function renderAttendance() {
   const isOwnerOrMgr = State.adminRole==='owner'||State.adminRole==='manager';
   const emergencyPanel = isOwnerOrMgr ? `
   <div style="background:rgba(229,57,53,0.08);border:1px solid var(--red);border-radius:var(--radius);padding:14px;margin-bottom:14px">
-    <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:10px">⚡ Emergency Controls — ${State.adminRole==='owner'?'Owner':'Manager'} Only</div>
+    <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:4px">⚡ Emergency Controls — ${State.adminRole==='owner'?'Owner':'Manager'} Only</div>
+    <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">These act <strong>right now</strong> on today's live clock (all currently active / clocked-in staff). To record attendance for a <strong>specific date</strong> or only <strong>selected employees</strong> (with an overwrite option), use <a href="#" onclick="showBulkHoursModal();return false;" style="color:var(--gold);text-decoration:underline">📋 Bulk Hours Entry (chosen date)</a>.</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-      <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="emergencyBulkClockOut()">🔴 Bulk Clock-Out All Staff Now</button>
-      <button class="btn btn-sm" style="background:var(--orange);color:#fff" onclick="emergencyBulkClockIn()">🟡 Bulk Clock-In All Active Staff Now</button>
+      <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="emergencyBulkClockOut()">🔴 Clock-Out All Staff — NOW</button>
+      <button class="btn btn-sm" style="background:var(--orange);color:#fff" onclick="emergencyBulkClockIn()">🟡 Clock-In All Active Staff — NOW</button>
       <div style="display:flex;gap:6px;align-items:center">
         <select id="ec-emp-sel" class="form-input" style="font-size:11px;padding:4px 8px;height:32px;min-width:180px">
           <option value="">-- Select clocked-in employee --</option>
         </select>
-        <button class="btn btn-dark btn-sm" onclick="clockOutSelectedEmployee()">Clock Out Now</button>
+        <button class="btn btn-dark btn-sm" onclick="clockOutSelectedEmployee()">Clock Out — NOW</button>
       </div>
     </div>
   </div>` : '';
@@ -6578,7 +6760,7 @@ async function renderAttendance() {
   <div class="section-hdr">
     <div class="section-title">Attendance Management</div>
     <div class="section-actions">
-      ${isOwnerOrMgr?'<button class="btn btn-dark btn-sm" onclick="showBulkHoursModal()">📋 Bulk Hours Entry</button>':''}
+      ${isOwnerOrMgr?'<button class="btn btn-dark btn-sm" onclick="showBulkHoursModal()" title="Record attendance for a chosen date — pick individual / multiple / all employees, with an overwrite option. Separate from the Emergency NOW clock controls.">📋 Bulk Hours Entry (chosen date)</button>':''}
       <button class="btn btn-dark btn-sm" onclick="exportFilteredTimesheet()">⬇ Export CSV</button>
     </div>
   </div>
@@ -6606,7 +6788,7 @@ async function renderAttendance() {
         </div>
         <div>
           <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Department</div>
-          <select id="att-dept-sel" class="form-input" style="font-size:11px;padding:4px 8px">
+          <select id="att-dept-sel" class="form-input" style="font-size:11px;padding:4px 8px" onchange="_filterAttEmpDropdown()">
             <option value="">All Departments</option>${deptOpts}
           </select>
         </div>
@@ -6634,16 +6816,16 @@ async function renderAttendance() {
         </div>
         <div>
           <div style="font-size:10px;color:var(--gray-light);margin-bottom:3px">Search Name/ID</div>
-          <input id="att-search-inp" class="form-input" style="font-size:11px;padding:4px 8px" placeholder="Name or code…">
+          <input id="att-search-inp" class="form-input" style="font-size:11px;padding:4px 8px" placeholder="Name or code…" oninput="_filterAttEmpDropdown()">
         </div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-gold btn-sm" onclick="applyTimesheetFilters()">Apply Filters</button>
+        <button class="btn btn-gold btn-sm" onclick="applyTimesheetFilters()" data-help="Re-query and re-render the records. Pick one employee for the day-by-day calendar grid; leave on All Employees (optionally with a Department) for a multi-employee table filtered by Status / OT / Adjustment / Search.">Apply Filters</button>
         <button class="btn btn-dark btn-sm" onclick="clearTimesheetFilters()">Clear Filters</button>
       </div>
     </div>
   </details>
-  <div id="att-grid-container"><div class="empty-state"><div class="empty-icon">📅</div><p>Select an employee and click Apply Filters</p></div></div>`;
+  <div id="att-grid-container"><div class="empty-state"><div class="empty-icon">📅</div><p>Click <strong>Apply Filters</strong> to load records.<br><span style="font-size:11px;color:var(--gray-light)">Pick one employee for the day-by-day calendar grid, or leave on <strong>All Employees</strong> (optionally pick a Department) for a multi-employee table.</span></p></div></div>`;
   document.getElementById('admin-tab-content').innerHTML = html;
   // Load clocked-in employees for emergency panel
   if (isOwnerOrMgr) {
@@ -6655,8 +6837,10 @@ async function renderAttendance() {
         (r.employees||[]).map(e => '<option value="'+escHtml(e.id)+'">'+escHtml(e.name)+' ('+escHtml(e.id)+') — In: '+fmtTime(e.clockIn||'')+'</option>').join('');
     }).catch(e => { console.warn('[HRMS] getClockedInEmployees failed:', e); });
   }
-  // Auto-load grid if an employee is pre-selected
-  if (emps.length) getAttGrid();
+  // v65 Issue 8: only auto-load the per-employee grid when an employee is actually pre-selected
+  // (matches this block's own intent). With the default "All Employees", keep the placeholder so the
+  // user can pick filters and click Apply Filters → multi-employee table. Avoids an unwanted full pull.
+  if (emps.length && document.getElementById('att-emp-sel')?.value) getAttGrid();
 }
 
 async function renderAttendanceGrid(empId, year, month, emps) {
@@ -7094,7 +7278,7 @@ async function showBulkHoursModal() {
     + '<div class="form-group" style="margin-top:8px"><label class="form-label" style="color:var(--red)">Reason * (mandatory)</label>'
     + '<input id="bhe-reason" class="form-input" placeholder="Bulk entry reason…"></div>'
     + '</div>';
-  showModal('📋 Bulk Hours Entry', html, [
+  showModal('📋 Bulk Hours Entry — for a chosen date', html, [
     {label:'Save All Visible', cls:'btn-gold', cb:saveBulkHoursEntry},
     {label:'Cancel', cls:'btn-dark', cb:closeModal},
   ]);
@@ -7149,7 +7333,49 @@ async function saveBulkHoursEntry() {
   const res = await API.call('bulkAttendanceEntry', {records, adminCode: State.adminUser, reason, allowOverwrite: overwrite});
   if (!res || !res.ok) { toast(res?.error || 'Error', 'error'); return; }
   closeModal();
-  toast('Bulk hours saved — ' + (res.written || 0) + ' added, ' + (res.updated || 0) + ' updated, ' + (res.skipped || 0) + ' skipped', 'success', 5000);
+  // v62 Issue 9: surface the PER-ROW outcome the backend already returns (written /
+  // updated / skipped + reason) instead of a silent count. This makes a skipped row —
+  // e.g. an 11h entry for a date that already has a record — visible by name + reason,
+  // with a one-click retry that re-sends only the conflicted rows with overwrite ON.
+  _showBulkHoursResult(res, records, reason, overwrite);
+}
+
+function _showBulkHoursResult(res, records, reason, overwrite) {
+  const results = res.results || [];
+  const empName = function(id){ const e = (window._bulkEmpList || []).find(function(x){ return x.id === id; }); return e ? e.name : id; };
+  const rowHtml = results.map(function(r) {
+    const color = r.status === 'written' ? 'var(--green)' : (r.status === 'updated' ? 'var(--gold)' : 'var(--red)');
+    const label = r.status === 'written' ? '✓ written' : (r.status === 'updated' ? '✎ updated' : '⏭ skipped');
+    return '<tr><td style="padding:3px 8px">' + escHtml(empName(r.empId)) + ' <span style="color:var(--gray-light)">(' + escHtml(r.empId||'') + ')</span></td>'
+      + '<td style="padding:3px 8px">' + escHtml(r.date || '') + '</td>'
+      + '<td style="padding:3px 8px;color:' + color + ';font-weight:700">' + label + '</td>'
+      + '<td style="padding:3px 8px;color:var(--gray-light)">' + escHtml(r.reason || '') + '</td></tr>';
+  }).join('');
+  const conflictSkips = results.filter(function(r){ return r.status === 'skipped' && /conflict|existing row/i.test(r.reason || ''); });
+  const title = '📋 Bulk Hours — Result (' + (res.written||0) + ' written · ' + (res.updated||0) + ' updated · ' + (res.skipped||0) + ' skipped)';
+  let body = '<div style="max-height:340px;overflow:auto"><table class="az-table" style="font-size:11px;width:100%"><thead><tr>'
+    + '<th style="text-align:left;padding:3px 8px">Employee</th><th style="text-align:left;padding:3px 8px">Date</th>'
+    + '<th style="text-align:left;padding:3px 8px">Result</th><th style="text-align:left;padding:3px 8px">Reason</th>'
+    + '</tr></thead><tbody>' + (rowHtml || '<tr><td colspan="4" style="padding:8px;color:var(--gray-light)">No rows.</td></tr>') + '</tbody></table></div>';
+  if (conflictSkips.length && !overwrite) {
+    body += '<div style="font-size:11px;color:var(--gold);margin-top:8px">' + conflictSkips.length + ' row(s) skipped because a record already exists for that date. Re-run with “Overwrite existing records” ticked, or use the retry button below.</div>';
+  }
+  const buttons = [];
+  if (conflictSkips.length && !overwrite) {
+    buttons.push({label: '↻ Retry ' + conflictSkips.length + ' skipped with Overwrite', cls: 'btn-gold', cb: function(){ _retryBulkHoursOverwrite(records, conflictSkips, reason); }});
+  }
+  buttons.push({label: 'Done', cls: 'btn-dark', cb: closeModal});
+  showModal(title, body, buttons);
+}
+
+async function _retryBulkHoursOverwrite(records, conflictSkips, reason) {
+  const keys = {}; conflictSkips.forEach(function(r){ keys[r.empId + '|' + r.date] = true; });
+  const retry = (records || []).filter(function(r){ return keys[r.empId + '|' + r.date]; });
+  if (!retry.length) { toast('Nothing to retry', 'warning'); return; }
+  const res = await API.call('bulkAttendanceEntry', {records: retry, adminCode: State.adminUser, reason: reason, allowOverwrite: true});
+  if (!res || !res.ok) { toast(res?.error || 'Retry failed', 'error'); return; }
+  closeModal();
+  toast('Overwrite retry — ' + (res.updated || 0) + ' updated, ' + (res.skipped || 0) + ' still skipped', 'success', 5000);
 }
 
 // ─── v54 Item 3: Bulk Leave marking — filterable multi-select + date range ─────────
@@ -7245,19 +7471,114 @@ async function saveBulkLeaveEntry() {
 
 
 // ─── S6.2: Timesheet Filters ────────────────
+// v62 Issue 8: Department + Search were dead — nothing consumed att-dept-sel /
+// att-search-inp. They now live-narrow the Employee dropdown (the grid is a single
+// employee's monthly calendar, so Dept/Search filter WHO you can pick). Employee /
+// Month / Year re-query the grid; Status / OT / Adjustment hide day-rows in-grid.
+function _filterAttEmpDropdown() {
+  const sel = document.getElementById('att-emp-sel');
+  if (!sel) return;
+  const dept = (document.getElementById('att-dept-sel')?.value || '').toLowerCase();
+  const q = (document.getElementById('att-search-inp')?.value || '').trim().toLowerCase();
+  const prev = sel.value;
+  const emps = (window._attEmps || State.employees || []).filter(function(e) {
+    if (dept && String(e.dept || '').toLowerCase() !== dept) return false;
+    if (q) {
+      const hay = (String(e.name || '') + ' ' + String(e.id || '')).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+  sel.innerHTML = '<option value="">All Employees</option>' +
+    emps.map(function(e) { return '<option value="' + escHtml(e.id) + '">' + escHtml(e.name) + ' (' + escHtml(e.id) + ')</option>'; }).join('');
+  if (prev && emps.some(function(e) { return e.id === prev; })) sel.value = prev;  // keep selection if still valid
+}
+
 async function applyTimesheetFilters() {
   const empId = document.getElementById('att-emp-sel')?.value || '';
   const yr = parseInt(document.getElementById('att-yr-sel')?.value || new Date().getFullYear());
   const mo = parseInt(document.getElementById('att-mo-sel')?.value || (new Date().getMonth()+1));
-  await renderAttendanceGrid(empId, yr, mo, window._attEmps||State.employees||[]);
-  _filterAttRows();
+  // v65 Issue 8 (finish): a chosen employee → the per-employee calendar grid (with row filters).
+  // No employee chosen → a MULTI-EMPLOYEE records table for the Dept/Search-narrowed set, honouring
+  // the FULL filter bar (Department / Status / OT / Adjustment / Search) — re-querying & re-rendering
+  // the records table, not just narrowing the dropdown (the v62 fix only did the latter).
+  if (empId) {
+    await renderAttendanceGrid(empId, yr, mo, window._attEmps||State.employees||[]);
+    _filterAttRows();
+  } else {
+    await renderAttendanceMultiTable(yr, mo);
+  }
+}
+
+// v65 Issue 8: multi-employee monthly attendance table for the filtered set. Pulls records via the
+// read-only getAttendanceMonthBulk endpoint for the Dept/Search-narrowed employee IDs, then applies
+// the Status / OT / Adjustment / Search filters to the rows. One row per employee-day.
+async function renderAttendanceMultiTable(year, month) {
+  const container = document.getElementById('att-grid-container');
+  if (!container) return;
+  container.innerHTML = '<div class="loading-spinner"></div>';
+  const sel = document.getElementById('att-emp-sel');
+  const empIds = sel ? Array.from(sel.options).filter(o=>o.value).map(o=>o.value) : [];   // the Dept/Search-narrowed set
+  const dept = document.getElementById('att-dept-sel')?.value || '';
+  let res = null;
+  try { res = await API.call('getAttendanceMonthBulk', {year, month, empIds, dept}); }
+  catch(e) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml('Could not load attendance: '+(e&&e.message||e))+'</p></div>'; return; }
+  if (!res || !res.ok) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml((res&&res.error)||'Could not load attendance')+'</p></div>'; return; }
+  const records = res.records || [];
+  window._attMultiRecords = records;
+  const statFilter = document.getElementById('att-status-sel')?.value || '';
+  const otFilter   = document.getElementById('att-ot-sel')?.value || '';
+  const adjFilter  = document.getElementById('att-adj-sel')?.value || '';
+  const q = (document.getElementById('att-search-inp')?.value||'').trim().toLowerCase();
+  const isAdj = r => (r.manualEdit===true || String(r.manualEdit).toLowerCase()==='true');
+  const filtered = records.filter(r => {
+    if (statFilter && r.status !== statFilter) return false;
+    if (otFilter === 'yes' && !(parseInt(r.otMinutes||0) > 0)) return false;
+    if (otFilter === 'no'  &&  (parseInt(r.otMinutes||0) > 0)) return false;
+    if (adjFilter === 'yes' && !isAdj(r)) return false;
+    if (adjFilter === 'no'  &&  isAdj(r)) return false;
+    if (q) { const hay = (String(r.empName||'')+' '+String(r.empId||'')).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
+    return true;
+  });
+  const monthLabel = new Date(year, month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const scopeN = res.employees ? res.employees.length : empIds.length;
+  if (!filtered.length) {
+    container.innerHTML = `<div class="section-hdr" style="margin-top:4px"><div class="section-title">All matching employees — ${escHtml(monthLabel)}</div></div>
+      <div class="empty-state"><div class="empty-icon">📭</div><p>No attendance records match these filters for ${escHtml(monthLabel)}.<br><span style="font-size:11px;color:var(--gray-light)">${scopeN} employee(s) in scope · ${records.length} record(s) before filtering. Tip: pick one employee for the full day-by-day calendar grid.</span></p></div>`;
+    return;
+  }
+  let rows = '';
+  filtered.forEach(r => {
+    const dow = days[new Date(r.date).getDay()];
+    const adj = isAdj(r);
+    rows += `<tr>
+      <td><strong>${escHtml(r.empName||r.empId)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(r.empId)}${r.dept?' · '+escHtml(r.dept):''}</span></td>
+      <td>${escHtml(r.date)}<br><span style="font-size:10px;color:var(--gray-light)">${dow}</span></td>
+      <td class="att-${escHtml(r.status||'')}">${statusBadge(r.status||'—')}</td>
+      <td style="font-size:11px">${r.clockIn?fmtTime(r.clockIn):'—'}</td>
+      <td style="font-size:11px">${r.clockOut?fmtTime(r.clockOut):'—'}</td>
+      <td style="font-size:11px">${r.workMinutes?Math.floor(r.workMinutes/60)+'h'+(r.workMinutes%60)+'m':'—'}${parseInt(r.otMinutes||0)>0?` <span style="background:var(--orange);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;white-space:nowrap">OT ${r.otMinutes}m</span>`:''}</td>
+      <td style="font-size:11px">${parseInt(r.lateMinutes||0)>0?`<span style="color:var(--orange)">${r.lateMinutes}m</span>`:'—'}</td>
+      <td style="font-size:11px">${adj?'✏ yes':'—'}</td>
+      <td><button class="btn btn-dark btn-sm" onclick="showAttendanceEditModal('${escHtml(r.empId)}','${escHtml(r.date)}')">✏</button></td>
+    </tr>`;
+  });
+  container.innerHTML = `
+  <div class="section-hdr" style="margin-top:4px">
+    <div class="section-title" data-help="Multi-employee attendance: one row per employee-day for the filtered set. Pick a single employee above for the full day-by-day calendar grid.">All matching employees — ${escHtml(monthLabel)} <span style="font-size:11px;color:var(--gray-light);font-weight:400">(${filtered.length} of ${records.length} record${records.length!==1?'s':''}${dept?' · '+escHtml(dept):''}${scopeN?' · '+scopeN+' staff':''})</span></div>
+  </div>
+  <div class="table-wrap att-grid-wrap"><table class="az-table att-grid att-multi"><thead><tr>
+    <th>Employee</th><th>Date</th><th>Status</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Late</th><th>Adjusted</th><th>Edit</th>
+  </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function clearTimesheetFilters() {
-  ['att-status-sel','att-ot-sel','att-adj-sel'].forEach(id => {
+  ['att-status-sel','att-ot-sel','att-adj-sel','att-dept-sel'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const si = document.getElementById('att-search-inp'); if (si) si.value = '';
+  _filterAttEmpDropdown();   // v62 Issue 8: rebuild the now-unfiltered employee dropdown
   _filterAttRows();
 }
 
@@ -7335,7 +7656,7 @@ async function renderLeaves() {
   // with multi-stage routing. A one-line pointer keeps the link without the duplication.
   let html=`
   <div class="section-hdr"><div class="section-title" title="The full leave LEDGER — every leave of every status, all editable/cancellable. To action pending requests with supervisor→manager→owner routing, use the Approvals tab.">Leave Management <span style="font-size:11px;color:var(--gray-light);font-weight:400">— full ledger</span></div></div>
-  ${pending.length?`<div style="background:rgba(184,150,12,0.12);border:1px solid var(--gold-dim);border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:var(--gold)">⏳ <strong>${pending.length}</strong> pending request${pending.length!==1?'s':''} — action them in the <a href="#" onclick="switchTab('approvals');return false;" style="color:var(--gold);text-decoration:underline">Approvals queue</a>, or directly in the table below.</div>`:''}`;
+  ${pending.length?`<div style="background:rgba(184,150,12,0.12);border:1px solid var(--gold-dim);border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:var(--gold)">⏳ <strong>${pending.length}</strong> pending request${pending.length!==1?'s':''} — approve / reject them in the <a href="#" onclick="switchTab('approvals');return false;" style="color:var(--gold);text-decoration:underline">Approvals queue</a> (the single approval surface, with supervisor→manager→owner routing). This ledger is for viewing, editing &amp; cancelling.</div>`:''}`;
   html+=`<div class="section-hdr" style="margin-top:16px"><div class="section-title">All Leaves (${all.length})</div>
     <div class="section-actions">
       <button class="btn btn-gold btn-sm" onclick="showAdminLeaveModal()">+ Add Leave</button>
@@ -7375,8 +7696,9 @@ async function renderLeaves() {
     const lid=escHtml(l.id); const st=l.status||'';
     let acts='';
     if(st==='Pending'){
-      acts+=`<button class="btn btn-green btn-sm" title="Approve" onclick="approveLeave('${lid}',true)">✓</button>
-        <button class="btn btn-red btn-sm" title="Reject" onclick="approveLeave('${lid}',false)">✗</button>`;
+      // v64 item 6: approve/reject is done ONLY in the Approvals queue (single surface, with
+      // supervisor→manager→owner routing). This ledger row links there instead of duplicating it.
+      acts+=`<button class="btn btn-dark btn-sm" title="Approve / reject in the Approvals queue" onclick="switchTab('approvals')">⏳ Approve in Approvals →</button>`;
     } else if(st==='Approved'){
       acts+=`<button class="btn btn-dark btn-sm" title="Revert to Pending (undoes attendance + balance)" onclick="revertLeave('${lid}')">↩</button>
         <button class="btn btn-red btn-sm" title="Reject (undoes attendance + balance)" onclick="approveLeave('${lid}',false)">✗</button>`;
@@ -7625,7 +7947,7 @@ async function loadTransactions() {
       <td>${escHtml(t.note||'—')}</td>
       <td style="font-size:11px">${escHtml(t.approvedBy||'—')}</td>
       <td>${statusBadge(t.status)}</td>
-      <td>${payrollCell}</td>
+      <td>${payrollCell} ${String(t.status)!=='Voided'?`<button class="btn btn-dark btn-sm" style="font-size:9px;padding:1px 6px;margin-left:4px" title="Revert (void) this transaction — excluded from future/recomputed payroll" onclick="revertEntityPrompt('transaction','${escHtml(t.id)}','transaction',loadTransactions)">↩</button>`:'<span style="font-size:9px;color:var(--gray)">voided</span>'}</td>
     </tr>`;
   }).join('');
 }
@@ -8065,7 +8387,12 @@ async function saveMonthlyRoster(year, month) {
   const emps=window._rosterEmps||[];
   const daysInMonth=new Date(year,month,0).getDate();
   const dayNums=Array.from({length:daysInMonth},(_,i)=>i+1);
-  // Group by week and save
+  // v57 Issue 5/7: the MONTHLY view now ALSO auto-creates Pending leaves for leave-coded cells,
+  // exactly like the weekly path (saveAllRoster). Before v57, monthly save wrote ONLY the Roster
+  // sheet, so a leave entered in monthly view (e.g. Gaurav IL 23 May, Sanjay UL 22 May) never
+  // reached Leaves/Approvals/Timesheets/Payroll. Server dedups by emp+overlapping range.
+  const leaveCodes=['IL','UL','SL','PL','IHL','UHL'];
+  const leaveRequests=[];
   let saved=0;
   for(const emp of emps) {
     const weekGroups={};
@@ -8074,8 +8401,14 @@ async function saveMonthlyRoster(year, month) {
       const ws=getWeekStart(dt);
       if(!weekGroups[ws]) weekGroups[ws]={weekStart:ws,empId:emp.id,preparedBy:State.adminUser,notes:document.getElementById(`mrn-${emp.id}`)?.value||''};
       const dayKey=['sun','mon','tue','wed','thu','fri','sat'][dt.getDay()];
-      const sel=document.getElementById(`mr-${emp.id}-${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
-      if(sel) weekGroups[ws][dayKey]=sel.value||'';
+      const dateStr=`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const sel=document.getElementById(`mr-${emp.id}-${dateStr}`);
+      const val=sel?(sel.value||''):'';
+      if(sel) weekGroups[ws][dayKey]=val;
+      if(leaveCodes.includes(val)) {
+        leaveRequests.push({empId:emp.id, type:val, startDate:dateStr, endDate:dateStr,
+          note:'Auto-created from roster (monthly)', urgency:'normal', source:'roster'});
+      }
     });
     for(const update of Object.values(weekGroups)) {
       // Bug 8C: only count as saved if GAS confirmed the write
@@ -8085,7 +8418,21 @@ async function saveMonthlyRoster(year, month) {
       else saved++;
     }
   }
-  toast(`✓ Monthly roster saved (${saved} week-rows)`, 'success');
+  // Auto-create Pending leaves for leave-coded cells (dedup handled server-side; re-saves skip).
+  let created=0, dup=0, failed=0;
+  for(const req of leaveRequests) {
+    try {
+      const lr=await API.call('requestLeave',req);
+      if(lr.ok && lr.duplicate) dup++;
+      else if(lr.ok) created++;
+      else failed++;
+    } catch(e){ failed++; }
+  }
+  const parts=[`✓ Monthly roster saved (${saved} week-rows)`];
+  if(created) parts.push(`${created} leave${created!==1?'s':''} → Approvals`);
+  if(dup)     parts.push(`${dup} duplicate${dup!==1?'s':''} skipped`);
+  if(failed)  parts.push(`${failed} leave${failed!==1?'s':''} failed`);
+  toast(parts.join(' | '), failed?'warning':'success', 5000);
 }
 
 // v55: single, clearly-labelled roster save. Replaces the confusing pair of buttons
@@ -8376,17 +8723,19 @@ async function renderPayroll() {
   </div>
   <div id="payroll-salary-view">
   <div class="filters-bar">
-    <select id="pay-month" class="filter-input">
+    <select id="pay-month" class="filter-input" onchange="onPayrollPeriodChange()" data-help="Pick a month — the last SAVED register loads instantly (no recompute, so no 6-minute wait). If attendance changed since it was saved, it auto-recomputes live.">
       ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('')}
     </select>
-    <select id="pay-year" class="filter-input">
+    <select id="pay-year" class="filter-input" onchange="onPayrollPeriodChange()">
       ${Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`).join('')}
     </select>
     <label style="font-size:12px;color:var(--gray-light);display:flex;align-items:center;gap:6px">
       <input type="checkbox" id="pay-extended" checked> Include 1st–7th extended period
     </label>
-    <button class="btn btn-gold btn-sm" onclick="generateAllSalaries()">▶ Generate All Salaries</button>
+    <button class="btn btn-gold btn-sm" onclick="generateAllSalaries()" data-help="Recompute every salary from live attendance, leaves and transactions, then show the result. Slower (respects the GAS 6-minute limit). Use 💾 Save to Records afterwards to persist it as the saved register.">🔄 Recompute (live)</button>
   </div>
+  <!-- v65 Issue 3: status banner (saved vs live + attendance-change flag) — sits ABOVE the result table so it survives table re-renders. -->
+  <div id="payroll-register-status"></div>
   <div id="payroll-result"></div>
   </div>
   <div id="payroll-statutory-view" style="display:none"></div>
@@ -8395,6 +8744,116 @@ async function renderPayroll() {
   document.getElementById('admin-tab-content').innerHTML=html;
   // v44 Workstream E3: render the mid-month onboarding banner if toggled on.
   if (typeof _v44RenderMidMonthBanner === 'function') _v44RenderMidMonthBanner();
+  // v65 Issue 3: instantly show the last SAVED register for the default month (no recompute);
+  // auto-recompute only if attendance changed since it was saved.
+  if (typeof onPayrollPeriodChange === 'function') onPayrollPeriodChange();
+}
+
+// ── v65 Issue 4: format a salary object's day-type breakdown as a one-line tooltip string ──
+function _v65DayTypeText(dt){
+  if(!dt) return 'Day-type breakdown unavailable (recompute to populate).';
+  const parts = ['Present '+dt.present, 'Extra/OT '+dt.extraWork, 'Weekly-off '+dt.weeklyOff,
+    'Holidays '+dt.holiday, 'Paid leave '+dt.paidLeave, 'Unpaid leave '+dt.unpaidLeave, 'Auto-UL '+dt.autoUL];
+  if(dt.paidNoRecord) parts.push('Paid (no record) '+dt.paidNoRecord);
+  let s = parts.join(' · ') + '  =  ' + dt.total + ' of ' + dt.daysInMonth + ' days';
+  if(dt.sandwichDays) s += '  (of the off-days, '+dt.sandwichDays+' sandwiched → unpaid)';
+  s += dt.reconciles ? '  ✓ reconciles' : '  ⚠ DOES NOT RECONCILE';
+  if(dt.reconciles===false){
+    if(dt.sumOk===false) s += ' — sum≠days-in-month'+(dt.other?(' ('+dt.other+' unclassified)'):'');
+    if(dt.unpaidMatch===false) s += ' — breakdown unpaid '+dt.breakdownUnpaid+' ≠ payroll unpaid '+dt.moneyUnpaid;
+  }
+  return s;
+}
+
+// ── v65 Issue 3: register status banner (above the result table; survives table re-render) ──
+function _v65SetRegisterStatus(html){ const el=document.getElementById('payroll-register-status'); if(el) el.innerHTML=html||''; }
+// ── v65 Issue 3: friendly local time from an ISO timestamp ──
+function _v65FmtWhen(iso){
+  if(!iso) return '';
+  try { const d=new Date(iso); if(isNaN(d)) return String(iso);
+    return d.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return String(iso); }
+}
+
+// ── v65 Issue 3: on month/year change (and first render) show the last SAVED register instantly,
+// then auto-recompute only if attendance changed since it was saved. ──
+let _v65PeriodToken = 0;
+async function onPayrollPeriodChange(){
+  const year = parseInt(document.getElementById('pay-year')?.value || new Date().getFullYear());
+  const month = parseInt(document.getElementById('pay-month')?.value || (new Date().getMonth()+1));
+  const token = ++_v65PeriodToken;  // guard against out-of-order responses on rapid period changes
+  const status = await loadSavedRegister(year, month);
+  if (token !== _v65PeriodToken) return;
+  if (status && status.ok && status.hasSaved && status.changed === true){
+    _v65SetRegisterStatus(`<div style="margin-bottom:12px;padding:10px 12px;background:rgba(229,57,53,0.12);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red)">⚠ <strong>Attendance changed</strong> since this register was saved (saved ${escHtml(_v65FmtWhen(status.savedAt))}${status.savedBy?' by '+escHtml(status.savedBy):''}). Recomputing live…</div>`);
+    generateAllSalaries();  // roadmap: auto-recompute when attendance for the period changed since the last save
+  }
+}
+
+// ── v65 Issue 3: instant-load the last SAVED register for a month (no recompute). Returns the
+// register status object so the caller can decide whether to auto-recompute. ──
+async function loadSavedRegister(year, month){
+  const container = document.getElementById('payroll-result');
+  if (!container) return null;
+  container.innerHTML = '<div class="loading-spinner"></div>';
+  let recRes=null, status=null;
+  try { recRes = await API.call('getSalaryRecords', {year, month}); } catch(e){ recRes=null; }
+  try { status = await API.call('getSalaryRegisterStatus', {year, month}); } catch(e){ status=null; }
+  const records = (recRes && recRes.ok && recRes.records) ? recRes.records : [];
+  const monthLabel = new Date(year, month-1).toLocaleString('en-IN',{month:'long',year:'numeric'});
+  if (!records.length){
+    _v65SetRegisterStatus('');
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🗂</div><p>No <strong>saved</strong> salary register for ${escHtml(monthLabel)}.<br><span style="font-size:11px;color:var(--gray-light)">Click <strong>🔄 Recompute (live)</strong> above to generate it, then <strong>💾 Save to Records</strong> to keep it.</span></p></div>`;
+    return status;
+  }
+  const savedWhen = (status && status.savedAt) ? _v65FmtWhen(status.savedAt) : '';
+  const changed = (status && status.ok) ? status.changed : null;
+  let banner = `<div style="margin-bottom:12px;padding:10px 12px;background:rgba(21,101,192,0.14);border:1px solid #1565C0;border-radius:6px;font-size:12px;color:#90caf9;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <span data-help="A saved register is loaded from records (fast). Recompute pulls live attendance/leaves/transactions.">🗂 <strong>Last SAVED register</strong>${savedWhen?' — saved '+escHtml(savedWhen):''}${status&&status.savedBy?' by '+escHtml(status.savedBy):''}. Not recomputed.</span>
+    <button class="btn btn-gold btn-sm" onclick="generateAllSalaries()" data-help="Recompute from live data; respects the 6-minute limit. Save to Records afterwards to update the saved register.">🔄 Recompute (live)</button>`;
+  if (changed === true) banner += `<span style="color:var(--red);font-weight:600">⚠ Attendance changed since this was saved — recompute recommended.</span>`;
+  banner += `</div>`;
+  _v65SetRegisterStatus(banner);
+  container.innerHTML = _v65RenderSavedRegisterTable(records, year, month);
+  return status;
+}
+
+// ── v65 Issue 3: render saved register rows from SalaryRecords columns (no live recompute) ──
+function _v65RenderSavedRegisterTable(records, year, month){
+  const totalNet = records.reduce((a,r)=>a+(parseFloat(r.netSalary)||0),0);
+  let html = `
+  <div style="margin-bottom:16px;padding:14px;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;display:flex;gap:20px;flex-wrap:wrap">
+    <div><div style="font-size:1.5rem;font-weight:900;color:var(--gold)">${fmtMoney(totalNet)}</div><div style="font-size:11px;color:var(--gray-light)">Total Net Payroll (saved)</div></div>
+    <div><div style="font-size:1.2rem;font-weight:700">${records.length}</div><div style="font-size:11px;color:var(--gray-light)">Employees (saved)</div></div>
+  </div>
+  <div class="table-wrap"><table class="az-table">
+    <thead><tr><th>Employee</th><th>Dept/Level</th><th>Base</th><th>Present</th><th>UL Ded.</th><th>Late Ded.</th><th>Adv./Loans</th><th>OT Earn.</th><th>Bonus</th><th>Net Salary</th><th>Slip</th></tr></thead>
+    <tbody>`;
+  records.forEach(r=>{
+    const sid='slip_'+Math.random().toString(36).substr(2,6);
+    window['_slipData_'+sid]=r;
+    const advTotal=(parseFloat(r.advances||0)+parseFloat(r.loans||0)+parseFloat(r.penalties||0));
+    const net=parseFloat(r.netSalary)||0;
+    const dtTip='Saved counts — Present '+(r.presentDays??'—')+'/'+(r.workingDays??'—')+' · Absent/UL '+(r.absentDays??'—')+' · Paid leave '+((parseInt(r.SL)||0)+(parseInt(r.PL)||0))+' · Extra '+(r.ewDays??0)+' · OT days '+(r.otDays??0)+' · Days in month '+(r.daysInMonth??'—')+'. Recompute (live) for the full reconciling day-type breakdown.';
+    html+=`<tr>
+      <td><strong>${escHtml(r.empName||r.empId)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(r.empId||'')}</span></td>
+      <td>${escHtml(r.dept||'')}<br><span class="badge badge-${r.level&&String(r.level).startsWith('L')&&parseInt(String(r.level).slice(1))<=5?'blue':'orange'}">${escHtml(r.level||'')}</span></td>
+      <td>${fmtMoney(r.baseSalary)}</td>
+      <td data-help="${escHtml(dtTip)}">${r.presentDays ?? '—'}/${r.workingDays ?? '—'}</td>
+      <td style="color:var(--red)">${parseFloat(r.ulDeduction)?'- '+fmtMoney(r.ulDeduction):''}</td>
+      <td style="color:var(--orange)">${parseFloat(r.lateDeduction)?'- '+fmtMoney(r.lateDeduction):''}</td>
+      <td style="color:var(--red)">${advTotal?'- '+fmtMoney(advTotal):''}</td>
+      <td style="color:var(--green)">${parseFloat(r.otEarnings)?'+ '+fmtMoney(r.otEarnings):''}</td>
+      <td style="color:var(--green)">${(parseFloat(r.performanceBonus)||parseFloat(r.bonuses))?'+ '+fmtMoney((parseFloat(r.performanceBonus||0)+parseFloat(r.bonuses||0))):''}</td>
+      <td style="font-weight:900;font-size:1rem;color:${net<0?'var(--red)':'var(--gold)'}">${fmtMoney(net)}${net<0?'<br><span style="font-size:9px;font-weight:600">Recoverable (LOP)</span>':''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-gold btn-sm" title="Download PDF Slip" onclick="downloadSalarySlipPDF(window['_slipData_${sid}'])">📄</button>
+        <button class="btn btn-dark btn-sm" title="View transactions" onclick="viewEmpTransactions('${escHtml(r.empId||'')}',${year},${month})">💸</button>
+      </td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  return html;
 }
 
 async function generateAllSalaries() {
@@ -8405,12 +8864,18 @@ async function generateAllSalaries() {
   container.innerHTML='<div class="loading-spinner"></div>';
   const res=await API.call('calcAllSalaries',{year,month,extended});
   const salaries=res.salaries||[];
+  const fnfExcluded=res.fnfExcluded||[]; // v61 A0
+  // v67 Stage-2B: are there prior-month open recoveries not yet applied to THIS month? (read-only dry-run)
+  let recDry=null; try{ recDry=await API.call('applyRecoveries',{year,month,mode:'dryRun'}); }catch(e){ recDry=null; }
   const totalNet=salaries.reduce((s,e)=>s+(parseFloat(e.netSalary)||0),0);
   let html=`
   <div style="margin-bottom:16px;padding:14px;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;display:flex;gap:20px;flex-wrap:wrap">
     <div><div style="font-size:1.5rem;font-weight:900;color:var(--gold)">${fmtMoney(totalNet)}</div><div style="font-size:11px;color:var(--gray-light)">Total Net Payroll</div></div>
     <div><div style="font-size:1.2rem;font-weight:700">${salaries.length}</div><div style="font-size:11px;color:var(--gray-light)">Employees</div></div>
   </div>
+  ${fnfExcluded.length?`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(184,150,12,0.12);border:1px solid var(--gold-dim);border-radius:6px;font-size:12px;color:var(--gold)">⏭ ${fnfExcluded.length} employee(s) settled via Full &amp; Final this month — excluded from this register so the exit penalty isn't charged twice: ${fnfExcluded.map(x=>escHtml((x.name||x.empId)+' ('+x.exitType+')')).join(', ')}</div>`:''}
+  ${(res.reconcileWarnings && res.reconcileWarnings.length)?`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(229,57,53,0.12);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red)" data-help="A silent-error safety net: each employee-month's day-types should sum to days-in-month AND the breakdown's unpaid total should equal the payroll's unpaid days. These did not — hover the Present column for the per-employee detail.">⚠ <strong>Day-type reconciliation:</strong> ${res.reconcileWarnings.length} employee-month(s) did not reconcile. Check: ${res.reconcileWarnings.map(w=>escHtml(w.name||w.empId)).join(', ')}. Hover each row's <em>Present</em> cell for details.</div>`:''}
+  ${(recDry && recDry.ok && recDry.count)?`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(229,57,53,0.10);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red)" data-help="Open carry-forwards from earlier months that have not yet been deducted from this month. Applying creates a Penalty-type recovery line per employee, then recomputes so the net reflects it.">🔁 <strong>${recDry.count} prior-month recovery line(s)</strong> totalling ${fmtMoney(recDry.totalRecovered)} are not yet applied to ${escHtml(recDry.targetMonth)}. <button class="btn btn-dark btn-sm" onclick="applyRecoveriesFromRegister(${year},${month})">Apply now &amp; recompute</button> <span style="color:var(--gray-light)">(or use the Recovery tab)</span></div>`:''}
   <div class="section-actions" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-dark btn-sm" onclick="exportPayrollCSV()">📤 Export CSV</button>
     <button class="btn btn-dark btn-sm" onclick="exportPayrollXLSX()">📊 Export Excel</button>
@@ -8428,14 +8893,14 @@ async function generateAllSalaries() {
       <td><strong>${escHtml(s.name||s.empName)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(s.empId||'')}</span></td>
       <td>${escHtml(s.dept)}<br><span class="badge badge-${s.level&&s.level.startsWith('L')&&parseInt(s.level.slice(1))<=5?'blue':'orange'}">${escHtml(s.level)}</span></td>
       <td>${fmtMoney(s.baseSalary)}</td>
-      <!-- v36 fix BUG-71: guard against undefined presentDays/workingDays -->
-      <td>${s.presentDays ?? '—'}/${s.workingDays ?? '—'}</td>
+      <!-- v36 fix BUG-71: guard against undefined presentDays/workingDays. v65 Issue 4: hover for the full reconciling day-type breakdown; ⚠ marks a non-reconciling employee-month. -->
+      <td data-help="${escHtml('Day-type breakdown — '+_v65DayTypeText(s.dayTypes))}">${s.presentDays ?? '—'}/${s.workingDays ?? '—'}${(s.dayTypes&&s.dayTypes.reconciles===false)?' <span style="color:var(--red);font-weight:700">⚠</span>':''}</td>
       <td style="color:var(--red)">${s.ulDeduction?'- '+fmtMoney(s.ulDeduction):''}</td>
       <td style="color:var(--orange)">${s.lateDeduction?'- '+fmtMoney(s.lateDeduction):''}</td>
       <td style="color:var(--red)">${advTotal?`<span title="Advance: ₹${Math.round(s.advances||0).toLocaleString('en-IN')}${s.loans?'\nLoans: ₹'+Math.round(s.loans||0).toLocaleString('en-IN'):''}${s.penalties?'\nPenalties: ₹'+Math.round(s.penalties||0).toLocaleString('en-IN'):''}">- ${fmtMoney(advTotal)}</span>`:''}</td>
       <td style="color:var(--green)">${s.otEarnings?'+ '+fmtMoney(s.otEarnings):''}</td>
       <td style="color:var(--green)">${(s.performanceBonus||s.bonuses)?'+ '+fmtMoney((parseFloat(s.performanceBonus||0)+parseFloat(s.bonuses||0))):''}</td>
-      <td style="font-weight:900;font-size:1rem;color:${parseFloat(s.netSalary)<0?'var(--red)':'var(--gold)'}" title="${parseFloat(s.netSalary)<0?'Negative = LOP/over-deduction recoverable from this employee (carries to next month)':'Net payable'}">${fmtMoney(s.netSalary)}${parseFloat(s.netSalary)<0?'<br><span style="font-size:9px;font-weight:600">Recoverable (LOP)</span>':''}</td>
+      <td style="font-weight:900;font-size:1rem;color:${parseFloat(s.netSalary)<0?'var(--red)':'var(--gold)'}" title="Net payable = base − unpaid days − deductions.&#10;Payroll-computed deductions (NOT in Manual Transactions):&#10;• UL penalty: ${fmtMoney(s.ulDeduction||0)}&#10;• Late: ${fmtMoney(s.lateDeduction||0)}&#10;• Sandwich${s.sandwichDays?' ('+s.sandwichDays+'d)':''}: ${fmtMoney(s.sandwichDeduction||0)}&#10;• Statutory (PF+ESI+PT+TDS): ${fmtMoney((parseFloat(s.pfEmployee)||0)+(parseFloat(s.esiEmployee)||0)+(parseFloat(s.professionalTax)||0)+(parseFloat(s.tds)||0))}&#10;Manual (shown in Transactions): Advances/Loans/Penalties ${fmtMoney((parseFloat(s.advances)||0)+(parseFloat(s.loans)||0)+(parseFloat(s.penalties)||0))}.${parseFloat(s.netSalary)<0?'&#10;Negative = Recoverable (LOP) — carries to next month.':''}">${fmtMoney(s.netSalary)}${parseFloat(s.netSalary)<0?'<br><span style="font-size:9px;font-weight:600">Recoverable (LOP)</span>':''}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-gold btn-sm" title="Download PDF Slip" onclick="downloadSalarySlipPDF(window['_slipData_${sid}'])">📄</button>
         <button class="btn btn-dark btn-sm" title="Share via WhatsApp" onclick="shareSlipWhatsApp(window['_slipData_${sid}'])">📱</button>
@@ -8461,6 +8926,8 @@ async function generateAllSalaries() {
     <div id="hist-results" style="margin-top:12px"></div>
   </div>`;
   container.innerHTML=html;
+  // v65 Issue 3: mark this view as LIVE (recomputed) so it's clearly distinct from the saved register.
+  _v65SetRegisterStatus(`<div style="margin-bottom:12px;padding:10px 12px;background:rgba(46,125,50,0.14);border:1px solid var(--green);border-radius:6px;font-size:12px;color:#a5d6a7;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><span>✅ <strong>LIVE figures</strong> — recomputed just now from current attendance, leaves &amp; transactions.</span><span style="color:var(--gray-light)">Click 💾 Save to Records to persist them as the saved register for this month.</span></div>`);
   window._lastPayroll=salaries;
   window._lastPayrollMeta={year,month};
 }
@@ -8477,6 +8944,16 @@ async function saveAllSalaries() {
   const res = await API.call('saveSalaries', {salaries, year: meta.year, month: meta.month, approvedBy: State.adminUser});
   if (res.ok) {
     toast(`✓ Saved ${res.saved} new + ${res.updated} updated salary records`, 'success');
+    // v67 Stage-2B: auto-record negative-net carry-forwards (Recoverable LOP) for the just-saved month.
+    try {
+      const rr = await API.call('recordRecoveries', {year: meta.year, month: meta.month, reviewedBy: State.adminUser});
+      if (rr && rr.ok && ((rr.recorded||0)+(rr.updated||0)) > 0) toast('🔁 Recovery ledger: '+((rr.recorded||0)+(rr.updated||0))+' negative-net carry-forward(s) recorded — recover them next month from the Recovery tab', 'info', 6000);
+    } catch(e) { /* recovery recording is best-effort; never blocks the save */ }
+    // v65 Issue 3: the save stamped a fresh attendance fingerprint, so this register is now in sync.
+    // Reflect that in the status banner without disturbing the (live) table the user is viewing.
+    if (typeof _v65SetRegisterStatus === 'function') {
+      _v65SetRegisterStatus(`<div style="margin-bottom:12px;padding:10px 12px;background:rgba(21,101,192,0.14);border:1px solid #1565C0;border-radius:6px;font-size:12px;color:#90caf9">💾 <strong>Saved to records</strong> just now — this is now the saved register for ${escHtml(meta.year+'-'+String(meta.month).padStart(2,'0'))}. Reopen the month to load it instantly next time.</div>`);
+    }
   } else {
     toast(res.error || 'Save failed', 'error');
   }
@@ -8536,6 +9013,7 @@ function printSlip(data) {
     <div><strong>Late Count:</strong> ${data.lateCount}</div>
     <div><strong>OT Days Earned:</strong> ${data.otDays||0}${data.otDays&&data.otMultiplier&&data.otMultiplier!=1?` @ ${data.otMultiplier}×`:''}</div>
     ${data.mobile?`<div><strong>Mobile:</strong> ${escHtml(data.mobile)}</div>`:''}
+    ${data.dayTypes?`<div style="grid-column:1 / -1;margin-top:2px;font-size:9.5pt;color:#555"><strong>Day-type breakdown:</strong> ${escHtml(_v65DayTypeText(data.dayTypes))}</div>`:''}
   </div>
   <table class="slip-table">
     <thead><tr><th>Earnings</th><th>Amount (₹)</th><th>Deductions</th><th>Amount (₹)</th></tr></thead>
@@ -9126,6 +9604,264 @@ function exportPayrollXLSX() {
 // ═══════════════════════════════════════════
 // FNF TAB
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// v67 Stage-2B — RECOVERY LEDGER TAB
+// ═══════════════════════════════════════════
+async function renderRecovery(){
+  const container=document.getElementById('admin-tab-content');
+  container.innerHTML='<div class="loading-spinner"></div>';
+  let res=null; try{ res=await API.call('getRecoveries',{}); }catch(e){ container.innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml('Could not load recoveries: '+(e&&e.message||e))+'</p></div>'; return; }
+  if(!res||!res.ok){ container.innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml((res&&res.error)||'Could not load recoveries')+'</p></div>'; return; }
+  const rows=(res.rows||[]).slice().sort((a,b)=>String(b.createdAt||'')<String(a.createdAt||'')?-1:1);
+  const balances=(res.balances||[]).slice().sort((a,b)=>(b.open||0)-(a.open||0));
+  const totalOpen=balances.reduce((s,b)=>s+(b.open||0),0);
+  const badge=(st)=>{const m={Open:'orange',Applied:'green',Cancelled:'gray'};return '<span class="badge badge-'+(m[st]||'gray')+'">'+escHtml(st)+'</span>';};
+  const now=new Date(); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let html=`
+  <div class="section-hdr">
+    <div class="section-title" data-help="When a month's net pay is negative (the employee was over-deducted / owes money), the amount carries forward here and is recovered from a later month's pay as a Penalty-type line. Idempotent — never recovered twice.">Recovery Ledger <span style="font-size:11px;color:var(--gray-light);font-weight:400">— negative-net carry-forward</span></div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+    <div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:12px 16px"><div style="font-size:1.4rem;font-weight:900;color:var(--red)">${fmtMoney(totalOpen)}</div><div style="font-size:11px;color:var(--gray-light)">Total open (owed)</div></div>
+    <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:8px;padding:12px 16px"><div style="font-size:1.2rem;font-weight:700">${balances.filter(b=>b.open>0).length}</div><div style="font-size:11px;color:var(--gray-light)">Employees with open recovery</div></div>
+  </div>
+  <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">Record / Apply</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px">
+      <span style="color:var(--gray-light)">Month</span>
+      <select id="rec-mo" class="filter-input">${months.map((m,i)=>'<option value="'+(i+1)+'"'+(i===now.getMonth()?' selected':'')+'>'+m+'</option>').join('')}</select>
+      <select id="rec-yr" class="filter-input">${Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>'<option value="'+y+'"'+(y===now.getFullYear()?' selected':'')+'>'+y+'</option>').join('')}</select>
+      <button class="btn btn-dark btn-sm" onclick="recordRecoveriesForMonth()" data-help="Scan the SAVED register for this month and record a carry-forward for every employee whose net is negative. Idempotent.">📥 Record from saved register</button>
+      <button class="btn btn-gold btn-sm" onclick="applyRecoveriesForMonth()" data-help="Apply open recoveries from PRIOR months into this month's pay (as a Penalty line). Idempotent. Recompute the register afterwards to see the netted figure.">▶ Apply prior recoveries to this month</button>
+    </div>
+  </div>`;
+  if(!rows.length){ html+=`<div class="empty-state"><div class="empty-icon">🔁</div><p>No recoveries yet. When a saved month has a negative net, use <strong>Record from saved register</strong> to carry it forward.</p></div>`; }
+  else{
+    html+=`<div class="table-wrap"><table class="az-table"><thead><tr><th>Logged</th><th>Employee</th><th>Owed month</th><th>Amount</th><th>Status</th><th>Applied in</th><th>Note</th><th>Action</th></tr></thead><tbody>`;
+    rows.slice(0,300).forEach(r=>{ html+=`<tr>
+      <td style="font-size:11px">${escHtml(String(r.createdAt||'').slice(0,10))}</td>
+      <td>${escHtml(r.empName||r.empId)}<br><span style="font-size:10px;color:var(--gray)">${escHtml(r.empId)}</span></td>
+      <td>${escHtml(r.owedMonth||'')}</td>
+      <td style="font-weight:700;color:var(--red)">${fmtMoney(r.amount)}</td>
+      <td>${badge(r.status||'')}</td>
+      <td style="font-size:11px">${escHtml(r.appliedMonth||'—')}</td>
+      <td style="font-size:11px">${escHtml(r.note||'')}</td>
+      <td>${String(r.status)==='Open'?('<button class="btn btn-dark btn-sm" onclick="cancelRecoveryRow(\''+escHtml(r.id)+'\')">Cancel</button>'):''}</td>
+    </tr>`; });
+    html+=`</tbody></table>${rows.length>300?'<div style="font-size:11px;color:var(--gray-light);margin-top:6px">Showing latest 300 of '+rows.length+'.</div>':''}</div>`;
+  }
+  container.innerHTML=html;
+}
+async function recordRecoveriesForMonth(){
+  const year=parseInt(document.getElementById('rec-yr').value), month=parseInt(document.getElementById('rec-mo').value);
+  const res=await API.call('recordRecoveries',{year,month,reviewedBy:State.adminUser});
+  if(res&&res.ok){ toast('✓ Recorded '+res.recorded+' new, '+res.updated+' updated, '+res.cleared+' cleared','success'); renderRecovery(); } else toast((res&&res.error)||'Error','error');
+}
+async function applyRecoveriesForMonth(){
+  const year=parseInt(document.getElementById('rec-yr').value), month=parseInt(document.getElementById('rec-mo').value);
+  const dry=await API.call('applyRecoveries',{year,month,mode:'dryRun'});
+  if(!dry||!dry.ok){ toast((dry&&dry.error)||'Error','error'); return; }
+  if(!dry.count){ toast('No prior open recoveries to apply to '+dry.targetMonth,'info'); return; }
+  if(!await confirm2('Apply '+dry.count+' prior recovery line(s) totalling '+fmtMoney(dry.totalRecovered)+' to '+dry.targetMonth+'? This adds a Penalty-type recovery line to that month for each affected employee. Recompute the register afterwards to see the netted figure.')) return;
+  const res=await API.call('applyRecoveries',{year,month,mode:'apply',reviewedBy:State.adminUser});
+  if(res&&res.ok){ toast('✓ Applied '+res.count+' recovery line(s) = '+fmtMoney(res.totalRecovered),'success'); renderRecovery(); } else toast((res&&res.error)||'Error','error');
+}
+async function cancelRecoveryRow(id){
+  if(!await confirm2('Cancel this open recovery? It will no longer be applied.')) return;
+  const res=await API.call('cancelRecovery',{id,reviewedBy:State.adminUser});
+  if(res&&res.ok){ toast('✓ Cancelled','success'); renderRecovery(); } else toast((res&&res.error)||'Error','error');
+}
+// v67 Stage-2B: from the payroll register banner — apply prior recoveries to this month, then recompute.
+async function applyRecoveriesFromRegister(year,month){
+  const dry=await API.call('applyRecoveries',{year,month,mode:'dryRun'});
+  if(!dry||!dry.ok||!dry.count){ toast('No prior recoveries to apply','info'); return; }
+  if(!await confirm2('Apply '+dry.count+' prior recovery line(s) totalling '+fmtMoney(dry.totalRecovered)+' to '+dry.targetMonth+', then recompute the register?')) return;
+  const res=await API.call('applyRecoveries',{year,month,mode:'apply',reviewedBy:State.adminUser});
+  if(res&&res.ok){ toast('✓ Applied '+res.count+' recovery line(s) = '+fmtMoney(res.totalRecovered)+' — recomputing','success'); generateAllSalaries(); }
+  else toast((res&&res.error)||'Error','error');
+}
+
+// ═══════════════════════════════════════════
+// v68 Stage-2C — UNIVERSAL EDIT/CANCEL/REVERT
+// ═══════════════════════════════════════════
+// Reusable revert: type ∈ transaction|bonus|pettycash|ot|points. ref = id (or sheet rowIndex for OT).
+// Prompts for a reason, calls the server revertEntity engine, then runs refreshFn. The cascade is
+// automatic server-side (Voided rows are excluded by the existing payroll/leaderboard/FnF derivations;
+// Points are zeroed). For an already-SAVED month, recompute it to propagate the revert.
+function revertEntityPrompt(type, ref, label, refreshFn){
+  const html=`<div style="font-size:13px">
+    <p>Revert this ${escHtml(label||type)}? It will be <strong>voided</strong> and excluded from future / recomputed payroll. For a month already <em>saved</em> to records, recompute it afterwards to propagate.</p>
+    <div class="form-group"><label class="form-label">Reason</label><input id="rev-reason" class="form-input" placeholder="Why are you reverting this?" autocomplete="off"></div>
+  </div>`;
+  showModal('↩ Revert '+(label||type), html, [
+    {label:'Revert', cls:'btn-dark', cb:async()=>{
+      const reason=document.getElementById('rev-reason')?.value||'';
+      const payload={type, reason, reviewedBy:State.adminUser};
+      if(type==='ot'||type==='otclaim'||type==='otclaims') payload.rowIndex=ref; else payload.id=ref;
+      const res=await API.call('revertEntity', payload);
+      if(res&&res.ok){ closeModal(); toast(res.idempotent?('Already '+String(res.status||'reverted').toLowerCase()):('✓ Reverted ('+(res.status||'Voided')+')'),'success'); if(typeof refreshFn==='function') refreshFn(); }
+      else toast((res&&res.error)||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-gold', cb:closeModal}
+  ]);
+}
+
+// ═══════════════════════════════════════════
+// v66 Stage-2A — COMP-OFF TAB
+// ═══════════════════════════════════════════
+async function renderCompOff(){
+  const container=document.getElementById('admin-tab-content');
+  container.innerHTML='<div class="loading-spinner"></div>';
+  let res=null; try{ res=await API.call('getCompOff',{}); }catch(e){ container.innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml('Could not load comp-off: '+(e&&e.message||e))+'</p></div>'; return; }
+  if(!res||!res.ok){ container.innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><p>'+escHtml((res&&res.error)||'Could not load comp-off')+'</p></div>'; return; }
+  const balances=(res.balances||[]).slice().sort((a,b)=>(b.balance||0)-(a.balance||0));
+  const rows=(res.rows||[]).slice().sort((a,b)=>String(b.createdAt||'')<String(a.createdAt||'')?-1:1);
+  const pending=rows.filter(r=>r.txnType==='Earned'&&r.status==='Pending');
+  const expiryDays=res.expiryDays||90;
+  const badge=(st)=>{const m={Approved:'green',Pending:'orange',Rejected:'red',Cancelled:'gray'};return '<span class="badge badge-'+(m[st]||'gray')+'">'+escHtml(st)+'</span>';};
+  let html=`
+  <div class="section-hdr">
+    <div class="section-title" data-help="Compensatory off: time earned for working extra days, spent later as a paid day off or encashed for money. Balance = approved earned − consumed − encashed − expired.">Comp-Off <span style="font-size:11px;color:var(--gray-light);font-weight:400">— compensatory-off ledger</span></div>
+    <div class="section-actions">
+      <button class="btn btn-gold btn-sm" onclick="showCompOffGrantModal()" data-help="Manually grant comp-off days to an employee (starts Pending unless you auto-approve).">＋ Grant</button>
+      <button class="btn btn-dark btn-sm" onclick="showCompOffScanModal()" data-help="Auto-create comp-off credits from extra-work (EW) attendance days in a month. Idempotent.">🔎 Scan EW days</button>
+      <button class="btn btn-dark btn-sm" onclick="runCompOffExpiry()" data-help="Run the FIFO expiry batch: write off earned credits older than ${expiryDays} days that are still unused. Safe to run repeatedly.">⏳ Run expiry</button>
+    </div>
+  </div>`;
+  if(pending.length){
+    html+=`<div style="background:rgba(184,150,12,0.12);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">⏳ ${pending.length} earned credit${pending.length!==1?'s':''} pending approval</div>
+      <div class="table-wrap"><table class="az-table"><thead><tr><th>Employee</th><th>Days</th><th>Ref date</th><th>Reason</th><th>Action</th></tr></thead><tbody>`;
+    pending.forEach(r=>{ html+=`<tr><td>${escHtml(r.empName||r.empId)}</td><td>${escHtml(String(r.days))}</td><td>${escHtml(String(r.refDate||'').slice(0,10))}</td><td style="font-size:11px">${escHtml(r.reason||'')}</td>
+      <td style="white-space:nowrap"><button class="btn btn-gold btn-sm" onclick="approveCompOffRow('${escHtml(r.id)}','approve')">✓</button> <button class="btn btn-dark btn-sm" onclick="approveCompOffRow('${escHtml(r.id)}','reject')">✗</button></td></tr>`; });
+    html+=`</tbody></table></div></div>`;
+  }
+  html+=`<div class="section-hdr" style="margin-top:8px"><div class="section-title">Balances (${balances.length})</div></div>`;
+  if(!balances.length){ html+=`<div class="empty-state"><div class="empty-icon">🔄</div><p>No comp-off activity yet. Use <strong>Grant</strong> or <strong>Scan EW days</strong> to create credits.</p></div>`; }
+  else{
+    html+=`<div class="table-wrap"><table class="az-table"><thead><tr><th>Employee</th><th>Dept/Level</th><th>Balance</th><th>Earned</th><th>Consumed</th><th>Encashed</th><th>Expired</th><th>Actions</th></tr></thead><tbody>`;
+    balances.forEach(b=>{ const s=b.summary||{}; html+=`<tr>
+      <td><strong>${escHtml(b.empName||b.empId)}</strong><br><span style="font-size:10px;color:var(--gray)">${escHtml(b.empId)}</span></td>
+      <td>${escHtml(b.dept||'')} ${b.level?'<span class="badge badge-blue">'+escHtml(b.level)+'</span>':''}</td>
+      <td style="font-weight:900;color:${b.balance>0?'var(--gold)':'var(--gray-light)'}">${escHtml(String(b.balance))}</td>
+      <td>${escHtml(String(s.earned||0))}${s.pendingEarn?' <span style="font-size:9px;color:var(--orange)">(+'+escHtml(String(s.pendingEarn))+' pend)</span>':''}</td>
+      <td>${escHtml(String(s.consumed||0))}</td><td>${escHtml(String(s.encashed||0))}</td><td>${escHtml(String(s.expired||0))}</td>
+      <td style="white-space:nowrap"><button class="btn btn-dark btn-sm" ${b.balance>0?'':'disabled'} onclick="showCompOffConsumeModal('${escHtml(b.empId)}')">Consume</button>
+        <button class="btn btn-dark btn-sm" ${b.balance>0?'':'disabled'} onclick="showCompOffEncashModal('${escHtml(b.empId)}')">Encash</button></td>
+    </tr>`; });
+    html+=`</tbody></table></div>`;
+  }
+  html+=`<div class="section-hdr" style="margin-top:18px"><div class="section-title">Ledger (${rows.length})</div></div>`;
+  if(rows.length){
+    html+=`<div class="table-wrap"><table class="az-table"><thead><tr><th>Logged</th><th>Employee</th><th>Type</th><th>Days</th><th>Status</th><th>Ref → Expiry</th><th>Reason</th></tr></thead><tbody>`;
+    rows.slice(0,300).forEach(r=>{ html+=`<tr>
+      <td style="font-size:11px">${escHtml(String(r.createdAt||'').slice(0,10))}</td>
+      <td>${escHtml(r.empName||r.empId)}</td>
+      <td>${escHtml(r.txnType||'')}</td>
+      <td>${escHtml(String(r.days||''))}</td>
+      <td>${badge(r.status||'')}</td>
+      <td style="font-size:10px;color:var(--gray-light)">${escHtml(String(r.refDate||'').slice(0,10))}${r.expiryDate?' → '+escHtml(String(r.expiryDate).slice(0,10)):''}</td>
+      <td style="font-size:11px">${escHtml(r.reason||'')}</td>
+    </tr>`; });
+    html+=`</tbody></table>${rows.length>300?'<div style="font-size:11px;color:var(--gray-light);margin-top:6px">Showing latest 300 of '+rows.length+'.</div>':''}</div>`;
+  }
+  container.innerHTML=html;
+}
+
+function _compOffEmpOptions(selId){
+  return '<option value="">-- Select employee --</option>'+(State.employees||[]).filter(e=>e.status!=='Deleted')
+    .map(e=>'<option value="'+escHtml(e.id)+'"'+(selId&&e.id===selId?' selected':'')+'>'+escHtml(e.name)+' ('+escHtml(e.id)+')</option>').join('');
+}
+function showCompOffGrantModal(){
+  const html=`<div style="font-size:13px">
+    <div class="form-group"><label class="form-label">Employee</label><select id="co-g-emp" class="form-input">${_compOffEmpOptions()}</select></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Days</label><input id="co-g-days" class="form-input" type="number" min="0.5" step="0.5" value="1"></div>
+      <div class="form-group"><label class="form-label">Reference date</label><input id="co-g-date" class="form-input" type="date" value="${todayStr()}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Reason</label><input id="co-g-reason" class="form-input" placeholder="e.g. worked on a holiday"></div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="co-g-auto"> Auto-approve (skip pending)</label>
+  </div>`;
+  showModal('＋ Grant Comp-Off', html, [
+    {label:'Grant', cls:'btn-gold', cb:async()=>{
+      const empId=document.getElementById('co-g-emp').value;
+      const days=parseFloat(document.getElementById('co-g-days').value)||0;
+      if(!empId||days<=0){ toast('Pick an employee and a positive day count','warning'); return; }
+      const res=await API.call('addCompOffEarn',{empId,days,refDate:document.getElementById('co-g-date').value,reason:document.getElementById('co-g-reason').value,autoApprove:document.getElementById('co-g-auto').checked,createdBy:State.adminUser});
+      if(res&&res.ok){ closeModal(); toast('✓ Comp-off granted ('+res.status+')','success'); renderCompOff(); } else toast((res&&res.error)||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal}
+  ]);
+}
+function showCompOffScanModal(){
+  const now=new Date(); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const html=`<div style="font-size:13px">
+    <p style="color:var(--gray-light);font-size:12px">Creates a comp-off credit for each <strong>EW (extra-work)</strong> attendance day in the chosen month. Idempotent — re-running skips days already credited.</p>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Month</label><select id="co-s-mo" class="form-input">${months.map((m,i)=>'<option value="'+(i+1)+'"'+(i===now.getMonth()?' selected':'')+'>'+m+'</option>').join('')}</select></div>
+      <div class="form-group"><label class="form-label">Year</label><select id="co-s-yr" class="form-input">${Array.from({length:5},(_,i)=>now.getFullYear()-2+i).map(y=>'<option value="'+y+'"'+(y===now.getFullYear()?' selected':'')+'>'+y+'</option>').join('')}</select></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="co-s-auto"> Auto-approve created credits</label>
+  </div>`;
+  showModal('🔎 Scan EW days for Comp-Off', html, [
+    {label:'Scan', cls:'btn-gold', cb:async()=>{
+      const res=await API.call('scanCompOffEarn',{year:parseInt(document.getElementById('co-s-yr').value),month:parseInt(document.getElementById('co-s-mo').value),autoApprove:document.getElementById('co-s-auto').checked,createdBy:State.adminUser});
+      if(res&&res.ok){ closeModal(); toast('✓ Created '+res.created+' credit(s), skipped '+res.skippedExisting+' existing','success'); renderCompOff(); } else toast((res&&res.error)||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal}
+  ]);
+}
+function showCompOffConsumeModal(empId){
+  const html=`<div style="font-size:13px">
+    <div class="form-group"><label class="form-label">Employee</label><select id="co-c-emp" class="form-input">${_compOffEmpOptions(empId)}</select></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Day off (date)</label><input id="co-c-date" class="form-input" type="date" value="${todayStr()}"></div>
+      <div class="form-group"><label class="form-label">Days</label><input id="co-c-days" class="form-input" type="number" min="0.5" step="0.5" value="1"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Reason</label><input id="co-c-reason" class="form-input" placeholder="optional"></div>
+    <p style="color:var(--gray-light);font-size:11px">Creates an Approved <strong>COL</strong> (comp-off leave) for that date — payroll treats it as a paid day. Blocks if a leave already exists on that date.</p>
+  </div>`;
+  showModal('Consume Comp-Off', html, [
+    {label:'Consume', cls:'btn-gold', cb:async()=>{
+      const empIdV=document.getElementById('co-c-emp').value;
+      if(!empIdV){ toast('Pick an employee','warning'); return; }
+      const res=await API.call('consumeCompOff',{empId:empIdV,date:document.getElementById('co-c-date').value,days:parseFloat(document.getElementById('co-c-days').value)||1,reason:document.getElementById('co-c-reason').value,reviewedBy:State.adminUser});
+      if(res&&res.ok){ closeModal(); toast('✓ Consumed — balance now '+res.balance,'success'); renderCompOff(); } else toast((res&&res.error)||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal}
+  ]);
+}
+function showCompOffEncashModal(empId){
+  const html=`<div style="font-size:13px">
+    <div class="form-group"><label class="form-label">Employee</label><select id="co-e-emp" class="form-input">${_compOffEmpOptions(empId)}</select></div>
+    <div class="form-group"><label class="form-label">Days to encash</label><input id="co-e-days" class="form-input" type="number" min="0.5" step="0.5" value="1"></div>
+    <div class="form-group"><label class="form-label">Reason</label><input id="co-e-reason" class="form-input" placeholder="optional"></div>
+    <p style="color:var(--gray-light);font-size:11px">Creates a <strong>Leave Encashment</strong> transaction (days × daily rate) credited to the next payroll. For exit settlements, use the comp-off balance shown on the FnF screen instead.</p>
+  </div>`;
+  showModal('Encash Comp-Off', html, [
+    {label:'Encash', cls:'btn-gold', cb:async()=>{
+      const empIdV=document.getElementById('co-e-emp').value;
+      if(!empIdV){ toast('Pick an employee','warning'); return; }
+      const res=await API.call('encashCompOff',{empId:empIdV,days:parseFloat(document.getElementById('co-e-days').value)||0,reason:document.getElementById('co-e-reason').value,reviewedBy:State.adminUser});
+      if(res&&res.ok){ closeModal(); toast('✓ Encashed '+res.days+' day(s) = '+fmtMoney(res.amount),'success'); renderCompOff(); } else toast((res&&res.error)||'Error','error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb:closeModal}
+  ]);
+}
+async function approveCompOffRow(id, decision){
+  const res=await API.call('approveCompOff',{id,decision,reviewedBy:State.adminUser});
+  if(res&&res.ok){ toast('✓ '+res.status,'success'); renderCompOff(); } else toast((res&&res.error)||'Error','error');
+}
+async function runCompOffExpiry(){
+  const dry=await API.call('expireCompOff',{mode:'dryRun'});
+  if(!dry||!dry.ok){ toast((dry&&dry.error)||'Error','error'); return; }
+  if(!dry.totalDays){ toast('Nothing to expire — no unused credits older than '+dry.expiryDays+' days','info'); return; }
+  const ok=await confirm2('Expire '+dry.totalDays+' unused comp-off day(s) across '+dry.employees+' employee(s) (earned before '+dry.cutoff+')? This writes them off.');
+  if(!ok) return;
+  const res=await API.call('expireCompOff',{mode:'apply',reviewedBy:State.adminUser});
+  if(res&&res.ok){ toast('✓ Expired '+res.totalDays+' day(s)','success'); renderCompOff(); } else toast((res&&res.error)||'Error','error');
+}
+
 async function renderFnF() {
   const empsRes=await API.call('getEmployees',{status:'Active'});
   const emps=(empsRes.employees||[]).filter(e=>e.status==='Active'||e.status==='Notice');
@@ -9156,10 +9892,32 @@ async function renderFnF() {
     <button class="btn btn-gold" onclick="calculateFnF()">▶ Calculate Complete F&F</button>
   </div>
   <div id="fnf-result" style="margin-top:20px"></div>
-  <div id="fnf-records-section" style="margin-top:28px"></div>`;
+  <div id="fnf-records-section" style="margin-top:28px"></div>
+  <div id="fnf-restore-section" style="margin-top:28px"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
   if(emps.length) loadFnFEmployee(emps[0].id);
   loadFnFRecords();
+  loadFnFRestore(); // v61 A1: restore archived/exited employees (voids draft FnF)
+}
+
+// v61 A1: list Left/Archived/Exited employees with a Restore button (wires v60 handleRestoreFromArchive).
+async function loadFnFRestore() {
+  const sec = document.getElementById('fnf-restore-section');
+  if (!sec) return;
+  try {
+    const res = await API.call('getEmployees', {}); // no status filter → all
+    const left = (res.employees||[]).filter(e => ['Left','Archived','Exited'].includes(e.status));
+    if (!left.length) { sec.innerHTML = ''; return; }
+    sec.innerHTML = `<div class="settings-section-title" style="margin-bottom:6px">↩ Restore archived / exited employees</div>
+      <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">Use only if someone was archived in error — this sets them back to Active and VOIDS their draft Full &amp; Final (no orphan record).</div>
+      <div class="table-wrap"><table class="az-table"><thead><tr><th>Employee</th><th>Status</th><th>LWD</th><th>Exit Type</th><th>Action</th></tr></thead><tbody>
+      ${left.map(e => `<tr>
+        <td><strong>${escHtml(e.name||e.id)}</strong> <span style="font-size:10px;color:var(--gray)">${escHtml(e.id)}</span></td>
+        <td>${escHtml(e.status)}</td><td>${escHtml(e.lwd||'—')}</td><td>${escHtml(e.exitType||'—')}</td>
+        <td><button class="btn btn-dark btn-sm" onclick="exitRestore('${escHtml(e.id)}')">Restore to Active</button></td>
+      </tr>`).join('')}
+      </tbody></table></div>`;
+  } catch (e) { sec.innerHTML = ''; }
 }
 
 async function loadFnFRecords() {
@@ -9221,6 +9979,37 @@ async function loadFnFEmployee(empId) {
     DOJ: ${fmtDate(doj)} | Early exit rate: <strong>${fmtMoney(emp.minDayRate||300)}/day</strong>
   </div>`;
   if(document.getElementById('fnf-nd')) document.getElementById('fnf-nd').value=emp.noticeperiodDays||90;
+  // v66 Stage-2A: surface the employee's comp-off balance and offer to fold it into this settlement
+  // via the existing Additional Dues line (handleCalcFnF is NOT modified). Uses encashCompOff with
+  // via:'fnf' so no separate payroll credit is created (avoids double-pay).
+  try {
+    const co = await API.call('getCompOff', {empId});
+    if (co && co.ok && co.balance > 0) {
+      const panel = document.createElement('div');
+      panel.id = 'fnf-compoff-panel';
+      panel.style = 'background:rgba(184,150,12,0.10);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px';
+      panel.innerHTML = '🔄 <strong>Comp-off balance: '+co.balance+' day(s)</strong> unused. '
+        + '<button class="btn btn-gold btn-sm" style="margin-left:8px" onclick="addCompOffToFnFDues(\''+escHtml(empId)+'\','+co.balance+')" data-help="Encash the comp-off balance into this Full & Final by adding its rupee value to Additional Dues, and mark it Encashed in the ledger (no separate payroll credit).">Include '+co.balance+' day(s) in settlement →</button>'
+        + '<div style="font-size:10px;color:var(--gray-light);margin-top:4px">Adds days × daily-rate to Additional Dues and draws the balance down to 0.</div>';
+      const existing = document.getElementById('fnf-compoff-panel'); if (existing) existing.remove();
+      infoEl.appendChild(panel);
+    }
+  } catch(e) { /* comp-off is optional context; never block FnF load */ }
+}
+
+// v66 Stage-2A: fold the comp-off balance into the FnF's Additional Dues (ledger drawn down, no payroll credit).
+async function addCompOffToFnFDues(empId, balanceDays){
+  if(!empId) return;
+  const days=parseFloat(balanceDays)||0;
+  if(days<=0){ toast('No comp-off balance to include','info'); return; }
+  if(!await confirm2('Encash '+days+' comp-off day(s) into this Full & Final? This draws the comp-off balance to 0 and adds the amount to Additional Dues.')) return;
+  const res=await API.call('encashCompOff',{empId,days,via:'fnf',reason:'Encashed into Full & Final settlement',reviewedBy:State.adminUser});
+  if(!res||!res.ok){ toast((res&&res.error)||'Error','error'); return; }
+  const duesEl=document.getElementById('fnf-dues');
+  if(duesEl){ duesEl.value=Math.round(((parseFloat(duesEl.value)||0)+res.amount)*100)/100; }
+  const panel=document.getElementById('fnf-compoff-panel');
+  if(panel){ panel.innerHTML='✅ <strong>'+res.days+' comp-off day(s) = '+fmtMoney(res.amount)+'</strong> added to Additional Dues (balance now '+res.balance+'). Click <em>Calculate F&amp;F</em> to apply.'; }
+  toast('✓ '+res.days+' day(s) ('+fmtMoney(res.amount)+') added to Additional Dues','success');
 }
 
 async function calculateFnF() {
@@ -9764,6 +10553,7 @@ async function renderPettyCash() {
           <button class="btn btn-dark btn-sm" title="Reject" onclick="pcReject('${escHtml(e.id)}')">✗</button>
         ` : ''}
         <button class="btn btn-dark btn-sm" title="Edit" onclick="openPCEditModal('${escHtml(e.id)}')">✏</button>
+        ${e.status!=='Voided'?`<button class="btn btn-dark btn-sm" title="Revert (void) — soft, audit-logged, reversible" onclick="revertEntityPrompt('pettycash','${escHtml(e.id)}','petty-cash entry',renderPettyCash)">↩</button>`:''}
         <button class="btn btn-dark btn-sm" title="Delete" style="color:#e74c3c" onclick="pcDelete('${escHtml(e.id)}')">🗑</button>
       </td>` : '';
       html += `<tr>
@@ -10384,6 +11174,34 @@ async function renderSettings() {
         <input id="cfg-payPeriodStart" class="form-input" type="number" min="1" max="28" value="${escHtml(cfg['payPeriodStart']||'7')}" placeholder="7">
       </div>
       <div class="form-group">
+        <label class="form-label">Go-Live Date <span class="info-tooltip" title="When attendance-based pay starts. BEFORE this date a working day with no record stays PAID (protects pre-launch test data). ON/AFTER this date a working day with no present record and no approved leave — or a plain Absent — is unpaid (LWP). Weekly-offs and holidays are never docked. Leave BLANK to keep the current behaviour (missing = paid).">ℹ</span></label>
+        <input id="cfg-goLiveDate" class="form-input" type="date" value="${escHtml(cfg['goLiveDate']||'')}">
+        <div style="font-size:11px;color:var(--gray-light);margin-top:3px">Blank = pay unchanged (v56 behaviour). Set this to the date the kiosk goes live so absences start docking pay.</div>
+      </div>
+      <!-- v58: Uninformed-Leave penalty + Sandwich Rule -->
+      <div class="form-group">
+        <label class="form-label">UL penalty — extra days per uninformed day <span class="info-tooltip" title="An Uninformed Leave (UL) day = 1 unpaid day + this many penalty days. Default 1 → a UL day costs 2× a day's pay in total.">ℹ</span></label>
+        <input id="cfg-ulPenaltyDays" class="form-input" type="number" min="0" step="0.5" value="${escHtml(cfg['ulPenaltyDays']||'1')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">UL penalty cap — consecutive days <span class="info-tooltip" title="Within one run of consecutive UL days, only the first N carry the penalty; day N+1 onward is unpaid with NO penalty. Weekly-offs/holidays bridge a run; a Present/paid-leave day breaks it. Stops a long absence from spiralling.">ℹ</span></label>
+        <input id="cfg-ulPenaltyCap" class="form-input" type="number" min="1" value="${escHtml(cfg['ulPenaltyCap']||'3')}">
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-ulPenaltyAppliesToAutoDerived" ${cfg['ulPenaltyAppliesToAutoDerived']!=='false'?'checked':''}> Penalise auto-derived UL (uncovered working days after Go-Live) <span class="info-tooltip" title="ON: an uncovered working day on/after the Go-Live date is treated as Uninformed Leave and carries the penalty (capped). OFF: it is unpaid but never penalised.">ℹ</span></label>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-sandwichEnabled" ${cfg['sandwichEnabled']!=='false'?'checked':''}> Sandwich rule ON <span class="info-tooltip" title="A weekly-off/holiday bracketed by leave on BOTH sides (≥1 sandwiching leave) becomes 1 unpaid day, no penalty, no balance used. Both sides exempt-paid (PL/ML/PTL/BL/COL/SOL) = not sandwiched. No holiday exemption.">ℹ</span></label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sandwiching leave codes (trigger)</label>
+        <input id="cfg-sandwichSandwichingCodes" class="form-input" type="text" value="${escHtml(cfg['sandwichSandwichingCodes']||'UL,IL,IHL,UHL,CL,SL,EL')}" placeholder="UL,IL,IHL,UHL,CL,SL,EL">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Exempt paid-leave codes (never trigger sandwich)</label>
+        <input id="cfg-sandwichExemptCodes" class="form-input" type="text" value="${escHtml(cfg['sandwichExemptCodes']||'PL,ML,PTL,BL,COL,SOL')}" placeholder="PL,ML,PTL,BL,COL,SOL">
+      </div>
+      <div class="form-group">
         <label class="form-label">Duration Format</label>
         <select id="cfg-durationFormat" class="form-input">
           <option value="h:mm" ${(cfg['durationFormat']||'h:mm')==='h:mm'?'selected':''}>h:mm (e.g. 8:30)</option>
@@ -10729,6 +11547,53 @@ async function renderSettings() {
     </div>
   </div>
 
+  <!-- v62: Employee Dashboard Access Control -->
+  <div class="settings-section">
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-emp-dashboard')">📱 Employee Dashboard <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-emp-dashboard" class="settings-card-body">
+    <p style="font-size:12px;color:var(--gray-light);margin-bottom:12px">
+      Control the employee self-service dashboard on the kiosk. The <strong>master switch</strong> turns the whole dashboard on or off. When it is on, choose exactly which sections employees can see. Clock-in / clock-out is always available and is <strong>not</strong> affected by these settings. Salary visibility is also enforced on the server, not just hidden on screen. <em>Default: everything on — unchanged behaviour until you opt in.</em>
+    </p>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--gold)">
+        <input type="checkbox" id="cfg-empDashboardEnabled" ${cfg['empDashboardEnabled']!=='false'?'checked':''} onchange="_toggleEmpDashSections()" style="accent-color:var(--gold);width:18px;height:18px">
+        Enable employee self-service dashboard (master switch)
+      </label>
+      <div style="font-size:11px;color:var(--gray-light);margin-top:4px;margin-left:26px">OFF = employees can still clock in/out, but cannot open any self-service section (payslips, leaves, points, etc.).</div>
+    </div>
+    <div id="emp-dash-sections" style="margin-top:8px;padding:12px;background:var(--dark2);border-radius:8px">
+      <div style="font-size:12px;color:var(--gray-light);margin-bottom:10px">Sections employees can see (when the dashboard is on):</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;padding:6px 0">
+          <input type="checkbox" id="cfg-empDashSalary" ${cfg['empDashSalary']!=='false'?'checked':''} style="accent-color:var(--gold);margin-top:2px">
+          <span><strong>💰 Salary / Payslips</strong><br><span style="font-size:11px;color:var(--gray-light)">Net salary estimate, payslips, earnings, compensation card &amp; OT calculator.</span></span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;padding:6px 0">
+          <input type="checkbox" id="cfg-empDashLeaves" ${cfg['empDashLeaves']!=='false'?'checked':''} style="accent-color:var(--gold);margin-top:2px">
+          <span><strong>🏖 Leaves / Balance</strong><br><span style="font-size:11px;color:var(--gray-light)">Leave balance, request leave, leave encashment, leave &amp; holiday info.</span></span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;padding:6px 0">
+          <input type="checkbox" id="cfg-empDashAttendance" ${cfg['empDashAttendance']!=='false'?'checked':''} style="accent-color:var(--gold);margin-top:2px">
+          <span><strong>📅 Attendance</strong><br><span style="font-size:11px;color:var(--gray-light)">Personal attendance history (last 30 days).</span></span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;padding:6px 0">
+          <input type="checkbox" id="cfg-empDashBonus" ${cfg['empDashBonus']!=='false'?'checked':''} style="accent-color:var(--gold);margin-top:2px">
+          <span><strong>💎 Bonus</strong><br><span style="font-size:11px;color:var(--gray-light)">Loyalty bonus card and pending bonuses.</span></span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;padding:6px 0">
+          <input type="checkbox" id="cfg-empDashPromotion" ${cfg['empDashPromotion']!=='false'?'checked':''} style="accent-color:var(--gold);margin-top:2px">
+          <span><strong>🎯 Promotion</strong><br><span style="font-size:11px;color:var(--gray-light)">Upcoming-promotion card.</span></span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;padding:6px 0">
+          <input type="checkbox" id="cfg-empDashPoints" ${cfg['empDashPoints']!=='false'?'checked':''} style="accent-color:var(--gold);margin-top:2px">
+          <span><strong>⭐ Points / Loyalty</strong><br><span style="font-size:11px;color:var(--gray-light)">Points competition card and milestone progress (L8–L10).</span></span>
+        </label>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveEmpDashboardSettings()">💾 Save Dashboard Settings</button>
+    </div>
+  </div>
+
   <!-- Points & Bonuses -->
   <div class="settings-section">
     <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-points')">⭐ Points & Bonus Settings <span class="settings-card-chevron">▼</span></div>
@@ -11043,7 +11908,7 @@ async function renderSettings() {
       <div class="form-group"><label class="form-label">API URL (AiSensy / Custom) <span class="info-tooltip" title="Full webhook URL. For AiSensy, copy from their campaign settings. For Custom REST, your endpoint that accepts POST with phone+message.">ℹ</span></label><input id="cfg-whatsappApiUrl" class="form-input" value="${escHtml(cfg['whatsappApiUrl']||'')}"></div>
       <div class="form-group"><label class="form-label">Twilio Account SID <span class="info-tooltip" title="Only for Twilio. Found in your Twilio console dashboard.">ℹ</span></label><input id="cfg-twilioAccountSid" class="form-input" value="${escHtml(cfg['twilioAccountSid']||'')}"></div>
       <div class="form-group"><label class="form-label">Twilio Auth Token <span class="info-tooltip" title="Only for Twilio. Found in your Twilio console dashboard.">ℹ</span></label><input id="cfg-twilioAuthToken" class="form-input" value="${escHtml(cfg['twilioAuthToken']||'')}"></div>
-      <div class="form-group"><label class="form-label">Manager Mobile for OT Alerts (10 digits) <span class="info-tooltip" title="10-digit number that receives WhatsApp alerts every time any employee submits an OT or Extra Day claim for approval.">ℹ</span></label><input id="cfg-otManagerNotifyMobile" class="form-input" value="${escHtml(cfg['otManagerNotifyMobile']||'')}"></div>
+      <!-- v64 item 7: removed 'Manager Mobile for OT Alerts' (cfg-otManagerNotifyMobile) — only the retired OT Pre-Approval flow used it; OT Claims notifies the employee's own mobile. -->
     </div>
     <div class="settings-grid" style="margin-top:10px">
       <div class="settings-section-title" style="grid-column:span 2;font-size:12px;color:var(--gray-light);margin:0 0 8px">Notification Triggers</div>
@@ -11071,22 +11936,8 @@ async function renderSettings() {
     </div>
   </div>
 
-  <!-- OT Pre-Approval Settings -->
-  <div class="settings-section">
-    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-ot-preapproval')">🕐 Overtime Pre-Approval <span class="settings-card-chevron">▼</span></div>
-      <div id="settings-body-ot-preapproval" class="settings-card-body">
-    <div style="font-size:12px;color:var(--gray-light);margin-bottom:14px;line-height:1.7">
-      When enabled, supervisors or managers must submit an OT request <strong>before</strong> overtime is worked.
-      Approved OT requests are visible in the Approvals inbox. OT is only registered on clock-out if a pre-approved request exists.
-    </div>
-    <div class="settings-grid">
-      <div class="form-group">
-        <label class="form-label"><input type="checkbox" id="cfg-otPreApprovalRequired" ${cfg['otPreApprovalRequired']==='true'?'checked':''}> Require OT pre-approval before OT is counted</label>
-      </div>
-    </div>
-    <button class="btn btn-gold" style="margin-top:14px" onclick="saveOTSettings()">💾 Save OT Settings</button>
-    </div>
-  </div>
+  <!-- v64 item 7: removed the Overtime Pre-Approval settings card — that flow is retired.
+       Overtime is handled end-to-end by the OT Claims tab (submit → approve → payout). -->
 
   <!-- Backup -->
   <div class="settings-section">
@@ -11611,7 +12462,7 @@ async function renderSettings() {
       <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">💡 Salary Calculation Basis (NEW in v40)</div>
       <div class="settings-grid">
         <div class="form-group">
-          <label class="form-label">Per-Day Salary Denominator
+          <label class="form-label">Per-Day Salary Denominator <span style="color:var(--gray-light);font-weight:400;font-size:11px">(Advanced — rarely changed)</span>
             <span class="info-tooltip" title="Determines how one day's salary is calculated. 'Actual days in month' means January per-day = monthly salary ÷ 31, February per-day = monthly salary ÷ 28 (or 29 in leap year), April per-day = monthly salary ÷ 30, etc. The fixed options use a constant denominator regardless of the calendar month.">ℹ</span>
           </label>
           <select class="form-input" id="cfg-perDayDivisor">
@@ -11620,6 +12471,8 @@ async function renderSettings() {
             <option value="30" ${cfg['perDayDivisor']==='30'?'selected':''}>Fixed: 30 days</option>
             <option value="31" ${cfg['perDayDivisor']==='31'?'selected':''}>Fixed: 31 days</option>
           </select>
+          <!-- v64 item 5: kept the logic (live salary divisor), de-emphasised as Advanced with a policy note. -->
+          <div style="font-size:11px;color:var(--gray-light);margin-top:4px">ArtzFolio policy = <strong>Actual</strong>. Leave this on “Actual” unless you have a specific payroll reason to change it.</div>
         </div>
         <!-- v40 §7d: OT Hours Equivalent to One Day's Pay -->
         <div class="form-group">
@@ -11724,6 +12577,21 @@ async function renderSettings() {
     </div>
   </div>
 
+  <!-- v63: Bonus Policies — global kill switches + per-employee eligibility (all 4 bonuses) -->
+  <div class="settings-section">
+    <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-bonus-policies')">🎚 Bonus Policies — Switches &amp; Eligibility <span class="settings-card-chevron">▼</span></div>
+      <div id="settings-body-bonus-policies" class="settings-card-body">
+    <p style="font-size:12px;color:var(--gray-light);margin-bottom:10px;line-height:1.6">
+      Turn each of the four bonuses on/off company-wide, set an optional <strong>auto-by-level</strong> rule, and the joining-bonus amount. Turning a bonus <strong>OFF stops future accrual only</strong> — already-earned amounts (wallet balances, banked points, paid installments) are kept. <em>Default: all on = unchanged behaviour.</em> Use <strong>Manage per-employee eligibility</strong> to include/exclude individuals (manual choice always wins over the auto-by-level rule).
+    </p>
+    <div id="bonus-policies-body"><div class="loading-spinner"></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn btn-gold btn-sm" onclick="saveBonusPolicies()">💾 Save Bonus Policies</button>
+      <button class="btn btn-dark btn-sm" onclick="showBonusEligibilityModal()">👥 Manage per-employee eligibility →</button>
+    </div>
+    </div>
+  </div>
+
   <!-- v31: Bonus Policy Settings — v44 Workstream B: expanded with toggleable disqualifiers -->
   <div class="settings-section">
     <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-bonus')">🎁 Bonus Policy <span class="settings-card-chevron">▼</span></div>
@@ -11764,7 +12632,7 @@ async function renderSettings() {
         <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyPTL" ${cfg['paBonus_disqualifyPTL']!=='false'?'checked':''}> Paternity Leave (PTL)</label>
         <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyBL"  ${cfg['paBonus_disqualifyBL']!=='false'?'checked':''}> Bereavement Leave (BL)</label>
         <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyCOL" ${cfg['paBonus_disqualifyCOL']!=='false'?'checked':''}> Compassionate Leave (COL)</label>
-        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifySOL" ${cfg['paBonus_disqualifySOL']!=='false'?'checked':''}> Sandwich Leave (SOL)</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifySOL" ${cfg['paBonus_disqualifySOL']!=='false'?'checked':''}> Study/Exam Leave (SOL)</label>
         <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cfg-paBonus_disqualifyLate" ${cfg['paBonus_disqualifyLate']!=='false'?'checked':''}> Any unapproved late arrival</label>
       </div>
       <div class="form-group" style="margin-top:10px;max-width:260px">
@@ -12376,6 +13244,8 @@ async function renderSettings() {
   setTimeout(() => loadLeaveTypesSettingsTable(), 100);
   // v34: load comp config into settings inputs
   loadCompSettings();
+  // v63: load bonus policies (mix of Config + CompConfig keys) into the Bonus Policies card.
+  if (typeof loadBonusPolicies === 'function') loadBonusPolicies();
   // v40 §6a: populate the per-level referral bonus inputs (was an empty div in v39).
   setTimeout(() => renderReferralBonusByLevelTable(), 100);
 }
@@ -13156,6 +14026,30 @@ async function savePolicySettings() {
   }else toast('Error','error');
 }
 
+// v62: Employee Dashboard access control — save the master + 6 section toggles.
+async function saveEmpDashboardSettings() {
+  const keys = ['empDashboardEnabled','empDashSalary','empDashLeaves','empDashAttendance','empDashBonus','empDashPromotion','empDashPoints'];
+  const updates = {};
+  keys.forEach(k => { const el = document.getElementById('cfg-'+k); if (el) updates[k] = el.checked ? 'true' : 'false'; });
+  const res = await API.call('updateSettings', {updates});
+  if (res.ok) {
+    // Refresh settings so the kiosk reflects the new visibility immediately in-session
+    const sRes = await API.call('getSettings', {});
+    if (sRes.ok) applySettingsArr(sRes.settings||[]);
+    toast('✓ Employee dashboard settings saved','success');
+  } else toast(res.error||'Error saving dashboard settings','error');
+}
+// v62: grey out the per-section toggles when the master switch is off (UX only —
+// the server enforces master-off as all-off regardless of the section values).
+function _toggleEmpDashSections() {
+  const master = document.getElementById('cfg-empDashboardEnabled');
+  const box = document.getElementById('emp-dash-sections');
+  if (!master || !box) return;
+  const on = master.checked;
+  box.style.opacity = on ? '1' : '0.45';
+  box.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.disabled = !on; });
+}
+
 async function saveCompanySettings() {
   const keys=['companyName','brandName','factoryAddress','factoryLat','factoryLng','factoryRadius'];
   const updates={};
@@ -13291,6 +14185,16 @@ async function saveOrgSettings() {
   // Numeric/text fields
   const ppEl=document.getElementById('cfg-payPeriodStart');
   if(ppEl) updates['payPeriodStart']=ppEl.value;
+  // v57: Go-Live Date (empty string allowed → clears it → reverts to v56 "missing = paid").
+  const glEl=document.getElementById('cfg-goLiveDate');
+  if(glEl) updates['goLiveDate']=glEl.value;
+  // v58: UL penalty + sandwich rule
+  const ulpdEl=document.getElementById('cfg-ulPenaltyDays'); if(ulpdEl) updates['ulPenaltyDays']=ulpdEl.value;
+  const ulpcEl=document.getElementById('cfg-ulPenaltyCap');  if(ulpcEl) updates['ulPenaltyCap']=ulpcEl.value;
+  const ulpaEl=document.getElementById('cfg-ulPenaltyAppliesToAutoDerived'); if(ulpaEl) updates['ulPenaltyAppliesToAutoDerived']=ulpaEl.checked?'true':'false';
+  const swEnEl=document.getElementById('cfg-sandwichEnabled'); if(swEnEl) updates['sandwichEnabled']=swEnEl.checked?'true':'false';
+  const swScEl=document.getElementById('cfg-sandwichSandwichingCodes'); if(swScEl) updates['sandwichSandwichingCodes']=swScEl.value;
+  const swExEl=document.getElementById('cfg-sandwichExemptCodes'); if(swExEl) updates['sandwichExemptCodes']=swExEl.value;
   // Checkboxes
   const geofEl=document.getElementById('cfg-geofenceEnabled');
   if(geofEl) updates['geofenceEnabled']=geofEl.checked?'true':'false';
@@ -13340,6 +14244,108 @@ async function saveEmpIdSettings() {
     const sRes = await API.call('getSettings');
     if (sRes.ok) { applySettingsArr(sRes.settings||[]); }
   } else { toast(res.error||'Error saving Employee ID format','error'); }
+}
+
+// ─── v63: Bonus Policies — global kill switches + per-employee eligibility ──────────
+async function loadBonusPolicies() {
+  const box = document.getElementById('bonus-policies-body');
+  if (!box) return;
+  let res;
+  try { res = await API.call('getBonusPolicies', {}); }
+  catch (e) { box.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load bonus policies.</div>'; return; }
+  if (!res || !res.ok) { box.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load bonus policies.</div>'; return; }
+  window._bonusPolicies = res;
+  const p = res.policies || {};
+  const sw = (type, label, desc) => {
+    const on = !!(p[type] && p[type].enabled);
+    const auto = (p[type] && p[type].auto) || '';
+    return '<div style="background:var(--dark2);border-radius:8px;padding:10px 12px;margin-bottom:8px">'
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700"><input type="checkbox" id="bp-en-' + type + '" ' + (on ? 'checked' : '') + ' style="accent-color:var(--gold);width:16px;height:16px"> ' + label + '</label>'
+      + '<div style="font-size:11px;color:var(--gray-light);margin:4px 0 6px 24px">' + desc + '</div>'
+      + '<div style="margin-left:24px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)">Auto-eligible levels (CSV, blank = all):</span>'
+      + '<input id="bp-auto-' + type + '" class="form-input" style="width:170px;font-size:11px;padding:3px 6px" value="' + escHtml(String(auto)) + '" placeholder="e.g. L6,L7,L8"></div>'
+      + '</div>';
+  };
+  box.innerHTML =
+      sw('PA', '💯 Perfect Attendance Bonus', 'Month-end bonus for a fully-present month (existing disqualifier rules below still apply).')
+    + sw('Perf', '📈 Performance Bonus', 'Monthly points × rate, added to salary (existing points settings still apply).')
+    + sw('Loyalty', '💎 Long-term Loyalty Wallet', 'Monthly retention credit to the loyalty wallet.')
+    + sw('Joining', '🎁 Joining Bonus', 'One-time joining bonus paid in installments.')
+    + '<div style="background:var(--dark2);border-radius:8px;padding:10px 12px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">'
+    + '<div><label class="form-label" style="font-size:12px">Joining bonus total (₹)</label><input id="bp-joining-total" class="form-input" type="number" min="0" style="width:130px" value="' + escHtml(String(res.joiningTotal || '10000')) + '"></div>'
+    + '<div><label class="form-label" style="font-size:12px">Per installment (₹)</label><input id="bp-joining-inst" class="form-input" type="number" min="0" style="width:130px" value="' + escHtml(String(res.joiningInstallment || '2500')) + '"></div>'
+    + '</div>';
+}
+
+async function saveBonusPolicies() {
+  if (!window._bonusPolicies) { toast('Open the Bonus Policies card first', 'warning'); return; }
+  const get = (type) => ({
+    enabled: !!document.getElementById('bp-en-' + type)?.checked,
+    auto: (document.getElementById('bp-auto-' + type)?.value || '').trim()
+  });
+  const payload = {
+    policies: { PA: get('PA'), Perf: get('Perf'), Loyalty: get('Loyalty'), Joining: get('Joining') },
+    joiningTotal: document.getElementById('bp-joining-total')?.value || '',
+    joiningInstallment: document.getElementById('bp-joining-inst')?.value || '',
+    changedBy: State.adminUser || 'admin'
+  };
+  const res = await API.call('saveBonusPolicies', payload);
+  if (res && res.ok) { toast('✓ Bonus policies saved', 'success'); loadBonusPolicies(); }
+  else toast((res && res.error) || 'Save failed', 'error');
+}
+
+async function showBonusEligibilityModal() {
+  const emps = (State.employees || []).filter(e => e.status === 'Active' || e.status === 'Notice Period');
+  if (!emps.length) { toast('No employees loaded', 'warning'); return; }
+  window._bulkEmpList = emps;
+  let overrides = {};
+  try { const r = await API.call('getBonusEligibility', {}); if (r && r.ok) overrides = r.overrides || {}; } catch (e) {}
+  const TYPES = [['PA', 'Perfect Attendance'], ['Perf', 'Performance'], ['Loyalty', 'Loyalty Wallet'], ['Joining', 'Joining']];
+  const typeOpts = TYPES.map(t => '<option value="' + t[0] + '">' + escHtml(t[1]) + '</option>').join('');
+  const curCell = (e) => {
+    const o = overrides[e.id] || {};
+    return TYPES.map(t => { const v = String(o[t[0]] || '').toLowerCase(); return v === 'yes' ? '✓' : (v === 'no' ? '✗' : '–'); }).join(' ');
+  };
+  const rows = emps.map((e, i) =>
+    '<tr ' + _bulkEmpRowAttrs('bel', e, i) + '>'
+    + '<td style="width:28px;text-align:center"><input type="checkbox" class="bel-cb" data-idx="' + i + '" style="accent-color:var(--gold)" onchange="_bulkUpdateSelCount(\'bel\')"></td>'
+    + '<td style="font-size:11px">' + escHtml(e.name || e.id) + '</td>'
+    + '<td style="font-size:11px">' + escHtml(e.id) + '</td>'
+    + '<td style="font-size:11px">' + escHtml(e.level || '') + '</td>'
+    + '<td style="font-size:10px;font-family:monospace;letter-spacing:1px" title="PA Perf Loyalty Joining">' + curCell(e) + '</td>'
+    + '</tr>'
+  ).join('');
+  const html = '<div style="font-size:13px">'
+    + '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px;line-height:1.6">Set per-employee eligibility for one bonus. <strong>Eligible</strong>/<strong>Excluded</strong> = manual override (wins over the auto-by-level rule). <strong>Inherit</strong> clears the override. For <strong>auto-by-level</strong>: filter by Level below, tick Select-All, then Apply. The Current column shows PA Perf Loyalty Joining (✓ eligible · ✗ excluded · – inherit).</div>'
+    + '<div class="form-row" style="margin-bottom:6px">'
+    + '<div class="form-group"><label class="form-label">Bonus</label><select id="bel-type" class="form-input">' + typeOpts + '</select></div>'
+    + '<div class="form-group"><label class="form-label">Set selected to</label><select id="bel-val" class="form-input"><option value="yes">Eligible</option><option value="no">Excluded</option><option value="inherit">Inherit (clear override)</option></select></div>'
+    + '</div>'
+    + _bulkFilterBar('bel')
+    + '<div style="max-height:300px;overflow-y:auto;border:1px solid var(--dark3);border-radius:4px">'
+    + '<table class="az-table" style="font-size:11px"><thead><tr>'
+    + '<th style="width:28px;text-align:center"><input type="checkbox" id="bel-all" style="accent-color:var(--gold)" onchange="_bulkSelectAll(\'bel\',this.checked)" title="Select all visible"></th>'
+    + '<th>Name</th><th>ID</th><th>Level</th><th title="PA Perf Loyalty Joining">Current</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>'
+    + '</div>'
+    + '<div style="margin-top:8px"><span id="bel-sel-count" style="font-size:11px;color:var(--gold)">0 selected</span></div>'
+    + '</div>';
+  showModal('👥 Bonus Eligibility — Assign', html, [
+    { label: 'Apply to Selected', cls: 'btn-gold', cb: applyBonusEligibility },
+    { label: 'Close', cls: 'btn-dark', cb: closeModal },
+  ]);
+  _bulkUpdateSelCount('bel');
+}
+
+async function applyBonusEligibility() {
+  const type = document.getElementById('bel-type')?.value || '';
+  const value = document.getElementById('bel-val')?.value || '';
+  const emps = window._bulkEmpList || [];
+  const empIds = _bulkSelectedIdx('bel').map(i => emps[i]?.id).filter(Boolean);
+  if (!empIds.length) { toast('Tick at least one employee (tip: filter by Level then Select-All for auto-by-level)', 'warning'); return; }
+  const res = await API.call('setBonusEligibility', { empIds, type, value, adminUser: State.adminUser });
+  if (res && res.ok) { toast('✓ Updated ' + (res.written || empIds.length) + ' employee(s) — ' + type + ' = ' + (value === 'inherit' ? 'inherit' : value), 'success', 5000); closeModal(); }
+  else toast((res && res.error) || 'Failed', 'error');
 }
 
 async function savePointsSettings() {
@@ -13600,7 +14606,7 @@ async function runAuditArchive() {
 }
 
 async function saveWhatsAppSettings() {
-  const textKeys = ['whatsappApiKey','whatsappFrom','whatsappApiUrl','twilioAccountSid','twilioAuthToken','otManagerNotifyMobile'];
+  const textKeys = ['whatsappApiKey','whatsappFrom','whatsappApiUrl','twilioAccountSid','twilioAuthToken'];  // v64 item 7: dropped otManagerNotifyMobile (OT Pre-Approval retired)
   const checkKeys = ['whatsappEnabled','notifyLeaveApproval','notifyPayslip','notifyAdvance','notifyOTApproval'];
   const selectKeys = ['whatsappProvider'];
   const updates = {};
@@ -13658,14 +14664,7 @@ async function testOTPEmailDelivery() {
   } catch(e) { resEl.textContent = 'Network error'; resEl.style.color = 'var(--red)'; }
 }
 
-async function saveOTSettings() {
-  const updates = {};
-  const el = document.getElementById('cfg-otPreApprovalRequired');
-  if (el) updates['otPreApprovalRequired'] = el.checked ? 'true' : 'false';
-  const res = await API.call('updateSettings',{updates});
-  if(res.ok) toast('✓ OT settings saved','success');
-  else toast(res.error||'Error','error');
-}
+// v64 item 7: removed saveOTSettings — the Overtime Pre-Approval card it saved is retired.
 
 async function runAutoClockOut() {
   // v46 W1-Q2: when Trigger Method = "At Shift End + Buffer", the backend
@@ -14494,8 +15493,9 @@ async function refreshCurrentTab() {
   else if (tab === 'transactions'  && typeof renderTransactions === 'function')  await renderTransactions();
   else if (tab === 'petty-cash'    && typeof renderPettyCash === 'function')     await renderPettyCash();
   else if (tab === 'points'        && typeof renderPoints === 'function')        await renderPoints();
-  else if (tab === 'ot'            && typeof renderOTRequests === 'function')    await renderOTRequests();
-  else if (tab === 'leave-management' && typeof renderLeaveManagement === 'function') await renderLeaveManagement();
+  // v64 item 7: removed dead 'ot' tab branch — OT Pre-Approval retired (renderOTRequests deleted).
+  // v63 Stage B item 1: removed dead `tab === 'leave-management'` branch — the real tab id is
+  // `leavemgmt` (retired), so this never fired. Verified unreachable before removal.
 }
 
 // ─── Bulk Import launchers ───────────────────────────────────────────────────
@@ -15393,9 +16393,10 @@ async function submitExtraDayClaim(claimMethod) {
 }
 
 // Load OT calculator and other v31 kiosk cards when employee card opens
-async function loadV31KioskCards(emp) {
+async function loadV31KioskCards(emp, dash) {
   const empId = emp.id;
-  // Notice Period Banner
+  dash = dash || empDashSections();  // v62: fall back to a fresh resolve if not passed
+  // Notice Period Banner (core — always shown when on notice, never gated)
   if (emp.status === 'Notice Period' && emp.lwd) {
     const banner = document.getElementById('ec-notice-banner');
     banner.style.display = '';
@@ -15405,17 +16406,17 @@ async function loadV31KioskCards(emp) {
     document.getElementById('ec-notice-lwd').textContent = 'Last Working Day: ' + emp.lwd;
     document.getElementById('ec-notice-countdown').textContent = 'Days Remaining: ' + Math.max(0, daysLeft);
   }
-  // OT Calculator (show always when on dashboard)
+  // OT Calculator (v62: Salary section)
   const otCard = document.getElementById('ec-ot-calc-card');
-  if (otCard) otCard.style.display = '';
-  // Leaves card
+  if (otCard) otCard.style.display = dash.salary ? '' : 'none';
+  // Leaves card (v62: Leaves section)
   const leavesCard = document.getElementById('ec-leaves-card');
-  if (leavesCard) leavesCard.style.display = '';
-  // Employment Status card
+  if (leavesCard) leavesCard.style.display = dash.leaves ? '' : 'none';
+  // Employment Status card (core — never gated)
   const empStatusCard = document.getElementById('ec-employment-card');
   if (empStatusCard && emp.status !== 'Notice Period') empStatusCard.style.display = '';
-  // Load pending bonuses
-  try {
+  // Load pending bonuses (v62: Bonus section — skipped entirely when off)
+  if (dash.bonus) try {
     const now = new Date();
     const res = await API.call('getPendingBonuses', {empId, month: now.getMonth()+1, year: now.getFullYear()});
     if (res.ok && res.bonuses && res.bonuses.length > 0) {
@@ -15432,8 +16433,8 @@ async function loadV31KioskCards(emp) {
       </button>`;
     }
   } catch(e) {}
-  // Load upcoming promotion
-  if (State.settings && State.settings['promotionShowEmployee'] !== 'false') {
+  // Load upcoming promotion (v62: Promotion section)
+  if (dash.promotion && State.settings && State.settings['promotionShowEmployee'] !== 'false') {
     try {
       const res = await API.call('getPromotionHistory', {empId});
       if (res.ok) {
@@ -15782,7 +16783,8 @@ async function renderOTClaims() {
           <td style="padding:8px">
             ${c['Status']==='Pending' && c['Claim Method']==='Instant' ?
               `<button class="btn btn-sm" style="background:var(--green);color:#fff;font-size:10px;padding:3px 8px" onclick="approveOTClaim(${i})">Approve</button>
-               <button class="btn btn-sm" style="background:var(--dark3);color:var(--red);font-size:10px;padding:3px 8px;margin-left:4px" onclick="rejectOTClaim(${i})">Reject</button>` : '—'}
+               <button class="btn btn-sm" style="background:var(--dark3);color:var(--red);font-size:10px;padding:3px 8px;margin-left:4px" onclick="rejectOTClaim(${i})">Reject</button>` : ''}
+            ${c['Status']!=='Voided' ? `<button class="btn btn-sm" style="background:var(--dark3);font-size:10px;padding:3px 8px;margin-left:4px" title="Revert (void) this claim — excluded from future / recomputed payroll" onclick="revertEntityPrompt('ot',${c._rowIndex},'OT claim',renderOTClaims)">↩</button>` : '<span style="color:var(--gray);font-size:10px">voided</span>'}
           </td>
         </tr>`).join('')}
       </tbody>
@@ -15876,7 +16878,7 @@ async function renderBonusManagement() {
             <td style="padding:8px">${escHtml(b['Applicable Month']||'')}</td>
             <td style="padding:8px">${escHtml(b['Claim Method']||'')}</td>
             <td style="padding:8px">${escHtml(b['Status']||'')}</td>
-            <td style="padding:8px;font-size:11px">${escHtml(b['Added By']||'')}</td>
+            <td style="padding:8px;font-size:11px">${escHtml(b['Added By']||'')} ${String(b['Status'])!=='Voided'?`<button class="btn btn-sm" style="font-size:9px;padding:1px 6px;margin-left:4px" title="Revert (void) this bonus — excluded from future / recomputed payroll" onclick="revertEntityPrompt('bonus','${escHtml(b['Bonus ID'])}','bonus',renderBonusManagement)">↩</button>`:'<span style="font-size:9px;color:var(--gray)">voided</span>'}</td>
           </tr>`).join('')}</tbody>
         </table>
       </div>
@@ -16798,8 +17800,8 @@ async function loadCompKiosk(empId) {
   window._v34CompData = {};
   try {
     var results = await Promise.all([
-      API.call('getSalaryForEmployee', {employeeId: empId}),
-      API.call('getSalaryProjection', {employeeId: empId}),
+      API.call('getSalaryForEmployee', {employeeId: empId, ess:true}),  // v62: ess-context salary gate
+      API.call('getSalaryProjection', {employeeId: empId, ess:true}),   // v62: ess-context salary gate
       API.call('getPromotionEligibility', {employeeId: empId}),
       API.call('getJoiningBonusStatus', {employeeId: empId}),
       API.call('getLoyaltyWalletStatus', {employeeId: empId}),
@@ -17357,47 +18359,71 @@ async function initCompLadderEditor() {
   if (!container) return;
   container.innerHTML = '<div style="color:var(--gray-light);font-size:12px;padding:8px">Loading…</div>';
   try {
+    await loadShiftConfig();  // v62: pull the configurable shift-hour set + ratios
     var res = await API.call('getSalaryLadder');
     if (!res.ok) { container.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load ladder data.</div>'; return; }
     var rows = res.rows || [];
     var levels = ['L10','L9','L8','L7','L6'];
     // v43 W3.12: if the sheet returned 0 rows, treat as fresh install and render with seed values.
     var usingSeed = rows.length === 0;
-    // v43 W4.1: 7-column table — Level / 9hr Morning / 9hr Night / 11hr M / 11hr N / 12hr M / 12hr N.
-    // Editable inputs: 9hr Morning + 9hr Night (independent per level).
-    // Auto-computed displays: 11hr/12hr × 1.10/1.20 for BOTH morning and night.
-    var html = '<table class="comp-ladder-table"><thead><tr>' +
+    // v62: columns are now data-driven from SHIFT_HOURS_SET. 9hr Morning + Night are
+    // editable per level; every other configured shift auto-derives from the 9hr base
+    // × that shift's SHIFT_RATIO_<N>HR (set in Settings → Compensation → Shift Slabs).
+    var _shifts  = _shiftHoursList();                              // e.g. [8,9,10,11,12]
+    var _ratios  = (State.shiftConfig && State.shiftConfig.ratios) || {};
+    var _incMults = (State.shiftConfig && State.shiftConfig.incMults) || {};
+    var _nonBase = _shifts.filter(function(h){ return h !== 9; });
+    // v62: Shift Slabs configuration panel — owner edits the offered set + per-slab
+    // salary ratio / increment multiplier. Saved via setCompensationConfig (SHIFT_HOURS_SET
+    // + SHIFT_RATIO_<N>HR + INCREMENT_MULT_<N>HR), then the ladder columns re-render.
+    var slabHtml = '<div style="background:var(--dark2);border-radius:8px;padding:12px;margin-bottom:14px">' +
+      '<div style="font-weight:700;font-size:13px;margin-bottom:6px">⚙ Shift Slabs Configuration</div>' +
+      '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">The shift-hour lengths your company offers. <strong>9 is the base</strong> (ratio 1). Each other shift\'s salary = 9hr × its ratio; its increment = 9hr increment × its multiplier. To add a NEW shift (e.g. 8 or 10): add it to the list, Save once (defaults to ratio 1), then set its ratio and Save again.</div>' +
+      '<label class="form-label" style="font-size:12px">Shift hours offered (comma-separated)</label>' +
+      '<input id="shift-slabs-set" class="form-input" value="' + _shifts.join(',') + '" placeholder="9,11,12" style="max-width:220px">' +
+      '<table style="width:auto;border-collapse:collapse;font-size:12px;margin-top:10px"><thead><tr style="color:var(--gray-light)"><th style="text-align:left;padding:4px 10px 4px 0">Shift</th><th style="text-align:left;padding:4px 10px">Salary ratio (×9hr)</th><th style="text-align:left;padding:4px 10px">Increment ×</th></tr></thead><tbody>';
+    _nonBase.forEach(function(h) {
+      var rt = parseFloat(_ratios[h]) || 1;
+      var im = parseFloat(_incMults[h]) || 1;
+      slabHtml += '<tr><td style="padding:4px 10px 4px 0;font-weight:700">' + h + 'hr</td>' +
+        '<td style="padding:4px 10px"><input type="number" step="0.01" min="0" id="shift-ratio-' + h + '" value="' + rt + '" class="form-input" style="width:90px;padding:3px 6px"></td>' +
+        '<td style="padding:4px 10px"><input type="number" step="0.01" min="0" id="shift-incmult-' + h + '" value="' + im + '" class="form-input" style="width:90px;padding:3px 6px"></td></tr>';
+    });
+    slabHtml += '</tbody></table>' +
+      '<button class="btn btn-gold btn-sm" style="margin-top:10px" onclick="saveShiftSlabs()">💾 Save Shift Slabs</button>' +
+      '</div>';
+    var html = slabHtml + '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">Editable: 9hr Morning + 9hr Night per level. Other shift columns auto-derive from the 9hr base × that shift\'s ratio. Configured shift set: <strong>' + _shifts.join(', ') + ' hrs</strong>.</div>';
+    html += '<table class="comp-ladder-table"><thead><tr>' +
       '<th>Level</th>' +
       '<th>9hr Morning (₹) <span class="info-tooltip" title="Default monthly salary for this level on a 9-hour MORNING shift. Editing here changes the default for new hires; existing employees keep their saved salary unless you click Recompute Salaries from Ladder in Admin → Bulk Operations.">ℹ</span></th>' +
-      '<th>9hr Night (₹) <span class="info-tooltip" title="Default monthly salary for this level on a 9-hour NIGHT shift. Per Excel: night base is INDEPENDENT of morning, not a fixed multiplier — set each level explicitly.">ℹ</span></th>' +
-      '<th>11hr M (auto) <span class="info-tooltip" title="Auto-derived from 9hr Morning × Shift Ratio 11hr (default 1.10 = 10% more). Editable ratio in OT Policy tab.">ℹ</span></th>' +
-      '<th>11hr N (auto) <span class="info-tooltip" title="Auto-derived from 9hr Night × Shift Ratio 11hr. Edit the ratio in the OT Policy tab.">ℹ</span></th>' +
-      '<th>12hr M (auto) <span class="info-tooltip" title="Auto-derived from 9hr Morning × Shift Ratio 12hr (default 1.20 = 20% more). Editable ratio in OT Policy tab.">ℹ</span></th>' +
-      '<th>12hr N (auto) <span class="info-tooltip" title="Auto-derived from 9hr Night × Shift Ratio 12hr.">ℹ</span></th>' +
-      '</tr></thead><tbody>';
+      '<th>9hr Night (₹) <span class="info-tooltip" title="Default monthly salary for this level on a 9-hour NIGHT shift. Per Excel: night base is INDEPENDENT of morning, not a fixed multiplier — set each level explicitly.">ℹ</span></th>';
+    _nonBase.forEach(function(h) {
+      var rt = parseFloat(_ratios[h]) || 1;
+      html += '<th>' + h + 'hr M (auto) <span class="info-tooltip" title="Auto-derived from 9hr Morning × Shift Ratio ' + h + 'hr (currently ' + rt + '). Edit the ratio in Settings → Compensation → Shift Slabs.">ℹ</span></th>' +
+              '<th>' + h + 'hr N (auto) <span class="info-tooltip" title="Auto-derived from 9hr Night × Shift Ratio ' + h + 'hr (currently ' + rt + ').">ℹ</span></th>';
+    });
+    html += '</tr></thead><tbody>';
     levels.forEach(function(level) {
       // SalaryLadder sheet columns: level, shiftHours, morningSalary, nightSalary (all lowercase from sheetToObjects)
       var r9  = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 9; }) || {};
-      var r11 = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 11; }) || {};
-      var r12 = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === 12; }) || {};
       // v43 W3.12 + W4.1: fall back to seed for BOTH morning and night if no row for this level
       var base9M = parseFloat(r9.morningSalary) || (usingSeed && LADDER_SEED[level] ? LADDER_SEED[level].morning : 0);
       var base9N = parseFloat(r9.nightSalary)   || (usingSeed && LADDER_SEED[level] ? LADDER_SEED[level].night   : 0);
-      var d11M   = parseFloat(r11.morningSalary) || (base9M ? Math.round(base9M * 1.10 / 100) * 100 : 0);
-      var d11N   = parseFloat(r11.nightSalary)   || (base9N ? Math.round(base9N * 1.10 / 100) * 100 : 0);
-      var d12M   = parseFloat(r12.morningSalary) || (base9M ? Math.round(base9M * 1.20 / 100) * 100 : 0);
-      var d12N   = parseFloat(r12.nightSalary)   || (base9N ? Math.round(base9N * 1.20 / 100) * 100 : 0);
       html += '<tr>' +
         '<td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
         '<td><input type="number" class="form-input" id="ladder-' + level + '-9" value="' + (base9M || '') +
           '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:100px;padding:4px 6px"></td>' +
         '<td><input type="number" class="form-input" id="ladder-' + level + '-9-night" value="' + (base9N || '') +
-          '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:100px;padding:4px 6px"></td>' +
-        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-11-disp">' + fmtINR(d11M) + '</span></td>' +
-        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-11-night-disp">' + fmtINR(d11N) + '</span></td>' +
-        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-12-disp">' + fmtINR(d12M) + '</span></td>' +
-        '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-12-night-disp">' + fmtINR(d12N) + '</span></td>' +
-      '</tr>';
+          '" step="100" min="0" oninput="autoRecomputeShifts(\'' + level + '\')" style="width:100px;padding:4px 6px"></td>';
+      _nonBase.forEach(function(h) {
+        var rt = parseFloat(_ratios[h]) || 1;
+        var rr = rows.find(function(r) { return String(r.level) === level && parseInt(r.shiftHours) === h; }) || {};
+        var dM = parseFloat(rr.morningSalary) || (base9M ? Math.round(base9M * rt / 100) * 100 : 0);
+        var dN = parseFloat(rr.nightSalary)   || (base9N ? Math.round(base9N * rt / 100) * 100 : 0);
+        html += '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-' + h + '-disp">' + fmtINR(dM) + '</span></td>' +
+                '<td style="color:var(--gray-light)"><span id="ladder-' + level + '-' + h + '-night-disp">' + fmtINR(dN) + '</span></td>';
+      });
+      html += '</tr>';
     });
     html += '</tbody></table>';
     container.innerHTML = html;
@@ -17410,28 +18436,20 @@ async function initCompLadderEditor() {
 }
 
 function autoRecomputeShifts(level) {
-  // Morning recompute (preserved from W3.12)
-  var base9El = document.getElementById('ladder-' + level + '-9');
-  if (base9El) {
-    var base9 = parseFloat(base9El.value) || 0;
-    var sal11 = Math.round(base9 * 1.10 / 100) * 100;
-    var sal12 = Math.round(base9 * 1.20 / 100) * 100;
-    var disp11 = document.getElementById('ladder-' + level + '-11-disp');
-    var disp12 = document.getElementById('ladder-' + level + '-12-disp');
-    if (disp11) disp11.textContent = fmtINR(sal11);
-    if (disp12) disp12.textContent = fmtINR(sal12);
-  }
-  // v43 W4.1: night recompute (mirror of morning, using the independent 9hr night base)
-  var base9N_el = document.getElementById('ladder-' + level + '-9-night');
-  if (base9N_el) {
-    var base9N = parseFloat(base9N_el.value) || 0;
-    var sal11N = Math.round(base9N * 1.10 / 100) * 100;
-    var sal12N = Math.round(base9N * 1.20 / 100) * 100;
-    var d11N = document.getElementById('ladder-' + level + '-11-night-disp');
-    var d12N = document.getElementById('ladder-' + level + '-12-night-disp');
-    if (d11N) d11N.textContent = fmtINR(sal11N);
-    if (d12N) d12N.textContent = fmtINR(sal12N);
-  }
+  // v62: recompute every non-9 shift column from the 9hr base × that shift's ratio
+  // (was hardcoded 11hr×1.10 / 12hr×1.20). Ratios come from State.shiftConfig.
+  var ratios = (State.shiftConfig && State.shiftConfig.ratios) || {};
+  var base9El  = document.getElementById('ladder-' + level + '-9');
+  var base9NEl = document.getElementById('ladder-' + level + '-9-night');
+  var base9  = base9El  ? (parseFloat(base9El.value)  || 0) : 0;
+  var base9N = base9NEl ? (parseFloat(base9NEl.value) || 0) : 0;
+  _shiftHoursList().filter(function(h){ return h !== 9; }).forEach(function(h) {
+    var rt = parseFloat(ratios[h]) || 1;
+    var dispM = document.getElementById('ladder-' + level + '-' + h + '-disp');
+    var dispN = document.getElementById('ladder-' + level + '-' + h + '-night-disp');
+    if (dispM) dispM.textContent = fmtINR(Math.round(base9  * rt / 100) * 100);
+    if (dispN) dispN.textContent = fmtINR(Math.round(base9N * rt / 100) * 100);
+  });
 }
 
 // ── Settings: Save Compensation Config ───────────────────────────────
@@ -18125,6 +19143,11 @@ async function approveWalletAdjustment(adjustmentId, decision) {
 // legacy `{baseSalary}` shapes (handleSaveSalaryLadder is backward-compatible).
 async function saveCompLadder() {
   var levels = ['L10','L9','L8','L7','L6'];
+  // v62: write a row for every configured shift-hour. 9hr from the inputs; each non-9
+  // shift = 9hr base × its SHIFT_RATIO_<N>HR. For the default set 9,11,12 (ratios
+  // 1.10/1.20) this is identical to the pre-v62 save. Ratios from State.shiftConfig.
+  var ratios = (State.shiftConfig && State.shiftConfig.ratios) || {};
+  var shifts = _shiftHoursList();
   var rows = [];
   var valid = true;
   levels.forEach(function(level) {
@@ -18137,18 +19160,45 @@ async function saveCompLadder() {
       toast('Enter valid morning AND night salary for ' + level, 'error');
       valid = false; return;
     }
-    var sal11M = Math.round(base9M * 1.10 / 100) * 100;
-    var sal12M = Math.round(base9M * 1.20 / 100) * 100;
-    var sal11N = Math.round(base9N * 1.10 / 100) * 100;
-    var sal12N = Math.round(base9N * 1.20 / 100) * 100;
-    rows.push({level: level, shiftHours: 9,  morningSalary: base9M, nightSalary: base9N});
-    rows.push({level: level, shiftHours: 11, morningSalary: sal11M, nightSalary: sal11N});
-    rows.push({level: level, shiftHours: 12, morningSalary: sal12M, nightSalary: sal12N});
+    shifts.forEach(function(h) {
+      if (h === 9) { rows.push({level: level, shiftHours: 9, morningSalary: base9M, nightSalary: base9N}); }
+      else {
+        var rt = parseFloat(ratios[h]) || 1;
+        rows.push({level: level, shiftHours: h,
+                   morningSalary: Math.round(base9M * rt / 100) * 100,
+                   nightSalary:   Math.round(base9N * rt / 100) * 100});
+      }
+    });
   });
   if (!valid) return;
   var res = await API.call('saveSalaryLadder', {rows: rows});
   if (res.ok) { toast('✓ Salary ladder saved', 'success'); initCompLadderEditor(); }
   else toast(res.error || 'Save failed', 'error');
+}
+
+// v62: save the configurable shift-hour set + per-slab ratios / increment multipliers.
+async function saveShiftSlabs() {
+  var setEl = document.getElementById('shift-slabs-set');
+  var csv = (setEl ? String(setEl.value) : '9,11,12').trim() || '9,11,12';
+  var set = csv.split(',').map(function(s){ return parseInt(String(s).trim(), 10); }).filter(function(n){ return !isNaN(n) && n > 0; });
+  if (set.indexOf(9) < 0) set.unshift(9);                     // 9 is the mandatory base
+  set = Array.from(new Set(set)).sort(function(a,b){ return a - b; });
+  if (set.length > 12) { toast('Too many shift slabs (max 12)', 'error'); return; }
+  var updates = { 'SHIFT_HOURS_SET': set.join(',') };
+  set.filter(function(h){ return h !== 9; }).forEach(function(h) {
+    var rEl = document.getElementById('shift-ratio-' + h);
+    var iEl = document.getElementById('shift-incmult-' + h);
+    // Default a brand-new slab (no input rendered yet) to ratio 1 / mult 1 so it's valid;
+    // the owner sets the real ratio on the next render. Existing slabs keep their input value.
+    updates['SHIFT_RATIO_' + h + 'HR']    = rEl ? (parseFloat(rEl.value) || 1) : 1;
+    updates['INCREMENT_MULT_' + h + 'HR'] = iEl ? (parseFloat(iEl.value) || 1) : 1;
+  });
+  var res = await API.call('setCompensationConfig', { updates: updates, modifiedBy: State.adminUser || 'admin' });
+  if (res && res.ok) {
+    toast('✓ Shift slabs saved', 'success');
+    await loadShiftConfig();   // refresh State.shiftConfig so the ladder + employee dropdowns update
+    initCompLadderEditor();
+  } else { toast((res && res.error) || 'Save failed', 'error'); }
 }
 
 // ── Settings: Initialize Compensation Sheets (Danger Zone) ───────────
@@ -18496,25 +19546,25 @@ async function renderSalaryLadderViewer() {
   if (!el) return;
   el.innerHTML = '<div class="loading-spinner"></div>';
   try {
+    await loadShiftConfig();  // v62: configurable shift-hour set
     var res = await API.call('getSalaryLadder');
     if (!res.ok) { el.innerHTML = '<div style="color:var(--red);padding:16px">Failed: ' + escHtml(res.error || 'Error') + '</div>'; return; }
     var rows = res.rows || [];
     var levels = ['L10','L9','L8','L7','L6'];
+    var shifts = _shiftHoursList();
+    var ratios = (State.shiftConfig && State.shiftConfig.ratios) || {};
     var html = '<div style="font-size:12px;color:var(--gray-light);margin-bottom:10px">Read-only view. Edit in Settings → Compensation.</div>' +
-      '<table class="comp-ladder-table"><thead><tr>' +
-      '<th>Level</th><th>9hr Morning</th><th>11hr Evening</th><th>12hr Night</th>' +
+      '<table class="comp-ladder-table"><thead><tr><th>Level</th>' +
+      shifts.map(function(h){ return '<th>' + h + 'hr ' + (h === 9 ? '(base)' : 'Morning') + '</th>'; }).join('') +
       '</tr></thead><tbody>';
     levels.forEach(function(level) {
       function getBase(sh) { var r = rows.find(function(x) { return String(x.level) === level && parseInt(x.shiftHours) === sh; }); return (r && r.morningSalary) ? r.morningSalary : 0; }
-      html += '<tr>' +
-        '<td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
-        '<td>' + fmtINR(getBase(9)) + '</td>' +
-        '<td>' + fmtINR(getBase(11)) + '</td>' +
-        '<td>' + fmtINR(getBase(12)) + '</td>' +
-      '</tr>';
+      html += '<tr><td style="font-weight:700;color:var(--gold)">' + level + '</td>' +
+        shifts.map(function(h){ return '<td>' + fmtINR(getBase(h)) + '</td>'; }).join('') + '</tr>';
     });
+    var _disc = shifts.filter(function(h){ return h !== 9; }).map(function(h){ return h + 'hr = 9hr × ' + (parseFloat(ratios[h]) || 1); }).join('  |  ');
     html += '</tbody></table>' +
-      '<div class="comp-disclaimer" style="margin-top:12px">11hr = 9hr × 1.10 &nbsp;|&nbsp; 12hr = 9hr × 1.20 (rounded to nearest ₹100)</div>';
+      '<div class="comp-disclaimer" style="margin-top:12px">' + (_disc || 'Base 9hr only') + ' (rounded to nearest ₹100)</div>';
     el.innerHTML = html;
   } catch(e) {
     el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
