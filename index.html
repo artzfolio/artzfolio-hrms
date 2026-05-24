@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v45</title>
+<title>ArtzFolio HRMS v77</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1346,7 +1346,7 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
          store (System B). All leave activity now flows through "Leaves" (full ledger) + "Approvals"
          (pending queue), both backed by the canonical Leaves store. Hidden, not deleted, so it's
          reversible; existing Leave_Requests rows are preserved on the sheet. -->
-    <div class="nav-item" data-tab="leavemgmt" onclick="switchTab('leavemgmt')" style="display:none" title="Retired in v55 — use Leaves + Approvals"><span class="nav-icon">📅</span>Leave Management</div>
+    <!-- v77 (Gate A): removed the hidden 'leavemgmt' nav item (System-B Leave_Requests admin UI retired; use Leaves + Approvals). -->
     <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')" data-help="Exit alerts (3-consecutive-UL), archive / restore, and Full & Final settlement."><span class="nav-icon">🤝</span>FnF / Exit</div>
     <div class="nav-item" data-tab="reports" onclick="switchTab('reports')" data-help="Exportable attendance, payroll and leave reports."><span class="nav-icon">📈</span>Reports</div>
     <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')" data-help="Activity / project time tracking across employees."><span class="nav-icon">⏱</span>Tracked Time</div>
@@ -1490,8 +1490,7 @@ function getOTHoursPerDayPay() {
   try { return parseFloat((State.settings && State.settings.otHoursPerDayPay)) || 9; }
   catch(e) { return 9; }
 }
-// v40: tooltip helper. Reuses the existing `.info-tooltip` CSS class — no new styles introduced.
-function infoTip(text) { return ' <span class="info-tooltip" title="' + String(text||'').replace(/"/g, '&quot;') + '">ℹ</span>'; }
+// v77 cleanup (ORP-02): removed dead infoTip tooltip helper (0 callers).
 const LS = {
   g: k => { try { return JSON.parse(localStorage.getItem('az3_'+k)); } catch { return null; } },
   s: (k,v) => localStorage.setItem('az3_'+k, JSON.stringify(v)),
@@ -1523,7 +1522,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v75-2026-05'; // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v77-2026-05'; // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -1895,13 +1894,7 @@ function fmtHolDay(ds) {
     return d.toLocaleDateString('en-IN',{weekday:'long'});
   } catch { return '—'; }
 }
-// FIX-28: build <option> tags for Applicable To multi-select, pre-selecting current values
-function _holApplicableOpts(cur) {
-  const sel = (cur||'All').split(',').map(s=>s.trim());
-  return ['All','L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(v=>
-    `<option value="${v}"${sel.includes(v)?' selected':''}>${v==='All'?'All Levels':v}</option>`
-  ).join('');
-}
+// v77 cleanup (ORP-02): removed dead _holApplicableOpts (superseded by _holLevelBtnsHtml button group; 0 callers).
 // FIX 2: Build toggle-button group HTML for Applicable To (replaces scrollable select)
 // idOrDate = null means "add form" (no auto-save); otherwise auto-saves on toggle
 function _holLevelBtnsHtml(containerId, cur, idOrDate) {
@@ -1916,10 +1909,7 @@ function _holLevelBtnsHtml(containerId, cur, idOrDate) {
     }).join('')}
   </div>`;
 }
-function setHolBtnActive(btn, active) {
-  if (active) { btn.classList.add('active'); btn.style.cssText=btn.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/,'border:1px solid var(--gold);background:var(--gold-dim);color:var(--white)'); }
-  else { btn.classList.remove('active'); btn.style.cssText=btn.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/,'border:1px solid var(--dark3);background:var(--dark3);color:var(--gray-light)'); }
-}
+// v77 cleanup (ORP-02): removed dead setHolBtnActive (superseded by toggleHolLevel inline styling; 0 callers).
 function toggleHolLevel(containerId, level, idOrDate) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -2006,10 +1996,7 @@ function _v70HrsCell(rec) {
   const wm = _v70WorkMins(rec);
   return wm > 0 ? (Math.floor(wm / 60) + 'h' + String(wm % 60).padStart(2, '0') + 'm') : '—';
 }
-function fmtTimeSS(ts) {
-  // Alias for fmtTime (same, includes seconds)
-  return fmtTime(ts);
-}
+// v77 cleanup (ORP-02): removed dead fmtTimeSS alias (0 callers; fmtTime is the live formatter).
 function fmtDT(ts) {
   if (!ts) return '—';
   try {
@@ -2027,22 +2014,7 @@ function fmtDT(ts) {
     return `${get('weekday')} ${get('month')} ${get('day')} ${get('year')} ${get('hour')}:${get('minute')}:${get('second')} ${get('dayPeriod').toLowerCase()}`;
   } catch { return ts; }
 }
-function fmtDuration(mins, fmt) {
-  // fmt: 'h:mm' | 'decimal' | 'h:mm:ss' | 'words' — reads from State.settings if not provided
-  const f = fmt || (State&&State.settings&&State.settings.durationFormat) || 'h:mm';
-  if (!mins && mins !== 0) return '—';
-  const m = parseInt(mins) || 0;
-  const h = Math.floor(m / 60), mm = m % 60;
-  if (f === 'decimal')  return (m / 60).toFixed(2) + ' h';
-  if (f === 'h:mm:ss')  return `${h}:${String(mm).padStart(2,'0')}:00`;
-  if (f === 'words') {
-    if (h === 0) return `${mm} minute${mm !== 1 ? 's' : ''}`;
-    if (mm === 0) return `${h} hour${h !== 1 ? 's' : ''}`;
-    return `${h} hour${h !== 1 ? 's' : ''} ${mm} minute${mm !== 1 ? 's' : ''}`;
-  }
-  // default h:mm
-  return `${h}:${String(mm).padStart(2,'0')}`;
-}
+// v77 cleanup (ORP-02): removed dead fmtDuration (0 callers).
 function fmtShift(start, end) {
   function to12h(t) {
     if (!t) return '—';
@@ -2058,10 +2030,7 @@ function fmtShift(start, end) {
   }
   return `${to12h(start)} – ${to12h(end)}`;
 }
-function fmtSalary(v) {
-  const n = Math.round(parseFloat(v)||0);
-  return '₹ ' + n.toLocaleString('en-IN');
-}
+// v77 cleanup (ORP-02): removed dead fmtSalary (0 callers; fmtINR is the live currency formatter).
 // Build 12h time picker HTML (replaces <input type="time">)
 // val: "HH:MM" 24h string, id: input id, cls: CSS class
 function build12hPicker(id, val24, cls='form-input') {
@@ -2122,11 +2091,7 @@ function autoCalcAddShiftHours() {
 }
 // FIX-V19-02: global local-date helper — avoids toISOString() UTC shift for IST timezone
 function localDateStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function get12hPickerValue(id) {
-  // Return the hidden input's 24h value
-  const el=document.getElementById(id);
-  return el ? el.value : '';
-}
+// v77 cleanup (ORP-02): removed dead get12hPickerValue (0 callers).
 function buildEmpSearchSelect(fieldId, emps, placeholder='Type name or ID…') {
   const listId = fieldId + '_list';
   const opts = emps.map(e=>`<option value="${e.id}">${escHtml(e.name)} (${e.id})</option>`).join('');
@@ -2158,7 +2123,7 @@ function resolveEmpSearch(fieldId, inputVal) {
 }
 function getEmpSearchValue(fieldId) { return document.getElementById(fieldId)?.value||''; }
 function todayStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function nowStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
+// v77 cleanup (ORP-02): removed dead HTML nowStr (0 callers; GAS keeps its own live nowStr).
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function statusBadge(s) {
   const map = {P:'green',IL:'blue',IHL:'blue',UL:'red',UHL:'red',H:'gold',WO:'gray',EW:'orange',SL:'blue',PL:'blue',A:'red',Active:'green',Exited:'gray',Archived:'gray',Approved:'green',Pending:'orange',Rejected:'red',Auto:'red',
@@ -2312,7 +2277,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v75';  // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v77';  // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -4947,7 +4912,7 @@ async function switchTab(tab) {
       case 'promotions':  await renderPromotions(); break;
       case 'compoff':     await renderCompOff(); break;   // v66 Stage-2A
       case 'recovery':    await renderRecovery(); break;  // v67 Stage-2B
-      case 'leavemgmt':   await renderLeaveManagement(); break;
+      // v77 (Gate A): removed 'leavemgmt' tab case (System-B Leave_Requests admin UI retired).
     }
   } catch(e) {
     document.getElementById('admin-tab-content').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>Error loading tab: ${escHtml(e.message)}</p></div>`;
@@ -5251,44 +5216,14 @@ async function refreshWhoInOut() {
     if(listEl) listEl.innerHTML='<div style="color:var(--gray-light);font-size:11px;text-align:center;padding:20px">Connect to server to see live data</div>';
   }
 }
-// Issue 2: show full list modal for +N overflow badges (all three sections)
-function showWioOverflow(listKey) {
-  const listMap = {in: State._wioInOverflow||[], break: State._wioBreakOverflow||[], out: State._wioOutOverflow||[]};
-  const titleMap = {in:'🟢 Clocked In — Full List', break:'☕ On Break — Full List', out:'⬜ Not Clocked In — Full List'};
-  const list = listMap[listKey] || [];
-  const title = titleMap[listKey] || 'All Employees';
-  showModal(title,
-    `<div style="max-height:60vh;overflow-y:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="background:var(--dark3)">
-          <th style="padding:8px;text-align:left;color:var(--gold-light)">Name</th>
-          <th style="padding:8px;text-align:left;color:var(--gold-light)">ID</th>
-          <th style="padding:8px;text-align:left;color:var(--gold-light)">Department</th>
-          <th style="padding:8px;text-align:left;color:var(--gold-light)">Designation</th>
-        </tr></thead>
-        <tbody>${list.map(o=>{
-          const emp = (State.employees||[]).find(e=>e.id===o.empId)||{};
-          return `<tr style="border-bottom:1px solid var(--dark3)">
-            <td style="padding:7px 8px">${escHtml(o.name)}</td>
-            <td style="padding:7px 8px;color:var(--gray-light)">${escHtml(o.empId||'')}</td>
-            <td style="padding:7px 8px;color:var(--gray-light)">${escHtml(emp.department||emp.dept||'')}</td>
-            <td style="padding:7px 8px;color:var(--gray-light)">${escHtml(emp.level||emp.designation||'')}</td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table>
-    </div>`,
-    [{label:'Close', cls:'btn-dark', cb:closeModal}]
-  );
-}
+// v77 cleanup (ORP-02): removed dead showWioOverflow (+N overflow modal; 0 callers).
 
 function startWioRefresh() {
   refreshWhoInOut();
   clearInterval(_wioTimer);
   _wioTimer = setInterval(refreshWhoInOut, 300000); // FIX-V23-03: refresh every 5 min (was 60s)
 }
-function stopWioRefresh() {
-  clearInterval(_wioTimer); _wioTimer=null;
-}
+// v77 cleanup (ORP-02): removed dead stopWioRefresh (0 callers; startWioRefresh manages the timer).
 
 // ═══════════════════════════════════════════
 // TIMESHEETS TAB (weekly grid)
@@ -6041,6 +5976,13 @@ function _shiftName(h) {
   var r = _shiftRegistry().find(function (x) { return parseInt(x.hours, 10) === parseInt(h, 10); });
   return (r && r.name) ? r.name : (h + 'hr');
 }
+// v76 B1: per-shift matrix column header — the Day-kind shift name labels the Morning column,
+// the Night-kind shift name labels the Night column (two same-length shifts each get their name).
+function _shiftLabelForKind(h, kind) {
+  var want = (kind === "Night") ? "Night" : "Day";
+  var r = _shiftRegistry().find(function (x) { return parseInt(x.hours,10) === parseInt(h,10) && ((x.kind==="Night"?"Night":"Day") === want); });
+  return (r && r.name) ? r.name : (h + "hr " + want);
+}
 // v75 S2: options for the employee 'Assigned Shift' dropdown (value = shift id, label = name).
 function assignedShiftOptionsHtml(selId) {
   var opts = '<option value="">— not assigned —</option>';
@@ -6057,12 +5999,18 @@ function _syncShiftHoursFromAssigned(prefix) {
   var sh = _shiftRegistry().find(function (x) { return String(x.id) === String(sel.value); }); if (!sh) return;
   var hEl = document.getElementById(prefix + '-shifthours');
   if (hEl) hEl.value = String(parseInt(sh.hours, 10));
+  // v76 B1: a Night-kind shift drives the Night salary column; Day -> Morning.
+  var tEl = document.getElementById(prefix + '-shifttype');
+  if (tEl) tEl.value = (sh.kind === 'Night') ? 'Night' : 'Morning';
 }
 function _shiftRegRowHtml(r) {
   r = r || {};
   var h = (parseInt(r.hours, 10) > 0) ? parseInt(r.hours, 10) : '';
   var kind = (r.kind === 'Night') ? 'Night' : 'Day';
-  return '<tr data-reg-row>' +
+  // v76 B1: stable unique id per shift (generated for new rows), carried so renames/hour-changes
+  // never collide and two same-length shifts can coexist. Salary maps via (hours, kind).
+  var id = r.id || ('sh_' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36));
+  return '<tr data-reg-row data-shift-id="' + escHtml(id) + '">' +
     '<td style="padding:2px 4px"><input class="form-input reg-name" value="' + escHtml(r.name || '') + '" placeholder="e.g. Morning shift" style="width:170px;padding:3px 6px"></td>' +
     '<td style="padding:2px 4px"><input type="number" class="form-input reg-hours" value="' + h + '" min="1" max="24" step="1" style="width:64px;padding:3px 6px"></td>' +
     '<td style="padding:2px 4px"><input type="number" class="form-input reg-break" value="' + (parseInt(r['break'], 10) || 0) + '" min="0" max="240" step="5" style="width:64px;padding:3px 6px" title="Unpaid break minutes — subtracted from expected hours (S3) and night hours (S4)"></td>' +
@@ -6096,14 +6044,17 @@ async function saveShiftRegistry() {
     var nEl = tr.querySelector('.reg-name');
     var name = String((nEl && nEl.value) || '').trim() || (hours + 'hr');
     var sEl = tr.querySelector('.reg-start'), eEl = tr.querySelector('.reg-end'), kEl = tr.querySelector('.reg-kind'), bEl = tr.querySelector('.reg-break');
-    reg.push({ id: 'sh-' + hours, name: name, hours: hours, startTime: String((sEl && sEl.value) || ''), endTime: String((eEl && eEl.value) || ''), 'break': (bEl ? parseInt(bEl.value, 10) || 0 : 0), kind: String((kEl && kEl.value) || 'Day') });
+    var id = tr.getAttribute('data-shift-id') || ('sh_' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36));
+    reg.push({ id: id, name: name, hours: hours, startTime: String((sEl && sEl.value) || ''), endTime: String((eEl && eEl.value) || ''), 'break': (bEl ? parseInt(bEl.value, 10) || 0 : 0), kind: String((kEl && kEl.value) || 'Day') });
   });
-  if (!reg.some(function (r) { return r.hours === 9; })) reg.unshift({ id: 'sh-9', name: '9hr', hours: 9, startTime: '', endTime: '', 'break': 0, kind: 'Day' });
+  // v76 B1: ensure at least one shift exists (don't force a 9hr-by-hours row — the owner may run only 8h+11h).
+  if (!reg.length) reg.push({ id: 'sh_base9', name: '9hr', hours: 9, startTime: '', endTime: '', 'break': 0, kind: 'Day' });
+  // Dedup by stable id (NOT hours) so same-length shifts coexist; stable sort by hours then kind.
   var seen = {};
-  reg = reg.filter(function (r) { if (seen[r.hours]) return false; seen[r.hours] = 1; return true; });
-  reg.sort(function (a, b) { return a.hours - b.hours; });
+  reg = reg.filter(function (r) { if (seen[r.id]) return false; seen[r.id] = 1; return true; });
+  reg.sort(function (a, b) { return (a.hours - b.hours) || String(a.kind).localeCompare(String(b.kind)); });
   if (reg.length > 12) { toast('Too many shifts (max 12)', 'error'); return; }
-  var hoursCsv = reg.map(function (r) { return r.hours; }).join(',');
+  var hoursCsv = Array.from(new Set(reg.map(function (r) { return r.hours; }))).sort(function (a, b) { return a - b; }).join(',');
   var res = await API.call('setCompensationConfig', { updates: { 'SHIFT_REGISTRY': JSON.stringify(reg), 'SHIFT_HOURS_SET': hoursCsv }, modifiedBy: State.adminUser || 'admin' });
   if (res && res.ok) {
     toast('✓ Shifts saved: ' + reg.map(function (r) { return r.name; }).join(', '), 'success');
@@ -6198,6 +6149,14 @@ async function showAddEmpModal() {
       <select id="e-assignedshift" class="form-input" onchange="_syncShiftHoursFromAssigned('e')">${assignedShiftOptionsHtml('')}</select></div>
     <div class="form-group"><label class="form-label">Designation</label>
       <input id="e-designation" class="form-input" type="text" placeholder="e.g. Machine Operator"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Loyalty Scheme <span class="info-tooltip" title="Long-term retention wallet this employee accrues. Inherit = use the org default in Settings. Tenure-based = monthly credit by years of service. Level-based = monthly Loyalty Bonus by job level.">ℹ</span></label>
+      <select id="e-loyaltyscheme" class="form-input">
+        <option value="">Inherit org default</option>
+        <option value="TenureWallet">Tenure-based (years of service)</option>
+        <option value="RetentionBonus">Level-based (job level)</option>
+      </select></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Weekly Off 1</label>
@@ -6353,6 +6312,7 @@ async function showAddEmpModal() {
         otBaseHours:document.getElementById('e-otbase').value,
         assignedShift:document.getElementById('e-assignedshift')?.value||'',  // v75 S2
         designation:document.getElementById('e-designation')?.value||'',
+        loyaltyScheme:document.getElementById('e-loyaltyscheme')?.value||'',  // v77 Gate B
         // v31 fields
         leavePolicyGroup:document.getElementById('e-lpgroup').value,
         ...(() => {
@@ -6544,6 +6504,14 @@ async function showEditEmpModal(empId) {
     <div class="form-group"><label class="form-label">Designation</label>
       <input id="ee-designation" class="form-input" type="text" value="${escHtml(e.designation||'')}" placeholder="e.g. Machine Operator"></div>
   </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Loyalty Scheme <span class="info-tooltip" title="Long-term retention wallet this employee accrues. Inherit = use the org default in Settings. Tenure-based = monthly credit by years of service. Level-based = monthly Loyalty Bonus by job level.">ℹ</span></label>
+      <select id="ee-loyaltyscheme" class="form-input">
+        <option value=""${!e.loyaltyScheme?' selected':''}>Inherit org default</option>
+        <option value="TenureWallet"${e.loyaltyScheme==='TenureWallet'?' selected':''}>Tenure-based (years of service)</option>
+        <option value="RetentionBonus"${e.loyaltyScheme==='RetentionBonus'?' selected':''}>Level-based (job level)</option>
+      </select></div>
+  </div>
   <div class="form-group"><label class="form-label">Address</label><input id="ee-addr" class="form-input" value="${escHtml(e.address||'')}"></div>
   <div class="form-group"><label class="form-label">Notes</label><input id="ee-notes" class="form-input" value="${escHtml(e.notes||'')}"></div>
   <!-- v31: Referral and Leave Policy fields (v40 §6c: read-only once a non-blank value is saved) -->
@@ -6641,6 +6609,7 @@ async function showEditEmpModal(empId) {
         project:         document.getElementById('ee-proj').value,
         managerId:       _extractEmpId(document.getElementById('ee-mgr').value),
         customWorkDays:  document.getElementById('ee-cwd').value.trim(),
+        loyaltyScheme:   document.getElementById('ee-loyaltyscheme')?.value||'',  // v77 Gate B
         // v43 W3.4: 3 remaining dormant fields per audit B.2.3.
         org:             document.getElementById('ee-org').value.trim(),
         minDayRate:      document.getElementById('ee-mindayrate').value,
@@ -7941,6 +7910,7 @@ async function renderLeaves() {
       <button class="btn btn-gold btn-sm" onclick="showAdminLeaveModal()">+ Add Leave</button>
       <button class="btn btn-gold btn-sm" onclick="showBulkLeaveModal()">+ Bulk Leave</button>
       <button class="btn btn-dark btn-sm" onclick="bulkImportLeaves()">📥 Bulk Import</button>
+      <button class="btn btn-dark btn-sm" onclick="migrateLegacyLeaveRequests()" title="One-time, owner-gated, idempotent: copy any legacy Leave_Requests rows into the canonical Leaves store. Runs a dry-run preview first.">⇪ Migrate Legacy</button>
     </div></div>
   <div class="filters-bar">
     <select class="filter-input" id="lf-status" onchange="filterLeaves()"><option value="">All Status</option><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option><option value="Auto">Auto-UL</option></select>
@@ -11432,12 +11402,9 @@ async function renderSettings() {
       ${levelPickerField('otEligibleLevels','OT Pay Eligible Levels',cfg['otEligibleLevels']||'L6,L7,L8,L9,L10')}
       ${levelPickerField('nightShiftEligibleLevels','Night Shift Pay Eligible Levels',cfg['nightShiftEligibleLevels']||'L6,L7,L8,L9,L10')}
       <!-- v69 Phase 1.3: removed the DEPRECATED "OT Pay Multiplier" (cfg-otMultiplier) display field — it drove NO calculation (the engine uses 'OT Hours = 1 day's pay' via getOTHoursPerDayPay). The stored config value is untouched (savePolicySettings only writes inputs that still exist, via its if(el) guard). The real OT/Night pay formula is rebuilt in Phase 2 (v70). OT base-hours / min-OT / per-day denominator live in the "OT and Extra Day Policy" card. -->
-      <!-- v74 B1: replaced the Night Shift Allowance Multiplier with the hours-based Night Window.
-           Night pay = (per-day salary / base-hours) x hours worked inside this window. -->
-      <div class="form-group"><label class="form-label">Night Window Start (HH:mm)<span class="info-tooltip" title="Start of the nightly window (IST). Hours a worker is clocked in between this and the End time count as night hours. Night pay = (per-day salary / base-hours) x night hours. Default 22:00.">ℹ</span></label>
-      <input id="cfg-NIGHT_WINDOW_START" class="form-input" type="time" value="${escHtml(cfg['NIGHT_WINDOW_START']||'22:00')}"></div>
-      <div class="form-group"><label class="form-label">Night Window End (HH:mm)<span class="info-tooltip" title="End of the nightly window (IST). Default 06:00 — the window 22:00 to 06:00 wraps past midnight. v74 replaced the flat Night Allowance × multiplier with this hours-based model derived from clock punches.">ℹ</span></label>
-      <input id="cfg-NIGHT_WINDOW_END" class="form-input" type="time" value="${escHtml(cfg['NIGHT_WINDOW_END']||'06:00')}"></div>
+      <!-- v76 B2: global Night Window removed. Night pay is now driven by each employee's ASSIGNED shift
+           (Day/Night type + its start/end times, break subtracted) — set shifts in Compensation -> Shift Registry. -->
+      <div class="form-group" style="grid-column:1/-1"><div style="font-size:11px;color:var(--gray-light)">🌙 Night pay is driven by the employee's <strong>assigned Night shift</strong> (its start/end window, minus the shift break) — configured in the Shift Registry, not a global window.</div></div>
     </div>
     <div style="margin-top:14px">
       <button class="btn btn-gold" onclick="savePolicySettings()">💾 Save Policy Settings</button>
@@ -13268,13 +13235,10 @@ async function renderSettings() {
           <div class="form-group"><label class="form-label">Year 5+ Monthly Credit Cap (₹) <span class="info-tooltip" title="Monthly credit from month 49 onwards. The maximum tier.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR5PLUS_MONTHLY" min="0"></div>
           <div class="form-group"><label class="form-label">Max Leaves Threshold <span class="info-tooltip" title="If an employee exceeds this leave count in a month, that month's credit is held automatically.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MAX_LEAVES_THRESHOLD" min="0"></div>
           <div class="form-group"><label class="form-label">Min Tenure Before First Withdrawal (months) <span class="info-tooltip" title="Minimum service before an employee can request their first wallet withdrawal.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MIN_TENURE_MONTHS" min="1"></div>
-          <!-- v45 Workstream C: removed duplicate Withdrawal % after 6M/12M
-               wait fields. Withdrawal percentages and timing are owned per-level
-               in Settings → Bonus & Rewards → 💎 Loyalty Bonus Vesting. The
-               backend keys LOYALTY_WALLET_WITHDRAW_AFTER_6M_PCT and _12M_PCT
-               remain seeded in COMP_CONFIG_DEFAULTS (40 / 60) so
-               getLoyaltyWalletStatus continues to function until the v46
-               re-route. See header v45 TODO block in gas_backend_v45.gs. -->
+          <!-- v77 (CMT-01): the old v45 "v46 re-route" TODO is OBSOLETE. Per-level withdrawal
+               vesting (Cumulative/Tiered) shipped in v52 (_getWalletVestingConfig + the Withdrawal
+               Vesting editor below). LOYALTY_WALLET_WITHDRAW_AFTER_6M/12M_PCT (40/60) now act only
+               as the Legacy fallback when no vesting model is configured. -->
         </div>
         <!-- v52 Item 1: Tenure-Based Wallet Withdrawal Vesting editor. Reuses the
              Level-Based Retention Bonus tier-editor components (lbAddMS / lbAddTieredFirst /
@@ -14350,7 +14314,7 @@ function applyBranding() {
 }
 
 async function savePolicySettings() {
-  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','lateMultiplier','monthlyLateBlockThreshold','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','NIGHT_WINDOW_START','NIGHT_WINDOW_END','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day','ownerRecoveryEmail','managerRecoveryEmail','supervisorRecoveryEmail'];
+  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','lateMultiplier','monthlyLateBlockThreshold','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day','ownerRecoveryEmail','managerRecoveryEmail','supervisorRecoveryEmail'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   // v38 H5: warn if all three password fields are blank (accidental wipe guard)
@@ -14605,30 +14569,34 @@ async function loadBonusPolicies() {
   const REG = (typeof _shiftRegistry === 'function') ? _shiftRegistry() : [];
   // v75 SC1: Designation facet — options = the distinct designations assigned to employees (S2).
   const DESIGS = Array.from(new Set((State.employees || []).map(function (e) { return String(e.designation || '').trim(); }).filter(Boolean)));
+  // v76 B3: chips use the proven .level-chip span/data-val/single-handler control (toggleLevelChip)
+  // inside a .level-picker container -> reliable toggle + persist. Shift chips store the shift ID and
+  // show the registry NAME; designation chips store the designation string.
+  const chip = (val, lbl, isSel, hid) => '<span class="level-chip' + (isSel ? ' selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSel ? 'true' : 'false') + '" data-val="' + escHtml(val) + '" onclick="toggleLevelChip(this,\'' + hid + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleLevelChip(this,\'' + hid + '\')}">' + escHtml(lbl) + '</span>';
   const sw = (type, label, desc) => {
     const on = !!(p[type] && p[type].enabled);
     const auto = (p[type] && p[type].auto) || '';
     const sel = new Set(String(auto).split(',').map(s => s.trim()).filter(Boolean));
-    const chips = LEVELS.map(L => '<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;background:var(--dark3);border-radius:5px;padding:2px 6px;cursor:pointer"><input type="checkbox" value="' + L + '" ' + (sel.has(L) ? 'checked' : '') + ' onchange="_v69SyncBonusAuto(\'' + type + '\')"> ' + L + '</label>').join('');
-    // v74 W2: Shifts facet — chips built from the Shift Registry (value = shift hours).
+    const chips = LEVELS.map(L => chip(L, L, sel.has(L), 'bp-auto-' + type)).join('');
+    // v74 W2 / v76 B3: Shifts facet — chips keyed by the shift ID (post-B1), labelled by the name.
     const autoS = (p[type] && p[type].autoShifts) || '';
     const selS = new Set(String(autoS).split(',').map(s => s.trim()).filter(Boolean));
-    const shiftChips = REG.map(r => { var h = String(parseInt(r.hours, 10)); return '<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;background:var(--dark3);border-radius:5px;padding:2px 6px;cursor:pointer"><input type="checkbox" value="' + h + '" ' + (selS.has(h) ? 'checked' : '') + ' onchange="_v74SyncBonusShifts(\'' + type + '\')"> ' + escHtml(r.name || (h + 'hr')) + '</label>'; }).join('');
+    const shiftChips = REG.map(r => chip(r.id, (r.name || (r.hours + 'hr')) + ' (' + r.hours + 'h ' + (r.kind || 'Day') + ')', selS.has(String(r.id)), 'bp-autoShifts-' + type)).join('');
     // v75 SC1: Designations facet.
     const autoD = (p[type] && p[type].autoDesignations) || '';
     const selD = new Set(String(autoD).split(',').map(s => s.trim()).filter(Boolean));
-    const desigChips = DESIGS.map(function (D) { return '<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;background:var(--dark3);border-radius:5px;padding:2px 6px;cursor:pointer"><input type="checkbox" value="' + escHtml(D) + '" ' + (selD.has(D) ? 'checked' : '') + ' onchange="_v75SyncBonusDesig(\'' + type + '\')"> ' + escHtml(D) + '</label>'; }).join('');
+    const desigChips = DESIGS.map(function (D) { return chip(D, D, selD.has(D), 'bp-autoDesig-' + type); }).join('');
     return '<div style="background:var(--dark2);border-radius:8px;padding:10px 12px;margin-bottom:8px">'
       + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700"><input type="checkbox" id="bp-en-' + type + '" ' + (on ? 'checked' : '') + ' style="accent-color:var(--gold);width:16px;height:16px"> ' + label + '</label>'
       + '<div style="font-size:11px;color:var(--gray-light);margin:4px 0 6px 24px">' + desc + '</div>'
-      + '<div style="margin-left:24px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)" title="Tick the levels auto-eligible for this bonus. NONE ticked = ALL levels eligible. Per-employee overrides (Manage per-employee eligibility) always win over this rule.">Auto-eligible levels (none = all):</span>'
-      + '<span id="bp-auto-chips-' + type + '" style="display:inline-flex;flex-wrap:wrap;gap:4px">' + chips + '</span>'
+      + '<div style="margin-left:24px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)" title="Tick the levels auto-eligible for this bonus. NONE ticked = ALL levels eligible. Per-employee overrides always win.">Auto-eligible levels (none = all):</span>'
+      + '<span class="level-picker" id="bp-auto-chips-' + type + '" style="margin-top:0">' + chips + '</span>'
       + '<input type="hidden" id="bp-auto-' + type + '" value="' + escHtml(String(auto)) + '"></div>'
-      + '<div style="margin-left:24px;margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)" title="Tick the shifts auto-eligible for this bonus. NONE ticked = ALL shifts eligible. Applied as an intersection with levels (Levels AND Shifts). Requires employees to have a shift assigned.">Auto-eligible shifts (none = all):</span>'
-      + '<span id="bp-autoShifts-chips-' + type + '" style="display:inline-flex;flex-wrap:wrap;gap:4px">' + (shiftChips || '<span style="color:var(--gray)">no shifts defined</span>') + '</span>'
+      + '<div style="margin-left:24px;margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)" title="Tick the shifts auto-eligible. NONE ticked = ALL shifts. Intersected with Levels AND Designation. Requires employees assigned to a shift.">Auto-eligible shifts (none = all):</span>'
+      + '<span class="level-picker" id="bp-autoShifts-chips-' + type + '" style="margin-top:0">' + (shiftChips || '<span style="color:var(--gray)">no shifts defined</span>') + '</span>'
       + '<input type="hidden" id="bp-autoShifts-' + type + '" value="' + escHtml(String(autoS)) + '"></div>'
-      + '<div style="margin-left:24px;margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)" title="Tick the designations auto-eligible. NONE ticked = ALL designations. Intersected with Levels AND Shifts. Requires employees to have a designation (S2).">Auto-eligible designations (none = all):</span>'
-      + '<span id="bp-autoDesig-chips-' + type + '" style="display:inline-flex;flex-wrap:wrap;gap:4px">' + (desigChips || '<span style="color:var(--gray)">no designations defined</span>') + '</span>'
+      + '<div style="margin-left:24px;margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap"><span style="color:var(--gray-light)" title="Tick the designations auto-eligible. NONE ticked = ALL designations. Intersected with Levels AND Shifts. Requires employees to have a designation.">Auto-eligible designations (none = all):</span>'
+      + '<span class="level-picker" id="bp-autoDesig-chips-' + type + '" style="margin-top:0">' + (desigChips || '<span style="color:var(--gray)">no designations defined</span>') + '</span>'
       + '<input type="hidden" id="bp-autoDesig-' + type + '" value="' + escHtml(String(autoD)) + '"></div>'
       + '</div>';
   };
@@ -14639,6 +14607,8 @@ async function loadBonusPolicies() {
     + sw('Joining', '🎁 Joining Bonus', 'One-time joining bonus paid in installments.')
     + sw('Increment', '📈 Guaranteed Auto-Increment', 'Scope WHICH staff receive auto-increments (the master switch + per-level amounts also live in the Increment card). Outside this scope = no auto-increment.')
     + sw('Referral', '🤝 Referral Bonus', 'Scope WHICH referrers are eligible (the bonus amount + tenure live in the Referral card).')
+    + sw('OT', '⏱ Overtime Pay eligibility', 'Scope WHO earns OT pay by Shift + Designation (on top of the OT Eligible Levels in the OT &amp; Night card). None ticked = no extra restriction.')
+    + sw('Night', '🌙 Night Pay eligibility', 'Scope WHO earns night pay by Shift + Designation (on top of the Night Eligible Levels). None ticked = no extra restriction.')
     // v69 Phase 1.2: joining amount is now READ-ONLY here (single source of truth = the Joining Bonus
     // card, which also owns the installment schedule). Both used the same JOINING_BONUS_TOTAL /
     // JOINING_BONUS_INSTALLMENT_AMOUNT keys, so this removes the confusing second editable copy.
@@ -14657,7 +14627,7 @@ async function saveBonusPolicies() {
     autoDesignations: (document.getElementById('bp-autoDesig-' + type)?.value || '').trim()
   });
   const payload = {
-    policies: { PA: get('PA'), Perf: get('Perf'), Loyalty: get('Loyalty'), Joining: get('Joining'), Increment: get('Increment'), Referral: get('Referral') },
+    policies: { PA: get('PA'), Perf: get('Perf'), Loyalty: get('Loyalty'), Joining: get('Joining'), Increment: get('Increment'), Referral: get('Referral'), OT: get('OT'), Night: get('Night') },
     // v69 Phase 1.2: joiningTotal/joiningInstallment are NO LONGER sent from here — the Joining Bonus
     // card is the single editor. handleSaveBonusPolicies only writes them when present, so omitting
     // them leaves the stored JOINING_BONUS_* values untouched.
@@ -14674,7 +14644,7 @@ async function showBonusEligibilityModal() {
   window._bulkEmpList = emps;
   let overrides = {};
   try { const r = await API.call('getBonusEligibility', {}); if (r && r.ok) overrides = r.overrides || {}; } catch (e) {}
-  const TYPES = [['PA', 'Perfect Attendance'], ['Perf', 'Performance'], ['Loyalty', 'Loyalty Wallet'], ['Joining', 'Joining']];
+  const TYPES = [['PA', 'Perfect Attendance'], ['Perf', 'Performance'], ['Loyalty', 'Loyalty Wallet'], ['Joining', 'Joining'], ['Increment', 'Guaranteed Increment'], ['Referral', 'Referral Bonus']];  // v76 SC1(b)
   const typeOpts = TYPES.map(t => '<option value="' + t[0] + '">' + escHtml(t[1]) + '</option>').join('');
   const curCell = (e) => {
     const o = overrides[e.id] || {};
@@ -14686,7 +14656,7 @@ async function showBonusEligibilityModal() {
     + '<td style="font-size:11px">' + escHtml(e.name || e.id) + '</td>'
     + '<td style="font-size:11px">' + escHtml(e.id) + '</td>'
     + '<td style="font-size:11px">' + escHtml(e.level || '') + '</td>'
-    + '<td style="font-size:10px;font-family:monospace;letter-spacing:1px" title="PA Perf Loyalty Joining">' + curCell(e) + '</td>'
+    + '<td style="font-size:10px;font-family:monospace;letter-spacing:1px" title="PA Perf Loyalty Joining Increment Referral">' + curCell(e) + '</td>'
     + '</tr>'
   ).join('');
   const html = '<div style="font-size:13px">'
@@ -14699,7 +14669,7 @@ async function showBonusEligibilityModal() {
     + '<div style="max-height:300px;overflow-y:auto;border:1px solid var(--dark3);border-radius:4px">'
     + '<table class="az-table" style="font-size:11px"><thead><tr>'
     + '<th style="width:28px;text-align:center"><input type="checkbox" id="bel-all" style="accent-color:var(--gold)" onchange="_bulkSelectAll(\'bel\',this.checked)" title="Select all visible"></th>'
-    + '<th>Name</th><th>ID</th><th>Level</th><th title="PA Perf Loyalty Joining">Current</th>'
+    + '<th>Name</th><th>ID</th><th>Level</th><th title="PA Perf Loyalty Joining Increment Referral">Current</th>'
     + '</tr></thead><tbody>' + rows + '</tbody></table>'
     + '</div>'
     + '<div style="margin-top:8px"><span id="bel-sel-count" style="font-size:11px;color:var(--gold)">0 selected</span></div>'
@@ -16624,15 +16594,7 @@ async function deleteSelectedHolidays() {
   await refreshHolidayList();
 }
 
-// FIX-28: save Applicable To selection from per-row multi-select
-async function updateHolApplicableTo(idOrDate, sel) {
-  const selected = Array.from(sel.selectedOptions).map(o => o.value);
-  const applicableTo = selected.length === 0 || selected.includes('All') ? 'All' : selected.join(',');
-  const payload = idOrDate.startsWith('HOL_') ? {id: idOrDate, applicableTo} : {date: idOrDate, applicableTo};
-  const res = await API.call('updateHoliday', payload);
-  if (!res.ok) toast(res.error || 'Failed to update', 'error');
-  else toast('✓ Applicable To updated', 'success', 1500);
-}
+// v77 cleanup (ORP-02): removed dead updateHolApplicableTo (superseded by toggleHolLevel button-group save; 0 callers).
 
 // FIX-v29: repair the column-shift problem (date in id col, name in date col, etc.)
 // ownerToken removed — backend no longer requires it for this safe repair operation
@@ -17701,6 +17663,27 @@ async function bulkLeaveAction(action) {
   } else {
     toast(res.error||'Error','error');
   }
+}
+
+// v77 (Gate A): one-click, owner-gated, idempotent migration of any legacy Leave_Requests rows
+// into the canonical Leaves store. Dry-run preview -> confirm -> apply. The backend de-dupes by
+// empId+type+startDate+endDate, so re-running is a no-op. This is the owner's single post-deploy step.
+async function migrateLegacyLeaveRequests() {
+  const tok = State._dzToken || '';
+  if (!tok) { toast('Owner authentication required — open Settings -> Danger Zone to authenticate first.', 'warning'); return; }
+  toast('Checking legacy Leave_Requests…', 'info');
+  const dry = await API.call('migrateLeaveRequests', {mode:'dryRun', ownerToken: tok, userId: State.adminUser || 'owner'});
+  if (!dry.ok) { toast(dry.error || 'Migration check failed', 'error'); return; }
+  if (!dry.wouldMigrate) { toast('Nothing to migrate — the Leaves store already has every legacy row (' + (dry.alreadyPresent||0) + ' present).', 'success'); return; }
+  const ok = await confirm2('Legacy Leave_Requests rows: ' + dry.leaveRequestsCount +
+    '\nAlready in Leaves: ' + dry.alreadyPresent +
+    '\nWould migrate: ' + dry.wouldMigrate +
+    '\nInvalid (skipped): ' + dry.invalid +
+    '\n\nRun a full backup first if you have not. Apply the migration now?');
+  if (!ok) return;
+  const res = await API.call('migrateLeaveRequests', {mode:'apply', confirm:true, ownerToken: tok, userId: State.adminUser || 'owner'});
+  if (res.ok) { toast('✓ Migrated ' + res.migrated + ' (skipped ' + res.skipped + '). Leaves ' + res.leavesCountBefore + ' → ' + res.leavesCountAfter, 'success'); if (typeof renderLeaves==='function') renderLeaves(); }
+  else toast(res.error || 'Migration failed', 'error');
 }
 
 function exportLeaveCSV() {
@@ -18793,7 +18776,7 @@ async function initCompLadderEditor() {
     var html = shiftSetHtml +
       '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">Type the exact monthly salary for each <strong>Level × Shift</strong> (Morning &amp; Night). These are the defaults for new hires, shift changes and the <em>Recompute Salaries from Ladder</em> action — editing a cell does NOT change an existing employee\'s saved pay (each employee\'s own salary can also differ within a level). Configured shifts: <strong>' + _shifts.join(', ') + ' hrs</strong>.</div>' +
       '<div class="table-wrap" style="overflow-x:auto"><table class="comp-ladder-table"><thead><tr><th>Level</th>';
-    _shifts.forEach(function(h) { html += '<th>' + escHtml(_shiftName(h)) + ' — Morning (₹)</th><th>' + escHtml(_shiftName(h)) + ' — Night (₹)</th>'; });
+    _shifts.forEach(function(h) { html += '<th>' + escHtml(_shiftLabelForKind(h,'Day')) + ' (₹)</th><th>' + escHtml(_shiftLabelForKind(h,'Night')) + ' (₹)</th>'; });
     html += '</tr></thead><tbody>';
     levels.forEach(function(level) {
       html += '<tr><td style="font-weight:700;color:var(--gold)">' + level + '</td>';
@@ -19095,24 +19078,8 @@ function _v69SyncLeaveCodeHidden(boxId, hiddenId) {
   hid.value = checked.concat(extra).join(',');
 }
 
-// ── v69 Phase 1.5: rebuild the hidden bp-auto-<type> CSV from the ticked level chips ──
-function _v69SyncBonusAuto(type) {
-  const wrap = document.getElementById('bp-auto-chips-' + type), hid = document.getElementById('bp-auto-' + type);
-  if (!wrap || !hid) return;
-  hid.value = Array.from(wrap.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value).join(',');
-}
-// v74 W2: sync the Shifts-facet hidden CSV from the ticked shift chips.
-function _v74SyncBonusShifts(type) {
-  const wrap = document.getElementById('bp-autoShifts-chips-' + type), hid = document.getElementById('bp-autoShifts-' + type);
-  if (!wrap || !hid) return;
-  hid.value = Array.from(wrap.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value).join(',');
-}
-// v75 SC1: sync the Designation-facet hidden CSV from the ticked designation chips.
-function _v75SyncBonusDesig(type) {
-  const wrap = document.getElementById('bp-autoDesig-chips-' + type), hid = document.getElementById('bp-autoDesig-' + type);
-  if (!wrap || !hid) return;
-  hid.value = Array.from(wrap.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value).join(',');
-}
+// v77 cleanup (ORP-02): removed dead _v69SyncBonusAuto / _v74SyncBonusShifts / _v75SyncBonusDesig —
+// the v76 B3 chip rewrite (toggleLevelChip on .level-chip span/data-val) fully replaced these onchange syncs (0 callers). B3 Designation-facet save verified unaffected.
 
 // ── v44 Workstream E4: Bulk Backfill provenance badge helper ──────────
 // Returns a small badge HTML if the attendance row's note carries the marker.
@@ -19598,47 +19565,9 @@ async function saveCompLadder() {
   else toast(res.error || 'Save failed', 'error');
 }
 
-// v72 Phase 2: save ONLY which shift-hours are offered (SHIFT_HOURS_SET). No ratios / increment-mults.
-// Re-renders the matrix so a newly-added shift gets blank columns to type into (no auto-derivation).
-async function saveShiftSet() {
-  var el = document.getElementById('shift-slabs-set');
-  var csv = (el ? String(el.value) : '9,11,12').trim() || '9,11,12';
-  var set = csv.split(',').map(function(s){ return parseInt(String(s).trim(), 10); }).filter(function(n){ return !isNaN(n) && n > 0; });
-  if (set.indexOf(9) < 0) set.unshift(9);            // 9 is always offered (the base shift)
-  set = Array.from(new Set(set)).sort(function(a, b){ return a - b; });
-  if (set.length > 12) { toast('Too many shifts (max 12)', 'error'); return; }
-  var res = await API.call('setCompensationConfig', { updates: { 'SHIFT_HOURS_SET': set.join(',') }, modifiedBy: State.adminUser || 'admin' });
-  if (res && res.ok) {
-    toast('✓ Shifts saved: ' + set.join(', ') + ' hrs. Now type the salaries below.', 'success');
-    await loadShiftConfig();
-    initCompLadderEditor();   // re-render the matrix with the new shift columns
-  } else { toast((res && res.error) || 'Save failed', 'error'); }
-}
+// v77 cleanup (ORP-01): removed dead saveShiftSet (superseded by saveShiftRegistry v74+; 0 callers).
 
-// v62: save the configurable shift-hour set + per-slab ratios / increment multipliers.
-async function saveShiftSlabs() {
-  var setEl = document.getElementById('shift-slabs-set');
-  var csv = (setEl ? String(setEl.value) : '9,11,12').trim() || '9,11,12';
-  var set = csv.split(',').map(function(s){ return parseInt(String(s).trim(), 10); }).filter(function(n){ return !isNaN(n) && n > 0; });
-  if (set.indexOf(9) < 0) set.unshift(9);                     // 9 is the mandatory base
-  set = Array.from(new Set(set)).sort(function(a,b){ return a - b; });
-  if (set.length > 12) { toast('Too many shift slabs (max 12)', 'error'); return; }
-  var updates = { 'SHIFT_HOURS_SET': set.join(',') };
-  set.filter(function(h){ return h !== 9; }).forEach(function(h) {
-    var rEl = document.getElementById('shift-ratio-' + h);
-    var iEl = document.getElementById('shift-incmult-' + h);
-    // Default a brand-new slab (no input rendered yet) to ratio 1 / mult 1 so it's valid;
-    // the owner sets the real ratio on the next render. Existing slabs keep their input value.
-    updates['SHIFT_RATIO_' + h + 'HR']    = rEl ? (parseFloat(rEl.value) || 1) : 1;
-    updates['INCREMENT_MULT_' + h + 'HR'] = iEl ? (parseFloat(iEl.value) || 1) : 1;
-  });
-  var res = await API.call('setCompensationConfig', { updates: updates, modifiedBy: State.adminUser || 'admin' });
-  if (res && res.ok) {
-    toast('✓ Shift slabs saved', 'success');
-    await loadShiftConfig();   // refresh State.shiftConfig so the ladder + employee dropdowns update
-    initCompLadderEditor();
-  } else { toast((res && res.error) || 'Save failed', 'error'); }
-}
+// v77 cleanup (ORP-01): removed dead saveShiftSlabs (superseded by saveShiftRegistry v74+; 0 callers).
 
 // ── Settings: Initialize Compensation Sheets (Danger Zone) ───────────
 async function initCompSheets() {
@@ -19900,14 +19829,15 @@ async function renderLoyaltyWalletDashboard() {
     if (!rows.length) { el.innerHTML = runBtn + '<div style="color:var(--gray-light);padding:20px;text-align:center">No wallet records found.</div>'; return; }
     el.innerHTML = runBtn +
       '<div class="table-wrap"><table class="az-table"><thead><tr>' +
-      '<th>Emp ID</th><th>Name</th><th>Total Credited</th><th>Balance</th><th>Withdrawn</th><th>Monthly Credit</th>' +
+      '<th>Emp ID</th><th>Name</th><th>Total Credited</th><th>Balance</th><th>Withdrawn</th><th>Monthly Credit</th><th>Action</th>' +
       '</tr></thead><tbody>' +
       rows.map(function(r) {
         return '<tr><td>' + escHtml(r.employeeId || '') + '</td><td>' + escHtml(r.name || '') + '</td>' +
           '<td>' + fmtINR(r.totalCredited) + '</td>' +
           '<td style="color:var(--gold);font-weight:700">' + fmtINR(r.balance) + '</td>' +
           '<td>' + fmtINR(r.totalWithdrawn) + '</td>' +
-          '<td>' + fmtINR(r.monthlyCredit) + '</td></tr>';
+          '<td>' + fmtINR(r.monthlyCredit) + '</td>' +
+          '<td><button class="btn btn-dark btn-sm" onclick="walletWithdrawModal(\'' + (r.employeeId||'') + '\')">Withdraw</button></td></tr>';
       }).join('') +
       '</tbody></table></div>';
   } catch(e) {
@@ -19923,6 +19853,35 @@ async function runMonthlyWalletBatch() {
   var res = await API.call('runMonthlyLoyaltyWalletBatch', {month: month});
   if (res.ok) { toast('✓ Wallet batch complete: ' + (res.processed || 0) + ' processed', 'success'); renderLoyaltyWalletDashboard(); }
   else toast(res.error || 'Batch failed', 'error');
+}
+
+// v77 (Gate B): Tenure-Wallet withdrawal. Reconnects the always-complete, lock-protected
+// handleProcessWalletWithdrawal executor (route restored this version). Admin-initiated;
+// validated against the vested withdrawableAmount from getLoyaltyWalletStatus.
+async function walletWithdrawModal(empId) {
+  var st = await API.call('getLoyaltyWalletStatus', {employeeId: empId});
+  if (!st.ok) { toast(st.error || 'Could not load wallet', 'error'); return; }
+  var bal = st.balance||0, vested = st.withdrawableAmount||0, locked = st.lockedAmount||0;
+  var html = '<div style="font-size:13px">'
+    + '<div class="comp-stat-row"><span>Current Balance</span><span style="color:var(--gold);font-weight:700">' + fmtINR(bal) + '</span></div>'
+    + '<div class="comp-stat-row"><span>Vested / Withdrawable</span><span style="color:var(--green);font-weight:700">' + fmtINR(vested) + '</span></div>'
+    + '<div class="comp-stat-row"><span>Locked (not yet vested)</span><span>' + fmtINR(locked) + '</span></div>'
+    + '<div class="form-group" style="margin-top:12px"><label class="form-label">Amount to withdraw (max ' + fmtINR(vested) + ')</label>'
+    + '<input id="ww-amt" class="form-input" type="number" min="1" max="' + vested + '" value="' + (vested>0?vested:'') + '"></div>'
+    + (vested<=0 ? '<div style="color:var(--red);font-size:12px">Nothing vested to withdraw yet (check Min Tenure + the Withdrawal Vesting schedule).</div>' : '')
+    + '</div>';
+  showModal('Process Wallet Withdrawal — ' + escHtml(empId), html, [
+    {label:'Process Withdrawal', cls:'btn-gold', cb: async () => {
+      var amt = parseFloat((document.getElementById('ww-amt')||{}).value) || 0;
+      if (amt <= 0) { toast('Enter a positive amount', 'error'); return; }
+      if (amt > vested) { toast('Exceeds vested withdrawable ' + fmtINR(vested), 'error'); return; }
+      if (!await confirm2('Process withdrawal of ' + fmtINR(amt) + ' for ' + empId + '?\nThis debits the wallet balance and is recorded in the audit log.')) return;
+      var res = await API.call('processWalletWithdrawal', {employeeId: empId, requestedAmount: amt, adminId: State.adminUser || 'admin'});
+      if (res.ok) { toast('✓ Withdrew ' + fmtINR(res.withdrawn) + ' — new balance ' + fmtINR(res.newBalance), 'success'); closeModal(); renderLoyaltyWalletDashboard(); }
+      else toast(res.error || 'Withdrawal failed', 'error');
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+  ]);
 }
 
 async function renderCompPromotionManagement() {
