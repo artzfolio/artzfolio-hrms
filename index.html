@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v77</title>
+<title>ArtzFolio HRMS v81</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1522,7 +1522,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v77-2026-05'; // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v81-2026-05'; // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -1536,6 +1536,11 @@ self.addEventListener('fetch', e => {
   const url = e.request.url;
   if (url.includes('script.google.com')) return;     // Never cache GAS API
   const isCdn = NETWORK_FIRST_HOSTS.some(h => url.includes(h));
+  // v78: the app shell (this single-file HTML document + its inline JS = ALL of our code) is served
+  // NETWORK-FIRST so a fresh deploy loads immediately and a fixed bug can never be masked by a stale
+  // cached page (the recurring "the bug came back" trap). Offline still works via the cached fallback.
+  // CDN libs stay network-first; other same-origin assets keep stale-while-revalidate.
+  const isShell = e.request.mode === 'navigate' || e.request.destination === 'document' || url.indexOf('.html') !== -1;
   e.respondWith(caches.open(CACHE).then(async cache => {
     const cached = await cache.match(e.request);
     const fetchPromise = fetch(e.request).then(r => {
@@ -1545,8 +1550,7 @@ self.addEventListener('fetch', e => {
       }
       return r;
     }).catch(() => cached);
-    // CDN: prefer fresh; HTML/CSS/local: stale-while-revalidate
-    return isCdn ? (await fetchPromise || cached) : (cached || fetchPromise);
+    return (isCdn || isShell) ? (await fetchPromise || cached) : (cached || fetchPromise);
   }));
 });`;
     const swBlob = new Blob([swCode], {type:'text/javascript'});
@@ -1742,6 +1746,29 @@ function _v48ApplyUpdateNow() {
   }).catch(function(){
     try { location.reload(); } catch (_e) { window.location.href = window.location.href; }
   });
+}
+
+// v78 (§4): LOUD, persistent backend/app version-mismatch banner — replaces the easy-to-miss toast.
+// Fires when the GAS /exec deployment version != this HTML's version (i.e. the Apps Script was not
+// re-deployed as a new version, or the page is stale). Stays on screen until UPDATE or Dismiss.
+// UPDATE -> _v48ApplyUpdateNow (clears SW + caches + reloads; the saved GAS URL + token in
+// localStorage are NOT touched, so the owner stays connected).
+function _v78ShowVersionBanner(serverVer, clientVer) {
+  try {
+    if (document.getElementById('v78-version-banner')) return;
+    var bar = document.createElement('div');
+    bar.id = 'v78-version-banner';
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b71c1c;color:#fff;'
+      + 'padding:10px 14px;font-size:13px;font-weight:600;text-align:center;'
+      + 'box-shadow:0 2px 12px rgba(0,0,0,.45);font-family:system-ui,Segoe UI,Arial,sans-serif';
+    bar.innerHTML = '\u26a0 Version mismatch \u2014 this app is <b>' + clientVer + '</b> but the connected backend is <b>'
+      + serverVer + '</b>. Re-deploy the Apps Script as a NEW version (Deploy \u2192 Manage deployments \u2192 Edit \u2192 New version), then tap '
+      + '<button onclick="_v48ApplyUpdateNow()" style="margin:0 6px;padding:4px 14px;font-weight:700;'
+      + 'background:#fff;color:#b71c1c;border:none;border-radius:4px;cursor:pointer">\ud83d\udd04 UPDATE NOW</button>'
+      + '<button onclick="var b=document.getElementById(\'v78-version-banner\');if(b)b.remove();" '
+      + 'style="padding:4px 10px;background:transparent;color:#fff;border:1px solid #fff;border-radius:4px;cursor:pointer">Dismiss</button>';
+    (document.body || document.documentElement).appendChild(bar);
+  } catch (e) { console.error('v78 version banner:', e); }
 }
 
 // ═══════════════════════════════════════════
@@ -2246,16 +2273,9 @@ const API = {
               // have no obvious refresh gesture either. The UPDATE button unregisters
               // the service worker, clears all caches, and reloads. Function
               // _v48ApplyUpdateNow is defined later in the file (see "v48 PWA").
-              if (typeof toast === 'function') {
-                var _msg = '⚠ App update available (v' + data.serverVersion
-                  + ' on server, v' + window.HRMS_VERSION
-                  + ' on this device). Tap UPDATE to load the new build.'
-                  + ' <button id="update-now-btn" onclick="_v48ApplyUpdateNow()"'
-                  + ' style="margin-left:10px;padding:4px 14px;font-size:12px;font-weight:700;'
-                  + 'background:var(--gold);color:var(--dark1);border:none;border-radius:4px;'
-                  + 'cursor:pointer">UPDATE</button>';
-                toast(_msg, 'warning', 30000);
-              }
+              // v78: a LOUD PERSISTENT banner (was a 30s toast — too easy to miss). An un-redeployed
+              // backend / stale app is the #1 cause of "the fix didn't work", so it must stay on screen.
+              if (typeof _v78ShowVersionBanner === 'function') _v78ShowVersionBanner(data.serverVersion, window.HRMS_VERSION);
               console.warn('[HRMS] Version mismatch — server:', data.serverVersion, 'client:', window.HRMS_VERSION);
             } catch (e) { console.error('v48 mismatch toast:', e); }
           }
@@ -2277,7 +2297,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v77';  // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v81';  // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -7910,7 +7930,6 @@ async function renderLeaves() {
       <button class="btn btn-gold btn-sm" onclick="showAdminLeaveModal()">+ Add Leave</button>
       <button class="btn btn-gold btn-sm" onclick="showBulkLeaveModal()">+ Bulk Leave</button>
       <button class="btn btn-dark btn-sm" onclick="bulkImportLeaves()">📥 Bulk Import</button>
-      <button class="btn btn-dark btn-sm" onclick="migrateLegacyLeaveRequests()" title="One-time, owner-gated, idempotent: copy any legacy Leave_Requests rows into the canonical Leaves store. Runs a dry-run preview first.">⇪ Migrate Legacy</button>
     </div></div>
   <div class="filters-bar">
     <select class="filter-input" id="lf-status" onchange="filterLeaves()"><option value="">All Status</option><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option><option value="Auto">Auto-UL</option></select>
@@ -11307,6 +11326,7 @@ async function renderSettings() {
   <div class="settings-toolbar" style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:12px;position:sticky;top:0;background:var(--dark1);padding:10px 0;z-index:5;border-bottom:1px solid var(--dark3)">
     <!-- v73 D7: visible version badge — previously the version lived only in window.HRMS_VERSION + the silent mismatch check, shown nowhere in the UI. -->
     <span title="App version" style="font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.5px">ArtzFolio HRMS ${window.HRMS_VERSION}</span>
+    <button onclick="_v48ApplyUpdateNow()" title="Force-load the latest build: clears the app cache and reloads. You stay connected (your server URL and login token are preserved)." style="margin-left:8px;padding:2px 8px;font-size:11px;font-weight:700;background:var(--dark3);color:var(--gold);border:1px solid var(--gold-dim);border-radius:4px;cursor:pointer">🔄 Update</button>
     <div style="display:flex;gap:8px">
       <button class="btn btn-secondary" onclick="expandAllSettingsCards()" style="font-size:12px;padding:6px 12px">▼ Expand All</button>
       <button class="btn btn-secondary" onclick="collapseAllSettingsCards()" style="font-size:12px;padding:6px 12px">▶ Collapse All</button>
@@ -12337,7 +12357,7 @@ async function renderSettings() {
       <br><br>
       <strong style="color:var(--gold)">Level-Based Retention Bonus</strong> — a per-LEVEL monthly bonus (L1–L10) that vests over time with cohort schedules. Shown on this <strong>Bonuses &amp; Promotion</strong> tab as <em>💎 Level-Based Retention Bonus</em>.
       <br>
-      <strong style="color:var(--gold)">Tenure-Based Monthly Wallet</strong> — a per-TENURE-YEAR monthly credit (Y1–Y5+) gated by max-leaves with optional performance adjustments. Its editor lives in the Compensation card (<strong>Salaries &amp; Pay</strong> tab): <em>Settings → Compensation → Tenure-Based Wallet</em>.
+      <strong style="color:var(--gold)">Tenure-Based Monthly Wallet</strong> — a per-TENURE-YEAR monthly credit (Y1–Y5+) gated by max-leaves with optional performance adjustments. Its editor is shown right here on this <strong>Bonuses &amp; Promotion</strong> tab, below.
       <br><br>
       Existing balances on both ledgers are preserved no matter which model is active. Employees can still withdraw what they have already earned from either ledger.
     </div>
@@ -12359,6 +12379,129 @@ async function renderSettings() {
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-gold" onclick="saveLoyaltyProgramsMaster()">💾 Save Loyalty Model</button>
     </div>
+    <!-- v80 (§6): Tenure-Based Wallet editor moved here (was Settings -> Compensation -> Tenure-Based Wallet sub-tab). All element IDs unchanged so loadCompSettings + renderWalletVesting still populate it by id. -->
+      <div id="comp-sp-wallet" data-v80-moved="bonus-loyalty" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
+        <!-- v45 Workstream D: standardised every tooltip-icon to info-tooltip
+             with hardcoded titles (no dependency on the data-tooltip-key
+             hydration pipeline). Matches the rest of the v44 settings. -->
+        <!-- v46 W2: panel title + explanation block + cross-reference status line. -->
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">💎 Tenure-Based Monthly Wallet (per-year credit)</div>
+        <div style="background:var(--dark3);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--gray-light);line-height:1.7">
+          <strong style="color:var(--gold)">What this is:</strong> a per-TENURE-YEAR monthly credit (Y1–Y5+) added to the employee's wallet. Gated by Max Leaves Threshold and optional performance adjustments.
+          <br>
+          <strong style="color:var(--gold)">How it differs:</strong> the <em>Level-Based Retention Bonus</em> (Settings → 💎 Level-Based Retention Bonus) pays per-LEVEL with cohort-based vesting, not per-tenure-year.
+          <br>
+          <strong style="color:var(--gold)">Trigger:</strong> per-tenure-year fixed amount, posted monthly when this program is the active loyalty model.
+          <br>
+          <strong style="color:var(--gold)">Affects:</strong> LoyaltyWallet sheet (totalAccumulated · currentBalance · monthlyCreditsLog) · LoyaltyWallet_Adjustments (performance holds/reductions) · kiosk wallet card · Config_Audit (when master selector changes). Withdrawal % and timing are now configurable below under <strong style="color:var(--gold)">Withdrawal Vesting Schedule</strong> (Cumulative or Tiered + Cooldown). Existing installs keep the legacy 40%@6M / 60%@12M behaviour until a schedule is saved.
+        </div>
+        <div id="tenure-wallet-active-status" style="font-size:12px;color:var(--gold);padding:6px 10px;margin-bottom:10px;background:var(--dark2);border-radius:4px;line-height:1.6">
+          ⚠ <span id="tenure-wallet-status-state">…</span> · Change in <strong>Settings → 💎 Loyalty Programs</strong>.
+        </div>
+        <div class="settings-grid">
+          <div class="form-group">
+            <label class="form-label">Enable Loyalty Wallet <span class="info-tooltip" title="Master switch. When OFF, no monthly credit is added to any employee's wallet, but existing balances are preserved.">ℹ</span></label>
+            <select class="form-input" id="cfg-LOYALTY_WALLET_ENABLED">
+              <option value="true">Yes</option><option value="false">No</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Year 1 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit added to an employee's Loyalty Wallet during their first 12 months of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR1_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 2 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 13–24 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR2_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 3 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 25–36 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR3_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 4 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 37–48 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR4_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Year 5+ Monthly Credit Cap (₹) <span class="info-tooltip" title="Monthly credit from month 49 onwards. The maximum tier.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR5PLUS_MONTHLY" min="0"></div>
+          <div class="form-group"><label class="form-label">Max Leaves Threshold <span class="info-tooltip" title="If an employee exceeds this leave count in a month, that month's credit is held automatically.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MAX_LEAVES_THRESHOLD" min="0"></div>
+          <div class="form-group"><label class="form-label">Min Tenure Before First Withdrawal (months) <span class="info-tooltip" title="Minimum service before an employee can request their first wallet withdrawal.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MIN_TENURE_MONTHS" min="1"></div>
+          <!-- v77 (CMT-01): the old v45 "v46 re-route" TODO is OBSOLETE. Per-level withdrawal
+               vesting (Cumulative/Tiered) shipped in v52 (_getWalletVestingConfig + the Withdrawal
+               Vesting editor below). LOYALTY_WALLET_WITHDRAW_AFTER_6M/12M_PCT (40/60) now act only
+               as the Legacy fallback when no vesting model is configured. -->
+        </div>
+        <!-- v52 Item 1: Tenure-Based Wallet Withdrawal Vesting editor. Reuses the
+             Level-Based Retention Bonus tier-editor components (lbAddMS / lbAddTieredFirst /
+             lbAddTieredSubsequent / lbRemove* / lbToggleModel) via a reserved 'WALLET' token,
+             so there is ONE tier-editor implementation. Populated by renderWalletVesting()
+             from loadCompSettings(); saved by saveWalletVesting() into CompensationConfig. -->
+        <div id="wal-vesting-editor" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
+          <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:6px">Withdrawal Vesting Schedule
+            <span class="info-tooltip" title="Controls HOW MUCH of the wallet an employee can withdraw and WHEN. Cumulative: each monthly credit is its own deposit with its own clock - the schedule applies per deposit. Tiered + Cooldown: the first withdrawal picks a wait/percentage tier; after any withdrawal all later withdrawals follow the Cooldown tiers, applied to the current balance.">i</span>
+          </div>
+          <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px;line-height:1.6">
+            Same vesting structure as the Level-Based Retention Bonus, now configurable for the wallet. The <strong>Min Tenure</strong> field above still gates the very first withdrawal. Existing balances and monthly credits are never changed by editing this schedule.
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <label class="form-label" style="margin:0">Vesting Model</label>
+            <select class="form-input" id="lb-model-WALLET" onchange="lbToggleModel('WALLET')" style="width:200px;font-size:12px">
+              <option value="Cumulative">Cumulative Vesting</option>
+              <option value="Tiered">Tiered + Cooldown</option>
+            </select>
+          </div>
+          <div id="lb-cum-block-WALLET" style="display:none">
+            <div style="font-size:11px;color:var(--gold-light);margin-bottom:4px;font-weight:600">Per-Deposit Vesting Milestones <span class="info-tooltip" title="Each monthly wallet credit becomes Y% withdrawable after X months from that deposit. The schedule applies per deposit, not to the running total.">i</span></div>
+            <div id="lb-ms-container-WALLET"></div>
+            <button class="btn btn-dark btn-sm" style="margin-top:4px;font-size:10px" onclick="lbAddMS('WALLET')" title="Add another per-deposit vesting milestone.">+ Add Milestone</button>
+          </div>
+          <div id="lb-tier-block-WALLET" style="display:none">
+            <div style="font-size:11px;color:var(--gold-light);margin-bottom:3px;font-weight:600">First Withdrawal Options <span class="info-tooltip" title="The employee can choose ONE of these options for their first withdrawal. Longer waits unlock larger percentages.">i</span></div>
+            <div id="lb-tf-container-WALLET"></div>
+            <button class="btn btn-dark btn-sm" style="margin-top:2px;font-size:10px" onclick="lbAddTieredFirst('WALLET')">+ Add Tier</button>
+            <div style="font-size:11px;color:var(--gold-light);margin:8px 0 3px;font-weight:600">Subsequent Withdrawal - Cooldown Options <span class="info-tooltip" title="After any withdrawal, the employee must wait the configured cooldown before withdrawing again. The chosen cooldown determines the percentage of the current balance.">i</span></div>
+            <div id="lb-ts-container-WALLET"></div>
+            <button class="btn btn-dark btn-sm" style="margin-top:2px;font-size:10px" onclick="lbAddTieredSubsequent('WALLET')">+ Add Tier</button>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn btn-gold btn-sm" onclick="saveWalletVesting()">Save Wallet Vesting Schedule</button>
+            <span id="wal-vesting-status" style="margin-left:8px;font-size:12px"></span>
+          </div>
+        </div>
+        <!-- v45 W-C3 advisory SUPERSEDED in v46 W2 by the explanation + status block
+             at the top of this panel. (Kept the deferred-TODO note in gas header.) -->
+        <!-- v44 Workstream C: Performance-based Adjustments sub-section -->
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
+          <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:8px">Performance-based Adjustments</div>
+          <!-- v46 W2: clarifier — Performance Adjustments apply only to the Tenure-Based Monthly Wallet, not to the Level-Based Retention Bonus. -->
+          <div style="font-size:11px;color:var(--gold);margin-bottom:6px;font-style:italic">ℹ Performance Adjustments apply only to the Tenure-Based Monthly Wallet — not to the Level-Based Retention Bonus.</div>
+          <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">Allow authorised users to hold or reduce a single employee's monthly wallet credit when performance falls short. Adjustments are forward-only and never rewrite past credits.</div>
+          <div class="settings-grid">
+            <div class="form-group">
+              <label class="form-label">Enable Performance Adjustments
+                <span class="info-tooltip" title="Master switch. When OFF, monthly credit always uses the tenure-based amount regardless of any submitted adjustments.">ℹ</span>
+              </label>
+              <select class="form-input" id="cfg-LOYALTY_WALLET_PERF_ADJ_ENABLED">
+                <option value="true">Yes</option><option value="false">No</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Roles Permitted to Act
+                <span class="info-tooltip" title="Select which roles may submit a wallet adjustment. The Owner role is always implicitly allowed.">ℹ</span>
+              </label>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:13px;padding:6px 0">
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_owner" checked disabled> Owner <span class="info-tooltip" title="Owner role is always permitted to submit wallet adjustments and cannot be removed from this list.">ℹ</span></label>
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_admin"> Admin</label>
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_manager"> Manager</label>
+                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_supervisor"> Supervisor</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Approval Required
+                <span class="info-tooltip" title="None = single-click action. Two-eye = a different authorised user must confirm. Owner-final = Owner must approve every adjustment.">ℹ</span>
+              </label>
+              <select class="form-input" id="cfg-LOYALTY_WALLET_PERF_ADJ_APPROVAL">
+                <option value="None">None — single-click reduction</option>
+                <option value="TwoEye">Two-eye approval</option>
+                <option value="OwnerFinal">Owner final approval</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Reduction per Month (%)
+                <span class="info-tooltip" title="Hard cap on the reduction percentage allowed in a single adjustment. The form will reject any value above this. 100 = full hold permitted.">ℹ</span>
+              </label>
+              <input class="form-input" type="number" id="cfg-LOYALTY_WALLET_PERF_ADJ_MAX_PCT" min="0" max="100" value="100">
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['LOYALTY_WALLET_ENABLED','LOYALTY_WALLET_YR1_MONTHLY','LOYALTY_WALLET_YR2_MONTHLY','LOYALTY_WALLET_YR3_MONTHLY','LOYALTY_WALLET_YR4_MONTHLY','LOYALTY_WALLET_YR5PLUS_MONTHLY','LOYALTY_WALLET_MAX_LEAVES_THRESHOLD','LOYALTY_WALLET_MIN_TENURE_MONTHS','LOYALTY_WALLET_PERF_ADJ_ENABLED','LOYALTY_WALLET_PERF_ADJ_ROLES','LOYALTY_WALLET_PERF_ADJ_APPROVAL','LOYALTY_WALLET_PERF_ADJ_MAX_PCT'])">💾 Save Loyalty Wallet Policy</button>
+      </div>
       </div>
   </div>
 
@@ -13000,7 +13143,6 @@ async function renderSettings() {
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('promo')">Promotion Windows</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('ot')">OT Policy</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('jbonus')">Joining Bonus</button>
-        <button class="comp-sub-tab" onclick="switchCompSettingsTab('wallet')" title="Tenure-Based Monthly Wallet (per-year credit)">Tenure-Based Wallet</button>
         <!-- v45 Workstream A1: "Wallet Adjustments" sub-tab removed. The
              per-employee adjustment workspace now lives on the Payroll tab
              (third tab next to Salary Register and Statutory Compliance) so
@@ -13202,129 +13344,7 @@ async function renderSettings() {
         </div>
         <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['JOINING_BONUS_ENABLED','JOINING_BONUS_TOTAL','JOINING_BONUS_INSTALLMENTS','JOINING_BONUS_INSTALLMENT_AMOUNT','JOINING_BONUS_INSTALLMENT_1_MONTHS','JOINING_BONUS_INSTALLMENT_2_MONTHS','JOINING_BONUS_INSTALLMENT_3_MONTHS','JOINING_BONUS_INSTALLMENT_4_MONTHS','JOINING_BONUS_MAX_LEAVES_THRESHOLD'])">💾 Save Joining Bonus Policy</button>
       </div>
-      <!-- Tenure-Based Monthly Wallet sub-panel (renamed in v46 W2; DOM id comp-sp-wallet kept verbatim per R9) -->
-      <div class="comp-sub-panel" id="comp-sp-wallet">
-        <!-- v45 Workstream D: standardised every tooltip-icon to info-tooltip
-             with hardcoded titles (no dependency on the data-tooltip-key
-             hydration pipeline). Matches the rest of the v44 settings. -->
-        <!-- v46 W2: panel title + explanation block + cross-reference status line. -->
-        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">💎 Tenure-Based Monthly Wallet (per-year credit)</div>
-        <div style="background:var(--dark3);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--gray-light);line-height:1.7">
-          <strong style="color:var(--gold)">What this is:</strong> a per-TENURE-YEAR monthly credit (Y1–Y5+) added to the employee's wallet. Gated by Max Leaves Threshold and optional performance adjustments.
-          <br>
-          <strong style="color:var(--gold)">How it differs:</strong> the <em>Level-Based Retention Bonus</em> (Settings → 💎 Level-Based Retention Bonus) pays per-LEVEL with cohort-based vesting, not per-tenure-year.
-          <br>
-          <strong style="color:var(--gold)">Trigger:</strong> per-tenure-year fixed amount, posted monthly when this program is the active loyalty model.
-          <br>
-          <strong style="color:var(--gold)">Affects:</strong> LoyaltyWallet sheet (totalAccumulated · currentBalance · monthlyCreditsLog) · LoyaltyWallet_Adjustments (performance holds/reductions) · kiosk wallet card · Config_Audit (when master selector changes). Withdrawal % and timing are now configurable below under <strong style="color:var(--gold)">Withdrawal Vesting Schedule</strong> (Cumulative or Tiered + Cooldown). Existing installs keep the legacy 40%@6M / 60%@12M behaviour until a schedule is saved.
-        </div>
-        <div id="tenure-wallet-active-status" style="font-size:12px;color:var(--gold);padding:6px 10px;margin-bottom:10px;background:var(--dark2);border-radius:4px;line-height:1.6">
-          ⚠ <span id="tenure-wallet-status-state">…</span> · Change in <strong>Settings → 💎 Loyalty Programs</strong>.
-        </div>
-        <div class="settings-grid">
-          <div class="form-group">
-            <label class="form-label">Enable Loyalty Wallet <span class="info-tooltip" title="Master switch. When OFF, no monthly credit is added to any employee's wallet, but existing balances are preserved.">ℹ</span></label>
-            <select class="form-input" id="cfg-LOYALTY_WALLET_ENABLED">
-              <option value="true">Yes</option><option value="false">No</option>
-            </select>
-          </div>
-          <div class="form-group"><label class="form-label">Year 1 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit added to an employee's Loyalty Wallet during their first 12 months of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR1_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 2 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 13–24 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR2_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 3 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 25–36 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR3_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 4 Monthly Credit (₹) <span class="info-tooltip" title="Monthly credit during months 37–48 of service.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR4_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Year 5+ Monthly Credit Cap (₹) <span class="info-tooltip" title="Monthly credit from month 49 onwards. The maximum tier.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_YR5PLUS_MONTHLY" min="0"></div>
-          <div class="form-group"><label class="form-label">Max Leaves Threshold <span class="info-tooltip" title="If an employee exceeds this leave count in a month, that month's credit is held automatically.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MAX_LEAVES_THRESHOLD" min="0"></div>
-          <div class="form-group"><label class="form-label">Min Tenure Before First Withdrawal (months) <span class="info-tooltip" title="Minimum service before an employee can request their first wallet withdrawal.">ℹ</span></label><input class="form-input" type="number" id="cfg-LOYALTY_WALLET_MIN_TENURE_MONTHS" min="1"></div>
-          <!-- v77 (CMT-01): the old v45 "v46 re-route" TODO is OBSOLETE. Per-level withdrawal
-               vesting (Cumulative/Tiered) shipped in v52 (_getWalletVestingConfig + the Withdrawal
-               Vesting editor below). LOYALTY_WALLET_WITHDRAW_AFTER_6M/12M_PCT (40/60) now act only
-               as the Legacy fallback when no vesting model is configured. -->
-        </div>
-        <!-- v52 Item 1: Tenure-Based Wallet Withdrawal Vesting editor. Reuses the
-             Level-Based Retention Bonus tier-editor components (lbAddMS / lbAddTieredFirst /
-             lbAddTieredSubsequent / lbRemove* / lbToggleModel) via a reserved 'WALLET' token,
-             so there is ONE tier-editor implementation. Populated by renderWalletVesting()
-             from loadCompSettings(); saved by saveWalletVesting() into CompensationConfig. -->
-        <div id="wal-vesting-editor" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
-          <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:6px">Withdrawal Vesting Schedule
-            <span class="info-tooltip" title="Controls HOW MUCH of the wallet an employee can withdraw and WHEN. Cumulative: each monthly credit is its own deposit with its own clock - the schedule applies per deposit. Tiered + Cooldown: the first withdrawal picks a wait/percentage tier; after any withdrawal all later withdrawals follow the Cooldown tiers, applied to the current balance.">i</span>
-          </div>
-          <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px;line-height:1.6">
-            Same vesting structure as the Level-Based Retention Bonus, now configurable for the wallet. The <strong>Min Tenure</strong> field above still gates the very first withdrawal. Existing balances and monthly credits are never changed by editing this schedule.
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-            <label class="form-label" style="margin:0">Vesting Model</label>
-            <select class="form-input" id="lb-model-WALLET" onchange="lbToggleModel('WALLET')" style="width:200px;font-size:12px">
-              <option value="Cumulative">Cumulative Vesting</option>
-              <option value="Tiered">Tiered + Cooldown</option>
-            </select>
-          </div>
-          <div id="lb-cum-block-WALLET" style="display:none">
-            <div style="font-size:11px;color:var(--gold-light);margin-bottom:4px;font-weight:600">Per-Deposit Vesting Milestones <span class="info-tooltip" title="Each monthly wallet credit becomes Y% withdrawable after X months from that deposit. The schedule applies per deposit, not to the running total.">i</span></div>
-            <div id="lb-ms-container-WALLET"></div>
-            <button class="btn btn-dark btn-sm" style="margin-top:4px;font-size:10px" onclick="lbAddMS('WALLET')" title="Add another per-deposit vesting milestone.">+ Add Milestone</button>
-          </div>
-          <div id="lb-tier-block-WALLET" style="display:none">
-            <div style="font-size:11px;color:var(--gold-light);margin-bottom:3px;font-weight:600">First Withdrawal Options <span class="info-tooltip" title="The employee can choose ONE of these options for their first withdrawal. Longer waits unlock larger percentages.">i</span></div>
-            <div id="lb-tf-container-WALLET"></div>
-            <button class="btn btn-dark btn-sm" style="margin-top:2px;font-size:10px" onclick="lbAddTieredFirst('WALLET')">+ Add Tier</button>
-            <div style="font-size:11px;color:var(--gold-light);margin:8px 0 3px;font-weight:600">Subsequent Withdrawal - Cooldown Options <span class="info-tooltip" title="After any withdrawal, the employee must wait the configured cooldown before withdrawing again. The chosen cooldown determines the percentage of the current balance.">i</span></div>
-            <div id="lb-ts-container-WALLET"></div>
-            <button class="btn btn-dark btn-sm" style="margin-top:2px;font-size:10px" onclick="lbAddTieredSubsequent('WALLET')">+ Add Tier</button>
-          </div>
-          <div style="margin-top:12px">
-            <button class="btn btn-gold btn-sm" onclick="saveWalletVesting()">Save Wallet Vesting Schedule</button>
-            <span id="wal-vesting-status" style="margin-left:8px;font-size:12px"></span>
-          </div>
-        </div>
-        <!-- v45 W-C3 advisory SUPERSEDED in v46 W2 by the explanation + status block
-             at the top of this panel. (Kept the deferred-TODO note in gas header.) -->
-        <!-- v44 Workstream C: Performance-based Adjustments sub-section -->
-        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--dark3)">
-          <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:8px">Performance-based Adjustments</div>
-          <!-- v46 W2: clarifier — Performance Adjustments apply only to the Tenure-Based Monthly Wallet, not to the Level-Based Retention Bonus. -->
-          <div style="font-size:11px;color:var(--gold);margin-bottom:6px;font-style:italic">ℹ Performance Adjustments apply only to the Tenure-Based Monthly Wallet — not to the Level-Based Retention Bonus.</div>
-          <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">Allow authorised users to hold or reduce a single employee's monthly wallet credit when performance falls short. Adjustments are forward-only and never rewrite past credits.</div>
-          <div class="settings-grid">
-            <div class="form-group">
-              <label class="form-label">Enable Performance Adjustments
-                <span class="info-tooltip" title="Master switch. When OFF, monthly credit always uses the tenure-based amount regardless of any submitted adjustments.">ℹ</span>
-              </label>
-              <select class="form-input" id="cfg-LOYALTY_WALLET_PERF_ADJ_ENABLED">
-                <option value="true">Yes</option><option value="false">No</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Roles Permitted to Act
-                <span class="info-tooltip" title="Select which roles may submit a wallet adjustment. The Owner role is always implicitly allowed.">ℹ</span>
-              </label>
-              <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:13px;padding:6px 0">
-                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_owner" checked disabled> Owner <span class="info-tooltip" title="Owner role is always permitted to submit wallet adjustments and cannot be removed from this list.">ℹ</span></label>
-                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_admin"> Admin</label>
-                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_manager"> Manager</label>
-                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cfg-LOYALTY_WALLET_PERF_ADJ_ROLES_supervisor"> Supervisor</label>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Approval Required
-                <span class="info-tooltip" title="None = single-click action. Two-eye = a different authorised user must confirm. Owner-final = Owner must approve every adjustment.">ℹ</span>
-              </label>
-              <select class="form-input" id="cfg-LOYALTY_WALLET_PERF_ADJ_APPROVAL">
-                <option value="None">None — single-click reduction</option>
-                <option value="TwoEye">Two-eye approval</option>
-                <option value="OwnerFinal">Owner final approval</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Max Reduction per Month (%)
-                <span class="info-tooltip" title="Hard cap on the reduction percentage allowed in a single adjustment. The form will reject any value above this. 100 = full hold permitted.">ℹ</span>
-              </label>
-              <input class="form-input" type="number" id="cfg-LOYALTY_WALLET_PERF_ADJ_MAX_PCT" min="0" max="100" value="100">
-            </div>
-          </div>
-        </div>
-        <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['LOYALTY_WALLET_ENABLED','LOYALTY_WALLET_YR1_MONTHLY','LOYALTY_WALLET_YR2_MONTHLY','LOYALTY_WALLET_YR3_MONTHLY','LOYALTY_WALLET_YR4_MONTHLY','LOYALTY_WALLET_YR5PLUS_MONTHLY','LOYALTY_WALLET_MAX_LEAVES_THRESHOLD','LOYALTY_WALLET_MIN_TENURE_MONTHS','LOYALTY_WALLET_PERF_ADJ_ENABLED','LOYALTY_WALLET_PERF_ADJ_ROLES','LOYALTY_WALLET_PERF_ADJ_APPROVAL','LOYALTY_WALLET_PERF_ADJ_MAX_PCT'])">💾 Save Loyalty Wallet Policy</button>
-      </div>
+      <!-- v80 (§6): the Tenure-Based Wallet editor MOVED to Settings -> Bonuses & Promotion -> Loyalty Programs (its correct home, alongside the Active-Loyalty-Model selector + Level-Based Retention Bonus). -->
       <!-- v45 Workstream A1: "Wallet Adjustments" sub-panel removed from
            Settings → Compensation. The per-employee adjustment workspace
            now lives on the Payroll tab — see _v45RenderWalletAdjPanel and
@@ -17481,122 +17501,13 @@ async function renderPromotions() {
   document.getElementById('admin-tab-content').innerHTML = html;
 }
 
-async function renderLeaveManagement() {
-  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
-  const [reqRes, empRes] = await Promise.all([
-    API.call('getLeaveRequests', {}),
-    API.call('getEmployees', {status:'Active'}),
-  ]);
-  const requests = reqRes.requests || [];
-  const pending = requests.filter(r => r['Status'] === 'Pending');
-  const colorMap = {Pending:'#f9a825',Approved:'#43a047',Rejected:'#d32f2f',Cancelled:'#757575'};
-  let html = `<div style="max-width:1100px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <h2 style="font-size:18px;font-weight:700">📅 Leave Management</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-dark btn-sm" onclick="exportLeaveCSV()">📥 Export CSV</button>
-        <button class="btn btn-dark btn-sm" onclick="showLeaveImportModal()">📤 Bulk Import</button>
-        <button class="btn btn-gold btn-sm" onclick="seedLeaveBalancesAdmin()">🌱 Seed Leave Balances</button>
-      </div>
-    </div>
-    <!-- Sub-tabs -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="btn btn-gold btn-sm" id="lm-tab-all" onclick="switchLMTab('all')">All Requests (${requests.length})</button>
-      <button class="btn btn-dark btn-sm" id="lm-tab-pending" onclick="switchLMTab('pending')">Pending (${pending.length})</button>
-      <button class="btn btn-dark btn-sm" id="lm-tab-balances" onclick="switchLMTab('balances')">Leave Balances</button>
-    </div>
-    <!-- All requests table -->
-    <div id="lm-section-all">
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <select id="lm-filter-status" class="form-input" style="width:140px" onchange="filterLeaveRequests()">
-          <option value="">All Statuses</option><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option><option value="Cancelled">Cancelled</option>
-        </select>
-        <select id="lm-filter-type" class="form-input" style="width:140px" onchange="filterLeaveRequests()">
-          <option value="">All Leave Types</option><option value="CL">CL</option><option value="SL">SL</option><option value="EL">EL</option><option value="PL">PL</option><option value="ML">ML</option><option value="PTL">PTL</option><option value="LWP">LWP</option>
-        </select>
-      </div>
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:var(--dark3)">
-            <th style="padding:6px"><input type="checkbox" id="lm-select-all" onchange="toggleAllLeaveCheckboxes(this.checked)"></th>
-            <th style="padding:6px">Req ID</th><th style="padding:6px">Employee</th>
-            <th style="padding:6px">Leave Type</th><th style="padding:6px">Dates</th>
-            <th style="padding:6px">Days</th><th style="padding:6px">Status</th>
-            <th style="padding:6px">Actions</th>
-          </tr></thead>
-          <tbody id="lm-table-body">
-            ${requests.map((r,i) => `<tr style="border-bottom:1px solid var(--dark3)" class="lm-row" data-status="${escHtml(r['Status'])}" data-type="${escHtml(r['Leave Type Code'])}">
-              <td style="padding:6px"><input type="checkbox" class="lm-chk" value="${escHtml(r['Request ID'])}"></td>
-              <td style="padding:6px;font-size:11px">${escHtml((r['Request ID']||'').substring(0,12))}…</td>
-              <td style="padding:6px"><strong>${escHtml(r['Employee Name'])}</strong><br><span style="font-size:11px;color:var(--gray-light)">${escHtml(r['Employee Code'])}</span></td>
-              <td style="padding:6px"><span style="background:var(--dark3);padding:2px 6px;border-radius:10px;font-size:11px">${escHtml(r['Leave Type Code'])}</span></td>
-              <td style="padding:6px">${escHtml(r['From Date'])} → ${escHtml(r['To Date'])}</td>
-              <td style="padding:6px;text-align:center">${r['Number of Days']}</td>
-              <td style="padding:6px"><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:${colorMap[r['Status']]||'#757'}22;color:${colorMap[r['Status']]||'#fff'}">${escHtml(r['Status'])}</span></td>
-              <td style="padding:6px">
-                ${r['Status']==='Pending' ? `
-                  <button class="btn btn-sm" style="background:var(--green);color:#fff;font-size:10px;padding:3px 8px" onclick="adminLeaveAction('${escHtml(r['Request ID'])}','approve')">Approve</button>
-                  <button class="btn btn-sm" style="background:var(--dark3);color:var(--red);font-size:10px;padding:3px 8px;margin-left:4px" onclick="adminLeaveAction('${escHtml(r['Request ID'])}','reject')">Reject</button>
-                ` : '—'}
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn-dark btn-sm" onclick="bulkLeaveAction('approve')">Bulk Approve Selected</button>
-        <button class="btn btn-dark btn-sm" onclick="bulkLeaveAction('reject')">Bulk Reject Selected</button>
-      </div>
-    </div>
-    <!-- Pending sub-section -->
-    <div id="lm-section-pending" style="display:none">
-      ${pending.length === 0 ? '<div class="empty-state"><div class="empty-icon">✓</div><p>No pending leave requests</p></div>' :
-      pending.map(r => `<div style="background:var(--dark2);border-radius:8px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <div>
-          <div style="font-weight:600">${escHtml(r['Employee Name'])} (${escHtml(r['Employee Code'])})</div>
-          <div style="font-size:12px;color:var(--gray-light)">${escHtml(r['Leave Type Name']||r['Leave Type Code'])} — ${escHtml(r['From Date'])} to ${escHtml(r['To Date'])} (${r['Number of Days']} days)</div>
-          <div style="font-size:11px;color:var(--gray-light)">${escHtml(r['Reason']||'')}</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-sm" style="background:var(--green);color:#fff" onclick="adminLeaveAction('${escHtml(r['Request ID'])}','approve')">Approve</button>
-          <button class="btn btn-sm" style="background:var(--dark3);color:var(--red)" onclick="adminLeaveAction('${escHtml(r['Request ID'])}','reject')">Reject</button>
-        </div>
-      </div>`).join('')}
-    </div>
-    <!-- Balances sub-section -->
-    <div id="lm-section-balances" style="display:none">
-      <div style="color:var(--gray-light);font-size:12px">Click "Seed Leave Balances" to generate balance records for all active employees. Then filter by employee.</div>
-      <button class="btn btn-gold btn-sm" style="margin-top:10px" onclick="loadAllLeaveBalances()">Load All Leave Balances</button>
-      <div id="lm-balances-table" style="margin-top:12px"></div>
-    </div>
-  </div>`;
-  State._lmRequests = requests;
-  document.getElementById('admin-tab-content').innerHTML = html;
-}
+// v78 (§5): removed dead renderLeaveManagement (System-B leavemgmt UI retired). [v79: dropped dangling async]
 
-function switchLMTab(tab) {
-  ['all','pending','balances'].forEach(t => {
-    const sec = document.getElementById('lm-section-' + t);
-    const btn = document.getElementById('lm-tab-' + t);
-    if (sec) sec.style.display = t === tab ? '' : 'none';
-    if (btn) btn.className = t === tab ? 'btn btn-gold btn-sm' : 'btn btn-dark btn-sm';
-  });
-}
+// v78 (§5): removed dead switchLMTab (System-B leavemgmt UI retired).
 
-function filterLeaveRequests() {
-  const statusFilter = document.getElementById('lm-filter-status').value;
-  const typeFilter = document.getElementById('lm-filter-type').value;
-  document.querySelectorAll('.lm-row').forEach(row => {
-    const status = row.dataset.status;
-    const type = row.dataset.type;
-    const show = (!statusFilter || status === statusFilter) && (!typeFilter || type === typeFilter);
-    row.style.display = show ? '' : 'none';
-  });
-}
+// v78 (§5): removed dead filterLeaveRequests (System-B leavemgmt UI retired).
 
-function toggleAllLeaveCheckboxes(checked) {
-  document.querySelectorAll('.lm-chk').forEach(c => c.checked = checked);
-}
+// v78 (§5): removed dead toggleAllLeaveCheckboxes (System-B leavemgmt UI retired).
 
 // v36 fix BUG-16: in-app reason modal — native prompt() is blocked in fullscreen/PWA/kiosk
 function _askRejectionReason(title) {
@@ -17616,21 +17527,7 @@ function _askRejectionReason(title) {
   });
 }
 
-async function adminLeaveAction(reqId, action) {
-  let notes = '';
-  if (action === 'reject') {
-    notes = await _askRejectionReason('Reject Leave Request');
-    if (notes === null) return; // user cancelled
-  }
-  const res = await API.call('adminLeaveAction', {reqId, action, reviewedBy: State.adminRole, notes});
-  if (res.ok) {
-    toast(action === 'approve' ? 'Leave approved' : 'Leave rejected', 'success');
-    await renderLeaveManagement();
-    if (typeof refreshApprovalsBadge === 'function') refreshApprovalsBadge(); // v36 fix BUG-73
-  } else {
-    toast(res.error||'Error','error');
-  }
-}
+// v78 (§5): removed dead adminLeaveAction (System-B leavemgmt UI retired). [v79: dropped dangling async]
 
 async function bulkLeaveAction(action) {
   // v55 BUG-D fix: unified to the canonical Leaves store (System A). The Leaves table
@@ -17668,65 +17565,11 @@ async function bulkLeaveAction(action) {
 // v77 (Gate A): one-click, owner-gated, idempotent migration of any legacy Leave_Requests rows
 // into the canonical Leaves store. Dry-run preview -> confirm -> apply. The backend de-dupes by
 // empId+type+startDate+endDate, so re-running is a no-op. This is the owner's single post-deploy step.
-async function migrateLegacyLeaveRequests() {
-  const tok = State._dzToken || '';
-  if (!tok) { toast('Owner authentication required — open Settings -> Danger Zone to authenticate first.', 'warning'); return; }
-  toast('Checking legacy Leave_Requests…', 'info');
-  const dry = await API.call('migrateLeaveRequests', {mode:'dryRun', ownerToken: tok, userId: State.adminUser || 'owner'});
-  if (!dry.ok) { toast(dry.error || 'Migration check failed', 'error'); return; }
-  if (!dry.wouldMigrate) { toast('Nothing to migrate — the Leaves store already has every legacy row (' + (dry.alreadyPresent||0) + ' present).', 'success'); return; }
-  const ok = await confirm2('Legacy Leave_Requests rows: ' + dry.leaveRequestsCount +
-    '\nAlready in Leaves: ' + dry.alreadyPresent +
-    '\nWould migrate: ' + dry.wouldMigrate +
-    '\nInvalid (skipped): ' + dry.invalid +
-    '\n\nRun a full backup first if you have not. Apply the migration now?');
-  if (!ok) return;
-  const res = await API.call('migrateLeaveRequests', {mode:'apply', confirm:true, ownerToken: tok, userId: State.adminUser || 'owner'});
-  if (res.ok) { toast('✓ Migrated ' + res.migrated + ' (skipped ' + res.skipped + '). Leaves ' + res.leavesCountBefore + ' → ' + res.leavesCountAfter, 'success'); if (typeof renderLeaves==='function') renderLeaves(); }
-  else toast(res.error || 'Migration failed', 'error');
-}
+// v78 (§5): removed dead migrateLegacyLeaveRequests (System-B leavemgmt UI retired). [v79: dropped dangling async]
 
-function exportLeaveCSV() {
-  const requests = State._lmRequests || [];
-  if (!requests.length) { toast('No data to export','error'); return; }
-  const headers = Object.keys(requests[0]);
-  const csv = [headers.join(','), ...requests.map(r => headers.map(h => '"' + String(r[h]||'').replace(/"/g,'""') + '"').join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'leave_requests_' + todayStr() + '.csv';
-  a.click();
-}
+// v78 (§5): removed dead exportLeaveCSV (System-B leavemgmt UI retired).
 
-function showLeaveImportModal() {
-  const html = `<div>
-    <div style="font-size:12px;color:var(--gray-light);margin-bottom:12px">
-      Upload a CSV file with columns: <strong>Employee Code, Leave Type Code, From Date (DD/MM/YYYY), To Date, Reason, Half Day (Y/N), Half Day Period (AM/PM)</strong>
-    </div>
-    <input type="file" id="lm-import-file" accept=".csv" style="margin-bottom:10px">
-    <div id="lm-import-preview" style="font-size:12px;max-height:200px;overflow-y:auto"></div>
-  </div>`;
-  showModal('📤 Bulk Import Leave Requests', html, [
-    {label:'Upload & Validate', cls:'btn-gold', cb: async () => {
-      const file = document.getElementById('lm-import-file').files[0];
-      if (!file) { toast('Select a CSV file','error'); return; }
-      const text = await file.text();
-      const lines = text.trim().split('\n');
-      const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim());
-      const rows = lines.slice(1).map(line => {
-        const vals = line.split(',').map(v => v.replace(/"/g,'').trim());
-        const obj = {};
-        headers.forEach((h,i) => obj[h] = vals[i]||'');
-        return obj;
-      });
-      const res = await API.call('importLeaveRequests', {rows});
-      const preview = document.getElementById('lm-import-preview');
-      preview.innerHTML = `<div style="color:var(--green);font-weight:700">Processed: ${res.processed}</div>` +
-        (res.errors||[]).map(e => `<div style="color:var(--red)">Row ${e.row}: ${escHtml(e.error)}</div>`).join('');
-      toast(res.processed + ' rows imported', 'success');
-    }},
-    {label:'Close', cls:'btn-dark', cb:closeModal},
-  ]);
-}
+// v78 (§5): removed dead showLeaveImportModal (System-B leavemgmt UI retired).
 
 async function loadAllLeaveBalances() {
   const res = await API.call('getLeaveBalance', {});
@@ -18383,12 +18226,10 @@ function autoRecomputeIncrementShifts(level) {
 // Fires when either cfg-INCREMENT_MULT_11HR or cfg-INCREMENT_MULT_12HR changes.
 function _v48RecomputeAllIncrementShifts() {
   try {
-    var m11 = parseFloat(document.getElementById('cfg-INCREMENT_MULT_11HR')?.value) || INCREMENT_MULT_11HR_DEFAULT;
-    var m12 = parseFloat(document.getElementById('cfg-INCREMENT_MULT_12HR')?.value) || INCREMENT_MULT_12HR_DEFAULT;
-    var d11h = document.getElementById('inc-mult-11hr-disp');
-    var d12h = document.getElementById('inc-mult-12hr-disp');
-    if (d11h) d11h.textContent = m11.toFixed(2);
-    if (d12h) d12h.textContent = m12.toFixed(2);
+    // v81 (§3.2): removed dead reads of cfg-INCREMENT_MULT_11/12HR + the inc-mult-11/12hr-disp display
+    // writes — that multiplier sub-UI was removed in v73 D3 (never rendered, so the reads returned the
+    // default and the textContent writes were no-ops). Each per-level recompute below reads the
+    // multiplier itself (same 1.10/1.20 default), so behaviour is unchanged.
     ['L10','L9','L8','L7','L6'].forEach(function(lv){ autoRecomputeIncrementShifts(lv); });
   } catch(e) { console.error('_v48RecomputeAllIncrementShifts:', e); }
 }
