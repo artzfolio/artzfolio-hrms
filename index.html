@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v81</title>
+<title>ArtzFolio HRMS v82</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -846,8 +846,8 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
         <!-- Points ineligible notice -->
         <div class="mini-card" id="ec-points-ineligible" style="display:none">
           <div style="font-size:12px;color:var(--gray-light)">
-            <span class="en">⚬ Points competition is for L8–L10 workforce. Your level is not in this programme.</span>
-            <span class="hi">⚬ पॉइंट्स प्रतियोगिता L8–L10 के लिए है। आपका स्तर इसमें नहीं है।</span>
+            <span class="en">⚬ Points competition is for <span class="pts-inelig-lvl">L8–L10</span> workforce. Your level is not in this programme.</span>
+            <span class="hi">⚬ पॉइंट्स प्रतियोगिता <span class="pts-inelig-lvl">L8–L10</span> के लिए है। आपका स्तर इसमें नहीं है।</span>
           </div>
         </div>
 
@@ -1471,7 +1471,7 @@ const CFG = {
 // `monthYear` may be {year, month} (1-indexed), a Date, a 'YYYY-MM' string, or undefined.
 function getPerDayDivisor(monthYear) {
   try {
-    const mode = String((window.State && State.settings && State.settings.perDayDivisor) || 'Actual');
+    const mode = String((typeof State !== 'undefined' && State.settings && State.settings.perDayDivisor) || 'Actual');  // v82 BUG-2 class: window.State is always undefined (const State) — read the lexical State so a configured 26/30/31 mode is honoured (server getPerDayDivisor is authoritative for actual pay; this is the client display mirror, golden master ₹0).
     if (mode === '26') return 26;
     if (mode === '30') return 30;
     if (mode === '31') return 31;
@@ -1522,7 +1522,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v81-2026-05'; // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v82-2026-05'; // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2297,7 +2297,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v81';  // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v82';  // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -2927,7 +2927,7 @@ async function handleAuthResult(res) {
 // even fetching. Punch in/out, notice banner, employment status and My-Info are
 // CORE and never gated by these toggles.
 function empDashOn(key) {
-  const v = (window.State && State.settings) ? State.settings[key] : undefined;
+  const v = (typeof State !== 'undefined' && State.settings) ? State.settings[key] : undefined;  // v82 BUG-2 class: window.State was always undefined (const State), so every ESS section toggle was ignored and ALL sections always showed; read the lexical State so the owner's per-section show/hide actually applies (salary stays server-gated regardless).
   return v === undefined || v === null || v === '' || String(v) === 'true';
 }
 function empDashEnabled() { return empDashOn('empDashboardEnabled'); }
@@ -3124,7 +3124,12 @@ function showPointsCard(info, emp) {
   const eligible = document.getElementById('ec-points-card');
   const ineligible = document.getElementById('ec-points-ineligible');
   if (!info) { eligible.style.display='none'; ineligible.style.display='none'; return; }
-  if (!info.eligible) { eligible.style.display='none'; ineligible.style.display='block'; return; }
+  if (!info.eligible) {
+    // v82 BUG-4: reflect the configured points level range in the ineligible notice (EN + HI spans)
+    // instead of a hard-coded "L8–L10", so it stays correct when pointsEligibleLevels changes.
+    try { var _ll=_pointsLevelLabel(); ineligible.querySelectorAll('.pts-inelig-lvl').forEach(function(s){ s.textContent=_ll; }); } catch(e){}
+    eligible.style.display='none'; ineligible.style.display='block'; return;
+  }
   eligible.style.display='block'; ineligible.style.display='none';
   const content = document.getElementById('ec-pts-content');
   let html='';
@@ -5976,8 +5981,15 @@ function autoFillLevelDefaults(level) {
 // The offered shift-hour set is data-driven (SHIFT_HOURS_SET on the server). These
 // helpers populate the employee Add/Edit dropdowns and are refreshed via
 // loadShiftConfig() when those modals open. Falls back to 9,11,12 if not yet loaded.
+// v82 BUG-2 ROOT CAUSE: these guards used `window.State`, but State is declared `const State = {…}`
+// at top level — a lexical binding that is NEVER a property of window — so `window.State` was ALWAYS
+// undefined and BOTH helpers ALWAYS returned the [9,11,12] fallback, IGNORING the real saved registry.
+// That is why renamed/added shifts + breaks "always reverted to 9hr/11hr/12hr" no matter what was saved
+// (the server persisted fine; the client just never read State). Reference the lexical `State` directly,
+// exactly like the rest of the app (e.g. State.settings, State.employees). Money-neutral: salary VALUES
+// come from the server's SalaryLadder; these only drive shift NAMES/columns/selectors.
 function _shiftHoursList() {
-  return (window.State && State.shiftConfig && Array.isArray(State.shiftConfig.shiftHours) && State.shiftConfig.shiftHours.length)
+  return (typeof State !== 'undefined' && State.shiftConfig && Array.isArray(State.shiftConfig.shiftHours) && State.shiftConfig.shiftHours.length)
     ? State.shiftConfig.shiftHours : [9, 11, 12];
 }
 
@@ -5985,7 +5997,7 @@ function _shiftHoursList() {
 // column headers and every shift selector read these. Falls back to "<h>hr" Day shifts
 // so a legacy deployment (SHIFT_HOURS_SET only, no registry) behaves identically.
 function _shiftRegistry() {
-  var reg = (window.State && State.shiftConfig && Array.isArray(State.shiftConfig.registry)) ? State.shiftConfig.registry : null;
+  var reg = (typeof State !== 'undefined' && State.shiftConfig && Array.isArray(State.shiftConfig.registry)) ? State.shiftConfig.registry : null;
   if (reg && reg.length) return reg.filter(function (r) { return r && parseInt(r.hours, 10) > 0; }).map(function (r) {
     var hh = parseInt(r.hours, 10);
     return { id: r.id || ('sh-' + hh), name: r.name, hours: hh, startTime: r.startTime || '', endTime: r.endTime || '', 'break': parseInt(r['break'], 10) || 0, kind: r.kind || 'Day' };
@@ -6078,8 +6090,19 @@ async function saveShiftRegistry() {
   var res = await API.call('setCompensationConfig', { updates: { 'SHIFT_REGISTRY': JSON.stringify(reg), 'SHIFT_HOURS_SET': hoursCsv }, modifiedBy: State.adminUser || 'admin' });
   if (res && res.ok) {
     toast('✓ Shifts saved: ' + reg.map(function (r) { return r.name; }).join(', '), 'success');
+    // v82 BUG-2: the PRIMARY fix is the _shiftRegistry()/_shiftHoursList() guard above (they were reading the
+    // always-undefined window.State, so they ignored the saved registry entirely). This block is defensive
+    // belt-and-suspenders on top: refresh ratios/otMins via loadShiftConfig(), then PIN the registry +
+    // shiftHours to the authoritative `reg`/`hoursCsv` we just persisted so an immediate server re-read that
+    // briefly lags (Sheets read-after-write) can't momentarily show stale rows. initCompLadderEditor({reload:false})
+    // redraws WITHOUT re-fetching shift config (which would clobber the pin); the salary matrix VALUES still
+    // re-fetch fresh inside it via getSalaryLadder.
     await loadShiftConfig();
-    initCompLadderEditor();
+    if (State.shiftConfig) {
+      State.shiftConfig.registry   = reg;
+      State.shiftConfig.shiftHours = hoursCsv.split(',').map(function (s) { return parseInt(s, 10); }).filter(function (n) { return !isNaN(n) && n > 0; });
+    }
+    initCompLadderEditor({ reload: false });
   } else { toast((res && res.error) || 'Save failed', 'error'); }
 }
 function shiftHoursOptionsHtml(sel) {
@@ -6097,7 +6120,14 @@ function shiftTypeOptionsHtml(sel) {
 async function loadShiftConfig() {
   try {
     const res = await API.call('getShiftHoursConfig', {});
-    if (res && res.ok && Array.isArray(res.shiftHours) && res.shiftHours.length) { State.shiftConfig = res; }
+    if (res && res.ok && Array.isArray(res.shiftHours) && res.shiftHours.length) {
+      // v82 BUG-2: if a (rare) response omits the registry, don't lose a good one we already hold —
+      // _shiftRegistry() would otherwise fall back to the misleading 9hr/11hr/12hr defaults.
+      if (!Array.isArray(res.registry) && State.shiftConfig && Array.isArray(State.shiftConfig.registry)) {
+        res.registry = State.shiftConfig.registry;
+      }
+      State.shiftConfig = res;
+    }
   } catch (e) { /* keep whatever we have */ }
   if (!State.shiftConfig) State.shiftConfig = { shiftHours: [9, 11, 12], ratios: {9:1, 11:1.10, 12:1.20}, incMults: {9:1, 11:1.10, 12:1.20}, otMins: {9:4.5, 11:1, 12:1} };
   return State.shiftConfig;
@@ -8261,6 +8291,21 @@ function showAddTransModal() {
 // ═══════════════════════════════════════════
 // POINTS TAB
 // ═══════════════════════════════════════════
+// v82 BUG-4: the points level range was hard-coded ("L8-L10 only") in the admin heading AND the ESS
+// ineligible notice, so it went stale the moment the owner changed Settings → pointsEligibleLevels
+// (the same config the leaderboard + employee list already read). Derive a compact label from it:
+// contiguous levels → "L8–L10", otherwise the explicit list. Empty config = "all levels".
+function _pointsLevelLabel() {
+  var csv = (typeof State !== 'undefined' && State.settings && State.settings.pointsEligibleLevels) || 'L8,L9,L10';
+  var lvls = String(csv).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  if (!lvls.length) return 'all levels';
+  var nums = lvls.map(function (l) { return parseInt(String(l).replace(/[^0-9]/g, ''), 10); }).filter(function (n) { return !isNaN(n); }).sort(function (a, b) { return a - b; });
+  if (nums.length >= 2) {
+    var contiguous = nums.every(function (n, i) { return i === 0 || n === nums[i - 1] + 1; });
+    if (contiguous) return 'L' + nums[0] + '–L' + nums[nums.length - 1];
+  }
+  return lvls.join(', ');
+}
 async function renderPoints() {
   let now=new Date();
   let year=parseInt(document.getElementById('pts-year-sel')?.value)||now.getFullYear();
@@ -8271,7 +8316,7 @@ async function renderPoints() {
   const weekOpts=weeks.map(w=>`<option value="${w.value}">${w.label}</option>`).join('');
   let html=`
   <div class="section-hdr">
-    <div class="section-title">Points Tracker ⭐ <small>L8-L10 only | Posted every Saturday</small></div>
+    <div class="section-title">Points Tracker ⭐ <small>${escHtml(_pointsLevelLabel())} only | Posted every Saturday</small></div>
     <div class="section-actions" style="display:flex;gap:10px;flex-wrap:wrap;font-size:13px">
       <select id="pts-month-sel" class="filter-input" onchange="renderPoints()">
         ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===month?'selected':''}>${new Date(2026,i).toLocaleString('en-IN',{month:'long'})}</option>`).join('')}
@@ -14654,7 +14699,13 @@ async function saveBonusPolicies() {
     changedBy: State.adminUser || 'admin'
   };
   const res = await API.call('saveBonusPolicies', payload);
-  if (res && res.ok) { toast('✓ Bonus policies saved', 'success'); loadBonusPolicies(); }
+  if (res && res.ok) {
+    // v82 HARDENING: surface any keys the server could not persist (skipped[]) instead of always
+    // claiming success — this is the visibility that would have caught BUG-1 ~80 versions earlier.
+    if (Array.isArray(res.skipped) && res.skipped.length) toast('⚠ Saved, but these settings were not stored: ' + res.skipped.join(', '), 'warning');
+    else toast('✓ Bonus policies saved', 'success');
+    loadBonusPolicies();
+  }
   else toast((res && res.error) || 'Save failed', 'error');
 }
 
@@ -18581,12 +18632,16 @@ const LADDER_SEED = {
   L7: { morning:16000, night:18000 },
   L6: { morning:20000, night:23000 }
 };
-async function initCompLadderEditor() {
+async function initCompLadderEditor(opts) {
+  opts = opts || {};
   var container = document.getElementById('comp-ladder-editor');
   if (!container) return;
   container.innerHTML = '<div style="color:var(--gray-light);font-size:12px;padding:8px">Loading…</div>';
   try {
-    await loadShiftConfig();  // v62: pull the configurable shift-hour set + ratios
+    // v62: pull the configurable shift-hour set + ratios. v82 BUG-2: a post-save redraw passes
+    // {reload:false} after saveShiftRegistry already seeded State.shiftConfig with the authoritative
+    // just-saved registry — skip the re-fetch here so we don't clobber it with a lagging server read.
+    if (!(opts.reload === false && State.shiftConfig)) await loadShiftConfig();
     var res = await API.call('getSalaryLadder');
     if (!res.ok) { container.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load ladder data.</div>'; return; }
     var rows = res.rows || [];
