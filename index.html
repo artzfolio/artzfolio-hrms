@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v85</title>
+<title>ArtzFolio HRMS v86</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1522,7 +1522,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v85-2026-05'; // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v86-2026-05'; // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2297,7 +2297,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v85';  // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v86';  // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -4138,7 +4138,8 @@ async function showEarnings() {
       ${row('Base Salary / आधार वेतन', R(State.currentEmp?.salary||0))}
       ${row('Earned Salary / अर्जित वेतन', R(sal.earnedSalary||0))}
       ${sal.otEarnings  ? row('OT Earnings / ओटी', RC(sal.otEarnings,'green')) : ''}
-      ${sal.ewEarnings  ? row('Extra Work / अतिरिक्त कार्य', RC(sal.ewEarnings,'green')) : ''}
+      ${sal.ewEarnings  ? row('Extra Days / अतिरिक्त दिन', RC(sal.ewEarnings,'green')) : ''}
+      ${sal.holidayOffEarnings ? row('Holiday / Weekly-off Worked / छुट्टी पर कार्य', RC(sal.holidayOffEarnings,'green')) : ''}
       ${sal.travelEarnings ? row('Travel Allow / यात्रा भत्ता', RC(sal.travelEarnings,'green')) : ''}
       ${sal.bonuses||sal.performanceBonus ? row('Bonus / बोनस', RC((sal.bonuses||0)+(sal.performanceBonus||0),'green')) : ''}
       ${sal.ulDeduction   ? row('UL Penalty / UL कटौती', `<td style="text-align:right;font-weight:700;color:var(--red)">- ${fmtMoney(sal.ulDeduction)}</td>`) : ''}
@@ -4150,6 +4151,17 @@ async function showEarnings() {
         <td style="text-align:right;font-weight:900;font-size:1.1rem;color:var(--gold)">${fmtMoney(sal.netSalary||0)}</td>
       </tr>
     </table>
+    ${(function(){
+      var ep = sal.extraPayMethods || {}, order = ['OT','Night','ExtraDay','HolidayOff'];
+      var lbl = { OT:'Overtime / ओवरटाइम', Night:'Night hours / रात्रि', ExtraDay:'Extra days / अतिरिक्त दिन', HolidayOff:'Holiday / Weekly-off' };
+      var rows = order.map(function(k){
+        var e = ep[k]; if (!e || (!e.qty && !e.amount)) return '';
+        var qty = (e.unit === 'hour') ? (e.qty + 'h') : (e.qty + 'd');
+        var how = e.method === 'flat' ? (qty + ' × ₹' + e.rate + ' (Flat)') : (e.method === 'off' ? 'OFF' : (qty + ' (Divisor)'));
+        return '<div style="display:flex;justify-content:space-between;gap:8px"><span>' + lbl[k] + ': ' + how + '</span><span style="color:var(--green)">' + fmtMoney(e.amount || 0) + '</span></div>';
+      }).join('');
+      return rows ? ('<div style="margin-top:10px;padding:8px;background:rgba(0,0,0,0.18);border-radius:6px;font-size:11px;color:var(--gray-light)"><div style="font-weight:700;color:var(--gold);margin-bottom:4px">⏱ Extra-time earnings <span style="font-weight:400">(how each is calculated)</span></div>' + rows + '</div>') : '';
+    })()}
     ${(sal.pfEmployee||sal.esiEmployee) ? `
     <div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;font-size:11px;color:var(--gray-light)">
       Statutory included above: PF ₹${Math.round(sal.pfEmployee||0).toLocaleString('en-IN')}
@@ -9513,7 +9525,8 @@ function printSlip(data) {
     <tbody>
       <tr><td>Base / Earned Salary</td><td>₹${Math.round(data.earnedSalary||0).toLocaleString('en-IN')}</td><td>UL Penalty</td><td>₹${Math.round(data.ulDeduction||0).toLocaleString('en-IN')}</td></tr>
       <tr><td>OT Earnings${data.otMultiplier&&data.otMultiplier!=1?` (${data.otMultiplier}×)`:''}</td><td>₹${Math.round(data.otEarnings||0).toLocaleString('en-IN')}</td><td>Late Deduction</td><td>₹${Math.round(data.lateDeduction||0).toLocaleString('en-IN')}</td></tr>
-      <tr><td>Extra Work (EW)</td><td>₹${Math.round(data.ewEarnings||0).toLocaleString('en-IN')}</td><td>Sandwich Penalty</td><td>₹${Math.round(data.sandwichDeduction||0).toLocaleString('en-IN')}</td></tr>
+      <tr><td>Extra Working Days${data.extraDayDays?` (${data.extraDayDays}d)`:''}</td><td>₹${Math.round(data.ewEarnings||0).toLocaleString('en-IN')}</td><td>Sandwich Penalty</td><td>₹${Math.round(data.sandwichDeduction||0).toLocaleString('en-IN')}</td></tr>
+      ${(data.holidayOffEarnings||data.holidayOffDays)?`<tr><td>Holiday / Weekly-off Worked${data.holidayOffDays?` (${data.holidayOffDays}d)`:''}</td><td>₹${Math.round(data.holidayOffEarnings||0).toLocaleString('en-IN')}</td><td></td><td></td></tr>`:''}
       <tr><td>Night Pay${data.nightHours?` (${(Math.round(data.nightHours*10)/10)}h)`:''}</td><td>₹${Math.round(data.nightAllowance||0).toLocaleString('en-IN')}</td><td>Advances</td><td>₹${Math.round(data.advances||0).toLocaleString('en-IN')}</td></tr>
       <tr><td>Travel Allowance${data.travelRatePerDay?` (₹${Math.round(data.travelRatePerDay)}/day × ${(data.presentDays||0)}d)`:''}</td><td>₹${Math.round(data.travelEarnings||0).toLocaleString('en-IN')}</td><td>Loans / Other</td><td>₹${Math.round((data.loans||0)+(data.penalties||0)).toLocaleString('en-IN')}</td></tr>
       <tr><td>Bonus / Incentive</td><td>₹${Math.round(data.bonuses||0).toLocaleString('en-IN')}</td><td></td><td></td></tr>
@@ -9567,7 +9580,8 @@ function buildSlipText(data) {
     `━━━━━━━━━━━━━━━━━━━━`,
     `Base Earned   : ${fmt(data.earnedSalary)}`,
     data.otEarnings  ? `OT Earnings   : +${fmt(data.otEarnings)}` : null,
-    data.ewEarnings  ? `Extra Work    : +${fmt(data.ewEarnings)}` : null,
+    data.ewEarnings  ? `Extra Days    : +${fmt(data.ewEarnings)}` : null,
+    data.holidayOffEarnings ? `Holiday/W-off : +${fmt(data.holidayOffEarnings)}` : null,
     data.nightAllowance ? `Night Allow   : +${fmt(data.nightAllowance)}` : null,
     data.travelEarnings ? `Travel Allow  : +${fmt(data.travelEarnings)} (₹${Math.round(data.travelRatePerDay||0)}/day × ${data.presentDays||0}d)` : null,
     data.bonuses     ? `Bonus         : +${fmt(data.bonuses)}` : null,
@@ -9845,7 +9859,8 @@ function downloadSalarySlipPDF(data) {
     const earnings=[
       ['Base / Earned Salary',data.earnedSalary||0],
       [`OT Earnings${data.otMultiplier&&data.otMultiplier!=1?' ('+data.otMultiplier+'×)':''}`,data.otEarnings||0],
-      ['Extra Work (EW)',data.ewEarnings||0],
+      ['Extra Working Days',data.ewEarnings||0],
+      ['Holiday / Weekly-off Worked',data.holidayOffEarnings||0],
       [`Night Pay${data.nightHours?' ('+(Math.round(data.nightHours*10)/10)+'h)':''}`,data.nightAllowance||0],
       ['Travel Allowance',data.travelEarnings||0],
       ['Performance Bonus',data.performanceBonus||0],
@@ -10056,6 +10071,7 @@ function downloadHistSlipPDF(record) {
     sandwichDeduction:parseFloat(record.sandwichDeduction||0),
     otEarnings:parseFloat(record.otEarnings||0), otMultiplier:1.5,
     ewEarnings:parseFloat(record.ewEarnings||0),
+    holidayOffEarnings:parseFloat(record.holidayOffEarnings||0), holidayOffDays:parseInt(record.holidayOffDays||0), extraDayDays:parseInt(record.extraDayDays||0),
     nightAllowance:parseFloat(record.nightAllowance||0), nightHours:parseFloat(record.nightHours||0),
     travelEarnings:parseFloat(record.travelEarnings||0),
     performanceBonus:parseFloat(record.performanceBonus||0),
@@ -13347,6 +13363,7 @@ async function renderSettings() {
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('increment')">Increments</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('promo')">Promotion Windows</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('ot')">OT Policy</button>
+        <button class="comp-sub-tab" onclick="switchCompSettingsTab('extrapay')">Extra-Time Pay</button>
         <button class="comp-sub-tab" onclick="switchCompSettingsTab('jbonus')">Joining Bonus</button>
         <!-- v45 Workstream A1: "Wallet Adjustments" sub-tab removed. The
              per-employee adjustment workspace now lives on the Payroll tab
@@ -13548,6 +13565,24 @@ async function renderSettings() {
           </div>
         </div>
         <button class="btn btn-gold" style="margin-top:10px" onclick="saveCompSettings(['JOINING_BONUS_ENABLED','JOINING_BONUS_TOTAL','JOINING_BONUS_INSTALLMENTS','JOINING_BONUS_INSTALLMENT_AMOUNT','JOINING_BONUS_INSTALLMENT_1_MONTHS','JOINING_BONUS_INSTALLMENT_2_MONTHS','JOINING_BONUS_INSTALLMENT_3_MONTHS','JOINING_BONUS_INSTALLMENT_4_MONTHS','JOINING_BONUS_MAX_LEAVES_THRESHOLD'])">💾 Save Joining Bonus Policy</button>
+      </div>
+      <!-- v86: Extra-Time Pay Methods — per-event 3-state OFF / Flat ₹ / Divisor, scoped (default-neutral). -->
+      <div class="comp-sub-panel" id="comp-sp-extrapay">
+        <div style="font-size:12px;color:var(--gray-light);line-height:1.65;margin-bottom:12px;background:var(--dark2);border-radius:8px;padding:10px 12px">
+          ⏱ Choose how each <strong>extra-time</strong> earning is paid. Three methods per event, selectable per scope:
+          <strong style="color:var(--gold)">Divisor</strong> = the salary-derived calc (per-day-rate based — the existing behaviour);
+          <strong style="color:var(--gold)">Flat ₹</strong> = a fixed rate the employee can understand (₹/hour for Overtime &amp; Night, ₹/day for Extra-day &amp; Holiday/Weekly-off);
+          <strong style="color:var(--gold)">OFF</strong> = no extra pay for that event. Scope precedence — most specific wins:
+          <em>Employee → Shift → Designation → Level → Global default</em>.
+          Leave everything on <strong>Divisor</strong> to keep pay exactly as it is today.
+        </div>
+        <div id="extrapay-methods-body">Loading…</div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-gold btn-sm" onclick="saveExtraPayGlobals()">💾 Save Global Defaults</button>
+          <button class="btn btn-dark btn-sm" onclick="showExtraPayOverrideModal()">➕ Add Scope Override</button>
+          <button class="btn btn-dark btn-sm" onclick="showExtraPayBulkModal()">⚡ Bulk-Apply to Employees / Scopes</button>
+          <button class="btn btn-dark btn-sm" onclick="loadExtraPayMethods()">↻ Refresh</button>
+        </div>
       </div>
       <!-- v80 (§6): the Tenure-Based Wallet editor MOVED to Settings -> Bonuses & Promotion -> Loyalty Programs (its correct home, alongside the Active-Loyalty-Model selector + Level-Based Retention Bonus). -->
       <!-- v45 Workstream A1: "Wallet Adjustments" sub-panel removed from
@@ -14922,6 +14957,226 @@ async function applyBonusEligibility() {
   const res = await API.call('setBonusEligibility', { empIds, type, value, adminUser: State.adminUser });
   if (res && res.ok) { toast('✓ Updated ' + (res.written || empIds.length) + ' employee(s) — ' + type + ' = ' + (value === 'inherit' ? 'inherit' : value), 'success', 5000); closeModal(); }
   else toast((res && res.error) || 'Failed', 'error');
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════
+// v86 — Extra-Time Pay Methods (Settings → Compensation → "Extra-Time Pay" sub-tab)
+// Per-event 3-state OFF / Flat ₹ / Divisor, scoped (most-specific-wins). Default-neutral.
+// Writes are owner-gated server-side; the client supplies State._dzToken (requireOwnerPin prompts once).
+// ════════════════════════════════════════════════════════════════════════════════════════
+const _EP_ORDER = ['OT', 'Night', 'ExtraDay', 'HolidayOff'];
+function _epMeta() {
+  return {
+    OT:         { label: '⏱ Overtime',                    unit: 'hour', rateLabel: '₹ / hour', example: 'e.g. 3 hrs × ₹100 = ₹300' },
+    Night:      { label: '🌙 Night-shift hours',           unit: 'hour', rateLabel: '₹ / hour', example: 'e.g. 6 hrs × ₹80 = ₹480' },
+    ExtraDay:   { label: '📅 Extra working day',           unit: 'day',  rateLabel: '₹ / day',  example: 'e.g. 2 days × ₹700 = ₹1,400' },
+    HolidayOff: { label: '🎉 Holiday / Weekly-off worked', unit: 'day',  rateLabel: '₹ / day',  example: 'e.g. 1 day × ₹900 = ₹900' }
+  };
+}
+function _epEventLabel(ev) { const m = _epMeta(); return (m[ev] && m[ev].label) || ev; }
+function _epScopeLabel(st, sv) {
+  sv = String(sv == null ? '' : sv);
+  if (String(st) === 'Employee') { const e = (State.employees || []).find(x => String(x.id) === sv); return e ? (e.name + ' (' + sv + ')') : sv; }
+  if (String(st) === 'Shift') { const reg = (typeof _shiftRegistry === 'function') ? _shiftRegistry() : []; const s = reg.find(x => String(x.id) === sv); return s ? ((s.name || (s.hours + 'hr')) + ' (' + sv + ')') : sv; }
+  return sv;
+}
+function _epToggleRate(ev) { const m = (document.getElementById('ep-method-' + ev) || {}).value; const w = document.getElementById('ep-rate-wrap-' + ev); if (w) w.style.display = (m === 'flat') ? 'inline-flex' : 'none'; }
+
+async function loadExtraPayMethods() {
+  const box = document.getElementById('extrapay-methods-body');
+  if (!box) return;
+  try {
+    const res = await API.call('getExtraPayRules', {});
+    if (!res || !res.ok) { box.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load extra-pay rules.</div>'; return; }
+    window._extraPay = res;
+    const meta = _epMeta();
+    const rules = res.rules || [];
+    const globalOf = {};
+    rules.forEach(r => { if (String(r.ScopeType) === 'Global') globalOf[String(r.EventType)] = r; });
+    let html = '<div style="font-weight:700;font-size:13px;margin-bottom:6px">Global defaults <span style="font-weight:400;font-size:11px;color:var(--gray-light)">(apply to everyone unless a more-specific scope overrides)</span></div>';
+    _EP_ORDER.forEach(ev => {
+      const g = globalOf[ev] || {};
+      const m = String(g.Method || 'divisor').toLowerCase();
+      const rate = (g.FlatRate === undefined || g.FlatRate === '') ? '' : g.FlatRate;
+      const md = meta[ev];
+      html += '<div style="background:var(--dark2);border-radius:8px;padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+        + '<span style="min-width:210px;font-size:13px;font-weight:600">' + md.label + ' <span style="font-size:10px;color:var(--gray-light)">(' + md.unit + ')</span></span>'
+        + '<select id="ep-method-' + ev + '" class="form-input" style="max-width:175px;font-size:12px;padding:4px 6px" onchange="_epToggleRate(\'' + ev + '\')">'
+        + '<option value="divisor"' + (m === 'divisor' ? ' selected' : '') + '>Divisor (salary-based)</option>'
+        + '<option value="flat"' + (m === 'flat' ? ' selected' : '') + '>Flat ₹</option>'
+        + '<option value="off"' + (m === 'off' ? ' selected' : '') + '>OFF (no pay)</option>'
+        + '</select>'
+        + '<span id="ep-rate-wrap-' + ev + '" style="display:' + (m === 'flat' ? 'inline-flex' : 'none') + ';align-items:center;gap:6px">'
+        + '<input id="ep-rate-' + ev + '" class="form-input" type="number" min="0" step="0.01" value="' + escHtml(String(rate)) + '" placeholder="' + escHtml(md.rateLabel) + '" style="max-width:120px;font-size:12px;padding:4px 6px">'
+        + '<span style="font-size:11px;color:var(--gray-light)">' + escHtml(md.rateLabel) + ' <span class="info-tooltip" title="' + escHtml(md.example) + '">ℹ</span></span>'
+        + '</span></div>';
+    });
+    const ov = rules.filter(r => String(r.ScopeType) !== 'Global');
+    html += '<div style="font-weight:700;font-size:13px;margin:14px 0 6px">Scope overrides <span style="font-weight:400;font-size:11px;color:var(--gray-light)">(most specific wins: Employee → Shift → Designation → Level)</span></div>';
+    if (!ov.length) {
+      html += '<div style="font-size:12px;color:var(--gray-light);padding:6px 0">No overrides — everyone uses the global defaults above. Use <strong>Add Scope Override</strong> or <strong>Bulk-Apply</strong>.</div>';
+    } else {
+      html += '<div style="overflow:auto;border:1px solid var(--dark3);border-radius:6px"><table class="az-table" style="font-size:11px"><thead><tr><th>Event</th><th>Scope</th><th>Method</th><th>Rate</th><th>Active</th><th></th></tr></thead><tbody>';
+      ov.forEach(r => {
+        const m = String(r.Method || '').toLowerCase();
+        const unit = (meta[r.EventType] || {}).unit || '';
+        const rateTxt = m === 'flat' ? ('₹' + escHtml(String(r.FlatRate || 0)) + '/' + unit) : (m === 'off' ? '—' : '(salary-based)');
+        html += '<tr><td>' + escHtml(_epEventLabel(r.EventType)) + '</td>'
+          + '<td>' + escHtml(String(r.ScopeType)) + ': <strong>' + escHtml(_epScopeLabel(r.ScopeType, r.ScopeValue)) + '</strong></td>'
+          + '<td>' + escHtml(m) + '</td><td>' + rateTxt + '</td>'
+          + '<td>' + (String(r.Active).toLowerCase() === 'no' ? '✗' : '✓') + '</td>'
+          + '<td style="white-space:nowrap"><button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="editExtraPayRule(\'' + escHtml(String(r.RuleId)) + '\')">✎</button> '
+          + '<button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px;color:var(--red)" onclick="deleteExtraPayRule(\'' + escHtml(String(r.RuleId)) + '\')">🗑</button></td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    box.innerHTML = html;
+  } catch (e) { box.innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load extra-pay rules.</div>'; }
+}
+
+async function saveExtraPayGlobals() {
+  try {
+    if (!State._dzToken) { requireOwnerPin(() => saveExtraPayGlobals()); return; }
+    let saved = 0; const failed = [];
+    for (const ev of _EP_ORDER) {
+      const m = (document.getElementById('ep-method-' + ev) || {}).value || 'divisor';
+      const rateEl = document.getElementById('ep-rate-' + ev);
+      const rate = rateEl ? rateEl.value : '';
+      if (m === 'flat' && (rate === '' || isNaN(parseFloat(rate)) || parseFloat(rate) < 0)) { failed.push(_epEventLabel(ev) + ' (enter a valid ₹ rate)'); continue; }
+      const res = await API.call('saveExtraPayRule', { eventType: ev, scopeType: 'Global', scopeValue: '', method: m, flatRate: rate, active: 'Yes', ownerToken: State._dzToken || '', changedBy: State.adminUser || 'owner' });
+      if (res && res.ok) saved++; else failed.push(_epEventLabel(ev) + ': ' + ((res && res.error) || 'failed'));
+    }
+    if (failed.length) toast('Saved ' + saved + '; problems: ' + failed.join(' · '), 'warning', 6000);
+    else toast('✓ Saved global extra-pay defaults', 'success');
+    loadExtraPayMethods();
+  } catch (e) { toast('Save failed: ' + e, 'error'); }
+}
+
+function _epScopeValueControl(st, selected, id) {
+  selected = String(selected == null ? '' : selected); id = id || 'ep-ov-val';
+  const opt = (v, l) => '<option value="' + escHtml(v) + '"' + (v === selected ? ' selected' : '') + '>' + escHtml(l) + '</option>';
+  if (st === 'Level') return '<select id="' + id + '" class="form-input">' + ['L1','L2','L3','L4','L5','L6','L7','L8','L9','L10'].map(L => opt(L, L)).join('') + '</select>';
+  if (st === 'Designation') { const ds = Array.from(new Set((State.employees || []).map(e => String(e.designation || '').trim()).filter(Boolean))); return ds.length ? ('<select id="' + id + '" class="form-input">' + ds.map(d => opt(d, d)).join('') + '</select>') : '<input id="' + id + '" class="form-input" placeholder="designation (none on staff yet)">'; }
+  if (st === 'Shift') { const reg = (typeof _shiftRegistry === 'function') ? _shiftRegistry() : []; return reg.length ? ('<select id="' + id + '" class="form-input">' + reg.map(s => opt(String(s.id), (s.name || (s.hours + 'hr')) + ' (' + s.hours + 'h ' + (s.kind || 'Day') + ')')).join('') + '</select>') : '<input id="' + id + '" class="form-input" placeholder="shift id (no shifts defined)">'; }
+  const emps = State.employees || []; return '<select id="' + id + '" class="form-input">' + emps.map(e => opt(String(e.id), (e.name || e.id) + ' (' + e.id + ')')).join('') + '</select>';
+}
+function _epOverrideModal(rule) {
+  const isEdit = !!rule, meta = _epMeta();
+  const evOpts = _EP_ORDER.map(ev => '<option value="' + ev + '"' + (rule && String(rule.EventType) === ev ? ' selected' : '') + '>' + escHtml(meta[ev].label) + ' (' + meta[ev].unit + ')</option>').join('');
+  const stList = ['Level','Designation','Shift','Employee'];
+  const curSt = rule ? String(rule.ScopeType) : 'Level';
+  const stOpts = stList.map(s => '<option value="' + s + '"' + (s === curSt ? ' selected' : '') + '>' + s + '</option>').join('');
+  const m = rule ? String(rule.Method || 'divisor').toLowerCase() : 'flat';
+  const rate = (rule && rule.FlatRate !== '' && rule.FlatRate != null) ? rule.FlatRate : '';
+  const html = '<div style="font-size:13px">'
+    + '<div class="form-row">'
+    + '<div class="form-group"><label class="form-label">Event</label><select id="ep-ov-event" class="form-input"' + (isEdit ? ' disabled' : '') + '>' + evOpts + '</select></div>'
+    + '<div class="form-group"><label class="form-label">Scope type</label><select id="ep-ov-stype" class="form-input"' + (isEdit ? ' disabled' : ' onchange="_epRebuildScopeVal()"') + '>' + stOpts + '</select></div>'
+    + '</div>'
+    + '<div class="form-group"><label class="form-label">Applies to</label><div id="ep-ov-valwrap">' + _epScopeValueControl(curSt, rule ? rule.ScopeValue : '', 'ep-ov-val') + '</div></div>'
+    + '<div class="form-row">'
+    + '<div class="form-group"><label class="form-label">Method</label><select id="ep-ov-method" class="form-input" onchange="_epToggleOvRate()"><option value="divisor"' + (m === 'divisor' ? ' selected' : '') + '>Divisor (salary-based)</option><option value="flat"' + (m === 'flat' ? ' selected' : '') + '>Flat ₹</option><option value="off"' + (m === 'off' ? ' selected' : '') + '>OFF (no pay)</option></select></div>'
+    + '<div class="form-group" id="ep-ov-rate-wrap" style="display:' + (m === 'flat' ? 'block' : 'none') + '"><label class="form-label">Flat rate (₹/hour or ₹/day) <span class="info-tooltip" title="Per hour for Overtime &amp; Night; per day for Extra-day &amp; Holiday/Weekly-off.">ℹ</span></label><input id="ep-ov-rate" class="form-input" type="number" min="0" step="0.01" value="' + escHtml(String(rate)) + '"></div>'
+    + '</div>'
+    + '<label style="font-size:12px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="ep-ov-active"' + ((!rule || String(rule.Active).toLowerCase() !== 'no') ? ' checked' : '') + '> Active</label>'
+    + '</div>';
+  showModal((isEdit ? '✎ Edit' : '➕ Add') + ' Scope Override', html, [
+    { label: 'Save', cls: 'btn-gold', cb: () => _epSubmitOverride(isEdit) },
+    { label: 'Cancel', cls: 'btn-dark', cb: closeModal }
+  ]);
+}
+function showExtraPayOverrideModal() { _epOverrideModal(null); }
+function editExtraPayRule(ruleId) { const r = ((window._extraPay && window._extraPay.rules) || []).find(x => String(x.RuleId) === String(ruleId)); if (!r) { toast('Rule not found', 'error'); return; } _epOverrideModal(r); }
+function _epRebuildScopeVal() { const st = (document.getElementById('ep-ov-stype') || {}).value || 'Level'; const w = document.getElementById('ep-ov-valwrap'); if (w) w.innerHTML = _epScopeValueControl(st, '', 'ep-ov-val'); }
+function _epToggleOvRate() { const m = (document.getElementById('ep-ov-method') || {}).value; const w = document.getElementById('ep-ov-rate-wrap'); if (w) w.style.display = (m === 'flat') ? 'block' : 'none'; }
+async function _epSubmitOverride(isEdit) {
+  try {
+    const ev = (document.getElementById('ep-ov-event') || {}).value;
+    const st = (document.getElementById('ep-ov-stype') || {}).value;
+    const sv = (document.getElementById('ep-ov-val') || {}).value;
+    const m = (document.getElementById('ep-ov-method') || {}).value;
+    const rate = (document.getElementById('ep-ov-rate') || {}).value;
+    const active = (document.getElementById('ep-ov-active') || {}).checked ? 'Yes' : 'No';
+    if (!sv) { toast('Choose who this applies to', 'warning'); return; }
+    if (m === 'flat' && (rate === '' || isNaN(parseFloat(rate)) || parseFloat(rate) < 0)) { toast('Enter a valid ₹ rate', 'warning'); return; }
+    if (!State._dzToken) { requireOwnerPin(() => _epSubmitOverride(isEdit)); return; }
+    const res = await API.call('saveExtraPayRule', { eventType: ev, scopeType: st, scopeValue: sv, method: m, flatRate: rate, active: active, ownerToken: State._dzToken || '', changedBy: State.adminUser || 'owner' });
+    if (res && res.ok) { toast('✓ Override saved', 'success'); closeModal(); loadExtraPayMethods(); }
+    else toast((res && res.error) || 'Save failed', 'error');
+  } catch (e) { toast('Save failed: ' + e, 'error'); }
+}
+async function deleteExtraPayRule(ruleId) {
+  try {
+    if (!State._dzToken) { requireOwnerPin(() => deleteExtraPayRule(ruleId)); return; }
+    const res = await API.call('deleteExtraPayRule', { ruleId: ruleId, ownerToken: State._dzToken || '', changedBy: State.adminUser || 'owner' });
+    if (res && res.ok) { toast('✓ Override deleted', 'success'); loadExtraPayMethods(); }
+    else toast((res && res.error) || 'Delete failed', 'error');
+  } catch (e) { toast('Delete failed: ' + e, 'error'); }
+}
+
+function _epToggleBulkRate() { const m = (document.getElementById('epb-method') || {}).value; const w = document.getElementById('epb-rate-wrap'); if (w) w.style.display = (m === 'flat') ? 'block' : 'none'; }
+function _epBulkTargetChange() {
+  const t = (document.getElementById('epb-target') || {}).value;
+  const empSec = document.getElementById('epb-emp-section'), svWrap = document.getElementById('epb-scopeval-wrap');
+  if (t === 'employees') { if (empSec) empSec.style.display = ''; if (svWrap) svWrap.style.display = 'none'; }
+  else { if (empSec) empSec.style.display = 'none'; if (svWrap) { svWrap.style.display = 'block'; document.getElementById('epb-scopeval').innerHTML = _epScopeValueControl(t, '', 'epb-sv'); } }
+}
+function showExtraPayBulkModal() {
+  const emps = (State.employees || []).filter(e => e.status === 'Active' || e.status === 'Notice Period');
+  if (!emps.length) { toast('No employees loaded', 'warning'); return; }
+  window._bulkEmpList = emps;
+  const meta = _epMeta();
+  const evOpts = _EP_ORDER.map(ev => '<option value="' + ev + '">' + escHtml(meta[ev].label) + ' (' + meta[ev].unit + ')</option>').join('');
+  const rows = emps.map((e, i) => '<tr ' + _bulkEmpRowAttrs('epb', e, i) + '>'
+    + '<td style="width:28px;text-align:center"><input type="checkbox" class="epb-cb" data-idx="' + i + '" style="accent-color:var(--gold)" onchange="_bulkUpdateSelCount(\'epb\')"></td>'
+    + '<td style="font-size:11px">' + escHtml(e.name || e.id) + '</td><td style="font-size:11px">' + escHtml(e.id) + '</td>'
+    + '<td style="font-size:11px">' + escHtml(e.level || '') + '</td><td style="font-size:11px">' + escHtml(e.designation || '—') + '</td></tr>').join('');
+  const html = '<div style="font-size:13px">'
+    + '<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px;line-height:1.6">Apply one method + rate to many at once. <strong>Target = Selected employees</strong> writes a per-employee override for each ticked person (filter by Level/Dept then Select-All to grab a whole group, e.g. 20 of 65). <strong>Target = a whole Level / Designation / Shift</strong> writes/updates that single scope rule instead.</div>'
+    + '<div class="form-row">'
+    + '<div class="form-group"><label class="form-label">Event</label><select id="epb-event" class="form-input">' + evOpts + '</select></div>'
+    + '<div class="form-group"><label class="form-label">Method</label><select id="epb-method" class="form-input" onchange="_epToggleBulkRate()"><option value="flat">Flat ₹</option><option value="divisor">Divisor (salary-based)</option><option value="off">OFF (no pay)</option></select></div>'
+    + '<div class="form-group" id="epb-rate-wrap"><label class="form-label">Flat rate (₹/hr or ₹/day)</label><input id="epb-rate" class="form-input" type="number" min="0" step="0.01"></div>'
+    + '</div>'
+    + '<div class="form-row">'
+    + '<div class="form-group"><label class="form-label">Target</label><select id="epb-target" class="form-input" onchange="_epBulkTargetChange()"><option value="employees">Selected employees</option><option value="Level">A whole Level</option><option value="Designation">A whole Designation</option><option value="Shift">A whole Shift</option></select></div>'
+    + '<div class="form-group" id="epb-scopeval-wrap" style="display:none"><label class="form-label">Scope value</label><div id="epb-scopeval"></div></div>'
+    + '</div>'
+    + '<div id="epb-emp-section">'
+    + _bulkFilterBar('epb')
+    + '<div style="max-height:280px;overflow:auto;border:1px solid var(--dark3);border-radius:4px"><table class="az-table" style="font-size:11px"><thead><tr><th style="width:28px;text-align:center"><input type="checkbox" onchange="_bulkSelectAll(\'epb\',this.checked)" title="Select all visible"></th><th>Name</th><th>ID</th><th>Level</th><th>Designation</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div style="margin-top:6px"><span id="epb-sel-count" style="font-size:11px;color:var(--gold)">0 selected</span></div>'
+    + '</div></div>';
+  showModal('⚡ Bulk-Apply Extra-Pay Method', html, [
+    { label: 'Apply', cls: 'btn-gold', cb: applyExtraPayBulk },
+    { label: 'Close', cls: 'btn-dark', cb: closeModal }
+  ]);
+  setTimeout(() => { _bulkApplyFilter('epb'); _bulkUpdateSelCount('epb'); }, 30);
+}
+async function applyExtraPayBulk() {
+  try {
+    const ev = (document.getElementById('epb-event') || {}).value;
+    const m = (document.getElementById('epb-method') || {}).value;
+    const rate = (document.getElementById('epb-rate') || {}).value;
+    const target = (document.getElementById('epb-target') || {}).value;
+    if (m === 'flat' && (rate === '' || isNaN(parseFloat(rate)) || parseFloat(rate) < 0)) { toast('Enter a valid ₹ rate', 'warning'); return; }
+    const params = { eventType: ev, method: m, flatRate: rate, active: 'Yes', changedBy: State.adminUser || 'owner' };
+    if (target === 'employees') {
+      const emps = window._bulkEmpList || [];
+      const empIds = _bulkSelectedIdx('epb').map(i => emps[i] && emps[i].id).filter(Boolean);
+      if (!empIds.length) { toast('Tick at least one employee (tip: filter then Select-All)', 'warning'); return; }
+      params.empIds = empIds;
+    } else {
+      const sv = (document.getElementById('epb-sv') || {}).value;
+      if (!sv) { toast('Choose a scope value', 'warning'); return; }
+      params.scopeType = target; params.scopeValue = sv;
+    }
+    if (!State._dzToken) { requireOwnerPin(() => applyExtraPayBulk()); return; }
+    params.ownerToken = State._dzToken || '';
+    const res = await API.call('bulkApplyExtraPay', params);
+    if (res && res.ok) { toast('✓ Applied to ' + res.applied + ' target(s) (' + res.added + ' added, ' + res.updated + ' updated)', 'success', 5000); closeModal(); loadExtraPayMethods(); }
+    else toast((res && res.error) || 'Apply failed', 'error');
+  } catch (e) { toast('Apply failed: ' + e, 'error'); }
 }
 
 async function savePointsSettings() {
@@ -18338,6 +18593,7 @@ function switchCompSettingsTab(panel) {
   var activePanel = document.getElementById('comp-sp-' + panel);
   if (activePanel) activePanel.classList.add('active');
   if (panel === 'ladder') initCompLadderEditor();
+  if (panel === 'extrapay' && typeof loadExtraPayMethods === 'function') loadExtraPayMethods();  // v86: lazy-render Extra-Time Pay Methods
   // v45 Workstream A1: removed 'walletadj' branch — that panel now lives on the
   // Payroll tab. See _v45RenderWalletAdjPanel + switchPayrollView('walletadj').
   // v43 W3.11: re-hydrate tooltips after sub-tab switch in case the panel had
