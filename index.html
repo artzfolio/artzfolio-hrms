@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v83</title>
+<title>ArtzFolio HRMS v85</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1522,7 +1522,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v83-2026-05'; // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v85-2026-05'; // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2297,7 +2297,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v83';  // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v85';  // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -5750,6 +5750,19 @@ async function showEmpDetail(empId) {
     <strong style="color:var(--gold);font-size:11px">SALARY BAND FOR ${escHtml(e.level)}:</strong><br>
     <span style="font-size:11px;color:var(--gray-light)">Male: ${fmtMoney(myBand.maleMin||0)}–${fmtMoney(myBand.maleMax||0)} | Female: ${fmtMoney(myBand.femaleMin||0)}–${fmtMoney(myBand.femaleMax||0)}</span>
   </div>
+  <!-- v84 B1: bank / UPI payout panel. getEmployee returns these fields to the OWNER only (blank for
+       non-owner), so this is the owner-gated "full view". A non-owner sees the owner-only note. -->
+  ${(e.bankAccountName||e.bankAccountNumber||e.upiId||e.bankName||e.bankIFSC) ? `
+  <div style="margin-top:14px;padding:12px;background:var(--dark3);border-radius:8px;border-left:3px solid var(--gold)">
+    <strong style="color:var(--gold);font-size:11px">🏦 BANK / UPI (payout) — Owner-only</strong>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:12px">
+      <div><strong>Account Name:</strong> ${escHtml(e.bankAccountName||'—')}</div>
+      <div><strong>Account No:</strong> ${escHtml(e.bankAccountNumber||'—')}</div>
+      <div><strong>IFSC:</strong> ${escHtml(e.bankIFSC||'—')}</div>
+      <div><strong>Bank:</strong> ${escHtml(e.bankName||'—')}</div>
+      <div style="grid-column:1/-1"><strong>UPI ID:</strong> ${escHtml(e.upiId||'—')}</div>
+    </div>
+  </div>` : `<div style="margin-top:14px;font-size:11px;color:var(--gray-light)">🏦 Bank / UPI (payout): ${State.adminRole==='owner' ? 'not on file' : 'visible to the Owner only'}.</div>`}
   <!-- v30: Loyalty Bonus Account Panel -->
   <div id="emp-lb-panel" style="margin-top:14px;padding:12px;background:var(--dark3);border-radius:8px;border-left:3px solid var(--gold)">
     <strong style="color:var(--gold);font-size:11px">💎 LOYALTY BONUS ACCOUNT:</strong>
@@ -5855,7 +5868,9 @@ async function showDocumentVault(empId, empName) {
 
   const DOC_TYPES = ['Aadhaar Card','PAN Card','Offer Letter','Bank Details','Police Verification',
     'Photo','Driving Licence','Education Certificate','Experience Certificate',
-    'ESIC Card','PF UAN Card','Other KYC'];
+    'ESIC Card','PF UAN Card',
+    'Bank Passbook / Cheque','UPI QR', // v84 B1: passbook/cheque + UPI QR image (stored privately per A4)
+    'Other KYC'];
 
   let listHtml = '';
   if (docs.length) {
@@ -5868,7 +5883,7 @@ async function showDocumentVault(empId, empName) {
           ${d.expiryDate?`<div style="font-size:10px;color:${expired?'var(--red)':'var(--gray-light)'}">Expires: ${fmtDate(d.expiryDate)}</div>`:''}
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          ${d.fileUrl ? `<a href="${escHtml(d.fileUrl)}" target="_blank" class="btn btn-dark btn-sm">👁 View</a>` : ''}
+          <button class="btn btn-dark btn-sm" onclick="viewDocument('${escHtml(d.id)}','${escHtml(d.fileName||'')}')" title="Owner-only: opens the private document securely">👁 View</button>
           ${isOwner ? `<button class="btn btn-dark btn-sm" style="color:var(--red)" onclick="deleteDocument('${escHtml(d.id)}','${escHtml(empId)}','${escHtml(empName)}')">🗑</button>` : ''}
         </div>
       </div>`;
@@ -5905,7 +5920,8 @@ async function showDocumentVault(empId, empName) {
 
   showModal(`📎 Documents — ${escHtml(empName)}`,
     `<div style="font-size:13px">${listHtml}</div>${uploadHtml}`,
-    [{label:'Back to Profile', cls:'btn-dark', cb:()=>{closeModal();showEmpDetail(empId);}},
+    [...(isOwner ? [{label:'🔒 Secure existing', cls:'btn-dark', cb:()=>secureExistingDocs()}] : []),
+     {label:'Back to Profile', cls:'btn-dark', cb:()=>{closeModal();showEmpDetail(empId);}},
      {label:'Close', cls:'btn-dark', cb:closeModal}]);
 }
 
@@ -5942,6 +5958,74 @@ async function deleteDocument(docId, empId, empName) {
   toast('Document deleted','warning');
   closeModal();
   showDocumentVault(empId, empName);
+}
+
+// v84 A4: employee documents are stored PRIVATELY (no public link). Fetch the bytes through the
+// owner-gated downloadDocument endpoint and open them locally as a blob, rather than linking to a
+// public Drive URL. If the owner hasn't re-verified this session, prompt once then retry.
+async function viewDocument(docId, fileName) {
+  toast('Opening document…','info');
+  const res = await API.call('downloadDocument', {id:docId, ownerToken: State._dzToken||''});
+  if (res.ok) { _openDocBlob(res); return; }
+  if (/owner/i.test(res.error||'') && State.adminRole === 'owner') {
+    requireOwnerPin(async () => {
+      const r2 = await API.call('downloadDocument', {id:docId, ownerToken: State._dzToken||''});
+      if (r2.ok) _openDocBlob(r2); else toast(r2.error||'Could not open document','error');
+    });
+    return;
+  }
+  toast(res.error || 'Could not open document','error');
+}
+function _openDocBlob(res) {
+  try {
+    const bin = atob(res.base64 || '');
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], {type: res.mimeType || 'application/octet-stream'});
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (!w) { // popup blocked → download instead
+      const a = document.createElement('a'); a.href = url; a.download = res.fileName || 'document'; a.click();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch(e) { toast('Could not render document','error'); }
+}
+// v84 A4: one-time owner action to revoke public sharing on documents uploaded before the privacy fix.
+async function secureExistingDocs() {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  requireOwnerPin(async () => {
+    toast('Securing existing documents…','info');
+    const res = await API.call('secureExistingDocuments', {ownerToken: State._dzToken||''});
+    if (res.ok) toast(`✓ Secured ${res.secured} document(s)${res.failed ? ` (${res.failed} failed)` : ''}`,'success',6000);
+    else toast(res.error || 'Failed','error');
+  });
+}
+
+// v85 FIX2: petty-cash / FnF receipts are now PRIVATE. Fetch the bytes via the owner-gated downloadReceipt
+// route and open them locally as a blob (reuses _openDocBlob), instead of linking to a public Drive URL.
+// If the owner hasn't re-verified this session, prompt once then retry.
+async function viewReceipt(pcId) {
+  toast('Opening receipt…','info');
+  const res = await API.call('downloadReceipt', {id:pcId, ownerToken: State._dzToken||''});
+  if (res.ok) { _openDocBlob(res); return; }
+  if (/owner/i.test(res.error||'') && State.adminRole === 'owner') {
+    requireOwnerPin(async () => {
+      const r2 = await API.call('downloadReceipt', {id:pcId, ownerToken: State._dzToken||''});
+      if (r2.ok) _openDocBlob(r2); else toast(r2.error||'Could not open receipt','error');
+    });
+    return;
+  }
+  toast(res.error || 'Could not open receipt','error');
+}
+// v85 FIX2: one-time owner action to revoke public sharing on receipts uploaded before the privacy fix.
+async function secureExistingReceipts() {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  requireOwnerPin(async () => {
+    toast('Securing existing receipts…','info');
+    const res = await API.call('secureExistingReceipts', {ownerToken: State._dzToken||''});
+    if (res.ok) toast(`✓ Secured ${res.secured} receipt(s)${res.failed ? ` (${res.failed} failed)` : ''}`,'success',6000);
+    else toast(res.error || 'Failed','error');
+  });
 }
 
 // Bug fix: autoFillLevelDefaults was called onchange on the level select in showAddEmpModal
@@ -6252,6 +6336,17 @@ async function showAddEmpModal() {
     <div class="form-group"><label class="form-label">ESI Number</label><input id="e-esino" class="form-input" placeholder="ESI Registration Number"></div>
   </div>
   <div class="form-group"><label class="form-label">Address</label><input id="e-addr" class="form-input" placeholder="Permanent address…"></div>
+  <!-- v84 B1: bank / UPI payout details (sensitive — Owner-only on read; never shown in kiosk/ESS). Passbook & UPI-QR images upload privately via the employee's Documents vault. -->
+  <div style="margin-top:8px;font-size:12px;font-weight:700;color:var(--gold)">🏦 Bank / UPI (payout) <span class="info-tooltip" title="Used for salary payouts. Stored securely and shown only to the Owner — never visible in the employee kiosk. Upload the passbook/cheque & UPI QR via the Documents vault (stored privately).">ℹ</span></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Account Holder Name</label><input id="e-bankacctname" class="form-input" placeholder="Name as on bank account"></div>
+    <div class="form-group"><label class="form-label">Account Number</label><input id="e-bankacctno" class="form-input" placeholder="Bank account number"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">IFSC</label><input id="e-bankifsc" class="form-input" placeholder="e.g. HDFC0001234"></div>
+    <div class="form-group"><label class="form-label">Bank Name</label><input id="e-bankname" class="form-input" placeholder="e.g. HDFC Bank"></div>
+  </div>
+  <div class="form-group"><label class="form-label">UPI ID</label><input id="e-upi" class="form-input" placeholder="e.g. name@okhdfcbank"></div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Factory</label><select id="e-fact" class="form-input"><option value="">— Select —</option>${factoryOpts}</select></div>
     <div class="form-group"><label class="form-label">Zone</label><select id="e-zone" class="form-input"><option value="">— Select —</option>${zoneOpts}</select></div>
@@ -6383,6 +6478,12 @@ async function showAddEmpModal() {
         assignedShift:document.getElementById('e-assignedshift')?.value||'',  // v75 S2
         designation:document.getElementById('e-designation')?.value||'',
         loyaltyScheme:document.getElementById('e-loyaltyscheme')?.value||'',  // v77 Gate B
+        // v84 B1: bank / UPI payout details
+        bankAccountName:(document.getElementById('e-bankacctname')?.value||'').trim(),
+        bankAccountNumber:(document.getElementById('e-bankacctno')?.value||'').trim(),
+        bankIFSC:(document.getElementById('e-bankifsc')?.value||'').trim(),
+        bankName:(document.getElementById('e-bankname')?.value||'').trim(),
+        upiId:(document.getElementById('e-upi')?.value||'').trim(),
         // v31 fields
         leavePolicyGroup:document.getElementById('e-lpgroup').value,
         ...(() => {
@@ -6583,6 +6684,19 @@ async function showEditEmpModal(empId) {
       </select></div>
   </div>
   <div class="form-group"><label class="form-label">Address</label><input id="ee-addr" class="form-input" value="${escHtml(e.address||'')}"></div>
+  ${State.adminRole==='owner' ? `
+  <!-- v84 B1: bank / UPI payout details — Owner-only. handleGetEmployee returns these only to the owner; rendered + editable ONLY here so a non-owner edit (which gets them blank) can't overwrite the stored values. -->
+  <div style="margin-top:8px;font-size:12px;font-weight:700;color:var(--gold)">🏦 Bank / UPI (payout)</div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Account Holder Name</label><input id="ee-bankacctname" class="form-input" value="${escHtml(e.bankAccountName||'')}" placeholder="Name as on bank account"></div>
+    <div class="form-group"><label class="form-label">Account Number</label><input id="ee-bankacctno" class="form-input" value="${escHtml(e.bankAccountNumber||'')}" placeholder="Bank account number"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">IFSC</label><input id="ee-bankifsc" class="form-input" value="${escHtml(e.bankIFSC||'')}" placeholder="e.g. HDFC0001234"></div>
+    <div class="form-group"><label class="form-label">Bank Name</label><input id="ee-bankname" class="form-input" value="${escHtml(e.bankName||'')}" placeholder="e.g. HDFC Bank"></div>
+  </div>
+  <div class="form-group"><label class="form-label">UPI ID</label><input id="ee-upi" class="form-input" value="${escHtml(e.upiId||'')}" placeholder="e.g. name@okhdfcbank"></div>
+  ` : ''}
   <div class="form-group"><label class="form-label">Notes</label><input id="ee-notes" class="form-input" value="${escHtml(e.notes||'')}"></div>
   <!-- v31: Referral and Leave Policy fields (v40 §6c: read-only once a non-blank value is saved) -->
   <div class="form-row">
@@ -6664,6 +6778,15 @@ async function showEditEmpModal(empId) {
         referredByName:document.getElementById('ee-refname').value,
         referredByCode:document.getElementById('ee-refcode').value,
         leavePolicyGroup:document.getElementById('ee-lpgroup').value,
+        // v84 B1: bank / UPI payout — owner-only. Non-owner edits never include these keys, so they
+        // cannot blank the stored values (the inputs aren't rendered for non-owners either).
+        ...(State.adminRole==='owner' ? {
+          bankAccountName:(document.getElementById('ee-bankacctname')?.value||'').trim(),
+          bankAccountNumber:(document.getElementById('ee-bankacctno')?.value||'').trim(),
+          bankIFSC:(document.getElementById('ee-bankifsc')?.value||'').trim(),
+          bankName:(document.getElementById('ee-bankname')?.value||'').trim(),
+          upiId:(document.getElementById('ee-upi')?.value||'').trim(),
+        } : {}),
         // v43 W2.7: 13 new editable fields. handleUpdateEmployee.allowedFields
         // already accepts all of these (verified at gas:2168-2177).
         category:        document.getElementById('ee-cat').value,
@@ -6741,13 +6864,19 @@ async function unarchiveEmp(empId) {
 }
 async function permanentDeleteEmp(empId, name) {
   if (State.adminRole !== 'owner') { toast('Only Owner can permanently delete employees','error'); return; }
-  // Bug fix: replace native prompt() (blocked in kiosk/fullscreen) with in-app modal confirmation
-  await new Promise(resolve => {
+  // v84 A2: route the row-level Owner Delete through the dedicated owner-token-gated
+  // deleteEmployee handler (handleDeleteEmployee) — previously this button called
+  // archiveEmployee{hard:true}, which only SOFT-set status='Deleted' (an orphan status the
+  // Employees filter can't show — the same class of bug A1 fixes). requireOwnerPin re-verifies
+  // the owner password and loads the Danger-Zone token; the type-DELETE confirm modal is kept.
+  // handleDeleteEmployee refuses a hard delete when the employee still has linked attendance/
+  // salary rows (history is preserved, they stay archived) — surfaced via the error toast.
+  requireOwnerPin(() => {
     showModal('⛔ Permanently Delete Employee', `
       <div style="background:rgba(200,0,0,0.12);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:14px">
         <strong style="color:var(--red)">⚠ This cannot be undone.</strong>
         <div style="font-size:12px;color:var(--white);margin-top:6px">
-          Attendance and salary records for <strong>${escHtml(name)}</strong> (${escHtml(empId)}) will be preserved in history, but the employee profile will be permanently deleted.
+          The employee profile for <strong>${escHtml(name)}</strong> (${escHtml(empId)}) will be permanently removed. If they still have attendance/salary history the delete is blocked and they stay archived (history preserved).
         </div>
       </div>
       <div class="form-group">
@@ -6758,12 +6887,11 @@ async function permanentDeleteEmp(empId, name) {
         const conf = document.getElementById('perm-del-conf')?.value || '';
         if (conf !== 'DELETE') { toast('Type DELETE exactly to confirm','error'); return; }
         closeModal();
-        const res = await API.call('archiveEmployee',{empId, hard:true});
+        const res = await API.call('deleteEmployee', {empId, ownerToken: State._dzToken||''});
         if(res.ok){toast(`✓ ${name} permanently deleted`,'success');await renderEmployees();}
         else toast(res.error||'Error deleting employee','error');
-        resolve();
       }, style:'background:var(--red);color:#fff'},
-      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); resolve(); }},
+      {label:'Cancel', cls:'btn-dark', cb: () => { closeModal(); }},
     ]);
     setTimeout(() => document.getElementById('perm-del-conf')?.focus(), 100);
   });
@@ -10890,6 +11018,7 @@ async function renderPettyCash() {
     ${canAdd ? `<button class="btn btn-gold btn-sm" onclick="openPCEntryModal()">+ Add Entry</button>` : ''}
     ${canAdd ? `<button class="btn btn-dark btn-sm" onclick="bulkImportPettyCash()">📥 Bulk Import</button>` : ''}
     ${entries.length ? `<button class="btn btn-dark btn-sm" onclick="exportPCExcel()">⬇ Export XLSX</button>` : ''}
+    ${isOwner ? `<button class="btn btn-dark btn-sm" title="Owner-only: revoke public sharing on receipts uploaded before v85 (new uploads are already private)." onclick="secureExistingReceipts()">🔒 Secure existing receipts</button>` : ''}
   </div>`;
 
   if (!entries.length) {
@@ -10906,11 +11035,10 @@ async function renderPettyCash() {
     <tbody>`;
     entries.forEach(e => {
       const balCls = e.runningBalance >= 0 ? 'pc-bal-pos' : 'pc-bal-neg';
-      const receiptCell = e.receiptUrl
-        ? `<a href="${escHtml(e.receiptUrl)}" target="_blank" title="View receipt">
-             <img class="pc-receipt-thumb" src="${escHtml(e.receiptUrl)}" onerror="this.style.display='none';this.nextSibling.style.display='inline'" alt="Receipt">
-             <span style="display:none;font-size:18px" title="View receipt">🖼</span>
-           </a>`
+      // v85 FIX2: receipts are now PRIVATE — no public <img src>. Owner fetches the bytes via the
+      // owner-gated downloadReceipt route and opens them locally (viewReceipt → _openDocBlob).
+      const receiptCell = (e.receiptFileId || e.receiptUrl)
+        ? `<button class="btn btn-dark btn-sm" title="View receipt (private — owner only)" onclick="viewReceipt('${escHtml(e.id)}')">👁 View</button>`
         : `<span style="color:var(--gray-light);font-size:11px">—</span>`;
       const ownerActions = isOwner ? `<td>
         ${e.status==='Pending' ? `
@@ -10997,7 +11125,7 @@ function openPCEntryModal(prefill={}) {
       <input type="file" id="pc-receipt-file" accept="image/*,application/pdf" class="form-input"
         onchange="previewPCReceipt(this)" style="padding:4px">
       <div id="pc-receipt-preview" style="margin-top:6px">
-        ${prefill.receiptUrl ? `<a href="${escHtml(prefill.receiptUrl)}" target="_blank"><img src="${escHtml(prefill.receiptUrl)}" style="height:60px;border-radius:4px" onerror="this.style.display='none'"></a>` : ''}
+        ${(prefill.receiptFileId || prefill.receiptUrl) ? `<button type="button" class="btn btn-dark btn-sm" title="View current receipt (private — owner only)" onclick="viewReceipt('${escHtml(prefill.id||'')}')">👁 View current receipt</button>` : ''}
       </div>
     </div>`;
 
@@ -11987,6 +12115,20 @@ async function renderSettings() {
         <strong style="color:var(--gold)">Bonuses &amp; Promotion → Bonus Eligibility → Performance Bonus → Auto-eligible levels</strong>.
         Saving there also updates who appears on the leaderboard and earns points prizes.
       </div>
+      ${(function(){
+        // v84 A5: surface whether the points→salary payout chain is actually live. The mechanism
+        // works, but it only pays when BOTH a per-point rate > 0 AND "Include Points Bonus in Salary"
+        // are set (default: rate 0 + off → ₹0). This banner reads the live config and tells the owner
+        // exactly what to set. No engine change — purely informational.
+        var _rate = parseFloat(cfg['pointsRatePerPoint']||0)||0;
+        var _incl = cfg['pointsBonusInSalary']==='true';
+        var _live = _rate>0 && _incl;
+        return `<div style="grid-column:1/-1;font-size:11px;line-height:1.6;border-radius:6px;padding:8px 12px;background:${_live?'rgba(0,150,0,0.12)':'rgba(200,140,0,0.14)'};border:1px solid ${_live?'var(--green)':'var(--orange)'}">
+          <strong style="color:${_live?'var(--green)':'var(--orange)'}">${_live?'✅ Points bonus currently PAYS OUT':'⚠️ Points bonus is currently OFF (₹0)'}</strong>
+          <div style="color:var(--gray-light);margin-top:4px">How it works: weekly points → monthly total × <strong>Points Bonus Rate</strong> → added to that month's salary <em>only when</em> <strong>Include Points Bonus in Salary</strong> is ON.
+          ${_live?`Right now every point = ₹${_rate} and is included in salary.`:`To turn it on: set <strong>Points Bonus Rate (₹ per point)</strong> above 0 <strong>AND</strong> tick <strong>Include Points Bonus in Salary</strong> below. (Now: rate ₹${_rate}, include-in-salary ${_incl?'ON':'OFF'}.)`}</div>
+        </div>`;
+      })()}
       ${cfgFieldTip('points1stPrize','1st Prize (₹)','Monthly cash prize awarded to the employee with the highest performance points. Paid as a bonus in that month\'s salary. Auto-credited at month-end to the top point-earner. No manual action required.')}
       ${cfgFieldTip('points2ndPrize','2nd Prize (₹)','Monthly cash prize for the second-highest points holder. Auto-credited at month-end. No manual action required.')}
       ${cfgFieldTip('points3rdPrize','3rd Prize (₹)','Monthly cash prize for the third-highest points holder. Auto-credited at month-end. No manual action required.')}
@@ -13541,6 +13683,7 @@ async function renderSettings() {
     <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px">
       <button class="btn btn-gold" onclick="saveAllLeaveSettings()">💾 Save Leave Settings</button>
       <button class="btn btn-dark btn-sm" title="One-click action: creates current-year leave balance entries for every active employee based on the entitlements set above. Run this at the start of each leave year. Existing balances are NOT overwritten — only missing entries are seeded." onclick="seedLeaveBalancesAdmin()">🌱 Seed Leave Balances for All Active Employees <span class="info-tooltip" title="One-click action: creates current-year leave balance entries for every active employee based on the entitlements set above. Run this at the start of each leave year. Existing balances are NOT overwritten — only missing entries are seeded.">ℹ</span></button>
+      <button class="btn btn-dark btn-sm" title="Owner-only repair. If this Leave Types registry has 0 ACTIVE types (empty leave dropdowns, or a new hire shows 0 balance), this re-seeds / re-activates the default set (CL/SL/EL/PL/ML/PTL/LWP/BL/SOL/COL) WITHOUT duplicating any existing code. No-op when active types already exist." onclick="repairLeaveTypesAdmin()">🔁 Seed / Repair Leave Types <span class="info-tooltip" title="Use this if leave-type dropdowns are empty or a new hire shows remaining:0. Owner-gated; never duplicates an existing code; no-op when ≥1 active type already exists.">ℹ</span></button>
     </div>
     </div>
   </div>`;
@@ -16066,14 +16209,20 @@ async function bulkImportEmployees() {
     'incrementMode',
     'empIncrementFlat',
     'empIncrementPct',
+    // ── v84 B1: bank / UPI payout columns (additive at the END — every prior column position is unchanged) ──
+    'bankAccountName',
+    'bankAccountNumber',
+    'bankIFSC',
+    'bankName',
+    'upiId',
   ];
   const sampleRows = [
     // Row 1: factory wage worker example. v49: +3 override cells (blank = use company policy).
     ['AZ_EMP_0056','Ravi Kumar','L4',18000,1234,'09:00','19:00',10,'Sunday','','9876543210','ravi.kumar@example.com','Production','Workforce','2025-01-15','1995-06-20','Male','123456789012',90,0,500,9,'Wage Shift Office','Example row — delete before importing',
-     'Night Shift A', 0, 6, '', '', '', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Printing', projectOpts[0]||'General', '', '', '', '', '', '', ''],
+     'Night Shift A', 0, 6, '', '', '', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Printing', projectOpts[0]||'General', '', '', '', '', '', '', '', 'Ravi Kumar', '50100123456789', 'HDFC0001234', 'HDFC Bank', 'ravi@okhdfcbank'],
     // Row 2: office staff example. v49: shows a CUSTOM_FLAT override (₹1200/cycle) as a worked example.
     ['','Priya Sharma','L6',35000,5678,'10:00','18:00',8,'Sunday','Saturday','9876543211','priya.sharma@example.com','Admin','Supervisor','2024-03-01','1990-09-15','Female','987654321098',60,1500,1000,8,'Full-Time Office','Office manager — example row',
-     '', 250, 5, 'UAN12345678', 'ESI98765432', 'Sector 18, Noida, UP 201301', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Admin', projectOpts[0]||'General', empSample, empSample, '', 'Staff', 'CUSTOM_FLAT', 1200, ''],
+     '', 250, 5, 'UAN12345678', 'ESI98765432', 'Sector 18, Noida, UP 201301', factoryOpts[0]||'Noida Factory', zoneOpts[0]||'Production', departmentOpts[0]||'Admin', projectOpts[0]||'General', empSample, empSample, '', 'Staff', 'CUSTOM_FLAT', 1200, '', 'Priya Sharma', '60200987654321', 'ICIC0005678', 'ICICI Bank', 'priya@oksbi'],
   ];
   const validValues = [
     ['level *','L1, L2, L3, L4, L5, L6, L7, L8, L9, L10','L1=lowest (helper), L10=senior management'],
@@ -16106,6 +16255,12 @@ async function bulkImportEmployees() {
     ['incrementMode','Blank or one of: OFF, CUSTOM_FLAT, CUSTOM_PCT','Per-employee override for the auto-increment engine. Blank = follow company policy (DEFAULT). OFF = no auto-increments. CUSTOM_FLAT = a fixed ₹ amount per cycle (fill empIncrementFlat). CUSTOM_PCT = a % of current salary per cycle (fill empIncrementPct).'],
     ['empIncrementFlat','Number (₹). Only read when incrementMode = CUSTOM_FLAT','Custom flat increment in rupees per cycle. Ignored unless incrementMode = CUSTOM_FLAT.'],
     ['empIncrementPct','Decimal 0..1 — e.g. 0.07 = 7%. Only read when incrementMode = CUSTOM_PCT','Custom percentage increment per cycle as a fraction (0.05 = 5%). Applied to current salary. Ignored unless incrementMode = CUSTOM_PCT.'],
+    // ── v84 B1: bank / UPI payout reference (all optional; sensitive fields are owner-only on read) ──
+    ['bankAccountName','Free text','Account-holder name exactly as on the bank account. Optional.'],
+    ['bankAccountNumber','Digits (stored as text)','Bank account number — leading zeros preserved. Optional. Sensitive: owner-only view.'],
+    ['bankIFSC','11-char IFSC, e.g. HDFC0001234','Branch IFSC code. Optional.'],
+    ['bankName','Free text, e.g. HDFC Bank / ICICI Bank / SBI','Bank name. Optional.'],
+    ['upiId','handle@bank, e.g. name@okhdfcbank','UPI VPA for payouts. Optional. Sensitive: owner-only view.'],
   ];
   // v43 W3.6: refactored Employees Column Guide to use the same buildColumnGuide(spec)
   // pattern as Transactions and Petty Cash. Single-source-of-truth EMP_COL_GUIDE array
@@ -16155,6 +16310,12 @@ async function bulkImportEmployees() {
     { label:'incrementMode',                    required:false, desc:'Blank = company policy. OFF / CUSTOM_FLAT / CUSTOM_PCT for a per-employee override.' },
     { label:'empIncrementFlat',                 required:false, desc:'₹ per cycle — only when incrementMode = CUSTOM_FLAT' },
     { label:'empIncrementPct',                  required:false, desc:'Decimal 0..1 (0.07 = 7%) — only when incrementMode = CUSTOM_PCT' },
+    // ── v84 B1: bank / UPI payout columns ──
+    { label:'bankAccountName',                  required:false, desc:'Account-holder name as on the bank account' },
+    { label:'bankAccountNumber',                required:false, desc:'Bank account number (stored as text; owner-only view)' },
+    { label:'bankIFSC',                         required:false, desc:'Branch IFSC code, e.g. HDFC0001234' },
+    { label:'bankName',                         required:false, desc:'Bank name, e.g. HDFC Bank' },
+    { label:'upiId',                            required:false, desc:'UPI VPA, e.g. name@okhdfcbank (owner-only view)' },
   ];
   // Soft drift-check: warn in console if the guide doesn't list as many columns as the
   // template has. Doesn't break the import — just surfaces a future code-review nudge.
@@ -16221,6 +16382,11 @@ async function bulkImportEmployees() {
     ['incrementMode','no','enum: blank | OFF | CUSTOM_FLAT | CUSTOM_PCT'],
     ['empIncrementFlat','no','number INR (used only when incrementMode = CUSTOM_FLAT)'],
     ['empIncrementPct','no','decimal 0..1 (used only when incrementMode = CUSTOM_PCT)'],
+    ['bankAccountName','no','text'],            // v84 B1
+    ['bankAccountNumber','no','text (digits)'], // v84 B1
+    ['bankIFSC','no','text (IFSC)'],            // v84 B1
+    ['bankName','no','text'],                   // v84 B1
+    ['upiId','no','text (UPI VPA)'],            // v84 B1
   ];
   const templateExtras = {
     textFormat: true, // emit @-format (text) cells so HH:MM / PIN / Aadhaar etc. never auto-coerce
@@ -16283,6 +16449,12 @@ async function bulkImportEmployees() {
       _set('zone', 'zone');
       _set('project', 'project');
       _set('leavePolicyGroup', 'leavePolicyGroup');
+      // v84 B1: bank / UPI payout fields (update/replace mode)
+      _set('bankAccountName', 'bankAccountName');
+      _set('bankAccountNumber', 'bankAccountNumber', v => String(v).trim());
+      _set('bankIFSC', 'bankIFSC');
+      _set('bankName', 'bankName');
+      _set('upiId', 'upiId');
       _set('supervisorId (Name (ID) or raw ID)', 'supervisorId', v => extractEmpId(v));
       _set('managerId (Name (ID) or raw ID)', 'managerId', v => extractEmpId(v));
       // referredBy is intentionally NOT updatable here — it is set once at hire.
@@ -16383,6 +16555,12 @@ async function bulkImportEmployees() {
       incrementMode: _incMode,
       empIncrementFlat: _incFlat,
       empIncrementPct: _incPct,
+      // v84 B1 — bank / UPI payout fields (add mode). Account number kept as text.
+      bankAccountName: row['bankAccountName']||'',
+      bankAccountNumber: String(row['bankAccountNumber']||'').trim(),
+      bankIFSC: row['bankIFSC']||'',
+      bankName: row['bankName']||'',
+      upiId: row['upiId']||'',
     };
   }, 'addEmployee', fieldGuide, sampleRows, validValues, extraDropdowns, templateExtras);
 }
@@ -17915,6 +18093,21 @@ async function seedLeaveBalancesAdmin() {
   if (!res || typeof res !== 'object') { toast('Seeding complete. Refresh to verify.', 'warning'); return; }
   if (res.ok) { toast('Seeded ' + (res.seeded||0) + ' new balance rows for ' + (res.employees||0) + ' employees.', 'success', 5000); await loadAllLeaveBalances(); }
   else toast(res.error || 'Seeding failed', 'error');
+}
+
+// v85 FIX1: owner-gated Leave Types seed/repair (route repairLeaveTypes). Use when the registry has 0
+// ACTIVE types (empty leave dropdowns / a new hire shows remaining:0). Re-seeds / re-activates the
+// default set (CL/SL/EL/PL/ML/PTL/LWP/BL/SOL/COL) without duplicating any existing code; no-op when
+// there is already >=1 active type.
+async function repairLeaveTypesAdmin() {
+  if (State.adminRole !== 'owner') { toast('Owner only — sign in as Owner to repair leave types','error'); return; }
+  requireOwnerPin(async () => {
+    toast('Checking / repairing leave types…','info');
+    const res = await API.call('repairLeaveTypes', {ownerToken: State._dzToken||''});
+    if (!res || !res.ok) { toast((res && res.error) || 'Repair failed','error'); return; }
+    toast(res.message || ('Seeded ' + (res.seeded||0) + ', reactivated ' + (res.reactivated||0)), 'success', 6000);
+    if (((res.seeded||0) + (res.reactivated||0)) > 0) { try { await loadLeaveTypesSettingsTable(); } catch(e){} }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════
