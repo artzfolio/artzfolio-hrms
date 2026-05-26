@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v86</title>
+<title>ArtzFolio HRMS v88</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -997,7 +997,8 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
                   placeholder="Reason for leave..."></textarea>
               </div>
               <div id="leave-balance-warning" style="display:none;background:#b71c1c22;border:1px solid #ef9a9a;border-radius:6px;padding:8px;font-size:11px;color:#ef9a9a;margin-bottom:8px"></div>
-              <button onclick="submitLeaveRequest()"
+              <button id="leave-submit-btn" onclick="submitLeaveRequest()"
+                title="Submit your leave request. Paid leave types you have no balance left for cannot be applied — apply Leave Without Pay (LWP) for those days instead."
                 style="width:100%;padding:10px;background:var(--gold);color:var(--dark);border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">
                 Submit Leave Request
               </button>
@@ -1522,7 +1523,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v86-2026-05'; // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v88-2026-05'; // v88 (FnF exit-month salary accuracy + ESS date-lock — decision_log/2026.05.26_HRMS_v88_completion_register.md): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths (handleCalcFnF + generateFnFRecord) compute the exit-month salary via the ATTENDANCE-ACCURATE engine (calcMonthlySalary bounded at the last working day via default-neutral opts.exitDay; post-exit days = unpaid/no-penalty/no-sandwich), pulling ONLY the payslip-style earned salary (− UL/late/sandwich/under-time) + statutory (PF/ESI/PT/TDS), NOT advances/loans/bonuses (FnF itemises those → no double-count); early-exit minDayRate + notice/abscond/KYC/EL/gratuity preserved; calcMonthlySalary byte-neutral for every normal call (proven). WORK ITEM 2 [UI] ESS leave date pickers disabled (not just Submit) when a paid leave's balance can't cover the request (LWP/ML/PTL exempt). // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard (always mark the resolved attendance row + idempotency key, refuse if unmarkable); A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button + record-mode owner gate; B2 per-execution SalaryLadder cache; B3 full mismatch detail (25-row cap removed); C1 (owner policy) block leave self-apply once a paid-leave balance can't cover the request (LWP/ML/PTL exempt) + negative-balance clamp; C2 FnF exit-date parsed at local midnight (calcMonthlySalary-reuse deferred); C3 modal double-submit guard; C4 delete-rule confirm; C5 post-seed null guard; C6 toast error normalisation; C7 dead inc-mult reads; C8 read-only audit allow-list; C9 _safeCompare token; C10 IST weekAgoStr; C11 dead lateMultiplier knob removed; C12 tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2177,7 +2178,25 @@ function showModal(title, bodyHtml, btns=[], opts={}) {
     const btn = document.createElement('button');
     btn.className = `btn ${b.cls||'btn-dark'}`;
     btn.innerHTML = b.label;
-    btn.onclick = b.cb;
+    // v87 C3: prevent double-submit. While a button's callback is pending (sync OR async), disable
+    // EVERY footer button and show an inline spinner on the clicked one; restore on resolve/reject.
+    // Works for the owner-PIN Confirm and the Extra-Pay Save/Apply modals (their cb does async work
+    // before closeModal). If the cb closes & reopens the modal, the restore touches detached nodes (no-op).
+    btn.onclick = async (ev) => {
+      const allBtns = Array.from(footer.querySelectorAll('button'));
+      if (allBtns.some(x => x.disabled)) return; // a click is already being processed
+      const origHtml = btn.innerHTML;
+      allBtns.forEach(x => { x.disabled = true; });
+      btn.innerHTML = origHtml + ' <span class="loading-spinner" style="display:inline-block;width:13px;height:13px;border-width:2px;margin:0;vertical-align:middle"></span>';
+      try {
+        await b.cb(ev);
+      } catch (e) {
+        try { toast((e && e.message) || String(e), 'error'); } catch(_) {}
+      } finally {
+        allBtns.forEach(x => { x.disabled = false; });
+        btn.innerHTML = origHtml;
+      }
+    };
     footer.appendChild(btn);
   });
   if (!btns.length) {
@@ -2297,7 +2316,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v86';  // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v88';  // v88 (FnF exit-month salary accuracy + ESS leave date-lock): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths now compute the exit-month salary via the attendance-accurate engine (calcMonthlySalary bounded at the last working day), payslip-style salary + statutory, no double-count; calcMonthlySalary byte-neutral for normal calls. WORK ITEM 2 [UI] ESS leave date pickers disabled when a paid leave's balance can't cover the request. // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard; A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button; B2 per-execution SalaryLadder cache; B3 full mismatch detail (cap removed); C1-C12 medium/low fixes + tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -10172,6 +10191,7 @@ async function applyRecoveriesForMonth(){
   if(!dry||!dry.ok){ toast((dry&&dry.error)||'Error','error'); return; }
   if(!dry.count){ toast('No prior open recoveries to apply to '+dry.targetMonth,'info'); return; }
   if(!await confirm2('Apply '+dry.count+' prior recovery line(s) totalling '+fmtMoney(dry.totalRecovered)+' to '+dry.targetMonth+'? This adds a Penalty-type recovery line to that month for each affected employee. Recompute the register afterwards to see the netted figure.')) return;
+  if(!(await _ensureOwnerToken())) return; // v87 A2: applying recoveries is owner-gated
   const res=await API.call('applyRecoveries',{year,month,mode:'apply',reviewedBy:State.adminUser});
   if(res&&res.ok){ toast('✓ Applied '+res.count+' recovery line(s) = '+fmtMoney(res.totalRecovered),'success'); renderRecovery(); } else toast((res&&res.error)||'Error','error');
 }
@@ -10185,6 +10205,7 @@ async function applyRecoveriesFromRegister(year,month){
   const dry=await API.call('applyRecoveries',{year,month,mode:'dryRun'});
   if(!dry||!dry.ok||!dry.count){ toast('No prior recoveries to apply','info'); return; }
   if(!await confirm2('Apply '+dry.count+' prior recovery line(s) totalling '+fmtMoney(dry.totalRecovered)+' to '+dry.targetMonth+', then recompute the register?')) return;
+  if(!(await _ensureOwnerToken())) return; // v87 A2: applying recoveries is owner-gated
   const res=await API.call('applyRecoveries',{year,month,mode:'apply',reviewedBy:State.adminUser});
   if(res&&res.ok){ toast('✓ Applied '+res.count+' recovery line(s) = '+fmtMoney(res.totalRecovered)+' — recomputing','success'); generateAllSalaries(); }
   else toast((res&&res.error)||'Error','error');
@@ -10450,7 +10471,7 @@ async function loadFnFRecords() {
       <td>
         ${isOwner && isPending ? `<button class="btn btn-gold btn-sm" onclick="handleFnFApproval('${escHtml(r['Employee Code'])}','approve')">✓ Approve</button>
         <button class="btn btn-dark btn-sm" style="margin-left:4px" onclick="handleFnFApproval('${escHtml(r['Employee Code'])}','reject')">✗ Reject</button>` : '—'}
-        <button class="btn btn-dark btn-sm" style="margin-left:4px" onclick="printFnFRecord(${JSON.stringify(r).replace(/'/g,'&#39;')})">📄</button>
+        <button class="btn btn-dark btn-sm" style="margin-left:4px" title="Print this Full &amp; Final settlement record as a PDF" data-help="Opens this employee's full &amp; final settlement (earnings, deductions, net payable) as a printable PDF." onclick="printFnFRecord(${JSON.stringify(r).replace(/"/g,'&quot;')})">📄</button>
       </td>
     </tr>`;
   }).join('');
@@ -10466,6 +10487,7 @@ async function loadFnFRecords() {
 async function handleFnFApproval(recordId, action) {
   const ok = await confirm2(`${action === 'approve' ? 'Approve' : 'Reject'} this F&F settlement?`);
   if (!ok) return;
+  if (!(await _ensureOwnerToken())) return; // v87 A2: F&F approval is owner-gated server-side
   const res = await API.call('approveFnF', {empId: recordId, action, approvedBy: State.adminUser || State.adminRole});
   if (res.ok) { toast(`FnF ${action}d successfully`, 'success'); loadFnFRecords(); }
   else toast(res.error || 'Action failed', 'error');
@@ -10854,7 +10876,8 @@ async function renderTrackedTime() {
   const el = document.getElementById('admin-tab-content');
   const today = todayStr();
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
-  const weekAgoStr = weekAgo.toISOString().slice(0,10);
+  // v87 C10: local date (was toISOString() UTC, which can be a day off near IST midnight) — same format as todayStr().
+  const weekAgoStr = `${weekAgo.getFullYear()}-${String(weekAgo.getMonth()+1).padStart(2,'0')}-${String(weekAgo.getDate()).padStart(2,'0')}`;
   el.innerHTML = `
   <div class="section-hdr">
     <div class="section-title">⏱ Tracked Time Report</div>
@@ -11612,7 +11635,7 @@ async function renderSettings() {
       ${cfgFieldTip('maxLeaveDaysAutoApprove','Max Leave Days for Supervisor Auto-Approval','Leave requests up to this many days can be approved by a supervisor. Requests beyond this require Owner/Admin approval.')}
       ${cfgFieldTip('pinBlockAfter','PIN Block After N Wrong Attempts','Number of consecutive wrong PIN attempts before the employee\'s PIN is blocked. Employee must pay the reactivation fee to unblock.')}
       ${cfgFieldTip('pinReactivationFee','PIN Reactivation Fee (₹)','Amount deducted from salary when a blocked PIN is reactivated by admin. This is recorded as a PINReactivationFee transaction.')}
-      ${cfgFieldTip('lateMultiplier','Late-Coming Multiplier (1.0 = exact, 2.0 = double penalty)','Late minutes × this multiplier = minutes deducted from pay. E.g. employee is 12 min late with multiplier 2.0 → 24 min deducted. Set to 1.0 for no amplification.')}
+      <!-- v87 C11: removed the dead 'lateMultiplier' Settings field — no GAS engine ever read this config (grep-verified), so its "minutes deducted from pay" label was misleading. Late-coming pay is driven by the late1Max/late2Max/late3Max tiers, not this knob. Key also dropped from VALID_CONFIG_KEYS, the default seed, and the settings save-keys array. -->
       ${cfgFieldTip('monthlyLateBlockThreshold','Monthly Late Block Threshold (default: 10)','If an employee exceeds this many late arrivals in a calendar month, their clock-in is blocked and the PIN/ID is locked until the supervisor manually approves. Default is 10.')}
     </div>
     <div class="settings-section-title" style="margin-top:18px">🤝 Salary Advance Policy</div>
@@ -12499,6 +12522,8 @@ async function renderSettings() {
       <button class="btn btn-gold btn-sm" id="selftest-run-btn" onclick="runSelfTestPanel()">🩺 Run Self-Test</button>
       <!-- v73 D7: one-click salary safety test — runs the golden-master regression (mode:verify) so the owner can confirm pay maths are unchanged after any release. -->
       <button class="btn btn-gold btn-sm" id="salary-safety-btn" onclick="runSalarySafetyTest()" title="Re-runs the salary engine over the fixed golden-master roster and checks every figure is unchanged from the recorded baseline. Read-only — changes nothing.">💰 Run Salary Safety Test</button>
+      <!-- v87 B1: owner-only — re-bless the salary ladder as the new safety-test baseline after a DELIBERATE restructure. -->
+      ${isOwner ? `<button class="btn btn-dark btn-sm" id="salary-baseline-btn" onclick="updateSalaryBaseline()" title="Owner only. Records TODAY'S salary ladder as the new known-good reference the Salary Safety Test checks against. Use only after you deliberately changed salaries — review the listed differences first; don't bless an unexpected one. Owner password required." data-help="Re-bless the salary ladder as the safety-test baseline after a deliberate salary change. Runs a check, shows every cell that differs (was → now), and asks you to confirm before recording. If a difference is unexpected, investigate first — don't bless it.">📌 Update Salary Baseline</button>` : ''}
     </div>
     <div id="selftest-results" style="margin-top:12px;font-size:12px"></div>
     <div id="salary-safety-results" style="margin-top:12px;font-size:12px"></div>
@@ -13575,13 +13600,14 @@ async function renderSettings() {
           <strong style="color:var(--gold)">OFF</strong> = no extra pay for that event. Scope precedence — most specific wins:
           <em>Employee → Shift → Designation → Level → Global default</em>.
           Leave everything on <strong>Divisor</strong> to keep pay exactly as it is today.
+          <br><span style="color:var(--gray-light)">Note (v87): <strong>Flat ₹</strong> pays the rate for any logged extra time — even for an employee outside the usual OT / Night level-eligibility list — because a flat rate is a deliberate per-scope amount you set. <strong>Divisor</strong> still respects that eligibility (an out-of-scope level earns ₹0). <strong>Extra-day</strong> &amp; <strong>Holiday/Weekly-off</strong> are not level-gated under either method.</span>
         </div>
         <div id="extrapay-methods-body">Loading…</div>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-gold btn-sm" onclick="saveExtraPayGlobals()">💾 Save Global Defaults</button>
-          <button class="btn btn-dark btn-sm" onclick="showExtraPayOverrideModal()">➕ Add Scope Override</button>
-          <button class="btn btn-dark btn-sm" onclick="showExtraPayBulkModal()">⚡ Bulk-Apply to Employees / Scopes</button>
-          <button class="btn btn-dark btn-sm" onclick="loadExtraPayMethods()">↻ Refresh</button>
+          <button class="btn btn-gold btn-sm" onclick="saveExtraPayGlobals()" title="Save the GLOBAL default method (Divisor / Flat ₹ / OFF) for each extra-time event. This is the company-wide fallback used when no more-specific override applies. Owner password required.">💾 Save Global Defaults</button>
+          <button class="btn btn-dark btn-sm" onclick="showExtraPayOverrideModal()" title="Add ONE override for a specific Level, Designation, Shift, or Employee. A more-specific override always wins over the global default (Employee → Shift → Designation → Level → Global). Owner password required.">➕ Add Scope Override</button>
+          <button class="btn btn-dark btn-sm" onclick="showExtraPayBulkModal()" title="Apply one method + rate to MANY at once — tick a filtered set of employees (e.g. a whole level/dept) or target a whole Level/Designation/Shift. Writes/updates an override per target. Owner password required.">⚡ Bulk-Apply to Employees / Scopes</button>
+          <button class="btn btn-dark btn-sm" onclick="loadExtraPayMethods()" title="Reload the current global defaults and all scope overrides from the server (read-only — changes nothing).">↻ Refresh</button>
         </div>
       </div>
       <!-- v80 (§6): the Tenure-Based Wallet editor MOVED to Settings -> Bonuses & Promotion -> Loyalty Programs (its correct home, alongside the Active-Loyalty-Model selector + Level-Based Retention Bonus). -->
@@ -14371,6 +14397,20 @@ function requireOwnerPin(cb) {
   ]);
 }
 
+// v87 A2: ensure the in-session owner token before a financial-approval action (F&F approve/reject,
+// recovery apply, OT-claim status, manual/bulk bonus — all now owner-gated server-side). Resolves
+// true once State._dzToken is available: prompts ONCE per session via requireOwnerPin, then reuses
+// the in-memory token (API.call auto-attaches it) so the owner isn't re-prompted for every approval.
+// (If the owner cancels the prompt the action simply does not proceed.) Server _checkOwnerToken is
+// the real guard — this is just so the owner's legitimate clicks carry the token.
+function _ensureOwnerToken() {
+  return new Promise(function (resolve) {
+    if (State._dzToken) { resolve(true); return; }
+    if (State.adminRole !== 'owner') { toast('Owner access required for this action','error'); resolve(false); return; }
+    requireOwnerPin(function () { resolve(!!State._dzToken); });
+  });
+}
+
 async function dangerDeleteEmployee() {
   requireOwnerPin(async () => {
   const emps = State.employees || (await API.call('getEmployees',{})).employees || [];
@@ -14575,7 +14615,7 @@ function applyBranding() {
 }
 
 async function savePolicySettings() {
-  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','lateMultiplier','monthlyLateBlockThreshold','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day','ownerRecoveryEmail','managerRecoveryEmail','supervisorRecoveryEmail'];
+  const keys=['gracePeriod','payDay','extendedCutoff','kioskTimeout','late1Max','late2Max','late3Max','otBaseHours','ulPenaltyDays','maxLeaveDaysAutoApprove','pinBlockAfter','pinReactivationFee','monthlyLateBlockThreshold','otMinHoursThreshold','otEligibleLevels','nightShiftEligibleLevels','otMultiplier','nightShiftMultiplier','adminPassword','managerPassword','supervisorPassword','autoClockOutEnabled','autoMarkPresentEnabled','autoMarkPresentThreshold','shiftAutoClockoutBuffer','lateClockInApprovalMinutes','advanceLimit1Pct','advanceLimit1Day','advanceLimit2Pct','advanceLimit2Day','ownerRecoveryEmail','managerRecoveryEmail','supervisorRecoveryEmail'];
   const updates={};
   keys.forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)updates[k]=el.value;});
   // v38 H5: warn if all three password fields are blank (accidental wipe guard)
@@ -15025,8 +15065,8 @@ async function loadExtraPayMethods() {
           + '<td>' + escHtml(String(r.ScopeType)) + ': <strong>' + escHtml(_epScopeLabel(r.ScopeType, r.ScopeValue)) + '</strong></td>'
           + '<td>' + escHtml(m) + '</td><td>' + rateTxt + '</td>'
           + '<td>' + (String(r.Active).toLowerCase() === 'no' ? '✗' : '✓') + '</td>'
-          + '<td style="white-space:nowrap"><button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" onclick="editExtraPayRule(\'' + escHtml(String(r.RuleId)) + '\')">✎</button> '
-          + '<button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px;color:var(--red)" onclick="deleteExtraPayRule(\'' + escHtml(String(r.RuleId)) + '\')">🗑</button></td></tr>';
+          + '<td style="white-space:nowrap"><button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px" title="Edit this scope override (event, method, flat rate, active). Owner password required to save." onclick="editExtraPayRule(\'' + escHtml(String(r.RuleId)) + '\')">✎</button> '
+          + '<button class="btn btn-dark btn-sm" style="padding:2px 6px;font-size:10px;color:var(--red)" title="Delete this scope override (asks to confirm first). The scope then falls back to the next-less-specific rule, ultimately the Global default. Owner password required." onclick="deleteExtraPayRule(\'' + escHtml(String(r.RuleId)) + '\')">🗑</button></td></tr>';
       });
       html += '</tbody></table></div>';
     }
@@ -15049,7 +15089,7 @@ async function saveExtraPayGlobals() {
     if (failed.length) toast('Saved ' + saved + '; problems: ' + failed.join(' · '), 'warning', 6000);
     else toast('✓ Saved global extra-pay defaults', 'success');
     loadExtraPayMethods();
-  } catch (e) { toast('Save failed: ' + e, 'error'); }
+  } catch (e) { toast('Save failed: ' + ((e && e.message) || e), 'error'); } // v87 C6: show the message, not [object Object]
 }
 
 function _epScopeValueControl(st, selected, id) {
@@ -15103,15 +15143,18 @@ async function _epSubmitOverride(isEdit) {
     const res = await API.call('saveExtraPayRule', { eventType: ev, scopeType: st, scopeValue: sv, method: m, flatRate: rate, active: active, ownerToken: State._dzToken || '', changedBy: State.adminUser || 'owner' });
     if (res && res.ok) { toast('✓ Override saved', 'success'); closeModal(); loadExtraPayMethods(); }
     else toast((res && res.error) || 'Save failed', 'error');
-  } catch (e) { toast('Save failed: ' + e, 'error'); }
+  } catch (e) { toast('Save failed: ' + ((e && e.message) || e), 'error'); } // v87 C6
 }
 async function deleteExtraPayRule(ruleId) {
+  if (!State._dzToken) { requireOwnerPin(() => deleteExtraPayRule(ruleId)); return; }
+  // v87 C4: confirm before deleting an override (it is owner-gated but had no confirmation). The affected
+  // scope falls back to the next-less-specific rule (ultimately the Global default).
+  if (!(await confirm2('Delete this extra-pay override? The affected scope will fall back to the next-less-specific rule (ultimately the Global default).'))) return;
   try {
-    if (!State._dzToken) { requireOwnerPin(() => deleteExtraPayRule(ruleId)); return; }
     const res = await API.call('deleteExtraPayRule', { ruleId: ruleId, ownerToken: State._dzToken || '', changedBy: State.adminUser || 'owner' });
     if (res && res.ok) { toast('✓ Override deleted', 'success'); loadExtraPayMethods(); }
     else toast((res && res.error) || 'Delete failed', 'error');
-  } catch (e) { toast('Delete failed: ' + e, 'error'); }
+  } catch (e) { toast('Delete failed: ' + ((e && e.message) || e), 'error'); } // v87 C6
 }
 
 function _epToggleBulkRate() { const m = (document.getElementById('epb-method') || {}).value; const w = document.getElementById('epb-rate-wrap'); if (w) w.style.display = (m === 'flat') ? 'block' : 'none'; }
@@ -15176,7 +15219,7 @@ async function applyExtraPayBulk() {
     const res = await API.call('bulkApplyExtraPay', params);
     if (res && res.ok) { toast('✓ Applied to ' + res.applied + ' target(s) (' + res.added + ' added, ' + res.updated + ' updated)', 'success', 5000); closeModal(); loadExtraPayMethods(); }
     else toast((res && res.error) || 'Apply failed', 'error');
-  } catch (e) { toast('Apply failed: ' + e, 'error'); }
+  } catch (e) { toast('Apply failed: ' + ((e && e.message) || e), 'error'); } // v87 C6
 }
 
 async function savePointsSettings() {
@@ -15553,7 +15596,8 @@ async function runSalarySafetyTest() {
     } else if (res && res.ok) {
       if (out) out.innerHTML = '<span style="color:var(--green);font-weight:700">✅ Pay maths unchanged — ' + (res.passed || 0) + '/' + (res.total || 0) + ' salary figures match the recorded baseline.</span>';
     } else if (res && res.failed) {
-      if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Pay maths CHANGED — ' + res.failed + ' of ' + (res.total || 0) + ' figures differ from baseline. Do NOT deploy salary changes until reviewed.</span>';
+      // v87 B3: list every differing cell (the backend no longer caps the list at 25).
+      if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Pay maths CHANGED — ' + res.failed + ' of ' + (res.total || 0) + ' figures differ from baseline. Do NOT deploy salary changes until reviewed.</span>' + _gmMismatchTable(res.mismatches || []);
     } else {
       const msg = (res && (res.error || res.message)) || 'unknown error';
       if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Safety test could not run: ' + escHtml(String(msg)) + '</span>';
@@ -15563,6 +15607,88 @@ async function runSalarySafetyTest() {
   } finally {
     if (btn) btn.disabled = false;
   }
+}
+
+// v87 B3: render the golden-master mismatches (Level/Shift · cell · was → now) as a compact table.
+// Reused by both the Salary Safety Test failure view and the "Update Salary Baseline" confirm modal.
+function _gmMismatchTable(mismatches) {
+  if (!mismatches || !mismatches.length) return '';
+  const td = 'padding:4px 8px;border-bottom:1px solid var(--dark3)';
+  const cell = (label, was, now) => (String(was) === String(now)) ? '' :
+    '<tr><td style="' + td + '">' + escHtml(label) + '</td>' +
+        '<td style="' + td + ';text-align:right;color:var(--gray-light)">' + escHtml(String(was)) + '</td>' +
+        '<td style="' + td + ';text-align:center">→</td>' +
+        '<td style="' + td + ';text-align:right;color:var(--gold)">' + escHtml(String(now)) + '</td></tr>';
+  let rows = '';
+  mismatches.forEach(function (m) {
+    const exp = m.expected || {}, got = m.got || {};
+    if (!m.expected) { // new row not present in the baseline
+      rows += '<tr><td colspan="4" style="' + td + ';color:var(--gold)">' + escHtml(String(m.key||'')) + ' — ' + escHtml(String(m.reason||'new row')) + '</td></tr>';
+      return;
+    }
+    rows += cell(m.key + ' · base (cycle 0)', exp.base0, got.base0);
+    rows += cell(m.key + ' · base (cycle 1)', exp.base1, got.base1);
+    rows += cell(m.key + ' · increment ₹',   exp.incAmount, got.incAmount);
+    rows += cell(m.key + ' · increment source', exp.incSource, got.incSource);
+  });
+  if (!rows) return '';
+  return '<div style="margin-top:10px;max-height:320px;overflow:auto;border:1px solid var(--dark3);border-radius:6px">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+    '<thead><tr style="background:var(--dark2)">' +
+      '<th style="padding:6px 8px;text-align:left">Level / Shift · Cell</th>' +
+      '<th style="padding:6px 8px;text-align:right">Was (baseline)</th>' +
+      '<th style="padding:6px 8px"></th>' +
+      '<th style="padding:6px 8px;text-align:right">Now (current)</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+// v87 B1: owner-only "Update Salary Baseline" — re-bless the salary ladder as the new safety-test
+// reference AFTER a deliberate restructure (no code session needed). Flow: verify → list every
+// differing cell → confirm → record (mode:'record', owner-gated server-side) → auto re-verify → green.
+async function updateSalaryBaseline() {
+  requireOwnerPin(async () => {
+    const out = document.getElementById('salary-safety-results');
+    if (out) out.innerHTML = '<span style="color:var(--gray-light)">Checking the current ladder against the recorded baseline…</span>';
+    let res;
+    try { res = await API.call('salaryGoldenMaster', { mode: 'verify' }); }
+    catch (e) { if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Could not read the current state: ' + escHtml(String(e)) + '</span>'; return; }
+    if (!res || (!res.ok && !res.failed)) {
+      const msg = (res && (res.error || res.message)) || 'unknown error';
+      if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Could not check the ladder: ' + escHtml(String(msg)) + '</span>';
+      return;
+    }
+    if (res.baselined) { // no baseline existed → verify just recorded one; nothing to re-bless
+      if (out) out.innerHTML = '<span style="color:var(--gold);font-weight:700">ℹ No baseline existed — the current ladder was just recorded as the baseline (' + (res.rows || 0) + ' cells).</span>';
+      return;
+    }
+    const nDiff = res.failed || 0;
+    if (res.ok && !nDiff) {
+      const ok2 = await confirm2('The current ladder already matches the recorded baseline — nothing differs. Re-record it anyway?');
+      if (!ok2) { if (out) out.innerHTML = '<span style="color:var(--green);font-weight:700">✅ Baseline unchanged — current ladder already matches.</span>'; return; }
+    }
+    const table = _gmMismatchTable(res.mismatches || []);
+    showModal('📌 Update Salary Baseline', `
+      <p style="font-size:13px;color:var(--gray-light);margin-bottom:8px">This records <strong>today's</strong> salary ladder as the new known-good reference the Salary Safety Test checks against. Use it ONLY after you deliberately changed salaries — if a difference below is unexpected, investigate first; don't bless it.</p>
+      <p style="font-size:13px;margin-bottom:6px"><strong style="color:var(--gold)">${nDiff}</strong> cell(s) differ from the current baseline${nDiff ? ' — listed below:' : '.'}</p>
+      ${table}
+    `, [
+      {label:'Cancel', cls:'btn-dark', cb:()=>closeModal()},
+      {label:'Record as new baseline', cls:'btn-gold', cb: async () => {
+        closeModal();
+        if (out) out.innerHTML = '<span style="color:var(--gray-light)">Recording the new baseline…</span>';
+        let rec;
+        try { rec = await API.call('salaryGoldenMaster', { mode: 'record' }); }
+        catch (e) { if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Could not record baseline: ' + escHtml(String(e)) + '</span>'; return; }
+        if (!rec || !rec.ok) {
+          const msg = (rec && (rec.error || rec.message)) || 'unknown error';
+          if (out) out.innerHTML = '<span style="color:var(--red);font-weight:700">⚠ Baseline not recorded: ' + escHtml(String(msg)) + '</span>';
+          return;
+        }
+        await runSalarySafetyTest(); // auto re-verify → should now be green
+        toast('✓ Salary baseline updated (' + (rec.recorded || 0) + ' cells)', 'success');
+      }},
+    ]);
+  });
 }
 
 // ─── Excel / bulk utilities ──────────────────────────────────────────────────
@@ -17350,6 +17476,9 @@ async function loadV31KioskCards(emp, dash) {
   try {
     const ltRes = await API.call('getLeaveTypes', {activeOnly: true});
     if (ltRes.ok) {
+      // v87 C1: keep the full leave-type metadata (the Paid flag) so the self-apply balance gate can
+      // tell paid balance-bearing types (gated) from unpaid LWP / statutory ML/PTL (never gated).
+      State.essLeaveTypes = {}; (ltRes.leaveTypes||[]).forEach(lt => { if (lt && lt['Code']) State.essLeaveTypes[lt['Code']] = lt; });
       const sel = document.getElementById('leave-type-select');
       if (sel) {
         sel.innerHTML = '<option value="">-- Select Leave Type --</option>' +
@@ -17381,11 +17510,61 @@ async function loadV31KioskCards(emp, dash) {
 function onLeaveTypeChange() {
   const code = document.getElementById('leave-type-select').value;
   const display = document.getElementById('leave-balance-display');
-  if (!code || !State.leaveBalances) { display.textContent = ''; return; }
-  const bal = State.leaveBalances[code];
-  if (bal) {
-    display.textContent = 'Balance: ' + (parseFloat(bal['Closing Balance'])||0) + ' days remaining';
+  if (display) {
+    if (code && State.leaveBalances && State.leaveBalances[code]) {
+      display.textContent = 'Balance: ' + (parseFloat(State.leaveBalances[code]['Closing Balance'])||0) + ' days remaining';
+    } else { display.textContent = ''; }
   }
+  _essUpdateLeaveGate(); // v87 C1
+}
+
+// v87 C1 (owner policy): a paid, balance-bearing leave type is GATED for ESS self-apply (mirrors the
+// authoritative server block in handleLeaveRequest). UNPAID types (LWP, Paid='No') + statutory ML/PTL
+// are never gated, so an out-of-balance employee can always apply LWP.
+function _essLeaveGated(code) {
+  const lt = (State.essLeaveTypes && State.essLeaveTypes[code]) || null;
+  if (!lt) return false;                       // unknown type → let the server decide
+  if (code === 'ML' || code === 'PTL') return false;
+  return String(lt['Paid'] || '').trim().toLowerCase() === 'yes';
+}
+// Shows the remaining balance, a clear message, and (v88) disables BOTH the Submit button AND the
+// from/to date pickers when a gated paid type has 0 balance — so the user can't even pick dates for a
+// leave they can't take. The exact zero-balance case is a HARD block here; the partial case (calendar
+// days > balance) is a soft warning only (the server does the precise working-day check, so we don't
+// false-block weekend-only ranges). LWP + statutory ML/PTL are never gated (see _essLeaveGated).
+function _essUpdateLeaveGate() {
+  const warn = document.getElementById('leave-balance-warning');
+  const btn = document.getElementById('leave-submit-btn');
+  const fromEl = document.getElementById('leave-from-date');
+  const toEl = document.getElementById('leave-to-date');
+  // v88: toggle Submit + both date inputs together. on=true → editable; on=false → hard-blocked.
+  const setControls = (on) => {
+    if (btn)   { btn.disabled = !on; btn.style.opacity = on ? '' : '0.5'; btn.style.cursor = on ? 'pointer' : 'not-allowed'; }
+    [fromEl, toEl].forEach(el => { if (el) { el.disabled = !on; el.style.opacity = on ? '' : '0.5'; el.style.cursor = on ? '' : 'not-allowed'; } });
+  };
+  if (!warn) return;
+  const code = document.getElementById('leave-type-select').value;
+  if (!code || !_essLeaveGated(code)) { warn.style.display = 'none'; setControls(true); return; }
+  const bal = State.leaveBalances ? State.leaveBalances[code] : null;
+  if (!bal) { warn.style.display = 'none'; setControls(true); return; } // unseeded → server decides
+  const remaining = parseFloat(bal['Closing Balance']) || 0;
+  const name = (State.essLeaveTypes[code] && State.essLeaveTypes[code]['Name']) || code;
+  const from = fromEl ? fromEl.value : '';
+  const to = toEl ? toEl.value : '';
+  const half = (document.getElementById('leave-half-day')||{}).value === 'Yes';
+  let want = 0;
+  if (from && to) { const d1 = new Date(from+'T00:00:00'), d2 = new Date(to+'T00:00:00'); if (d2 >= d1) want = (half && from === to) ? 0.5 : (Math.round((d2-d1)/86400000)+1); }
+  if (remaining <= 0) {
+    // HARD block: no balance → lock the date pickers + Submit and tell them to use LWP.
+    warn.style.display = ''; warn.innerHTML = '⛔ You have <strong>0 ' + escHtml(name) + '</strong> remaining — no more can be applied, so the dates are locked. Apply for <strong>Leave Without Pay (LWP)</strong> instead, or ask your manager.';
+    setControls(false); return;
+  }
+  if (want > remaining) {
+    // SOFT warning: keep dates editable so they can reduce the range; server does the precise check.
+    warn.style.display = ''; warn.innerHTML = '⚠ You have <strong>' + remaining + ' ' + escHtml(name) + '</strong> day(s) left but selected ~' + want + ' calendar day(s). If the working days exceed your balance the request will be refused — reduce the dates or apply <strong>LWP</strong> for the extra day(s).';
+    setControls(true); return;
+  }
+  warn.style.display = 'none'; setControls(true);
 }
 
 function calcLeaveDays() {
@@ -17397,21 +17576,13 @@ function calcLeaveDays() {
   if (d2 < d1) { disp.textContent = 'To date must be after From date'; return; }
   const days = Math.ceil((d2 - d1) / 86400000) + 1;
   disp.textContent = 'Approximately ' + days + ' calendar day(s). Working days may be fewer (weekends/holidays excluded at submission).';
-  // Check balance warning
-  const code = document.getElementById('leave-type-select').value;
-  const bal = State.leaveBalances && code ? (State.leaveBalances[code] || null) : null;
-  const warn = document.getElementById('leave-balance-warning');
-  if (bal && days > (parseFloat(bal['Closing Balance'])||0)) {
-    warn.style.display = '';
-    warn.textContent = 'Warning: You are applying for more days than your current balance. Your request may be rejected or may create an LWP deduction.';
-  } else {
-    warn.style.display = 'none';
-  }
+  _essUpdateLeaveGate(); // v87 C1: balance gate (hard-block at 0 for paid types; soft warning for partial)
 }
 
 function toggleHalfDayPeriod() {
   const isHalf = document.getElementById('leave-half-day').value === 'Yes';
   document.getElementById('leave-half-day-period').style.display = isHalf ? '' : 'none';
+  _essUpdateLeaveGate(); // v87 C1: half-day changes the requested-day count → re-evaluate the gate
 }
 
 async function submitLeaveRequest() {
@@ -17425,6 +17596,15 @@ async function submitLeaveRequest() {
   const halfDayPeriod = document.getElementById('leave-half-day-period').value;
   if (!leaveCode) { toast('Select a leave type', 'error'); return; }
   if (!fromDate || !toDate) { toast('Select from and to dates', 'error'); return; }
+  // v87 C1: hard-stop self-apply at zero balance for a gated paid type (the server enforces this too).
+  if (_essLeaveGated(leaveCode)) {
+    const bal = State.leaveBalances ? State.leaveBalances[leaveCode] : null;
+    if (bal && (parseFloat(bal['Closing Balance'])||0) <= 0) {
+      const name = (State.essLeaveTypes[leaveCode] && State.essLeaveTypes[leaveCode]['Name']) || leaveCode;
+      toast('You have 0 ' + name + ' remaining — no more can be applied. Apply for Leave Without Pay (LWP) instead.', 'error');
+      return;
+    }
+  }
   const ok = await confirm2('Submit leave request for ' + leaveCode + ' from ' + fromDate + ' to ' + toDate + '?');
   if (!ok) return;
   const res = await API.call('submitLeaveRequest', {empId: emp.id, leaveCode, fromDate, toDate, reason, halfDay, halfDayPeriod});
@@ -17435,6 +17615,8 @@ async function submitLeaveRequest() {
     document.getElementById('leave-to-date').value = '';
     document.getElementById('leave-reason').value = '';
     document.getElementById('leave-days-display').textContent = '';
+    const _disp = document.getElementById('leave-balance-display'); if (_disp) _disp.textContent = '';
+    _essUpdateLeaveGate(); // v87 C1: reset the gate (clears any lingering warning, re-enables Submit)
     await loadLeaveStatus(emp.id);
   } else toast(res.error || 'Error submitting leave', 'error');
 }
@@ -17695,6 +17877,7 @@ function filterOTClaims() { renderOTClaims(); }
 async function approveOTClaim(idx) {
   const c = (State._otClaims||[])[idx];
   if (!c) return;
+  if (!(await _ensureOwnerToken())) return; // v87 A2: changing OT-claim status drives OT pay → owner-gated
   const res = await API.call('updateOTClaimStatus', {rowIndex: c._rowIndex, status:'Approved', approvedBy: State.adminRole});
   if (res.ok) { toast('Claim approved', 'success'); await renderOTClaims(); }
   else toast(res.error||'Error','error');
@@ -17703,6 +17886,7 @@ async function approveOTClaim(idx) {
 async function rejectOTClaim(idx) {
   const c = (State._otClaims||[])[idx];
   if (!c) return;
+  if (!(await _ensureOwnerToken())) return; // v87 A2: changing OT-claim status is owner-gated
   const res = await API.call('updateOTClaimStatus', {rowIndex: c._rowIndex, status:'Rejected', approvedBy: State.adminRole});
   if (res.ok) { toast('Claim rejected', 'success'); await renderOTClaims(); }
   else toast(res.error||'Error','error');
@@ -17811,6 +17995,7 @@ async function submitAddBonus() {
   const amount = document.getElementById('bm-amount').value;
   if (!empId) { toast('Select an employee', 'error'); return; }
   if (!amount || parseFloat(amount) <= 0) { toast('Enter a valid amount', 'error'); return; }
+  if (!(await _ensureOwnerToken())) return; // v87 A2: adding a bonus is real money → owner-gated
   const res = await API.call('addBonus', {
     empId, bonusType: document.getElementById('bm-type').value,
     amount, applicableMonth: document.getElementById('bm-month').value,
@@ -17963,6 +18148,7 @@ async function submitBulkBonus() {
     amount: amtMode === 'same' ? sameAmt : (parseFloat((document.getElementById('bb-diff-' + e.employeeCode)||{}).value) || sameAmt)
   }));
   if (!employeeList.length) { toast('No employees selected', 'error'); return; }
+  if (!(await _ensureOwnerToken())) return; // v87 A2: bulk bonus credits real money to many employees → owner-gated
   const res = await API.call('addBulkBonus', {bonusName, bonusType:'Festival Bonus', applicableMonth, employeeList, claimMethod, addedBy: State.adminRole});
   const resultEl = document.getElementById('bb-result');
   if (res.ok) {
@@ -18080,6 +18266,10 @@ async function loadAllLeaveBalances() {
   const res = await API.call('getLeaveBalance', {});
   const balances = res.balances || [];
   const container = document.getElementById('lm-balances-table');
+  // v87 C5: the legacy leave-management 'lm-balances-table' panel was retired (v77/v78), so this element
+  // no longer exists. Guard the null so a SUCCESSFUL seed (seedLeaveBalancesAdmin → await this) doesn't
+  // throw an uncaught TypeError on container.innerHTML right after the success toast. Caller gets the data.
+  if (!container) return res;
   if (!balances.length) { container.innerHTML = '<div style="color:var(--gray-light)">No balance records found. Click "Seed Leave Balances" to generate.</div>'; return; }
   container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
     <thead><tr style="background:var(--dark3)">
@@ -18732,8 +18922,11 @@ function autoRecomputeIncrementShifts(level) {
   var inc9El = document.getElementById('cfg-INCREMENT_9HR_' + level);
   if (!inc9El) return;
   var inc9 = parseFloat(inc9El.value) || 0;
-  var m11 = parseFloat(document.getElementById('cfg-INCREMENT_MULT_11HR')?.value) || INCREMENT_MULT_11HR_DEFAULT;
-  var m12 = parseFloat(document.getElementById('cfg-INCREMENT_MULT_12HR')?.value) || INCREMENT_MULT_12HR_DEFAULT;
+  // v87 C7: the cfg-INCREMENT_MULT_11HR / _12HR inputs were removed in v73 D3, so these getElementById
+  // reads always returned undefined and fell back to the default. Read the default constant directly
+  // (behaviour-neutral; this only feeds the 11hr/12hr suggested-increment DISPLAY, not any saved value).
+  var m11 = INCREMENT_MULT_11HR_DEFAULT;
+  var m12 = INCREMENT_MULT_12HR_DEFAULT;
   var inc11 = Math.round(inc9 * m11 / 10) * 10; // round to ₹10
   var inc12 = Math.round(inc9 * m12 / 10) * 10;
   var d11 = document.getElementById('inc-' + level + '-11-disp');
