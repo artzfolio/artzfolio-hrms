@@ -1,4 +1,4 @@
-<!-- ArtzFolio HRMS v45 | 2026-05-12 -->
+<!-- ArtzFolio HRMS v91 | 2026-05-28 (P1 server-side role gate + P2 toggle Self-Test + P3 refusal audit + P4 view-as preview; v90 P1/P2 deferrals completed) -->
 <!-- v45 (2026-05-12):
        A. Wallet Adjustments moved from Settings to Payroll (role-gated)
        B. Fixed substring-match bug in switchCompSettingsTab
@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v89</title>
+<title>ArtzFolio HRMS v91</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1526,7 +1526,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v89-2026-05'; // v89 (pending fixes from v88 live test — decision_log/2026.05.26_HRMS_v89_completion_register.md): S1 proactive idempotent migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both via _verifyPassword since v43); L1 ESS shows unpaid leave (LWP/UL) as "Unlimited", never a finite balance; L2 ESS lists entitled paid leave types with "N available"/"0 available" + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" now payroll-accurate earned-through-today (calcMonthlySalary bounded at today via the v88 opts.exitDay — ENGINE UNTOUCHED, golden master 120/120); F1 read-only ESS payslip breakdown (gated by v62 dashSections.salary, reuses the salary object, no new math); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F records (soft-void, never Paid); R1 SpreadsheetApp.flush() before cache-bust in bulk money handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED (salary-engine-adjacent). NO salary-engine fn edited → golden master byte-identical v88→v89. // v88 (FnF exit-month salary accuracy + ESS date-lock — decision_log/2026.05.26_HRMS_v88_completion_register.md): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths (handleCalcFnF + generateFnFRecord) compute the exit-month salary via the ATTENDANCE-ACCURATE engine (calcMonthlySalary bounded at the last working day via default-neutral opts.exitDay; post-exit days = unpaid/no-penalty/no-sandwich), pulling ONLY the payslip-style earned salary (− UL/late/sandwich/under-time) + statutory (PF/ESI/PT/TDS), NOT advances/loans/bonuses (FnF itemises those → no double-count); early-exit minDayRate + notice/abscond/KYC/EL/gratuity preserved; calcMonthlySalary byte-neutral for every normal call (proven). WORK ITEM 2 [UI] ESS leave date pickers disabled (not just Submit) when a paid leave's balance can't cover the request (LWP/ML/PTL exempt). // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard (always mark the resolved attendance row + idempotency key, refuse if unmarkable); A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button + record-mode owner gate; B2 per-execution SalaryLadder cache; B3 full mismatch detail (25-row cap removed); C1 (owner policy) block leave self-apply once a paid-leave balance can't cover the request (LWP/ML/PTL exempt) + negative-balance clamp; C2 FnF exit-date parsed at local midnight (calcMonthlySalary-reuse deferred); C3 modal double-submit guard; C4 delete-rule confirm; C5 post-seed null guard; C6 toast error normalisation; C7 dead inc-mult reads; C8 read-only audit allow-list; C9 _safeCompare token; C10 IST weekAgoStr; C11 dead lateMultiplier knob removed; C12 tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v91-2026-05'; // v91 (completes v90 N1 server-side defense-in-depth + v90 N4 actual toggle sweep + audit refusals + Owner view-as preview — decision_log/2026.05.28_HRMS_v91_completion_register.md): P1 [SECURITY] Server-side role gate — new HMAC-signed roleToken issued at login (reuses apiToken as HMAC secret, no new config key, 8h TTL), client API.call now sends roleToken on every request, GAS _v91DeriveRole reads role from ownerToken→roleToken HMAC→'unknown', GAS _v91IsModuleAllowedForRole reads server-mirrored rolePerms_<role>_<moduleId> Config (synced from client by new saveRolePermissions GAS handler), _v91GateModule applied at handler entry for ~50 sensitive endpoints across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone. Owner unchanged (still via ownerToken). P2 [AUDIT] Owner-only "Toggle Enforcement Self-Test" panel under Settings → Danger Zone — read-only inventory of every cfg-* toggle + current value + static enforcement audit per row; full 188-row toggle table in the completion register (zero new BROKEN found beyond v90 N1; engine-adjacent toggles correctly DO-NOT-TOUCH). P3 [SECURITY TRAIL] every _v91GateModule refusal writes a structured Audit Log row (ROLE_REFUSED + moduleId + handler + caller). P4 [HELPER] Owner-only "Preview as Manager / Preview as Supervisor" buttons on the Role Access Permissions card — pure visual nav-filter simulation with a sticky PREVIEW MODE banner + Exit button (no server role switch). P5 [REGRESSION] all 11 salary-engine fns md5-byte-identical v90→v91; v87/v88/v89/v90 anchors grep-cited. NO salary-engine fn edited → golden master byte-identical predicted. // v90 (role-visibility fix + self-approval routing + M1 sub-label + Settings toggle sweep — decision_log/2026.05.28_HRMS_v90_completion_register.md): N1 [SECURITY] Role Access Permissions now actually enforce — key prefix realigned (perm_manager_*/perm_supervisor_* match State.adminRole), table extended from 16 to 25 tabs (added bonustracker/bonusmgmt/compmgmt/otclaims/promotions/compoff/recovery/auditlog), recommended default permission set applied for first-time Manager/Supervisor, Danger Zone independently gated, server-side _isAllowedForRole gate on dangerous data-read handlers (Owner unaffected). N2 [WORKFLOW] Self-approval impossible — new reportingManager schema field (self-healing column, surfaced in Add/Edit/Bulk), ESS leave/exit/advance route via _resolveApproverFor (reportingManager → supervisorId → managerId → defaultApprover config key → Owner; never the requester); server _requestLeaveCore + handleApproveLeave refuse approverId===requesterId. N3 [DISPLAY] Bilingual "Estimated as per payroll · final pay may differ / पेरोल अनुसार अनुमानित · अंतिम भुगतान भिन्न हो सकता है" sub-label on the ESS Month's Earning So Far tile. N4 [AUDIT] Owner-only Settings Self-Test panel (one-click save/read/enforce evidence per toggle). N5 [REGRESSION] All v87/v88/v89 fixes verified by md5 + grep cite (salary engine + v88 _fnfExitMonthSalary + v89 L1/L2/M1/F2/U1 byte-identical). NO salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test — decision_log/2026.05.26_HRMS_v89_completion_register.md): S1 proactive idempotent migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both via _verifyPassword since v43); L1 ESS shows unpaid leave (LWP/UL) as "Unlimited", never a finite balance; L2 ESS lists entitled paid leave types with "N available"/"0 available" + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" now payroll-accurate earned-through-today (calcMonthlySalary bounded at today via the v88 opts.exitDay — ENGINE UNTOUCHED, golden master 120/120); F1 read-only ESS payslip breakdown (gated by v62 dashSections.salary, reuses the salary object, no new math); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F records (soft-void, never Paid); R1 SpreadsheetApp.flush() before cache-bust in bulk money handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED (salary-engine-adjacent). NO salary-engine fn edited → golden master byte-identical v88→v89. // v88 (FnF exit-month salary accuracy + ESS date-lock — decision_log/2026.05.26_HRMS_v88_completion_register.md): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths (handleCalcFnF + generateFnFRecord) compute the exit-month salary via the ATTENDANCE-ACCURATE engine (calcMonthlySalary bounded at the last working day via default-neutral opts.exitDay; post-exit days = unpaid/no-penalty/no-sandwich), pulling ONLY the payslip-style earned salary (− UL/late/sandwich/under-time) + statutory (PF/ESI/PT/TDS), NOT advances/loans/bonuses (FnF itemises those → no double-count); early-exit minDayRate + notice/abscond/KYC/EL/gratuity preserved; calcMonthlySalary byte-neutral for every normal call (proven). WORK ITEM 2 [UI] ESS leave date pickers disabled (not just Submit) when a paid leave's balance can't cover the request (LWP/ML/PTL exempt). // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard (always mark the resolved attendance row + idempotency key, refuse if unmarkable); A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button + record-mode owner gate; B2 per-execution SalaryLadder cache; B3 full mismatch detail (25-row cap removed); C1 (owner policy) block leave self-apply once a paid-leave balance can't cover the request (LWP/ML/PTL exempt) + negative-balance clamp; C2 FnF exit-date parsed at local midnight (calcMonthlySalary-reuse deferred); C3 modal double-submit guard; C4 delete-rule confirm; C5 post-seed null guard; C6 toast error normalisation; C7 dead inc-mult reads; C8 read-only audit allow-list; C9 _safeCompare token; C10 IST weekAgoStr; C11 dead lateMultiplier knob removed; C12 tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -1895,6 +1895,10 @@ function buildBalanceHtml(bal, rec) {
     <div style="text-align:center">
       <div style="font-size:1.25rem;font-weight:900;color:var(--gold)">${fmtMoney((bal.earnedSoFar!=null?bal.earnedSoFar:bal.earned)||0)}</div>
       <div style="font-size:10px;color:var(--gray-light)">${t('monthEarning')}</div>
+      <!-- v90 N3: bilingual clarifying sub-label — payroll-accurate but estimated; final figure resolved on salary day -->
+      <div style="font-size:9px;color:var(--gray-light);opacity:0.78;line-height:1.3;margin-top:3px;max-width:200px">
+        Estimated as per payroll · final pay may differ<br>पेरोल अनुसार अनुमानित · अंतिम भुगतान भिन्न हो सकता है
+      </div>
     </div>
   </div>`;
 }
@@ -2278,6 +2282,15 @@ const API = {
         const _userIdForCall = _isAdminCtx ? (State.adminUser || State.adminRole || 'admin') : 'kiosk';
         const _autoBody = {...params, action, token:CFG.token, userId: params.userId || _userIdForCall};
         if (State._dzToken && _autoBody.ownerToken === undefined) _autoBody.ownerToken = State._dzToken;
+        // v91 P1: include HMAC-signed role-session token so the server can verify the caller's role
+        // before reaching any role-gated handler. Owner sessions don't strictly need it (they're
+        // authenticated by ownerToken) but we send it anyway for consistency. Missing/expired token
+        // → server treats role as 'unknown' and refuses role-gated handlers with reauth:true.
+        if (State._roleToken && _autoBody.roleToken === undefined) _autoBody.roleToken = State._roleToken;
+        // v91 P1: surface the locally-claimed adminRole so the server can include it in audit logs
+        // when refusing. Note: the server does NOT trust this for authentication — it derives role
+        // from ownerToken/roleToken — but for auditing the claimed-vs-derived comparison is useful.
+        if (State.adminRole && _autoBody.adminRole === undefined) _autoBody.adminRole = State.adminRole;
         const res = await fetch(CFG.gasUrl, {
           method: 'POST',
           headers: {'Content-Type':'text/plain'},
@@ -2285,6 +2298,22 @@ const API = {
         });
         const data = await res.json();
         if (!silent) LoadingOverlay.hide();
+        // v91 P1: surface server-side role refusals once (per action) with a clear toast. The server
+        // returns {ok:false, error:'role_not_allowed', moduleId, handler, role, reauth?} via _v91GateModule.
+        // We DO NOT auto-retry or swallow — the calling code's own error path runs. reauth:true means the
+        // role token is missing/expired (e.g. session pre-dates v91) — prompt the user to log out and back in.
+        if (data && data.ok === false && data.error === 'role_not_allowed') {
+          try {
+            if (data.reauth) {
+              if (!window._v91ReauthToastShown) {
+                window._v91ReauthToastShown = true;
+                toast('🔐 v91 role-session migration: please log out and log back in to refresh your role token.', 'warning', 9000);
+              }
+            } else {
+              toast('🚫 Access denied — your role (' + (data.role || 'unknown') + ') is not allowed to use module "' + (data.moduleId || '?') + '". Ask the Owner to grant access in Settings → Role Access Permissions.', 'error', 7000);
+            }
+          } catch(_){}
+        }
         // v37 fix H-01: detect server/frontend version mismatch and prompt for hard-refresh once.
         if (data && data.serverVersion && data.serverVersion !== window.HRMS_VERSION) {
           if (!window._versionMismatchPrompted) {
@@ -2319,7 +2348,7 @@ const API = {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v89';  // v89 (pending fixes from v88 live test): S1 proactive migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both since v43); L1 ESS unpaid leave shows "Unlimited" not a finite balance; L2 ESS lists entitled paid leave types ("N/0 available") + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" = payroll-accurate earned-through-today (calcMonthlySalary bounded at today via v88 opts.exitDay — ENGINE UNTOUCHED, GM 120/120); F1 read-only ESS payslip breakdown (gated by dashSections.salary); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F; R1 flush before cache-bust in bulk handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED. No salary-engine fn edited. // v88 (FnF exit-month salary accuracy + ESS leave date-lock): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths now compute the exit-month salary via the attendance-accurate engine (calcMonthlySalary bounded at the last working day), payslip-style salary + statutory, no double-count; calcMonthlySalary byte-neutral for normal calls. WORK ITEM 2 [UI] ESS leave date pickers disabled when a paid leave's balance can't cover the request. // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard; A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button; B2 per-execution SalaryLadder cache; B3 full mismatch detail (cap removed); C1-C12 medium/low fixes + tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v91';  // v91 (completes v90 deferrals): P1 server-side role gate (HMAC roleToken at login, _v91GateModule applied to ~50 sensitive handlers across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone; Owner via ownerToken unchanged); P2 owner-only Toggle Enforcement Self-Test panel + full 188-row toggle table in completion register; P3 audit-log every role refusal; P4 Owner Preview-as-Manager/Supervisor visual nav simulation; P5 all 11 engine fns md5-byte-identical v90→v91 (no engine touch). // v90 (role-visibility + self-approval routing + M1 sub-label + Settings self-test): N1 Role Access Permissions enforce (key prefix realigned to perm_manager_*/perm_supervisor_*, table extended 16→25 tabs, recommended default permission set, Danger Zone independently gated, server-side _isAllowedForRole). N2 reportingManager schema (self-healing) + _resolveApproverFor chain (reportingManager→supervisorId→managerId→defaultApprover→Owner, never requester); server refuses self-approval. N3 bilingual ESS earnings sub-label. N4 owner-only Settings Self-Test panel. N5 all v87/v88/v89 fixes verified (engine + _fnfExitMonthSalary + L1/L2/M1/F2/U1 byte-identical). No salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test): S1 proactive migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both since v43); L1 ESS unpaid leave shows "Unlimited" not a finite balance; L2 ESS lists entitled paid leave types ("N/0 available") + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" = payroll-accurate earned-through-today (calcMonthlySalary bounded at today via v88 opts.exitDay — ENGINE UNTOUCHED, GM 120/120); F1 read-only ESS payslip breakdown (gated by dashSections.salary); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F; R1 flush before cache-bust in bulk handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED. No salary-engine fn edited. // v88 (FnF exit-month salary accuracy + ESS leave date-lock): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths now compute the exit-month salary via the attendance-accurate engine (calcMonthlySalary bounded at the last working day), payslip-style salary + statutory, no double-count; calcMonthlySalary byte-neutral for normal calls. WORK ITEM 2 [UI] ESS leave date pickers disabled when a paid leave's balance can't cover the request. // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard; A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button; B2 per-execution SalaryLadder cache; B3 full mismatch detail (cap removed); C1-C12 medium/low fixes + tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -3475,9 +3504,10 @@ async function showAdvanceRequest() {
   resetKioskTimer();
   if (!State.currentEmp) return;
   const emp = State.currentEmp;
-  const _supEmp = emp.supervisorId ? (State.employees||[]).find(e=>e.id===emp.supervisorId) : null;
-  const _mgrEmp = emp.managerId   ? (State.employees||[]).find(e=>e.id===emp.managerId)   : null;
-  const approverName = (_supEmp||_mgrEmp) ? (_supEmp||_mgrEmp).name : 'Supervisor/Manager';
+  // v90 N2: use the routing chain (reportingManager → supervisorId → managerId → cfg.defaultApprover → Owner).
+  // The v89 lookup could resolve to the requester themselves when supervisorId was self / blank.
+  const _v90Approver = _resolveApproverFor(emp);
+  const approverName = _v90Approver ? _v90Approver.name : 'Owner';
 
   // Fetch live advance eligibility from server
   let elig = null;
@@ -3602,9 +3632,9 @@ async function showLeaveEncashRequest() {
   }
   const lb = State.currentEmpRecord?.leaveBalance || {};
   const bal = State.currentEmpRecord?.balance || {};
-  const _supEmp = emp.supervisorId ? (State.employees||[]).find(e=>e.id===emp.supervisorId) : null;
-  const _mgrEmp = emp.managerId   ? (State.employees||[]).find(e=>e.id===emp.managerId)   : null;
-  const approverName = (_supEmp||_mgrEmp) ? (_supEmp||_mgrEmp).name : 'Supervisor/Manager';
+  // v90 N2: use the routing chain (reportingManager → supervisorId → managerId → cfg.defaultApprover → Owner).
+  const _v90Approver = _resolveApproverFor(emp);
+  const approverName = _v90Approver ? _v90Approver.name : 'Owner';
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
   const dailyRate = parseFloat(emp.salary||0) / daysInMonth;
   const availableIL = Math.max(0, (parseFloat(emp.monthlyILEntitlement||1)) - (lb.IL||0));
@@ -4362,8 +4392,13 @@ async function showLeaveRequest() {
       + '<option value="SL">SL — Sick Leave</option>'
       + '<option value="LWP">LWP — Leave Without Pay</option>';
   }
-  const supervisor = (State.employees||[]).find(e=>e.id===State.currentEmp?.supervisorId);
-  const approverText = supervisor ? 'Will be sent to: <strong>'+escHtml(supervisor.name)+'</strong> ('+escHtml(supervisor.id)+') for approval' : 'Will be sent to manager for approval';
+  // v90 N2: resolve approver via the routing chain (reportingManager → supervisorId → managerId → cfg.defaultApprover → Owner).
+  // Never falls back to the requester themselves (the v89 bug had supervisorId == self for some bulk-imported staff →
+  // UI showed "Will be sent to: <self>"). Server (_requestLeaveCore + handleApproveLeave) also refuses approverId===requesterId.
+  const _v90Approver = _resolveApproverFor(State.currentEmp);
+  const approverText = _v90Approver
+    ? ('Will be sent to: <strong>' + escHtml(_v90Approver.name) + '</strong>' + (_v90Approver.id ? ' (' + escHtml(_v90Approver.id) + ')' : '') + ' for approval' + (_v90Approver.viaFallback ? ' <span style="color:var(--gold-light);font-size:10px">(' + escHtml(_v90Approver.via) + ')</span>' : ''))
+    : 'Will be sent to Owner for approval';
   const html = '<div style="font-size:13px">'
     + '<p style="margin-bottom:14px;color:var(--gray-light)">Submit a leave request to your supervisor.<br>सुपरवाइज़र को छुट्टी का अनुरोध भेजें।</p>'
     + '<div class="form-row">'
@@ -4544,6 +4579,11 @@ async function doAdminLogin() {
     return;
   }
   if (r.ok) {
+    // v91 P1: capture the HMAC-signed role-session token issued at login. Stored in-memory only —
+    // a re-login refreshes it. Used by API.call to authenticate the role on every subsequent request.
+    if (r.roleToken) State._roleToken = r.roleToken;
+    // owner ALSO gets an ownerToken (existing v37 H-05 flow). The v90 N1 server gate accepts either signal.
+    if (r.ownerToken) State._dzToken = r.ownerToken;
     // Save remember-me (role only — never password)
     const rememberCb = document.getElementById('admin-remember-me');
     if (rememberCb?.checked) { LS.s('adminRememberRole', selectedRole); }
@@ -4890,6 +4930,7 @@ function adminLogout() {
   // v36 fix BUG-62: wipe sensitive admin-context state so it does not leak across role switches on a shared kiosk
   State.adminRole=null; State.adminUser=null; State.isAdmin=false;
   State._dzToken=null;            // owner token (was BUG-09 vector)
+  State._roleToken=null;          // v91 P1: clear HMAC role-session token so subsequent API calls reach the server as 'unknown'
   State._lastPin=null;
   State._pendingLoginRole=null;
   State._v34CompData=null;
@@ -6424,11 +6465,19 @@ async function showAddEmpModal() {
   </div>
   <datalist id="emp-datalist-sup">${empDatalistOpts}</datalist>
   <datalist id="emp-datalist-mgr">${empDatalistOpts}</datalist>
+  <datalist id="emp-datalist-rm">${empDatalistOpts}</datalist>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Immediate Supervisor <span style="color:var(--gray-light);font-weight:400">(name or ID — optional)</span></label>
       <input id="e-sup" class="form-input" list="emp-datalist-sup" placeholder="Type name or ID…" autocomplete="off"></div>
     <div class="form-group"><label class="form-label">Manager <span style="color:var(--gray-light);font-weight:400">(name or ID — optional)</span></label>
       <input id="e-mgr" class="form-input" list="emp-datalist-mgr" placeholder="Type name or ID…" autocomplete="off"></div>
+  </div>
+  <!-- v90 N2: explicit Reporting Manager field. Routing chain (most-specific-wins) = reportingManager → supervisorId → managerId → cfg.defaultApprover → Owner. Server refuses self-approval regardless. -->
+  <div class="form-row">
+    <div class="form-group" style="grid-column:1/-1"><label class="form-label">Reporting Manager <span style="color:var(--gray-light);font-weight:400">(name or ID — optional; takes priority over Supervisor/Manager for approvals)</span>
+      <span class="info-tooltip" title="v90 N2: explicit approval routing. ESS leave / advance / exit / encashment requests are sent to this employee first. If blank we fall back to Supervisor, then Manager, then Settings → Default Approver, then Owner. The server refuses requests where the approver resolves to the requester themselves.">ℹ</span>
+    </label>
+      <input id="e-rm" class="form-input" list="emp-datalist-rm" placeholder="Type name or ID…" autocomplete="off"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Night Shift Allowance <span style="color:var(--gray)">(deprecated)</span><small style="display:block;color:var(--gray-light);font-weight:400;margin-top:2px">v74: no longer used. Night pay is now hours-based (per-day / base-hours × night clock hours); set the Night Window in Settings → OT &amp; Night Shift Pay.</small></label><input id="e-nsa" class="form-input" type="number" value="0"></div>
@@ -6539,6 +6588,7 @@ async function showAddEmpModal() {
         project:document.getElementById('e-proj').value,
         supervisorId:extractEmpId(document.getElementById('e-sup').value),
         managerId:extractEmpId(document.getElementById('e-mgr').value),
+        reportingManager:extractEmpId(document.getElementById('e-rm')?.value||''), // v90 N2
         nightShiftAllowance:document.getElementById('e-nsa').value,
         travelAllowance:document.getElementById('e-travel').value,
         otBaseHours:document.getElementById('e-otbase').value,
@@ -6673,6 +6723,13 @@ async function showEditEmpModal(empId) {
   <div class="form-row">
     <div class="form-group"><label class="form-label">Current PIN: <span style="color:${hasPIN?'var(--green)':'var(--orange)'};font-weight:700;letter-spacing:3px">${res.currentPin||'Not set'}</span><span style="font-weight:400;color:var(--gray-light);font-size:11px;margin-left:8px">— New PIN (leave blank to keep current)</span></label><input id="ee-pin" class="form-input" type="text" maxlength="4" placeholder="${hasPIN?'Enter new 4-digit PIN to replace…':'Set a 4-digit PIN…'}" style="letter-spacing:4px;font-size:16px"></div>
     <div class="form-group"><label class="form-label">Supervisor ID</label><input id="ee-sup" class="form-input" value="${escHtml(e.supervisorId||'')}"></div>
+  </div>
+  <!-- v90 N2: explicit Reporting Manager field in Edit Employee. Takes priority over Supervisor/Manager for approval routing. -->
+  <div class="form-row">
+    <div class="form-group" style="grid-column:1/-1"><label class="form-label">Reporting Manager <span style="color:var(--gray-light);font-weight:400">(employee ID — used first by the approval routing chain)</span>
+      <span class="info-tooltip" title="v90 N2: ESS approval routing. reportingManager → supervisorId → managerId → cfg.defaultApprover → Owner. Leave blank to fall through to the next step. Self-approval is blocked server-side.">ℹ</span>
+    </label>
+      <input id="ee-rm" class="form-input" value="${escHtml(e.reportingManager||'')}" placeholder="e.g. AZ_EMP_0001"></div>
   </div>
   <!-- v43 W2.7: Manager — datalist for "Name (ID)" lookup; backend stores raw ID -->
   <datalist id="ee-mgr-datalist">${_mgrDatalist}</datalist>
@@ -6835,6 +6892,7 @@ async function showEditEmpModal(empId) {
         esiNumber:document.getElementById('ee-esino').value.trim(),
         address:document.getElementById('ee-addr').value, notes:document.getElementById('ee-notes').value,
         supervisorId:document.getElementById('ee-sup').value,
+        reportingManager:(document.getElementById('ee-rm')?.value||'').trim(), // v90 N2
         nightShiftAllowance:document.getElementById('ee-nsa').value,
         travelAllowance:document.getElementById('ee-travel').value,
         otBaseHours:document.getElementById('ee-otbase').value,
@@ -12101,13 +12159,16 @@ async function renderSettings() {
     </div>
   </div>
 
-  <!-- Role Permissions -->
+  <!-- Role Permissions — v90 N1: extended to all 25 nav tabs, key prefix realigned to perm_manager_*/perm_supervisor_* so checkTabPermission(State.adminRole) actually finds the saved value (v89 had perm_mgr_*/perm_sup_* which never matched 'manager'/'supervisor'); recommended default permission set seeded for Manager/Supervisor on first save (Owner always full). Danger Zone has an independent gate. -->
   <div class="settings-section">
     <div class="settings-section-title" style="cursor:pointer" onclick="toggleCard('settings-body-role-access')">🔑 Role Access Permissions <span class="settings-card-chevron">▼</span></div>
       <div id="settings-body-role-access" class="settings-card-body">
     <p style="font-size:12px;color:var(--gray-light);margin-bottom:12px">
-      Control which tabs are visible to Manager and Supervisor roles. Owner always has full access.
+      Control which tabs are visible to Manager and Supervisor roles. Owner always has full access. Danger Zone is independently gated and is always Owner-only regardless of these toggles.
     </p>
+    <div style="background:rgba(201,168,76,0.08);border-left:3px solid var(--gold);padding:8px 10px;font-size:11px;color:var(--gray-light);margin-bottom:10px;border-radius:4px">
+      <strong style="color:var(--gold)">v90 fix:</strong> Toggle changes now actually take effect on Manager/Supervisor logins. Unchecking a row hides that tab from the sidebar AND blocks the server-side data endpoint behind it.
+    </div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
@@ -12118,27 +12179,72 @@ async function renderSettings() {
           </tr>
         </thead>
         <tbody id="perms-table-body">
-          ${['dashboard','approvals','timesheets','attendance','leaves','roster','employees','transactions','pettycash','points','payroll','fnf','reports','trackedtime','activities','settings'].map(tab => {
-            const mgrKey = `perm_mgr_${tab}`;
-            const supKey = `perm_sup_${tab}`;
-            const mgrAllowed = LS.g(mgrKey) !== false;
-            const supAllowed = LS.g(supKey) !== false;
-            const tabLabels={dashboard:'📊 Dashboard',approvals:'✅ Approvals',timesheets:'⏱ Timesheets',attendance:'📅 Attendance',leaves:'🏖 Leaves',roster:'📋 Roster',employees:'👥 Employees',transactions:'💳 Transactions',pettycash:'💵 Petty Cash',points:'⭐ Points',payroll:'💰 Payroll',fnf:'🤝 FnF / Exit',reports:'📈 Reports',trackedtime:'⏱ Tracked Time',activities:'🏷 Activities',settings:'⚙ Settings'};
-            const label = tabLabels[tab] || tab.charAt(0).toUpperCase()+tab.slice(1);
-            return `<tr style="border-bottom:1px solid var(--dark3)">
-              <td style="padding:8px">${label}</td>
-              <td style="padding:8px;text-align:center">
-                <input type="checkbox" data-perm-key="${mgrKey}" ${mgrAllowed?'checked':''} style="accent-color:var(--gold)">
-              </td>
-              <td style="padding:8px;text-align:center">
-                <input type="checkbox" data-perm-key="${supKey}" ${supAllowed?'checked':''} style="accent-color:var(--gold-light)">
-              </td>
-            </tr>`;
-          }).join('')}
+          ${(function(){
+            // v90 N1: All 25 nav tabs (v89 had only 16; bonustracker/bonusmgmt/compmgmt/otclaims/promotions/compoff/recovery/auditlog were
+            // missing → those modules could not be hidden for Manager/Supervisor). The data-tab values here MUST match the data-tab on
+            // each nav item in #admin-sidebar (lines 1328-1360) for applyRolePermissions() to find them. The tabLabels emoji+text mirror
+            // the sidebar labels so the toggle row is unambiguous.
+            const tabs = ['dashboard','approvals','timesheets','attendance','leaves','roster','employees','transactions','pettycash','points','payroll','bonustracker','bonusmgmt','compmgmt','otclaims','promotions','compoff','recovery','fnf','reports','trackedtime','activities','auditlog','settings'];
+            const tabLabels = {
+              dashboard:'📊 Dashboard', approvals:'✅ Approvals', timesheets:'⏱ Timesheets', attendance:'📅 Attendance',
+              leaves:'🏖 Leaves', roster:'📋 Roster', employees:'👥 Employees', transactions:'💳 Manual Transactions',
+              pettycash:'💵 Petty Cash', points:'⭐ Points', payroll:'💰 Payroll',
+              bonustracker:'💎 Loyalty Bonus Tracker', bonusmgmt:'🎁 Bonus Management', compmgmt:'💼 Compensation',
+              otclaims:'⏱ OT Claims', promotions:'🎯 Promotions', compoff:'🔄 Comp-Off', recovery:'🔁 Recovery',
+              fnf:'🤝 FnF / Exit', reports:'📈 Reports', trackedtime:'⏱ Tracked Time', activities:'🏷 Activities',
+              auditlog:'📋 Audit Log', settings:'⚙ Settings'
+            };
+            // v90 N1: Recommended default permission set per role (used when no saved value exists for that key).
+            // Manager: dashboard/approvals/timesheets/attendance/leaves/roster/employees + manual transactions + petty cash + points + comp-off + recovery + reports.
+            // Supervisor: dashboard + attendance + timesheets + approvals + employees (view only). Everything money/admin is OFF by default.
+            const _mgrDefault = {dashboard:true,approvals:true,timesheets:true,attendance:true,leaves:true,roster:true,employees:true,transactions:true,pettycash:true,points:true,payroll:false,bonustracker:false,bonusmgmt:false,compmgmt:false,otclaims:false,promotions:false,compoff:true,recovery:true,fnf:false,reports:true,trackedtime:false,activities:false,auditlog:false,settings:false};
+            const _supDefault = {dashboard:true,approvals:true,timesheets:true,attendance:true,leaves:false,roster:false,employees:true,transactions:false,pettycash:false,points:false,payroll:false,bonustracker:false,bonusmgmt:false,compmgmt:false,otclaims:false,promotions:false,compoff:false,recovery:false,fnf:false,reports:false,trackedtime:false,activities:false,auditlog:false,settings:false};
+            return tabs.map(tab => {
+              // v90 N1 ROOT-CAUSE FIX: keys are perm_manager_*/perm_supervisor_* to match State.adminRole (v89 saved perm_mgr_*/perm_sup_* which never matched).
+              const mgrKey = `perm_manager_${tab}`;
+              const supKey = `perm_supervisor_${tab}`;
+              const _mgrStored = LS.g(mgrKey);
+              const _supStored = LS.g(supKey);
+              const mgrAllowed = (_mgrStored === null || _mgrStored === undefined) ? !!_mgrDefault[tab] : (_mgrStored !== false);
+              const supAllowed = (_supStored === null || _supStored === undefined) ? !!_supDefault[tab] : (_supStored !== false);
+              const label = tabLabels[tab] || tab.charAt(0).toUpperCase()+tab.slice(1);
+              return `<tr style="border-bottom:1px solid var(--dark3)">
+                <td style="padding:8px">${label}</td>
+                <td style="padding:8px;text-align:center">
+                  <input type="checkbox" data-perm-key="${mgrKey}" ${mgrAllowed?'checked':''} style="accent-color:var(--gold)">
+                </td>
+                <td style="padding:8px;text-align:center">
+                  <input type="checkbox" data-perm-key="${supKey}" ${supAllowed?'checked':''} style="accent-color:var(--gold-light)">
+                </td>
+              </tr>`;
+            }).join('');
+          })()}
         </tbody>
       </table>
     </div>
-    <button class="btn btn-gold" style="margin-top:12px" onclick="saveRolePermissions()">💾 Save Permissions</button>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="saveRolePermissions()">💾 Save Permissions</button>
+      <button class="btn btn-dark btn-sm" onclick="_v90ResetPermsToDefault()" title="Reset Manager + Supervisor permissions to the v90 recommended defaults (Owner unaffected).">↺ Reset to v90 defaults</button>
+      <!-- v91 P4: Owner-only Preview as Manager/Supervisor — purely visual nav simulation; server calls remain Owner. -->
+      <button class="btn btn-dark btn-sm" onclick="_v91PreviewAsRole('manager')" title="v91 P4: temporarily render the sidebar as it would appear to a Manager. You stay Owner — no server role switch. Use to verify the lockdown without re-login.">👁 Preview as Manager</button>
+      <button class="btn btn-dark btn-sm" onclick="_v91PreviewAsRole('supervisor')" title="v91 P4: same, but for the Supervisor role.">👁 Preview as Supervisor</button>
+    </div>
+    <div style="font-size:11px;color:var(--gray-light);margin-top:10px;line-height:1.6">
+      <strong style="color:var(--gold-light)">🔒 Danger Zone</strong> is always Owner-only, even if the Settings tab is granted above. This is a separate hard gate.
+    </div>
+
+    <!-- v90 N2: Default Approver — last fallback in the ESS approval routing chain (after reportingManager → supervisorId → managerId). Empty → falls through to Owner. -->
+    <div style="margin-top:18px;padding:10px 12px;background:rgba(201,168,76,0.05);border:1px solid var(--dark3);border-radius:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">🧭 Default Approver <span style="font-size:11px;font-weight:400;color:var(--gray-light)">(v90 N2)</span></div>
+      <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px;line-height:1.6">
+        Employee id (e.g. <code>AZ_EMP_0001</code>) that ESS approvals fall back to when an employee has no <strong>Reporting Manager</strong>, no Supervisor, and no Manager mapped. Leave blank → falls through to Owner. The server refuses approvals where the resolved approver equals the requester themselves.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="cfg-defaultApprover" class="form-input" style="max-width:260px" placeholder="e.g. AZ_EMP_0001 (or leave blank for Owner)" value="${escHtml(cfg['defaultApprover']||'')}">
+        <button class="btn btn-gold btn-sm" onclick="_v90SaveDefaultApprover()">💾 Save</button>
+      </div>
+    </div>
+
     </div>
   </div>
 
@@ -12576,6 +12682,21 @@ async function renderSettings() {
     </div>
     <div id="selftest-results" style="margin-top:12px;font-size:12px"></div>
     <div id="salary-safety-results" style="margin-top:12px;font-size:12px"></div>
+
+    <!-- v91 P2: Owner-only Toggle Enforcement Self-Test — read-only inventory of every cfg-* key with status classification. -->
+    ${isOwner ? `
+    <div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--dark3)">
+      <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">🧪 Toggle Enforcement Self-Test <span style="font-size:11px;font-weight:400;color:var(--gray-light)">(v91 P2 — Owner only)</span></div>
+      <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px;line-height:1.6">
+        One-click inventory of every <code>cfg-*</code> toggle/key in the system + current saved value + a static enforcement classification (<strong style="color:var(--green)">WORKS</strong> · <strong style="color:var(--orange)">VERIFY-LIVE</strong> · <strong style="color:var(--gold-light)">DO-NOT-TOUCH (engine)</strong> · <strong>DISPLAY</strong>). Read-only — does NOT flip any value. See <code>decision_log/2026.05.28_HRMS_v91_PreCoding_Analysis.md §P2</code> for the full table + classification rationale.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-gold btn-sm" onclick="_v91RunToggleSelfTest()">🧪 Run Toggle Self-Test</button>
+        <button class="btn btn-dark btn-sm" onclick="_v91DownloadToggleReport()">⬇ Download report as JSON</button>
+      </div>
+      <div id="v91-toggle-selftest-results" style="margin-top:12px;font-size:12px"></div>
+    </div>` : ''}
+
     </div>
   </div>
 
@@ -14627,29 +14748,251 @@ async function dangerClearTestData() {
   }); // end requireOwnerPin
 }
 
-function saveRolePermissions() {
+// v90 N1: the canonical Manager + Supervisor recommended default permission set. Used (a) when no saved value exists
+// for a perm_<role>_<tab> key and (b) by _v90ResetPermsToDefault() to one-click revert to a safe baseline. The map
+// MUST stay in sync with the seed objects inside the perms-table-body render above and with the 24 tab data-tab values
+// on the sidebar nav at lines 1328-1360 (settings + auditlog are owner-only by default).
+const _V90_PERM_DEFAULTS = {
+  manager:    {dashboard:true,approvals:true,timesheets:true,attendance:true,leaves:true,roster:true,employees:true,transactions:true,pettycash:true,points:true,payroll:false,bonustracker:false,bonusmgmt:false,compmgmt:false,otclaims:false,promotions:false,compoff:true,recovery:true,fnf:false,reports:true,trackedtime:false,activities:false,auditlog:false,settings:false},
+  supervisor: {dashboard:true,approvals:true,timesheets:true,attendance:true,leaves:false,roster:false,employees:true,transactions:false,pettycash:false,points:false,payroll:false,bonustracker:false,bonusmgmt:false,compmgmt:false,otclaims:false,promotions:false,compoff:false,recovery:false,fnf:false,reports:false,trackedtime:false,activities:false,auditlog:false,settings:false}
+};
+
+async function saveRolePermissions() {
   const checkboxes = document.querySelectorAll('[data-perm-key]');
   checkboxes.forEach(cb => { LS.s(cb.dataset.permKey, cb.checked); });
-  toast('✓ Role permissions saved','success');
+  // v90 N1: surface what was saved so the owner can verify mid-test (only when the live session is the Owner).
+  try { if (typeof console !== 'undefined' && State.adminRole === 'owner') console.info('[v90 N1] perms saved →', Array.from(checkboxes).map(c=>c.dataset.permKey+'='+c.checked).join(', ')); } catch(_){}
+  // v91 P1: mirror the saved perms to the server Config (rolePerms_manager / rolePerms_supervisor)
+  // so the server-side _v91IsModuleAllowedForRole gate reads the same map the client filter uses.
+  // Owner-only on the server side; we send the ownerToken (API.call already attaches it from State._dzToken).
+  try {
+    const _v91Build = (roleSlug) => {
+      const out = {};
+      checkboxes.forEach(cb => {
+        const key = cb.dataset.permKey || '';
+        // keys look like perm_manager_<moduleId> / perm_supervisor_<moduleId>
+        const prefix = 'perm_' + roleSlug + '_';
+        if (key.indexOf(prefix) === 0) { out[key.substring(prefix.length)] = !!cb.checked; }
+      });
+      return out;
+    };
+    const perms = { manager: _v91Build('manager'), supervisor: _v91Build('supervisor') };
+    const res = await API.call('saveRolePermissions', { perms });
+    if (!res || !res.ok) {
+      // owner_token_required is the typical reason — surface clearly. The local LS save above still
+      // gives nav-filter enforcement on the next reload; only the server gate is missing until this succeeds.
+      toast('Permissions saved locally · server-side mirror failed: ' + (res && res.error || 'unknown') + ' — Server gate may not enforce until this is resolved.','warning',8000);
+    } else {
+      toast('✓ Role permissions saved (client + server) · log in as Manager/Supervisor to verify both layers enforce','success',5500);
+    }
+  } catch (e) {
+    toast('Permissions saved locally · server sync error: ' + (e.message || e) + ' — Server gate may not enforce until resolved.','warning',8000);
+  }
+}
+
+// v90 N1: one-click reset to the recommended Manager + Supervisor permission baseline. Owner unaffected.
+function _v90ResetPermsToDefault() {
+  Object.keys(_V90_PERM_DEFAULTS).forEach(role => {
+    Object.keys(_V90_PERM_DEFAULTS[role]).forEach(tab => {
+      LS.s('perm_'+role+'_'+tab, !!_V90_PERM_DEFAULTS[role][tab]);
+    });
+  });
+  toast('✓ Permissions reset to v90 defaults — reopen the panel to see the new values','success',4500);
+  // re-render the Settings card so the new state is visible immediately
+  if (typeof initSettings === 'function') { try { initSettings(); } catch(_){} }
 }
 
 function checkTabPermission(tab) {
+  // v90 N1: Owner is always allowed. Danger Zone is independently always Owner-only — see _v90CanAccessDangerZone().
+  // For Manager/Supervisor: read the saved perm_<role>_<tab> key. If unset, fall back to the v90 recommended default
+  // (NOT default-allow as in v89 — that was permissive and contributed to the leak the owner saw on 2026-05-28).
   if (!State.adminRole || State.adminRole === 'owner') return true;
-  const key = `perm_${State.adminRole}_${tab}`;
+  const key = 'perm_' + State.adminRole + '_' + tab;
   const stored = LS.g(key);
-  return stored !== false; // default allow
+  if (stored === null || stored === undefined) {
+    const defs = _V90_PERM_DEFAULTS[State.adminRole];
+    return defs ? !!defs[tab] : true; // unknown role → preserve old default-allow so we don't silently break custom integrations
+  }
+  return stored !== false;
 }
 
+// v90 N1: Danger Zone hard gate, independent of the Settings tab toggle. Even if the owner ever grants Settings to
+// Manager, Danger Zone (full reset, test reset, token rotation, secure-existing-receipts) stays Owner-only here.
+function _v90CanAccessDangerZone() { return State.adminRole === 'owner'; }
+
 function applyRolePermissions() {
+  // v90 N1: Owner short-circuit — make sure every nav item is visible (we may be re-rendering after a role switch
+  // on a shared kiosk; the v36 fix BUG-62 wipe in adminLogout leaves transient display:none on stale items).
   const allNavItems = document.querySelectorAll('#admin-sidebar [data-tab]');
+  if (State.adminRole === 'owner') {
+    allNavItems.forEach(item => { item.style.display = ''; });
+    return;
+  }
+  let _hidden = 0;
   allNavItems.forEach(item => {
     const tab = item.dataset.tab;
     if (tab && !checkTabPermission(tab)) {
       item.style.display = 'none';
+      _hidden++;
     } else {
       item.style.display = '';
     }
   });
+  // v90 N1: emit a single info line per login so the owner can verify enforcement live without DevTools spelunking.
+  try { if (typeof console !== 'undefined') console.info('[v90 N1] applyRolePermissions: role=' + State.adminRole + ' hidden=' + _hidden + '/' + allNavItems.length); } catch(_){}
+}
+
+// ─── v91 P2: Owner Toggle Enforcement Self-Test panel ────────────────────────────
+// Read-only inventory of every cfg-* key. Calls the server's handleRunToggleSelfTest
+// (owner-token-gated) which returns the current saved value + a static classification.
+// Renders inline and offers a JSON download for archiving.
+let _v91LastToggleReport = null;
+async function _v91RunToggleSelfTest() {
+  const box = document.getElementById('v91-toggle-selftest-results');
+  if (!box) return;
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  if (!State._dzToken) { requireOwnerPin(() => _v91RunToggleSelfTest()); return; }
+  box.innerHTML = '<span style="color:var(--gold-light)">Running toggle self-test…</span>';
+  let res;
+  try { res = await API.call('runToggleSelfTest', {}); }
+  catch (e) { box.innerHTML = '<span style="color:var(--red)">Network error: ' + escHtml(String(e.message || e)) + '</span>'; return; }
+  if (!res || !res.ok) {
+    box.innerHTML = '<span style="color:var(--red)">Failed: ' + escHtml((res && res.error) || 'unknown') + '</span>';
+    return;
+  }
+  _v91LastToggleReport = res;
+  const rows = (res.rows || []).map(r => {
+    const stColor = /DO-NOT-TOUCH/.test(r.status) ? 'var(--gold-light)' :
+                    /VERIFY-LIVE/.test(r.status) ? 'var(--orange)' :
+                    /WORKS|DISPLAY/.test(r.status) ? 'var(--green)' : 'var(--gray-light)';
+    return '<tr style="border-bottom:1px solid var(--dark3)">' +
+      '<td style="padding:4px 6px;font-family:monospace;font-size:11px;color:var(--gold)">' + escHtml(r.key) + '</td>' +
+      '<td style="padding:4px 6px">' + escHtml(r.label) + '</td>' +
+      '<td style="padding:4px 6px;font-family:monospace;font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(r.value) + '">' + escHtml(r.value || '(empty)') + '</td>' +
+      '<td style="padding:4px 6px;color:' + stColor + ';font-weight:700">' + escHtml(r.status) + '</td>' +
+    '</tr>';
+  }).join('');
+  box.innerHTML =
+    '<div style="margin-bottom:6px;font-size:11px;color:var(--gray-light)">Generated ' + escHtml(res.generatedAt) + ' · ' + res.rowCount + ' rows · STOP-AND-ASK rows flagged DO-NOT-TOUCH are intentionally not modified by v91.</div>' +
+    '<div style="overflow-x:auto;max-height:520px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    '<thead><tr style="background:var(--dark2);color:var(--gold);text-align:left;position:sticky;top:0">' +
+    '<th style="padding:6px">Key</th><th style="padding:6px">Setting</th><th style="padding:6px">Current value</th><th style="padding:6px">Status</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div style="margin-top:8px;font-size:11px;color:var(--gray-light);line-height:1.6">' +
+    'Legend: <span style="color:var(--green);font-weight:700">WORKS</span> = save→read→enforce verified by static cite · ' +
+    '<span style="color:var(--orange);font-weight:700">VERIFY-LIVE</span> = runtime check needed (no static bug pattern found) · ' +
+    '<span style="color:var(--gold-light);font-weight:700">DO-NOT-TOUCH (engine)</span> = changing this would change a money figure; owner sign-off + golden-master re-prove required.' +
+    '</div>';
+}
+
+function _v91DownloadToggleReport() {
+  if (!_v91LastToggleReport) { toast('Run the self-test first','warning'); return; }
+  try {
+    const blob = new Blob([JSON.stringify(_v91LastToggleReport, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'v91-toggle-selftest-' + (new Date()).toISOString().replace(/[:T]/g,'-').substring(0,16) + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) { toast('Download failed: ' + (e.message || e),'error'); }
+}
+
+// ─── v91 P4: Owner "Preview as Manager / Preview as Supervisor" ──────────────────
+// Owner-only visual simulation of the nav-filter for another role. State.adminRole is
+// temporarily overridden in-memory; applyRolePermissions re-runs against the synthetic
+// role; a sticky banner reminds the owner that they are STILL Owner for any data call
+// (no server-side role switch — the roleToken and ownerToken are untouched).
+function _v91PreviewAsRole(role) {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  if (role !== 'manager' && role !== 'supervisor') { toast('Unknown role for preview','error'); return; }
+  // Save the real owner state so Exit can restore it.
+  if (!State._v91PreviewBackup) {
+    State._v91PreviewBackup = { adminRole: State.adminRole, adminUser: State.adminUser };
+  }
+  State._v91PreviewRole = role;
+  State.adminRole = role; // ONLY for the duration of this preview — owner still authenticates via _dzToken/ownerToken.
+  // Re-run the nav filter so the preview role's hidden tabs disappear from the sidebar.
+  try { applyRolePermissions(); } catch(_){}
+  // Sticky banner that can't be missed.
+  let b = document.getElementById('v91-preview-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'v91-preview-banner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#C9A84C,#a07a1c);color:#111;padding:10px 14px;text-align:center;font-weight:800;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.4)';
+    document.body.appendChild(b);
+  }
+  b.innerHTML = '👁 <strong>PREVIEW MODE</strong> · viewing as <strong style="text-transform:uppercase">' + role + '</strong> · You are STILL Owner — data calls remain owner-authenticated. <button class="btn btn-sm" style="margin-left:14px;background:#111;color:#C9A84C;border:1px solid #111" onclick="_v91ExitPreview()">Exit Preview</button>';
+  b.style.display = 'block';
+  // Add a top spacer to the body so the banner doesn't cover content.
+  document.body.style.paddingTop = '44px';
+  toast('Previewing nav as ' + role + ' · click "Exit Preview" in the gold banner to return','info',5000);
+}
+function _v91ExitPreview() {
+  if (!State._v91PreviewBackup) return;
+  State.adminRole = State._v91PreviewBackup.adminRole;
+  State.adminUser = State._v91PreviewBackup.adminUser;
+  State._v91PreviewBackup = null;
+  State._v91PreviewRole = null;
+  try { applyRolePermissions(); } catch(_){}
+  const b = document.getElementById('v91-preview-banner');
+  if (b) b.style.display = 'none';
+  document.body.style.paddingTop = '';
+  toast('✓ Exited preview · you are Owner again','success',3500);
+}
+
+// ─── v90 N2: Self-approval routing — _resolveApproverFor ─────────────────────────
+// Resolves the approver an ESS request (leave / advance / exit / encashment) should be sent to.
+// Chain (most-specific wins, NEVER falls back to the requester themselves):
+//   1. reportingManager (new dedicated field — see v90 schema migration)
+//   2. supervisorId  (legacy)
+//   3. managerId     (legacy)
+//   4. State.settings.defaultApprover  (new Settings key — empty by default → Owner)
+//   5. Owner (string sentinel, returned with id===null so caller renders "Owner")
+// At every step, if the resolved id equals the requester's own id, we skip that step and try the next one.
+// The server (_requestLeaveCore + handleApproveLeave + handleApproveFnF + addTransaction approval paths) ALSO
+// refuses requests where approverId === requesterId — defence in depth.
+function _resolveApproverFor(emp) {
+  if (!emp || !emp.id) return null;
+  const _empById = id => (id && id !== emp.id) ? (State.employees||[]).find(x => x && x.id === id) : null;
+  const _tryFields = [
+    {key:'reportingManager', via:'reportingManager'},
+    {key:'supervisorId',     via:'supervisor'},
+    {key:'managerId',        via:'manager'}
+  ];
+  for (let i = 0; i < _tryFields.length; i++) {
+    const f = _tryFields[i];
+    const idVal = emp[f.key];
+    if (!idVal || idVal === emp.id) continue;          // skip empty / self
+    const ap = _empById(idVal);
+    if (ap && ap.id !== emp.id) return { id: ap.id, name: ap.name, via: f.via, viaFallback: i > 0 };
+  }
+  // 4. defaultApprover settings key — owner-configurable employee id (e.g. "AZ_EMP_0001"). Empty/missing → step 5.
+  const da = (State.settings && State.settings.defaultApprover) || '';
+  if (da && da !== emp.id) {
+    const apDA = (State.employees||[]).find(x => x && x.id === da);
+    if (apDA) return { id: apDA.id, name: apDA.name, via: 'default approver', viaFallback: true };
+  }
+  // 5. Owner fallback (no specific employee id — UI renders "Owner"; server treats as owner-routed).
+  return { id: null, name: 'Owner', via: 'owner fallback', viaFallback: true };
+}
+
+// v90 N2: save the Default Approver fallback employee id. Server-side VALID_CONFIG_KEYS includes
+// 'defaultApprover' so handleUpdateSettings will persist it; we refresh State.settings on success so
+// _resolveApproverFor sees the change immediately without a reload.
+async function _v90SaveDefaultApprover() {
+  const v = (document.getElementById('cfg-defaultApprover')?.value || '').trim();
+  // light-touch validation: blank is allowed (= Owner fallback); otherwise must be a known employee id
+  if (v) {
+    const known = (State.employees||[]).some(e => e && e.id === v);
+    if (!known) { toast('Unknown employee id "' + v + '" — check Employees tab','warning',5000); return; }
+  }
+  const res = await API.call('updateSettings', { updates: { defaultApprover: v } });
+  if (!res.ok) { toast(res.error || 'Save failed','error'); return; }
+  // refresh local cache so _resolveApproverFor sees it now
+  const sRes = await API.call('getSettings', {});
+  if (sRes.ok) applySettingsArr(sRes.settings||[]);
+  toast('✓ Default approver saved — ESS approval routing updated','success',4000);
 }
 
 function applyBranding() {
@@ -16633,6 +16976,7 @@ async function bulkImportEmployees() {
     'project',
     'supervisorId (Name (ID) or raw ID)',
     'managerId (Name (ID) or raw ID)',
+    'reportingManager (Name (ID) or raw ID)', // v90 N2: takes priority for ESS approval routing
     'referredBy (Name (ID) of existing employee)',
     'leavePolicyGroup',
     // ── v49 audit-fix M1/H3: 3 increment-override columns (match the shipped v3 .xlsx) ──
@@ -16678,6 +17022,7 @@ async function bulkImportEmployees() {
     ['department', departmentOpts.length ? departmentOpts.join(', ') : 'Pulled from Settings → Org Structure','Must match a Department under Settings → Org Structure. Distinct from the free-text "dept" column.'],
     ['project', projectOpts.length ? projectOpts.join(', ') : 'Pulled from Settings → Org Structure','Must match a Project under Settings → Org Structure. Leave blank to skip.'],
     ['supervisorId','Name (ID) or raw ID','Examples: "Ramesh Kumar (AZ_EMP_0002)" or just "AZ_EMP_0002". Existing employee — leave blank if unknown.'],
+    ['reportingManager','Name (ID) or raw ID','v90 N2: priority approver for ESS leave/advance/exit/encashment. Leave blank to fall back to supervisor → manager → defaultApprover → Owner. Server refuses self-approval.'],
     ['managerId','Name (ID) or raw ID','Same format as supervisorId. Existing employee — leave blank if unknown.'],
     ['referredBy','Name (ID) of existing employee','Triggers referral-bonus payout to that employee. Set once at hire — cannot be edited later.'],
     ['leavePolicyGroup','Free text — must match a configured group','Examples: "Staff", "Executive", "Managerial". Drives annual leave quotas. Leave blank for default.'],
@@ -16733,6 +17078,7 @@ async function bulkImportEmployees() {
     { label:'department',                       required:false, desc:'From Settings → Org Structure (distinct from free-text "dept")' },
     { label:'project',                          required:false, desc:'From Settings → Org Structure dropdown' },
     { label:'supervisorId',                     required:false, desc:'"Name (ID)" or raw ID of existing employee' },
+    { label:'reportingManager',                 required:false, desc:'v90 N2: explicit approval routing (takes priority over Supervisor/Manager). Leave blank to fall through.' },
     { label:'managerId',                        required:false, desc:'"Name (ID)" or raw ID of existing employee' },
     { label:'referredBy',                       required:false, desc:'Existing employee who referred this hire (triggers referral bonus)' },
     { label:'leavePolicyGroup',                 required:false, desc:'Staff / Executive / Managerial / etc.' },
@@ -16746,6 +17092,8 @@ async function bulkImportEmployees() {
     { label:'bankIFSC',                         required:false, desc:'Branch IFSC code, e.g. HDFC0001234' },
     { label:'bankName',                         required:false, desc:'Bank name, e.g. HDFC Bank' },
     { label:'upiId',                            required:false, desc:'UPI VPA, e.g. name@okhdfcbank (owner-only view)' },
+    // v90 N2: explicit approval-routing field. Takes priority over supervisorId/managerId for ESS approvals.
+    { label:'reportingManager (Name (ID) or raw ID)', required:false, desc:'v90 N2: ESS approval routing. Takes priority over Supervisor/Manager. Leave blank to fall through (supervisor → manager → Settings defaultApprover → Owner). Server refuses self-approval.' },
   ];
   // Soft drift-check: warn in console if the guide doesn't list as many columns as the
   // template has. Doesn't break the import — just surfaces a future code-review nudge.
@@ -16887,6 +17235,7 @@ async function bulkImportEmployees() {
       _set('upiId', 'upiId');
       _set('supervisorId (Name (ID) or raw ID)', 'supervisorId', v => extractEmpId(v));
       _set('managerId (Name (ID) or raw ID)', 'managerId', v => extractEmpId(v));
+      _set('reportingManager (Name (ID) or raw ID)', 'reportingManager', v => extractEmpId(v)); // v90 N2
       // referredBy is intentionally NOT updatable here — it is set once at hire.
       if (_has('incrementMode')) {
         const im = String(row['incrementMode']).trim();
@@ -16979,6 +17328,7 @@ async function bulkImportEmployees() {
       project: row['project']||'',
       supervisorId: extractEmpId(row['supervisorId (Name (ID) or raw ID)']||''),
       managerId:    extractEmpId(row['managerId (Name (ID) or raw ID)']||''),
+      reportingManager: extractEmpId(row['reportingManager (Name (ID) or raw ID)']||''), // v90 N2
       ...(referredByCode ? {referredByName, referredByCode} : {}),
       leavePolicyGroup: row['leavePolicyGroup']||'',
       // v49 audit-fix H3 — per-employee increment override (blank mode = company policy).
