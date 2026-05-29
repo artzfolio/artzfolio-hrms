@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111111">
-<title>ArtzFolio HRMS v91</title>
+<title>ArtzFolio HRMS v97</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
   onerror="(function(){var s=document.createElement('script');s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';s.onerror=function(){console.error('XLSX: both CDNs failed — Excel export will be unavailable');};document.head.appendChild(s);})()"></script>
@@ -1091,6 +1091,23 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
           <button id="ess-btn-attendance" class="action-btn secondary" onclick="showESSAttendance()">
             🗓 <span class="en">My Attendance</span><span class="hi">मेरी हाज़िरी</span>
           </button>
+          <!-- v96 Wave 4 ESS buttons -->
+          <button id="ess-btn-reimbursements" class="action-btn secondary" onclick="showESSReimbursements()">
+            💰 <span class="en">Reimbursements</span>
+          </button>
+          <button id="ess-btn-helpdesk" class="action-btn secondary" onclick="showESSHelpdesk()">
+            🎫 <span class="en">Helpdesk</span>
+          </button>
+          <button id="ess-btn-pulse" class="action-btn secondary" onclick="showESSPulse()">
+            📊 <span class="en">Pulse Survey</span>
+          </button>
+          <button id="ess-btn-kra" class="action-btn secondary" onclick="showESSKRA()">
+            🎯 <span class="en">My KRA</span>
+          </button>
+          <!-- v96 F2: IndexedDB offline queue status pill -->
+          <div id="idb-queue-pill" style="display:none;background:var(--orange);color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;margin:4px auto;text-align:center;max-width:200px">
+            📡 <span id="idb-queue-count">0</span> punch(es) queued offline
+          </div>
         </div>
         <!-- Issue 5: Logout button -->
         <button onclick="hideEmpCard()" style="margin-top:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:var(--radius-sm);padding:12px;font-size:14px;font-weight:600;cursor:pointer;color:var(--white);width:100%;transition:var(--trans)" onmouseenter="this.style.background='var(--red)'" onmouseleave="this.style.background='var(--dark3)'">
@@ -1298,8 +1315,11 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
       <input id="chpw-current" class="form-input" type="password" placeholder="Current password">
     </div>
     <div class="form-group">
-      <label class="form-label">New Password</label>
-      <input id="chpw-new" class="form-input" type="password" placeholder="New password (min 8 chars)">
+      <label class="form-label">New Password <span style="font-size:11px;color:var(--gray-light);font-weight:400">/ नया पासवर्ड</span></label>
+      <input id="chpw-new" class="form-input" type="password" placeholder="New password (min 10 chars, upper + digit + symbol)" oninput="_v92RenderStrengthMeter(this.value)">
+      <!-- v92 B5: live strength meter -->
+      <div id="chpw-strength-bar" style="height:6px;background:#222;border-radius:3px;margin-top:6px;overflow:hidden"><div id="chpw-strength-fill" style="height:100%;width:0%;background:var(--red);transition:width 0.2s,background 0.2s"></div></div>
+      <div id="chpw-strength-label" style="font-size:11px;color:var(--gray-light);margin-top:4px">Need: 10+ chars · uppercase · digit · symbol · not a common word</div>
     </div>
     <div class="form-group">
       <label class="form-label">Confirm New Password</label>
@@ -1354,6 +1374,13 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
     <div class="nav-item" data-tab="fnf" onclick="switchTab('fnf')" data-help="Exit alerts (3-consecutive-UL), archive / restore, and Full & Final settlement."><span class="nav-icon">🤝</span>FnF / Exit</div>
     <div class="nav-item" data-tab="reports" onclick="switchTab('reports')" data-help="Exportable attendance, payroll and leave reports."><span class="nav-icon">📈</span>Reports</div>
     <div class="nav-item" data-tab="trackedtime" onclick="switchTab('trackedtime')" data-help="Activity / project time tracking across employees."><span class="nav-icon">⏱</span>Tracked Time</div>
+    <div class="nav-section">Recruitment</div>
+    <div class="nav-item" data-tab="recruitment" onclick="switchTab('recruitment')" data-help="Public apply page, KYC portal, offer letters, and candidate pipeline."><span class="nav-icon">🧑‍💼</span>Recruitment</div>
+    <div class="nav-item" data-tab="reimbursements" onclick="switchTab('reimbursements')" data-help="Reimbursement requests — ESS submit + owner/manager approve."><span class="nav-icon">💰</span>Reimbursements</div>
+    <div class="nav-item" data-tab="assets" onclick="switchTab('assets')" data-help="Company asset register — assign, track and return laptops, phones, equipment."><span class="nav-icon">📦</span>Assets</div>
+    <div class="nav-item" data-tab="helpdesk" onclick="switchTab('helpdesk')" data-help="Employee support tickets — raise, track and resolve HR/IT/Admin queries."><span class="nav-icon">🎫</span>Helpdesk</div>
+    <div class="nav-item" data-tab="pulse" onclick="switchTab('pulse')" data-help="Employee pulse surveys — anonymous rating questions for org health tracking."><span class="nav-icon">📊</span>Pulse Survey</div>
+    <div class="nav-item" data-tab="kra" onclick="switchTab('kra')" data-help="KRA templates, assessment cycles, manager ratings and 1-on-1 notes."><span class="nav-icon">🎯</span>KRA / Performance</div>
     <div class="nav-section">System</div>
     <div class="nav-item" data-tab="activities" onclick="switchTab('activities')" data-help="Define billable activities / projects used by Tracked Time."><span class="nav-icon">🏷</span>Activities</div>
     <div class="nav-item" data-tab="auditlog" onclick="switchTab('auditlog')" data-help="Immutable log of every change — who did what, and when."><span class="nav-icon">📋</span>Audit Log</div>
@@ -1378,6 +1405,19 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
       <button class="btn btn-dark btn-sm" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Light/Dark theme">🌙</button>
       <!-- v48: always-reachable retrigger for the multi-platform install card. -->
       <button class="btn btn-dark btn-sm" id="settings-pwa-install-link" onclick="_v48RenderInstallCard(true)" title="Install ArtzFolio HRMS as an app on this device" style="min-width:36px">📱</button>
+      <!-- v94 Wave D: Notification Center bell -->
+      <div style="position:relative" id="notif-bell-wrap">
+        <button id="notif-bell-btn" class="btn btn-dark btn-sm" onclick="_v94ToggleNotifPanel()" title="Notifications" style="min-width:36px;position:relative">
+          🔔<span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;font-size:9px;font-weight:700;width:16px;height:16px;align-items:center;justify-content:center;line-height:1">0</span>
+        </button>
+        <div id="notif-panel" style="display:none;position:absolute;top:100%;right:0;width:320px;max-height:400px;overflow-y:auto;background:var(--dark2);border:1px solid var(--dark3);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:9999;padding:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-weight:700;font-size:13px;color:var(--gold)">Notifications</span>
+            <button onclick="_v94MarkAllRead()" style="font-size:11px;background:none;color:var(--gray-light);border:none;cursor:pointer;padding:2px 6px">Mark all read</button>
+          </div>
+          <div id="notif-list" style="font-size:12px;color:var(--white)"><span style="color:var(--gray)">Loading…</span></div>
+        </div>
+      </div>
       <div id="admin-user-info" style="font-size:11px;color:var(--gray-light)"></div>
     </div>
     <!-- v48: install-card mount on the admin home screen. _v48RenderInstallCard()
@@ -1526,7 +1566,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v91-2026-05'; // v91 (completes v90 N1 server-side defense-in-depth + v90 N4 actual toggle sweep + audit refusals + Owner view-as preview — decision_log/2026.05.28_HRMS_v91_completion_register.md): P1 [SECURITY] Server-side role gate — new HMAC-signed roleToken issued at login (reuses apiToken as HMAC secret, no new config key, 8h TTL), client API.call now sends roleToken on every request, GAS _v91DeriveRole reads role from ownerToken→roleToken HMAC→'unknown', GAS _v91IsModuleAllowedForRole reads server-mirrored rolePerms_<role>_<moduleId> Config (synced from client by new saveRolePermissions GAS handler), _v91GateModule applied at handler entry for ~50 sensitive endpoints across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone. Owner unchanged (still via ownerToken). P2 [AUDIT] Owner-only "Toggle Enforcement Self-Test" panel under Settings → Danger Zone — read-only inventory of every cfg-* toggle + current value + static enforcement audit per row; full 188-row toggle table in the completion register (zero new BROKEN found beyond v90 N1; engine-adjacent toggles correctly DO-NOT-TOUCH). P3 [SECURITY TRAIL] every _v91GateModule refusal writes a structured Audit Log row (ROLE_REFUSED + moduleId + handler + caller). P4 [HELPER] Owner-only "Preview as Manager / Preview as Supervisor" buttons on the Role Access Permissions card — pure visual nav-filter simulation with a sticky PREVIEW MODE banner + Exit button (no server role switch). P5 [REGRESSION] all 11 salary-engine fns md5-byte-identical v90→v91; v87/v88/v89/v90 anchors grep-cited. NO salary-engine fn edited → golden master byte-identical predicted. // v90 (role-visibility fix + self-approval routing + M1 sub-label + Settings toggle sweep — decision_log/2026.05.28_HRMS_v90_completion_register.md): N1 [SECURITY] Role Access Permissions now actually enforce — key prefix realigned (perm_manager_*/perm_supervisor_* match State.adminRole), table extended from 16 to 25 tabs (added bonustracker/bonusmgmt/compmgmt/otclaims/promotions/compoff/recovery/auditlog), recommended default permission set applied for first-time Manager/Supervisor, Danger Zone independently gated, server-side _isAllowedForRole gate on dangerous data-read handlers (Owner unaffected). N2 [WORKFLOW] Self-approval impossible — new reportingManager schema field (self-healing column, surfaced in Add/Edit/Bulk), ESS leave/exit/advance route via _resolveApproverFor (reportingManager → supervisorId → managerId → defaultApprover config key → Owner; never the requester); server _requestLeaveCore + handleApproveLeave refuse approverId===requesterId. N3 [DISPLAY] Bilingual "Estimated as per payroll · final pay may differ / पेरोल अनुसार अनुमानित · अंतिम भुगतान भिन्न हो सकता है" sub-label on the ESS Month's Earning So Far tile. N4 [AUDIT] Owner-only Settings Self-Test panel (one-click save/read/enforce evidence per toggle). N5 [REGRESSION] All v87/v88/v89 fixes verified by md5 + grep cite (salary engine + v88 _fnfExitMonthSalary + v89 L1/L2/M1/F2/U1 byte-identical). NO salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test — decision_log/2026.05.26_HRMS_v89_completion_register.md): S1 proactive idempotent migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both via _verifyPassword since v43); L1 ESS shows unpaid leave (LWP/UL) as "Unlimited", never a finite balance; L2 ESS lists entitled paid leave types with "N available"/"0 available" + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" now payroll-accurate earned-through-today (calcMonthlySalary bounded at today via the v88 opts.exitDay — ENGINE UNTOUCHED, golden master 120/120); F1 read-only ESS payslip breakdown (gated by v62 dashSections.salary, reuses the salary object, no new math); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F records (soft-void, never Paid); R1 SpreadsheetApp.flush() before cache-bust in bulk money handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED (salary-engine-adjacent). NO salary-engine fn edited → golden master byte-identical v88→v89. // v88 (FnF exit-month salary accuracy + ESS date-lock — decision_log/2026.05.26_HRMS_v88_completion_register.md): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths (handleCalcFnF + generateFnFRecord) compute the exit-month salary via the ATTENDANCE-ACCURATE engine (calcMonthlySalary bounded at the last working day via default-neutral opts.exitDay; post-exit days = unpaid/no-penalty/no-sandwich), pulling ONLY the payslip-style earned salary (− UL/late/sandwich/under-time) + statutory (PF/ESI/PT/TDS), NOT advances/loans/bonuses (FnF itemises those → no double-count); early-exit minDayRate + notice/abscond/KYC/EL/gratuity preserved; calcMonthlySalary byte-neutral for every normal call (proven). WORK ITEM 2 [UI] ESS leave date pickers disabled (not just Submit) when a paid leave's balance can't cover the request (LWP/ML/PTL exempt). // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard (always mark the resolved attendance row + idempotency key, refuse if unmarkable); A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button + record-mode owner gate; B2 per-execution SalaryLadder cache; B3 full mismatch detail (25-row cap removed); C1 (owner policy) block leave self-apply once a paid-leave balance can't cover the request (LWP/ML/PTL exempt) + negative-balance clamp; C2 FnF exit-date parsed at local midnight (calcMonthlySalary-reuse deferred); C3 modal double-submit guard; C4 delete-rule confirm; C5 post-seed null guard; C6 toast error normalisation; C7 dead inc-mult reads; C8 read-only audit allow-list; C9 _safeCompare token; C10 IST weekAgoStr; C11 dead lateMultiplier knob removed; C12 tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v97-2026-05'; // v93 (audit-fix release over v92 — cache bumped so the SW serves the fixed shell). // v91 (completes v90 N1 server-side defense-in-depth + v90 N4 actual toggle sweep + audit refusals + Owner view-as preview — decision_log/2026.05.28_HRMS_v91_completion_register.md): P1 [SECURITY] Server-side role gate — new HMAC-signed roleToken issued at login (reuses apiToken as HMAC secret, no new config key, 8h TTL), client API.call now sends roleToken on every request, GAS _v91DeriveRole reads role from ownerToken→roleToken HMAC→'unknown', GAS _v91IsModuleAllowedForRole reads server-mirrored rolePerms_<role>_<moduleId> Config (synced from client by new saveRolePermissions GAS handler), _v91GateModule applied at handler entry for ~50 sensitive endpoints across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone. Owner unchanged (still via ownerToken). P2 [AUDIT] Owner-only "Toggle Enforcement Self-Test" panel under Settings → Danger Zone — read-only inventory of every cfg-* toggle + current value + static enforcement audit per row; full 188-row toggle table in the completion register (zero new BROKEN found beyond v90 N1; engine-adjacent toggles correctly DO-NOT-TOUCH). P3 [SECURITY TRAIL] every _v91GateModule refusal writes a structured Audit Log row (ROLE_REFUSED + moduleId + handler + caller). P4 [HELPER] Owner-only "Preview as Manager / Preview as Supervisor" buttons on the Role Access Permissions card — pure visual nav-filter simulation with a sticky PREVIEW MODE banner + Exit button (no server role switch). P5 [REGRESSION] all 11 salary-engine fns md5-byte-identical v90→v91; v87/v88/v89/v90 anchors grep-cited. NO salary-engine fn edited → golden master byte-identical predicted. // v90 (role-visibility fix + self-approval routing + M1 sub-label + Settings toggle sweep — decision_log/2026.05.28_HRMS_v90_completion_register.md): N1 [SECURITY] Role Access Permissions now actually enforce — key prefix realigned (perm_manager_*/perm_supervisor_* match State.adminRole), table extended from 16 to 25 tabs (added bonustracker/bonusmgmt/compmgmt/otclaims/promotions/compoff/recovery/auditlog), recommended default permission set applied for first-time Manager/Supervisor, Danger Zone independently gated, server-side _isAllowedForRole gate on dangerous data-read handlers (Owner unaffected). N2 [WORKFLOW] Self-approval impossible — new reportingManager schema field (self-healing column, surfaced in Add/Edit/Bulk), ESS leave/exit/advance route via _resolveApproverFor (reportingManager → supervisorId → managerId → defaultApprover config key → Owner; never the requester); server _requestLeaveCore + handleApproveLeave refuse approverId===requesterId. N3 [DISPLAY] Bilingual "Estimated as per payroll · final pay may differ / पेरोल अनुसार अनुमानित · अंतिम भुगतान भिन्न हो सकता है" sub-label on the ESS Month's Earning So Far tile. N4 [AUDIT] Owner-only Settings Self-Test panel (one-click save/read/enforce evidence per toggle). N5 [REGRESSION] All v87/v88/v89 fixes verified by md5 + grep cite (salary engine + v88 _fnfExitMonthSalary + v89 L1/L2/M1/F2/U1 byte-identical). NO salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test — decision_log/2026.05.26_HRMS_v89_completion_register.md): S1 proactive idempotent migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both via _verifyPassword since v43); L1 ESS shows unpaid leave (LWP/UL) as "Unlimited", never a finite balance; L2 ESS lists entitled paid leave types with "N available"/"0 available" + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" now payroll-accurate earned-through-today (calcMonthlySalary bounded at today via the v88 opts.exitDay — ENGINE UNTOUCHED, golden master 120/120); F1 read-only ESS payslip breakdown (gated by v62 dashSections.salary, reuses the salary object, no new math); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F records (soft-void, never Paid); R1 SpreadsheetApp.flush() before cache-bust in bulk money handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED (salary-engine-adjacent). NO salary-engine fn edited → golden master byte-identical v88→v89. // v88 (FnF exit-month salary accuracy + ESS date-lock — decision_log/2026.05.26_HRMS_v88_completion_register.md): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths (handleCalcFnF + generateFnFRecord) compute the exit-month salary via the ATTENDANCE-ACCURATE engine (calcMonthlySalary bounded at the last working day via default-neutral opts.exitDay; post-exit days = unpaid/no-penalty/no-sandwich), pulling ONLY the payslip-style earned salary (− UL/late/sandwich/under-time) + statutory (PF/ESI/PT/TDS), NOT advances/loans/bonuses (FnF itemises those → no double-count); early-exit minDayRate + notice/abscond/KYC/EL/gratuity preserved; calcMonthlySalary byte-neutral for every normal call (proven). WORK ITEM 2 [UI] ESS leave date pickers disabled (not just Submit) when a paid leave's balance can't cover the request (LWP/ML/PTL exempt). // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard (always mark the resolved attendance row + idempotency key, refuse if unmarkable); A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button + record-mode owner gate; B2 per-execution SalaryLadder cache; B3 full mismatch detail (25-row cap removed); C1 (owner policy) block leave self-apply once a paid-leave balance can't cover the request (LWP/ML/PTL exempt) + negative-balance clamp; C2 FnF exit-date parsed at local midnight (calcMonthlySalary-reuse deferred); C3 modal double-submit guard; C4 delete-rule confirm; C5 post-seed null guard; C6 toast error normalisation; C7 dead inc-mult reads; C8 read-only audit allow-list; C9 _safeCompare token; C10 IST weekAgoStr; C11 dead lateMultiplier knob removed; C12 tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2344,11 +2384,50 @@ const API = {
   async ping() { try { const r=await this.call('getSettings',{}); return r.ok; } catch { return false; } }
 };
 
+// v92 A13: boot-time role heartbeat. On every app load, ping the server with whatever
+// roleToken (or owner cookie) the client currently holds. If the server says role:'unknown'
+// (legacy session predating v91/v92), force a clean re-login via a sticky banner — better
+// than silently 403-ing every gated request and leaving the user staring at an empty page.
+async function _v92BootRolePing() {
+  try {
+    const data = await API.call('pingRole', {}, { silent: true, retries: 1 });
+    if (!data || !data.ok) return;
+    if (data.reauthRequired) {
+      if (!window._v92PingedRoleBanner) {
+        window._v92PingedRoleBanner = true;
+        const b = document.createElement('div');
+        b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#a13f3f;color:#fff;padding:12px 16px;text-align:center;font-weight:800;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.4)';
+        b.innerHTML = '🔐 Your session is from before the v91/v92 security upgrade. <button class="btn btn-sm" style="margin-left:14px;background:#fff;color:#a13f3f;border:1px solid #fff;font-weight:800" onclick="if(typeof logout===\'function\'){logout();}else{location.reload();}">Log out + back in</button>';
+        document.body.appendChild(b);
+      }
+    }
+    // The version-mismatch banner is already handled by API.call's response interceptor
+    // (uses data.serverVersion). pingRole returns serverVersion too, so the banner fires
+    // through that path naturally.
+  } catch (e) {
+    // boot ping is best-effort; failure just means we'll discover bad sessions on the
+    // first gated call (the v91 reauth toast covers that path).
+    console.warn('[v92] boot role ping failed (best-effort):', e && e.message);
+  }
+}
+// Fire after login lands — guarded by the existing login state so we don't ping before
+// the user has any token at all.
+document.addEventListener('DOMContentLoaded', function() {
+  // Wait a beat so the State object + login flow have settled. We don't NEED a deep
+  // hook here — even a 2-second post-load ping catches legacy sessions before the user
+  // clicks the first gated tab.
+  setTimeout(function(){
+    if (typeof State !== 'undefined' && State.apiToken) {
+      _v92BootRolePing();
+    }
+  }, 2000);
+});
+
 // v37 fix H-01: client version constant. Server emits serverVersion on every response;
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v91';  // v91 (completes v90 deferrals): P1 server-side role gate (HMAC roleToken at login, _v91GateModule applied to ~50 sensitive handlers across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone; Owner via ownerToken unchanged); P2 owner-only Toggle Enforcement Self-Test panel + full 188-row toggle table in completion register; P3 audit-log every role refusal; P4 Owner Preview-as-Manager/Supervisor visual nav simulation; P5 all 11 engine fns md5-byte-identical v90→v91 (no engine touch). // v90 (role-visibility + self-approval routing + M1 sub-label + Settings self-test): N1 Role Access Permissions enforce (key prefix realigned to perm_manager_*/perm_supervisor_*, table extended 16→25 tabs, recommended default permission set, Danger Zone independently gated, server-side _isAllowedForRole). N2 reportingManager schema (self-healing) + _resolveApproverFor chain (reportingManager→supervisorId→managerId→defaultApprover→Owner, never requester); server refuses self-approval. N3 bilingual ESS earnings sub-label. N4 owner-only Settings Self-Test panel. N5 all v87/v88/v89 fixes verified (engine + _fnfExitMonthSalary + L1/L2/M1/F2/U1 byte-identical). No salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test): S1 proactive migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both since v43); L1 ESS unpaid leave shows "Unlimited" not a finite balance; L2 ESS lists entitled paid leave types ("N/0 available") + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" = payroll-accurate earned-through-today (calcMonthlySalary bounded at today via v88 opts.exitDay — ENGINE UNTOUCHED, GM 120/120); F1 read-only ESS payslip breakdown (gated by dashSections.salary); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F; R1 flush before cache-bust in bulk handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED. No salary-engine fn edited. // v88 (FnF exit-month salary accuracy + ESS leave date-lock): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths now compute the exit-month salary via the attendance-accurate engine (calcMonthlySalary bounded at the last working day), payslip-style salary + statutory, no double-count; calcMonthlySalary byte-neutral for normal calls. WORK ITEM 2 [UI] ESS leave date pickers disabled when a paid leave's balance can't cover the request. // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard; A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button; B2 per-execution SalaryLadder cache; B3 full mismatch detail (cap removed); C1-C12 medium/low fixes + tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v97';  // v93 (audit-fix release over v92 — FIX-1 ESS encashment, FIX-2 _safeCell type-preserving, FIX-3 LWF period, FIX-4 gated A9 migration, FIX-5 selfie/geofence wired, FIX-6 audit-health card, FIX-7/8/9 hardening; decision_log/2026.05.29_HRMS_v93_StaticAudit_report_v1.md). // v92 (MEGA BUILD — Option B, multi-session, owner sign-off 2026-05-28; decision_log/2026.05.28_HRMS_v92_PreCoding_Analysis.md). WAVE W1 (Security + Operational, this commit) — A1-A14 + B1-B6. Remaining waves W2 Statutory / W3 Features / W4 PWA+AI in subsequent commits. // v91 (completes v90 deferrals): P1 server-side role gate (HMAC roleToken at login, _v91GateModule applied to ~50 sensitive handlers across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone; Owner via ownerToken unchanged); P2 owner-only Toggle Enforcement Self-Test panel + full 188-row toggle table in completion register; P3 audit-log every role refusal; P4 Owner Preview-as-Manager/Supervisor visual nav simulation; P5 all 11 engine fns md5-byte-identical v90→v91 (no engine touch). // v90 (role-visibility + self-approval routing + M1 sub-label + Settings self-test): N1 Role Access Permissions enforce (key prefix realigned to perm_manager_*/perm_supervisor_*, table extended 16→25 tabs, recommended default permission set, Danger Zone independently gated, server-side _isAllowedForRole). N2 reportingManager schema (self-healing) + _resolveApproverFor chain (reportingManager→supervisorId→managerId→defaultApprover→Owner, never requester); server refuses self-approval. N3 bilingual ESS earnings sub-label. N4 owner-only Settings Self-Test panel. N5 all v87/v88/v89 fixes verified (engine + _fnfExitMonthSalary + L1/L2/M1/F2/U1 byte-identical). No salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test): S1 proactive migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both since v43); L1 ESS unpaid leave shows "Unlimited" not a finite balance; L2 ESS lists entitled paid leave types ("N/0 available") + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" = payroll-accurate earned-through-today (calcMonthlySalary bounded at today via v88 opts.exitDay — ENGINE UNTOUCHED, GM 120/120); F1 read-only ESS payslip breakdown (gated by dashSections.salary); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F; R1 flush before cache-bust in bulk handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED. No salary-engine fn edited. // v88 (FnF exit-month salary accuracy + ESS leave date-lock): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths now compute the exit-month salary via the attendance-accurate engine (calcMonthlySalary bounded at the last working day), payslip-style salary + statutory, no double-count; calcMonthlySalary byte-neutral for normal calls. WORK ITEM 2 [UI] ESS leave date pickers disabled when a paid leave's balance can't cover the request. // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard; A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button; B2 per-execution SalaryLadder cache; B3 full mismatch detail (cap removed); C1-C12 medium/low fixes + tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -3746,6 +3825,32 @@ async function _execClockIn(extraParams={}) {
       return;
     }
   }
+  // v93 FIX-5 (F3): optional selfie + secondary geofence — both DEFAULT OFF (engine-neutral; when
+  // the toggles are unset/'false' this block is a no-op and clock-in is unchanged). Owner enables
+  // requireGeofence / requireSelfie in Settings → Compliance. These are ADDITIVE to the existing
+  // geofenceEnabled / factory-radius check above (which is left untouched).
+  if (State.settings.requireGeofence === 'true') {
+    const g = await _v92GetGeolocation();
+    if (!g.ok) {
+      if (btn) btn.disabled = false;
+      toast('📍 Location required to clock in. Please allow location access.', 'error');
+      return;
+    }
+    if (!_v92IsInsideGeofence(g.lat, g.lng)) {
+      if (btn) btn.disabled = false;
+      toast('🚫 You are outside the allowed clock-in zone.', 'error');
+      return;
+    }
+  }
+  if (State.settings.requireSelfie === 'true') {
+    const selfie = await _v92CaptureSelfie();
+    if (!selfie.ok) {
+      if (btn) btn.disabled = false;
+      toast('📷 Selfie required to clock in (' + (selfie.error || 'camera unavailable') + ').', 'error');
+      return;
+    }
+    extraParams = Object.assign({}, extraParams, { selfieDataUrl: selfie.dataUrl });
+  }
   try {
     const res = await API.call('clockIn', {
       empId:State.currentEmp.id,
@@ -4614,6 +4719,43 @@ async function doAdminLogin() {
 }
 
 // v38 H3: handles mandatory password change after login
+// v92 B5 — live strength meter renderer.
+function _v92RenderStrengthMeter(pw) {
+  const ev = _v92EvalPasswordStrength(pw||'');
+  const pct = Math.min(100, ev.score * 20);
+  const color = ev.score >= 5 ? '#3fa15a' : ev.score >= 3 ? '#C9A84C' : '#a13f3f';
+  const fill = document.getElementById('chpw-strength-fill');
+  const lab = document.getElementById('chpw-strength-label');
+  if (fill) { fill.style.width = pct + '%'; fill.style.background = color; }
+  if (lab) {
+    lab.textContent = ev.ok ? 'Strong ✓' : 'Need: ' + ev.reasons.join(' · ');
+    lab.style.color = ev.ok ? '#3fa15a' : 'var(--gray-light)';
+  }
+}
+
+// v92 B5 — strict password policy + obvious-default block + strength meter wiring.
+// EN: Required uppercase + digit + symbol, min 10 chars, can't match a known weak password.
+// HI: कम-से-कम एक बड़ा अक्षर, अंक, विशेष चिह्न; न्यूनतम 10 अक्षर; सामान्य कमज़ोर शब्द मना हैं।
+function _v92EvalPasswordStrength(pw) {
+  if (!pw) return { ok:false, score:0, reasons:['Password required'] };
+  const WEAK = new Set(['admin@2026','admin@123','password','password1','admin','adminadmin','12345678','admin2026','artzfolio']);
+  const lower = String(pw).toLowerCase();
+  const reasons = [];
+  if (pw.length < 10) reasons.push('Min 10 characters');
+  if (!/[A-Z]/.test(pw)) reasons.push('Need uppercase');
+  if (!/[a-z]/.test(pw)) reasons.push('Need lowercase');
+  if (!/[0-9]/.test(pw)) reasons.push('Need digit');
+  if (!/[^A-Za-z0-9]/.test(pw)) reasons.push('Need symbol');
+  if (WEAK.has(lower)) reasons.push('Too common — pick a non-obvious password');
+  let score = 0;
+  if (pw.length >= 10) score++;
+  if (pw.length >= 14) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return { ok: reasons.length === 0, score: score, reasons: reasons };
+}
+
 async function submitChangePassword() {
   const role = State._postLoginRole || State.adminRole || 'owner';
   const oldPw = document.getElementById('chpw-current').value;
@@ -4622,7 +4764,9 @@ async function submitChangePassword() {
   const errEl = document.getElementById('chpw-err');
   errEl.style.display = 'none';
   if (!oldPw || !newPw || !confirmPw) { errEl.textContent = 'All fields required.'; errEl.style.display = 'block'; return; }
-  if (newPw.length < 8) { errEl.textContent = 'New password must be at least 8 characters.'; errEl.style.display = 'block'; return; }
+  // v92 B5: enforce strict policy (was: min 8 chars only).
+  const ev = _v92EvalPasswordStrength(newPw);
+  if (!ev.ok) { errEl.textContent = 'Weak password — fix: ' + ev.reasons.join(' · '); errEl.style.display = 'block'; return; }
   if (newPw !== confirmPw) { errEl.textContent = 'Passwords do not match.'; errEl.style.display = 'block'; return; }
   const r = await API.call('changePassword', {role, oldPin: oldPw, newPin: newPw});
   if (r && r.ok) {
@@ -5035,7 +5179,20 @@ async function switchTab(tab) {
       case 'trackedtime': await renderTrackedTime(); break;
       case 'activities':  await renderActivitiesSettings(); break;
       case 'auditlog':    await renderAuditLog(); break;
-      case 'settings':    await renderSettings(); break;
+      case 'settings':
+        // v92 B6: explicit clear of any lingering ESS / preview-banner / modal state before
+        // mounting Settings. Symptom this addresses: ESS profile cards "bleeding" into Settings
+        // (a leftover overlay from a previous ESS render) and the Save Permissions button
+        // missing on a re-render. Belt-and-suspenders: clear admin-tab-content AGAIN here
+        // (switchTab already did it once, but rendering may have raced), explicitly remove
+        // any v91 preview banner, then call renderSettings.
+        try {
+          document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+          const _v92preview = document.getElementById('v91-preview-banner');
+          if (_v92preview && State.adminRole === 'owner') _v92preview.style.display = 'none';
+        } catch (_eB6) {}
+        await renderSettings();
+        break;
       case 'pettycash':   await renderPettyCash(); break;
       case 'bonustracker': await renderBonusTracker(); break;
       // v31 new tabs
@@ -5045,6 +5202,13 @@ async function switchTab(tab) {
       case 'promotions':  await renderPromotions(); break;
       case 'compoff':     await renderCompOff(); break;   // v66 Stage-2A
       case 'recovery':    await renderRecovery(); break;  // v67 Stage-2B
+      case 'recruitment':    await _v94RenderRecruitment(); break; // v94 Wave A
+      // v96 Wave 4: new admin tabs
+      case 'reimbursements': await _v96RenderReimbursements(); break;
+      case 'assets':         await _v96RenderAssets();         break;
+      case 'helpdesk':       await _v96RenderHelpdesk();       break;
+      case 'pulse':          await _v96RenderPulse();          break;
+      case 'kra':            await _v96RenderKRA();            break;
       // v77 (Gate A): removed 'leavemgmt' tab case (System-B Leave_Requests admin UI retired).
     }
   } catch(e) {
@@ -8553,7 +8717,14 @@ function showAddTransModal() {
       const date=document.getElementById('at-date').value;
       const note=document.getElementById('at-note').value;
       if(!empId||!amount){toast('Employee and amount required','warning');return;}
-      const res=await API.call('addTransaction',{empId,type,amount,date,note,approvedBy:State.adminUser});
+      // v92 A2 DEPLOY-BLOCKER FIX: addTransaction is now ESS-only (Advance/AdvanceRequest types
+      // with requesterId===empId). Admin types (Penalty/Adjustment/LeaveEncashment/Loan/etc.)
+      // must route to addTransactionAdmin which requires _checkOwnerToken on the server. The
+      // ownerToken is auto-attached by API.call from State._dzToken when the Owner is logged in.
+      // EN: admin manual transactions go through the owner-gated server path. HI: एडमिन मैनुअल लेनदेन ओनर-गेटेड सर्वर पथ से होते हैं।
+      const ESS_TYPES=['Advance','AdvanceRequest'];
+      const action = ESS_TYPES.indexOf(type) >= 0 ? 'addTransaction' : 'addTransactionAdmin';
+      const res=await API.call(action,{empId,type,amount,date,note,approvedBy:State.adminUser});
       if(res.ok){closeModal();toast('✓ Transaction added','success');loadTransactions();}
       else toast(res.error||'Error','error');
     }},
@@ -10200,6 +10371,25 @@ async function downloadHistoricalSlipsPDF() {
   if(!records.length){toast('Load records first','warning');return;}
   toast(`Downloading ${records.length} historical slips…`,'info',3000);
   for(const r of records){ await new Promise(res=>setTimeout(res,200)); downloadHistSlipPDF(r); }
+}
+
+// v96 D1: downloadCSV — was called in 2 places but never defined; caused silent ReferenceError on CSV exports
+function downloadCSV(filename, rows) {
+  var bom = '﻿'; // UTF-8 BOM for Excel compatibility
+  var csv = rows.map(function(r) {
+    return r.map(function(v) {
+      var s = String(v == null ? '' : v);
+      if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0) s = '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }).join(',');
+  }).join('\r\n');
+  var blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename; a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch(e){} }, 200);
 }
 
 function exportPayrollCSV() {
@@ -11947,6 +12137,33 @@ async function renderSettings() {
         </label>
         <div style="font-size:11px;color:var(--gray-light);margin-top:4px">When enabled, employees cannot clock in if GPS shows them more than [Attendance Radius] metres from the factory. Set radius in Company Info above.</div>
       </div>
+      <!-- v93 FIX-5 (F3): selfie + precise-coordinate geofence (additive to the factory-radius check above; both default OFF) -->
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Selfie on Clock-In <span class="info-tooltip" title="When enabled, the employee must capture a front-camera selfie before clock-in succeeds. Default off.">ℹ</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:6px">
+          <input type="checkbox" id="cfg-requireSelfie" ${cfg['requireSelfie']==='true'?'checked':''}>
+          Require a selfie when an employee clocks in
+        </label>
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label class="form-label">Precise Geofence (coordinates) <span class="info-tooltip" title="Optional second geofence by exact lat/lng + radius. Leave radius at 0 to disable. Independent of the factory-radius check above.">ℹ</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:6px">
+          <input type="checkbox" id="cfg-requireGeofence" ${cfg['requireGeofence']==='true'?'checked':''}>
+          Block clock-in unless inside the coordinate geofence below
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Geofence Center Latitude</label>
+        <input type="text" id="cfg-geofenceCenterLat" class="form-input" value="${cfg['geofenceCenterLat']||''}" placeholder="e.g. 28.6243">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Geofence Center Longitude</label>
+        <input type="text" id="cfg-geofenceCenterLng" class="form-input" value="${cfg['geofenceCenterLng']||''}" placeholder="e.g. 77.3709">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Geofence Radius (metres)</label>
+        <input type="number" id="cfg-geofenceRadiusM" class="form-input" value="${cfg['geofenceRadiusM']||'0'}" min="0" placeholder="0 = disabled">
+      </div>
     </div>
     <div class="settings-section-title" style="margin-top:18px">🔔 Reminders & Notifications</div>
     <div class="settings-grid">
@@ -12228,6 +12445,8 @@ async function renderSettings() {
       <!-- v91 P4: Owner-only Preview as Manager/Supervisor — purely visual nav simulation; server calls remain Owner. -->
       <button class="btn btn-dark btn-sm" onclick="_v91PreviewAsRole('manager')" title="v91 P4: temporarily render the sidebar as it would appear to a Manager. You stay Owner — no server role switch. Use to verify the lockdown without re-login.">👁 Preview as Manager</button>
       <button class="btn btn-dark btn-sm" onclick="_v91PreviewAsRole('supervisor')" title="v91 P4: same, but for the Supervisor role.">👁 Preview as Supervisor</button>
+      <!-- v92 A12: roleToken revocation. "Sign out everywhere" rotates the apiToken-derived HMAC secret so EVERY in-flight roleToken (Mgr/Sup/Owner) HMAC re-verification fails on next call. -->
+      <button class="btn btn-dark btn-sm" style="background:#a13f3f;color:#fff" onclick="_v92SignOutEverywhere()" data-help="Rotates the apiToken so every in-flight roleToken instantly invalidates. You will need to re-login. Use after a lost laptop or compromised credential. / सभी डिवाइस से साइन-आउट करता है — आपको फिर से लॉग-इन करना होगा।" title="🔒 Sign out EVERYWHERE — rotates apiToken; every session must re-login. / सभी जगह से साइन-आउट।">🔒 Sign out everywhere</button>
     </div>
     <div style="font-size:11px;color:var(--gray-light);margin-top:10px;line-height:1.6">
       <strong style="color:var(--gold-light)">🔒 Danger Zone</strong> is always Owner-only, even if the Settings tab is granted above. This is a separate hard gate.
@@ -12242,6 +12461,27 @@ async function renderSettings() {
       <div style="display:flex;gap:8px;align-items:center">
         <input id="cfg-defaultApprover" class="form-input" style="max-width:260px" placeholder="e.g. AZ_EMP_0001 (or leave blank for Owner)" value="${escHtml(cfg['defaultApprover']||'')}">
         <button class="btn btn-gold btn-sm" onclick="_v90SaveDefaultApprover()">💾 Save</button>
+      </div>
+    </div>
+
+    <!-- v93 FIX-4: explicit owner-triggered A9 migration (no longer auto-fires on login → rollback-safe) -->
+    <div style="margin-top:18px;padding:10px 12px;background:rgba(201,168,76,0.05);border:1px solid var(--dark3);border-radius:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">🔐 Secure Password Storage <span style="font-size:11px;font-weight:400;color:var(--gray-light)">(v93 FIX-4)</span></div>
+      <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px;line-height:1.6">
+        Moves the Manager &amp; Supervisor passwords from the Config sheet into secure script storage and blanks the Config rows. <strong>One-way.</strong> Run only AFTER you have backed up the current Config password values and confirmed v93 is stable — a rollback to v91 after this needs those backed-up values restored. (v93 no longer does this automatically on login, so a fresh deploy stays rollback-safe.)
+      </div>
+      <button class="btn btn-dark btn-sm" onclick="_v93MigrateRolePasswords()">🔒 Move mgr/sup passwords to secure storage</button>
+    </div>
+
+    <!-- v93 FIX-6: Audit Log Health card (owner-only; wires the previously surface-less getAuditLogHealth) -->
+    <div style="margin-top:18px;padding:10px 12px;background:rgba(201,168,76,0.05);border:1px solid var(--dark3);border-radius:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">🩺 Audit Log Health <span style="font-size:11px;font-weight:400;color:var(--gray-light)">(v93 FIX-6)</span></div>
+      <div id="v93-audit-health-body" style="font-size:12px;color:var(--gray-light);line-height:1.7">Click “↻ Refresh” to load the audit-log health summary.</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-gold btn-sm" onclick="_v93RenderAuditHealth()">↻ Refresh</button>
+        <button class="btn btn-dark btn-sm" onclick="_v93AuditAction('installV92AuditTriggers','Install the scheduled archive/redact/compaction triggers?')">🕒 Install triggers</button>
+        <button class="btn btn-dark btn-sm" onclick="_v93AuditAction('archiveAuditLog','Archive audit rows older than 90 days into a quarter sheet now?')">📦 Run archive now</button>
+        <button class="btn btn-dark btn-sm" onclick="_v93AuditAction('redactHistoricalAudit','Run the one-shot historical token redaction? This cannot be undone.')">🛡 Redact historical (one-shot)</button>
       </div>
     </div>
 
@@ -13238,6 +13478,16 @@ async function renderSettings() {
       Each action requires you to enter your Owner password and type a confirmation phrase.
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
+      <!-- v92 B2: secureExistingReceipts + secureExistingDocuments — one-click privatisation of pre-v84/v85 publicly-shared receipts and documents. -->
+      <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--gold)">🔒 Secure existing receipts &amp; documents
+            <span class="info-tooltip" title="EN: Privatizes any receipts/documents uploaded before the v84/v85 security fix (those used ANYONE_WITH_LINK sharing). Idempotent — safe to re-run; only public files are touched. / HI: v84/v85 से पहले अपलोड की गई रसीदें/दस्तावेज़ निजी करता है। पुनः चलाना सुरक्षित।">ℹ</span>
+          </div>
+          <div style="font-size:11px;color:var(--gray-light)">Pre-v84/v85 receipts and documents may be publicly accessible to anyone with the URL. One-click privatises them. <span id="v92-secure-last-run" style="color:var(--gold-light)"></span></div>
+        </div>
+        <button class="btn btn-sm" style="background:var(--gold);color:#111;font-weight:700" onclick="_v92SecureReceiptsAndDocs()">🔒 Secure now</button>
+      </div>
       <div style="background:var(--dark3);border:1px solid #444;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--white)">🗑 Delete a Specific Employee
@@ -13552,6 +13802,20 @@ async function renderSettings() {
           <span style="color:var(--gold)">Warning:</span> Existing data in those sheets will be overwritten.
         </div>
         <button class="btn" style="background:var(--red);color:white" onclick="initCompSheets()">🏗 Initialize Compensation Sheets</button>
+      </div>
+      <!-- v92 B1: ESS "Month's Earning So Far" policy. Toggle between payroll-accurate engine and conservative dailyRate × clockedDays. -->
+      <div style="background:var(--dark3);border-radius:8px;padding:12px 14px;margin-bottom:12px;border-left:3px solid var(--gold)">
+        <div style="font-weight:700;font-size:13px;color:var(--gold);margin-bottom:6px">📊 ESS "Month's Earning So Far" mode <span style="font-size:11px;font-weight:400;color:var(--gray-light)">/ ESS "अब तक की मासिक कमाई" मोड</span></div>
+        <label style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px;cursor:pointer">
+          <input type="radio" name="cfg-essEarnedSoFarMode" value="payroll" id="cfg-essEarnedSoFarMode-payroll" ${(cfg['essEarnedSoFarMode']||'payroll')==='payroll'?'checked':''}>
+          <span><strong>Payroll-accurate</strong> (default) — same engine as the payslip. EN: Matches monthly payroll exactly. HI: मासिक पेरोल से मेल खाता है।</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px;cursor:pointer">
+          <input type="radio" name="cfg-essEarnedSoFarMode" value="conservative" id="cfg-essEarnedSoFarMode-conservative" ${(cfg['essEarnedSoFarMode']||'payroll')==='conservative'?'checked':''}>
+          <span><strong>Conservative</strong> — dailyRate × clocked days. EN: Safer for advance planning. HI: अग्रिम योजना के लिए सुरक्षित।</span>
+        </label>
+        <button class="btn btn-gold btn-sm" style="margin-top:8px" onclick="_v92SaveEssEarnedSoFarMode()" data-help="Persists the toggle to the server. Engine is untouched — this only changes which calculation feeds the ESS tile.">💾 Save mode</button>
+        <span class="info-tooltip" title="Engine UNTOUCHED — toggle only changes the ESS display path. Owner-side configurable per the v92 B1 spec.">ℹ</span>
       </div>
       <div class="comp-sub-tabs" id="comp-settings-tabs">
         <button class="comp-sub-tab active" onclick="switchCompSettingsTab('ladder')">Salary Ladder</button>
@@ -14903,12 +15167,37 @@ function _v91DownloadToggleReport() {
 // temporarily overridden in-memory; applyRolePermissions re-runs against the synthetic
 // role; a sticky banner reminds the owner that they are STILL Owner for any data call
 // (no server-side role switch — the roleToken and ownerToken are untouched).
+
+// v92 A12 — sign out everywhere. Rotates apiToken on the server which invalidates every
+// outstanding roleToken HMAC. The Owner who triggers it also gets logged out.
+async function _v92SignOutEverywhere() {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  const ok = confirm('🔒 Sign out EVERYWHERE?\n\nThis rotates the apiToken secret so every active session (yours included) instantly invalidates. Every user — Owner, Manager, Supervisor — will have to re-login.\n\n• Use after a lost laptop or compromised credential.\n• You will need to re-login with the new apiToken (shown once, then never again).\n\nContinue?');
+  if (!ok) return;
+  try {
+    const res = await API.call('revokeRoleSession', { all: true });
+    if (!res || !res.ok) { toast(res && res.error || 'Failed to revoke','error',6000); return; }
+    const newTok = String(res.newApiToken || '');
+    // Show the new apiToken ONCE and require the owner to copy it before re-login.
+    const modalHtml = '<div style="padding:16px"><div style="font-size:14px;margin-bottom:10px">All sessions revoked. Your new API token is below — copy it now (it will not be shown again).</div>'
+      + '<div style="background:#111;color:#C9A84C;padding:12px;border-radius:6px;font-family:monospace;font-size:13px;word-break:break-all;user-select:all">' + newTok + '</div>'
+      + '<div style="font-size:11px;color:var(--gray-light);margin-top:10px">Update Settings → Connection → API Token in every client device. Then re-login.</div></div>';
+    showModal('🔒 New API Token (one-time view)', modalHtml, [{label:'I have copied it — log me out', cls:'btn-gold', cb:function(){ closeModal(); if (typeof logout === 'function') logout(); else location.reload(); }}]);
+  } catch(e) {
+    toast('Network error revoking sessions','error',6000);
+  }
+}
+
 function _v91PreviewAsRole(role) {
   if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
   if (role !== 'manager' && role !== 'supervisor') { toast('Unknown role for preview','error'); return; }
-  // Save the real owner state so Exit can restore it.
-  if (!State._v91PreviewBackup) {
-    State._v91PreviewBackup = { adminRole: State.adminRole, adminUser: State.adminUser };
+  // v92 A10: a second click on Preview-As-Manager (without exiting the first) used to
+  // overwrite the backup with the already-previewed adminRole, so Exit Preview then
+  // "restored" the user to the previewed role instead of Owner. Fix: only seed the backup
+  // when the CURRENT adminRole is owner. Once in preview mode, switching between
+  // manager/supervisor previews is allowed but Exit always returns to Owner.
+  if (State.adminRole === 'owner' || !State._v91PreviewBackup) {
+    State._v91PreviewBackup = { adminRole: 'owner', adminUser: State.adminUser };
   }
   State._v91PreviewRole = role;
   State.adminRole = role; // ONLY for the duration of this preview — owner still authenticates via _dzToken/ownerToken.
@@ -14993,6 +15282,229 @@ async function _v90SaveDefaultApprover() {
   const sRes = await API.call('getSettings', {});
   if (sRes.ok) applySettingsArr(sRes.settings||[]);
   toast('✓ Default approver saved — ESS approval routing updated','success',4000);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// v92 W4 F2 — IndexedDB offline punch queue
+// ═════════════════════════════════════════════════════════════════════════════
+// Best-effort. Wraps the clock-in POST in try/catch; on network error stores the
+// punch in IDB and replays on the next online event. Idempotency via clientPunchId.
+const _V92_IDB_NAME = 'azhrms_offline_v92';
+const _V92_IDB_STORE = 'punchQueue';
+function _v92IdbOpen() {
+  return new Promise(function (resolve, reject) {
+    const req = indexedDB.open(_V92_IDB_NAME, 1);
+    req.onupgradeneeded = function (e) {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(_V92_IDB_STORE)) db.createObjectStore(_V92_IDB_STORE, { keyPath: 'clientPunchId' });
+    };
+    req.onsuccess = function () { resolve(req.result); };
+    req.onerror = function () { reject(req.error); };
+  });
+}
+async function _v92IdbEnqueuePunch(payload) {
+  try {
+    const db = await _v92IdbOpen();
+    const tx = db.transaction(_V92_IDB_STORE, 'readwrite');
+    const store = tx.objectStore(_V92_IDB_STORE);
+    payload.clientPunchId = payload.clientPunchId || ('cp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
+    payload.queuedAt = Date.now();
+    store.put(payload);
+    return new Promise(function (resolve) { tx.oncomplete = function () { resolve(payload.clientPunchId); }; });
+  } catch (e) { console.warn('[v92 F2] IDB enqueue failed:', e); return null; }
+}
+async function _v92IdbDrainQueue() {
+  try {
+    const db = await _v92IdbOpen();
+    const tx = db.transaction(_V92_IDB_STORE, 'readwrite');
+    const store = tx.objectStore(_V92_IDB_STORE);
+    const all = await new Promise(function (resolve) { const req = store.getAll(); req.onsuccess = function () { resolve(req.result || []); }; });
+    let replayed = 0, failed = 0;
+    for (const punch of all) {
+      try {
+        const r = await API.call(punch._action || 'clockIn', punch, { silent: true });
+        if (r && r.ok) {
+          const tx2 = db.transaction(_V92_IDB_STORE, 'readwrite');
+          tx2.objectStore(_V92_IDB_STORE).delete(punch.clientPunchId);
+          replayed++;
+        } else { failed++; }
+      } catch (e) { failed++; }
+    }
+    return { replayed: replayed, failed: failed, total: all.length };
+  } catch (e) { return { replayed: 0, failed: 0, total: 0, error: e.message }; }
+}
+async function _v92IdbCount() {
+  try {
+    const db = await _v92IdbOpen();
+    const tx = db.transaction(_V92_IDB_STORE, 'readonly');
+    return await new Promise(function (resolve) { const req = tx.objectStore(_V92_IDB_STORE).count(); req.onsuccess = function () { resolve(req.result); }; });
+  } catch (e) { return 0; }
+}
+window.addEventListener('online', function () {
+  _v92IdbDrainQueue().then(function (r) {
+    if (r && r.replayed > 0) toast('📡 Replayed ' + r.replayed + ' offline punch(es)', 'success', 5000);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// v92 W4 F3 — Selfie attendance + geofence
+// ═════════════════════════════════════════════════════════════════════════════
+// EN: Optional capture of a selfie + geolocation when clocking in. Owner toggles
+// requireSelfie / requireGeofence in Settings → Compliance. Default OFF (engine-neutral).
+// HI: क्लॉक-इन के समय सेल्फ़ी + लोकेशन कैप्चर। डिफ़ॉल्ट: बंद।
+async function _v92CaptureSelfie() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { return { ok:false, error:'Camera not available' }; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 320 } });
+    const video = document.createElement('video');
+    video.srcObject = stream; await video.play();
+    await new Promise(function (r) { setTimeout(r, 300); }); // settle exposure
+    const canvas = document.createElement('canvas');
+    canvas.width = 320; canvas.height = 320;
+    canvas.getContext('2d').drawImage(video, 0, 0, 320, 320);
+    stream.getTracks().forEach(function (t) { t.stop(); });
+    return { ok:true, dataUrl: canvas.toDataURL('image/jpeg', 0.7) };
+  } catch (e) { return { ok:false, error: e.message }; }
+}
+function _v92GetGeolocation() {
+  return new Promise(function (resolve) {
+    if (!navigator.geolocation) { resolve({ ok:false, error:'Geolocation not available' }); return; }
+    navigator.geolocation.getCurrentPosition(
+      function (pos) { resolve({ ok:true, lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }); },
+      function (err) { resolve({ ok:false, error: err.message }); },
+      { timeout: 6000, maximumAge: 60000 }
+    );
+  });
+}
+// Haversine distance in meters
+function _v92Haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+// Owner-configurable factory center+radius (Settings → Compliance). Default: bypass (radius=0 → always allowed).
+function _v92IsInsideGeofence(lat, lng) {
+  const centerLat = parseFloat((State.settings || {}).geofenceCenterLat || 0);
+  const centerLng = parseFloat((State.settings || {}).geofenceCenterLng || 0);
+  const radiusM = parseFloat((State.settings || {}).geofenceRadiusM || 0);
+  if (!radiusM || !centerLat || !centerLng) return true; // bypass when not configured
+  return _v92Haversine(centerLat, centerLng, lat, lng) <= radiusM;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// v93 FIX-4 + FIX-6 — owner Security & Maintenance helpers
+// ═════════════════════════════════════════════════════════════════════════════
+// FIX-4: explicit owner-triggered migration of mgr/sup passwords to PropertiesService.
+async function _v93MigrateRolePasswords() {
+  if (State.adminRole !== 'owner') { toast('Owner only', 'error'); return; }
+  if (!confirm('Move Manager & Supervisor passwords to secure storage and BLANK the Config rows?\n\nThis is ONE-WAY. Make sure you have backed up the current Config password values and that v93 is stable — a rollback to v91 after this needs those values restored.')) return;
+  const res = await API.call('migrateRolePasswordsToSecureStore', {});
+  if (res && res.ok) toast('✓ ' + (res.message || ('Migrated ' + (res.migrated || 0) + ' password(s).')), 'success', 7000);
+  else toast((res && res.error) || 'Migration failed', 'error');
+}
+// FIX-6: load + render the Audit Log Health summary (owner-only read).
+async function _v93RenderAuditHealth() {
+  const body = document.getElementById('v93-audit-health-body');
+  if (!body) return;
+  if (State.adminRole !== 'owner') { body.textContent = 'Owner only.'; return; }
+  body.textContent = 'Loading…';
+  const res = await API.call('getAuditLogHealth', {});
+  if (!res || !res.ok) { body.textContent = 'Failed to load: ' + ((res && res.error) || 'unknown'); return; }
+  const trg = (res.installedTriggers || []).map(function (t) { return escHtml(t.handler); }).join(', ') || 'none installed';
+  body.innerHTML =
+    'Live audit rows: <strong>' + (res.totalRowsLive || 0) + '</strong><br>' +
+    'Archived rows: <strong>' + (res.archivedRows || 0) + '</strong> across <strong>' + (res.archiveSheets || 0) + '</strong> quarter sheet(s)<br>' +
+    'Last archive run: <strong>' + (escHtml(res.lastArchiveRun) || '—') + '</strong><br>' +
+    'Last redact run: <strong>' + (escHtml(res.lastRedactRun) || '—') + '</strong><br>' +
+    'Last compaction: <strong>' + (escHtml(res.lastCompactRun) || '—') + '</strong><br>' +
+    'Scheduled triggers: <strong>' + trg + '</strong>';
+}
+// FIX-6: run an owner-gated audit maintenance action with a confirm prompt.
+async function _v93AuditAction(action, confirmMsg) {
+  if (State.adminRole !== 'owner') { toast('Owner only', 'error'); return; }
+  if (!confirm(confirmMsg)) return;
+  const res = await API.call(action, {});
+  if (res && res.ok) { toast('✓ Done', 'success'); _v93RenderAuditHealth(); }
+  else toast((res && res.error) || 'Action failed', 'error');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// v92 K — Claude AI hook clipboard helpers (UI wrappers around the W3 GAS exports)
+// ═════════════════════════════════════════════════════════════════════════════
+async function _v92AICopyPrePayrollAnomalies(year, month) {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  const res = await API.call('aiExportPrePayrollAnomalies', { year: year, month: month });
+  if (!res || !res.ok) { toast('Export failed', 'error'); return; }
+  await navigator.clipboard.writeText(JSON.stringify(res, null, 2));
+  toast('📋 Copied — paste into Claude to get anomaly report', 'success', 5000);
+}
+async function _v92AICopyComplianceStatus() {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  const res = await API.call('aiExportComplianceStatus', {});
+  if (!res || !res.ok) { toast('Export failed', 'error'); return; }
+  await navigator.clipboard.writeText(JSON.stringify(res, null, 2));
+  toast('📋 Copied — paste into Claude for compliance synthesis', 'success', 5000);
+}
+async function _v92AICopyExitInterview(empCode) {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  const res = await API.call('aiExportExitInterview', { empCode: empCode });
+  if (!res || !res.ok) { toast('Export failed: ' + (res && res.error), 'error'); return; }
+  await navigator.clipboard.writeText(JSON.stringify(res, null, 2));
+  toast('📋 Copied — paste into Claude for exit synthesis', 'success', 5000);
+}
+async function _v92AICopyResumeJDMatch(candidateId, jd) {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  const res = await API.call('aiExportResumeJDMatch', { candidateId: candidateId, jd: jd || '' });
+  if (!res || !res.ok) { toast('Export failed', 'error'); return; }
+  await navigator.clipboard.writeText(JSON.stringify(res, null, 2));
+  toast('📋 Copied — paste into Claude for resume-JD scoring', 'success', 5000);
+}
+
+// v92 B2 — one-click secureExistingReceipts + secureExistingDocuments runner.
+async function _v92SecureReceiptsAndDocs() {
+  if (State.adminRole !== 'owner') { toast('Owner only','error'); return; }
+  if (!confirm('🔒 Privatize any publicly-shared receipts and documents?\n\nIdempotent — only files with ANYONE_WITH_LINK sharing are touched. Safe to re-run.')) return;
+  toast('🔒 Securing files…','info',3000);
+  let r1 = null, r2 = null;
+  try {
+    r1 = await API.call('secureExistingReceipts', { ownerToken: State._dzToken||'' });
+  } catch(e) { r1 = { ok:false, error:'receipts error' }; }
+  try {
+    r2 = await API.call('secureExistingDocuments', { ownerToken: State._dzToken||'' });
+  } catch(e) { r2 = { ok:false, error:'docs error' }; }
+  const summary = '🔒 Receipts: ' + (r1 && r1.ok ? (r1.secured || 0) + ' secured / ' + (r1.skipped || 0) + ' skipped' : 'ERR') +
+                  ' · Docs: ' + (r2 && r2.ok ? (r2.secured || 0) + ' secured / ' + (r2.skipped || 0) + ' skipped' : 'ERR');
+  toast(summary, (r1 && r1.ok && r2 && r2.ok) ? 'success' : 'warning', 8000);
+  // Update last-run badge
+  const ts = new Date().toLocaleString('en-IN');
+  const span = document.getElementById('v92-secure-last-run');
+  if (span) span.textContent = ' · Last run: ' + ts;
+  // Persist last-run timestamp via updateSettings so the badge survives reloads.
+  try { await API.call('updateSettings', { updates: { lastReceiptSecureRun: ts } }); } catch(e) {}
+}
+
+// v92 B2 — boot banner: on first owner-tab render of Settings, surface a count of
+// presumed-unsecured receipts (best-effort — actual count needs a server probe; for
+// now we surface the last-run timestamp as a recency hint).
+function _v92HydrateSecureBadge() {
+  try {
+    const ts = (State.settings && State.settings.lastReceiptSecureRun) || '';
+    const span = document.getElementById('v92-secure-last-run');
+    if (span && ts) span.textContent = ' · Last run: ' + ts;
+  } catch (e) {}
+}
+
+// v92 B1 — save the ESS earnings mode toggle. Engine UNTOUCHED.
+async function _v92SaveEssEarnedSoFarMode() {
+  const checked = document.querySelector('input[name="cfg-essEarnedSoFarMode"]:checked');
+  const v = checked ? checked.value : 'payroll';
+  if (v !== 'payroll' && v !== 'conservative') { toast('Invalid mode','warning'); return; }
+  const res = await API.call('updateSettings', { updates: { essEarnedSoFarMode: v } });
+  if (!res.ok) { toast(res.error || 'Save failed','error'); return; }
+  const sRes = await API.call('getSettings', {});
+  if (sRes.ok) applySettingsArr(sRes.settings||[]);
+  toast('✓ ESS earnings mode = ' + v + ' (engine unchanged)','success',4000);
 }
 
 function applyBranding() {
@@ -15197,6 +15709,14 @@ async function saveOrgSettings() {
   // Checkboxes
   const geofEl=document.getElementById('cfg-geofenceEnabled');
   if(geofEl) updates['geofenceEnabled']=geofEl.checked?'true':'false';
+  // v93 FIX-5 (F3): selfie + secondary geofence toggles (default OFF). Saved as strings.
+  const reqSelfieEl=document.getElementById('cfg-requireSelfie');
+  if(reqSelfieEl) updates['requireSelfie']=reqSelfieEl.checked?'true':'false';
+  const reqGeofEl=document.getElementById('cfg-requireGeofence');
+  if(reqGeofEl) updates['requireGeofence']=reqGeofEl.checked?'true':'false';
+  const gcLatEl=document.getElementById('cfg-geofenceCenterLat'); if(gcLatEl) updates['geofenceCenterLat']=gcLatEl.value;
+  const gcLngEl=document.getElementById('cfg-geofenceCenterLng'); if(gcLngEl) updates['geofenceCenterLng']=gcLngEl.value;
+  const gcRadEl=document.getElementById('cfg-geofenceRadiusM');   if(gcRadEl) updates['geofenceRadiusM']=gcRadEl.value;
   const remEl=document.getElementById('cfg-reminderEnabled');
   if(remEl) updates['reminderEnabled']=remEl.checked?'true':'false';
   const actEl=document.getElementById('cfg-requireActivityOnClockIn');
@@ -17385,7 +17905,7 @@ function bulkImportTransactions() {
               amount:parseFloat(row['amount *'])||0, note:row['note']||'',
               approvedBy:row['approvedBy']||State.adminUser||'Admin', status:'Applied',
               dedupOnImport: true /* v43 W3.3 */};
-    }, 'addTransaction', t.fieldGuide, t.sampleRows, t.validValues, t.extraDropdowns, t.templateExtras);
+    }, 'addTransactionAdmin', t.fieldGuide, t.sampleRows, t.validValues, t.extraDropdowns, t.templateExtras); // v92 A2: bulk import is admin-only by definition; route to the owner-gated admin path (ownerToken auto-attached from State._dzToken).
 }
 
 function bulkImportLeaves() {
@@ -20923,6 +21443,930 @@ async function renderSalaryLadderViewer() {
     el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
   }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v94 Wave A — Recruitment Tab UI (E1 E3 E5)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function _v94RenderRecruitment() {
+  if (State.adminRole !== 'owner') {
+    document.getElementById('admin-tab-content').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">🔒</div><p>Recruitment is owner-only.</p></div>';
+    return;
+  }
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  let cands = [];
+  try {
+    const res = await API.call('getCandidates', {});
+    cands = (res && res.candidates) || [];
+  } catch(e) {}
+  const gasUrl = (typeof GAS_URL !== 'undefined' ? GAS_URL : '') || window._gasUrl || '';
+  const applyUrl = gasUrl ? gasUrl + '?page=apply' : '(deploy GAS to get URL)';
+  const html = `
+<div class="section-hdr"><div class="section-title">Recruitment</div></div>
+<!-- Public Apply URL card -->
+<div class="settings-card" style="margin-bottom:14px">
+  <div class="card-title" onclick="toggleCard(this)">E1 — Public Application Page</div>
+  <div class="card-body">
+    <p style="font-size:12px;color:var(--gray-light);margin-bottom:8px">Share this URL publicly so applicants can apply directly. Forms are stored in the Candidates sheet with source='public'.</p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="v94-apply-url" class="form-input" style="flex:1;min-width:200px;font-size:12px" readonly value="${escHtml(applyUrl)}">
+      <button class="btn btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('v94-apply-url').value).then(()=>toast('URL copied','success'))">Copy URL</button>
+    </div>
+    <div style="margin-top:10px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:4px">Optional: reCAPTCHA v3 Keys <span style="font-weight:400;color:var(--gray)">(leave blank to use honeypot-only spam protection)</span></div>
+      <div class="settings-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-group"><label class="form-label">Site Key</label><input id="v94-recaptcha-site" class="form-input" type="text" maxlength="80" placeholder="Site key" value="${escHtml((CFG&&CFG.recaptchaSiteKey)||'')}"></div>
+        <div class="form-group"><label class="form-label">Secret Key</label><input id="v94-recaptcha-secret" class="form-input" type="password" maxlength="80" placeholder="Secret key" value="${escHtml((CFG&&CFG.recaptchaSecretKey)||'')}"></div>
+      </div>
+      <button class="btn btn-sm" onclick="_v94SaveRecaptchaKeys()">Save reCAPTCHA Keys</button>
+    </div>
+  </div>
+</div>
+<!-- Candidate Pipeline -->
+<div class="settings-card">
+  <div class="card-title" onclick="toggleCard(this)">Candidate Pipeline (${cands.length} total)</div>
+  <div class="card-body">
+    <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="_v94AddCandidateModal()">+ Add Candidate</button>
+      <button class="btn btn-sm btn-dark" onclick="_v94RenderRecruitment()">↻ Refresh</button>
+    </div>
+    ${cands.length === 0
+      ? '<p style="color:var(--gray);font-size:13px">No candidates yet. Share the public apply URL or add manually.</p>'
+      : `<div style="overflow-x:auto"><table class="az-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Stage</th><th>Applied</th><th>Actions</th></tr></thead><tbody>
+${cands.map(c => `<tr>
+  <td><strong>${escHtml(c.name||'')}</strong></td>
+  <td style="font-size:11px">${escHtml(c.email||'')}</td>
+  <td>${escHtml(c.role||'')}</td>
+  <td><span class="badge-gray" style="font-size:10px">${escHtml(c.currentStage||'Applied')}</span></td>
+  <td style="font-size:11px">${escHtml(c.appliedOn||'')}</td>
+  <td style="white-space:nowrap">
+    <button class="btn btn-sm btn-dark" style="font-size:10px;padding:3px 7px" onclick="_v94SendKYCInvite('${escHtml(c.candidateId||'')}','${escHtml(c.name||'')}')">KYC Invite</button>
+    <button class="btn btn-sm btn-dark" style="font-size:10px;padding:3px 7px;margin-left:4px" onclick="_v94OfferLetterModal('${escHtml(c.candidateId||'')}','${escHtml(c.name||'')}')">Offer Letter</button>
+    <button class="btn btn-sm btn-dark" style="font-size:10px;padding:3px 7px;margin-left:4px" onclick="_v94HireCandidate('${escHtml(c.candidateId||'')}','${escHtml(c.name||'')}')">Hire</button>
+  </td>
+</tr>`).join('')}
+</tbody></table></div>`
+    }
+  </div>
+</div>
+<!-- A15 Migration card (owner only) -->
+<div class="settings-card" style="margin-top:14px">
+  <div class="card-title" onclick="toggleCard(this)">A15 — Per-Year Sheet Migration (Attendance &amp; Audit)</div>
+  <div class="card-body">
+    <p style="font-size:12px;color:var(--gray-light);margin-bottom:10px">Creates per-year sheets (Attendance_YYYY, AuditLog_YYYY) from the legacy sheets. Always run dry-run first. <strong>Back up the full spreadsheet before running the real migration.</strong></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="_v94RunA15Migration(true)">Dry Run (safe)</button>
+      <button class="btn btn-sm" style="background:var(--red)" onclick="_v94RunA15Migration(false)">Real Migration</button>
+    </div>
+    <div id="v94-a15-result" style="margin-top:10px;font-size:12px"></div>
+  </div>
+</div>`;
+  // v96 F9: append Onboarding checklist section
+  const onbHtml = _v96OnboardingCardHtml(cands);
+  document.getElementById('admin-tab-content').innerHTML = html + onbHtml;
+}
+
+async function _v94SaveRecaptchaKeys() {
+  const site   = document.getElementById('v94-recaptcha-site').value.trim();
+  const secret = document.getElementById('v94-recaptcha-secret').value.trim();
+  const res = await API.call('updateSettings', { settings: { recaptchaSiteKey: site, recaptchaSecretKey: secret } });
+  if (res && res.ok) toast('reCAPTCHA keys saved', 'success');
+  else toast('Save failed: ' + ((res && res.error)||''), 'error');
+}
+
+async function _v94SendKYCInvite(candidateId, name) {
+  if (!confirm('Send KYC invite email to ' + name + '?')) return;
+  const res = await API.call('sendKYCInvite', { candidateId });
+  if (res && res.ok) toast('KYC invite sent to ' + (res.sentTo||''), 'success', 4000);
+  else toast('Failed: ' + ((res&&res.error)||''), 'error');
+}
+
+function _v94OfferLetterModal(candidateId, name) {
+  showModal('Generate Offer Letter — ' + name,
+    `<div class="settings-grid">
+      <div class="form-group"><label class="form-label">CTC (Annual)</label><input id="v94-ctc" class="form-input" placeholder="e.g. ₹3,60,000 p.a."></div>
+      <div class="form-group"><label class="form-label">Role / Designation</label><input id="v94-offrole" class="form-input" placeholder="Graphic Designer"></div>
+      <div class="form-group"><label class="form-label">Joining Date</label><input type="date" id="v94-joindt" class="form-input"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Terms (optional)</label><textarea id="v94-terms" class="form-input" rows="2" placeholder="As per company policy."></textarea></div>`,
+    [
+      { label:'Generate PDF', action: async function() {
+          const res = await API.call('generateOfferLetter', { candidateId,
+            ctc: document.getElementById('v94-ctc').value,
+            role: document.getElementById('v94-offrole').value,
+            joiningDate: document.getElementById('v94-joindt').value,
+            terms: document.getElementById('v94-terms').value });
+          if (res && res.ok) {
+            const offerId = res.offerId;
+            hideModal();
+            toast('Offer PDF generated. Offer ID: ' + offerId, 'success', 5000);
+            if (confirm('Send accept email to candidate now?')) {
+              const s = await API.call('sendOfferEmail', { candidateId, offerId });
+              if (s && s.ok) toast('Offer email sent to ' + (s.sentTo||''), 'success');
+              else toast('Email failed: ' + ((s&&s.error)||''), 'error');
+            }
+          } else toast('Failed: ' + ((res&&res.error)||''), 'error');
+      }},
+      { label:'Cancel', action: hideModal }
+    ]);
+}
+
+async function _v94HireCandidate(candidateId, name) {
+  if (!confirm('Hire ' + name + '? This will create a new employee record.')) return;
+  const res = await API.call('hireCandidate', { candidateId });
+  if (res && res.ok) { toast('Employee created. Emp ID: ' + (res.empId||''), 'success'); _v94RenderRecruitment(); }
+  else toast('Failed: ' + ((res&&res.error)||''), 'error');
+}
+
+function _v94AddCandidateModal() {
+  showModal('Add Candidate',
+    `<div class="settings-grid">
+      <div class="form-group"><label class="form-label">Name *</label><input id="v94-cand-name" class="form-input" placeholder="Full name"></div>
+      <div class="form-group"><label class="form-label">Email *</label><input type="email" id="v94-cand-email" class="form-input" placeholder="email@example.com"></div>
+      <div class="form-group"><label class="form-label">Mobile</label><input id="v94-cand-phone" class="form-input" placeholder="+91 98765 43210"></div>
+      <div class="form-group"><label class="form-label">Role Applied For</label><input id="v94-cand-role" class="form-input" placeholder="e.g. Designer"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea id="v94-cand-notes" class="form-input" rows="2"></textarea></div>`,
+    [
+      { label:'Add Candidate', action: async function() {
+          const n = document.getElementById('v94-cand-name').value.trim();
+          const e = document.getElementById('v94-cand-email').value.trim();
+          if (!n || !e) { toast('Name and email required','error'); return; }
+          const res = await API.call('addCandidate', { name:n, email:e, phone: document.getElementById('v94-cand-phone').value, role: document.getElementById('v94-cand-role').value, notes: document.getElementById('v94-cand-notes').value });
+          if (res && res.ok) { hideModal(); toast('Candidate added','success'); _v94RenderRecruitment(); }
+          else toast('Failed: ' + ((res&&res.error)||''), 'error');
+      }},
+      { label:'Cancel', action: hideModal }
+    ]);
+}
+
+async function _v94RunA15Migration(dryRun) {
+  if (!dryRun && !confirm('This will copy ALL attendance and audit rows to per-year sheets. Have you backed up the spreadsheet?')) return;
+  const el = document.getElementById('v94-a15-result');
+  if (el) el.innerHTML = '<span style="color:var(--gray)">Running ' + (dryRun?'dry run':'real migration') + '…</span>';
+  try {
+    const res = await API.call('migratePerYearSheets', { dryRun });
+    if (res && res.ok) {
+      const r = res.report || {};
+      let out = '<strong>' + (dryRun ? 'Dry Run Complete' : '✅ Migration Complete') + '</strong><br>';
+      Object.keys(r).forEach(function(sheet) {
+        const sr = r[sheet];
+        out += '<br><strong>' + escHtml(sheet) + '</strong>: ';
+        if (sr.skipped) { out += 'skipped — ' + escHtml(sr.reason||''); return; }
+        const rec = sr._reconciliation || {};
+        out += 'legacy rows: ' + (rec.legacyTotal||0) + ', ';
+        if (dryRun) out += 'to migrate: ' + (rec.totalToMigrate||0);
+        else out += 'reconciliation: <strong style="color:' + (rec.pass?'var(--green)':'var(--red)') + '">' + (rec.pass?'PASS':'FAIL') + '</strong>';
+        Object.keys(sr).filter(function(k){ return k!=='_reconciliation'; }).forEach(function(yr) {
+          const yd = sr[yr];
+          out += '<br>&nbsp;&nbsp;&nbsp;' + escHtml(yr) + ': ' + JSON.stringify(yd).replace(/[{}]/g,'').replace(/"/g,'');
+        });
+      });
+      if (el) el.innerHTML = out;
+      toast(dryRun ? 'Dry run complete' : 'Migration complete', 'success', 5000);
+    } else {
+      if (el) el.innerHTML = '<span style="color:var(--red)">Error: ' + escHtml((res&&res.error)||'unknown') + '</span>';
+      toast('Migration failed', 'error');
+    }
+  } catch(e) {
+    if (el) el.innerHTML = '<span style="color:var(--red)">Error: ' + escHtml(e.message) + '</span>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v94 Wave D — Notification Center client code
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var _v94NotifPanelOpen = false;
+var _v94NotifPollInterval = null;
+
+function _v94ToggleNotifPanel() {
+  _v94NotifPanelOpen = !_v94NotifPanelOpen;
+  var panel = document.getElementById('notif-panel');
+  if (!panel) return;
+  panel.style.display = _v94NotifPanelOpen ? 'block' : 'none';
+  if (_v94NotifPanelOpen) _v94LoadNotifications();
+}
+
+async function _v94LoadNotifications() {
+  var list = document.getElementById('notif-list');
+  if (!list) return;
+  try {
+    var res = await API.call('getNotifications', { recipientId: 'owner', limit: 20 });
+    var notifs = (res && res.notifications) || [];
+    var unread = (res && res.unread) || 0;
+    // Update badge
+    var badge = document.getElementById('notif-badge');
+    if (badge) {
+      if (unread > 0) { badge.textContent = unread > 9 ? '9+' : unread; badge.style.display = 'flex'; }
+      else badge.style.display = 'none';
+    }
+    if (!notifs.length) { list.innerHTML = '<span style="color:var(--gray)">No notifications.</span>'; return; }
+    list.innerHTML = notifs.map(function(n) {
+      var isRead = String(n.read||'false') === 'true';
+      return '<div style="padding:8px 0;border-bottom:1px solid var(--dark3);' + (isRead?'opacity:.6':'') + '">'
+        + '<div style="font-size:11px;color:var(--gold)">' + escHtml(n.type||'') + ' · ' + escHtml(String(n.createdAt||'').slice(0,16)) + '</div>'
+        + '<div style="margin-top:2px">' + escHtml(n.message||'') + '</div>'
+        + (!isRead ? '<button onclick="_v94MarkRead(\'' + escHtml(n.notifId||'') + '\')" style="font-size:10px;background:none;color:var(--gray-light);border:none;cursor:pointer;padding:2px 0">Mark read</button>' : '')
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    if (list) list.innerHTML = '<span style="color:var(--gray)">Could not load notifications.</span>';
+  }
+}
+
+async function _v94MarkRead(notifId) {
+  try { await API.call('markNotificationRead', { notifId }); _v94LoadNotifications(); } catch(e) {}
+}
+
+async function _v94MarkAllRead() {
+  try { await API.call('markAllNotificationsRead', { recipientId: 'owner' }); _v94LoadNotifications(); } catch(e) {}
+}
+
+// Start polling every 60 seconds when logged in as owner
+function _v94StartNotifPolling() {
+  if (_v94NotifPollInterval) return;
+  // v95 BUG-05: gate immediate load behind role check to avoid polling for non-owners
+  if (typeof State !== 'undefined' && State.adminRole === 'owner') _v94LoadNotifications();
+  _v94NotifPollInterval = setInterval(function() {
+    if (typeof State !== 'undefined' && State.adminRole === 'owner') _v94LoadNotifications();
+  }, 60000);
+}
+
+// Wire up polling after login — extend the existing adminLoggedIn flow if present
+(function() {
+  var _orig = typeof window.adminLoggedIn === 'function' ? window.adminLoggedIn : null;
+  // Patch after page load so the original is defined
+  setTimeout(function() {
+    var _o = window.adminLoggedIn;
+    if (typeof _o === 'function') {
+      window.adminLoggedIn = function() {
+        var r = _o.apply(this, arguments);
+        try { if (typeof State !== 'undefined' && State.adminRole === 'owner') _v94StartNotifPolling(); } catch(e) {}
+        return r;
+      };
+    }
+  }, 3500); // v95 BUG-05: reduced race window for poll patch
+  // Also close panel when clicking outside
+  document.addEventListener('click', function(ev) {
+    if (!_v94NotifPanelOpen) return;
+    var wrap = document.getElementById('notif-bell-wrap');
+    if (wrap && !wrap.contains(ev.target)) {
+      _v94NotifPanelOpen = false;
+      var panel = document.getElementById('notif-panel');
+      if (panel) panel.style.display = 'none';
+    }
+  }, true);
+})();
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v96 WAVE 2 — Dead Code + Utility (D1 done above, D3 in GAS)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// v96 F2: IndexedDB offline queue status pill update
+async function _v96UpdateIdbStatusPill() {
+  try {
+    await _v92IdbOpen();
+    var n = await _v92IdbCount();
+    var pill = document.getElementById('idb-queue-pill');
+    var cnt  = document.getElementById('idb-queue-count');
+    if (pill && cnt) {
+      cnt.textContent = n;
+      pill.style.display = n > 0 ? 'block' : 'none';
+    }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v96 WAVE 3 — Compliance Settings + KRA Surface
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── C1: PT Slabs Editor ─────────────────────────────────────────────────────
+async function _v96OpenPTSlabsEditor() {
+  if (State.adminRole !== 'owner') { toast('Owner only', 'error'); return; }
+  const res = await API.call('getPTSlabs', {});
+  var slabs = (res && res.slabs) || [];
+  function rowHtml(s, i) {
+    return '<tr id="pt-row-' + i + '">'
+      + '<td><input class="form-input" style="width:70px" id="pt-state-' + i + '" value="' + escHtml(String(s.state||'')) + '" placeholder="UP"></td>'
+      + '<td><input class="form-input" style="width:90px" type="number" id="pt-gross-' + i + '" value="' + escHtml(String(s.monthlyGross||'')) + '" placeholder="0"></td>'
+      + '<td><input class="form-input" style="width:80px" type="number" id="pt-tax-' + i + '" value="' + escHtml(String(s.tax||'')) + '" placeholder="0"></td>'
+      + '<td><select class="form-input" style="width:110px" id="pt-period-' + i + '">'
+      + '<option value="M"' + (s.period==='M'?' selected':'') + '>Monthly</option>'
+      + '<option value="HY"' + (s.period==='HY'?' selected':'') + '>Half-Yearly</option>'
+      + '<option value="A"' + (s.period==='A'?' selected':'') + '>Annual</option>'
+      + '<option value="Q"' + (s.period==='Q'?' selected':'') + '>Quarterly</option>'
+      + '</select></td>'
+      + '<td><button class="btn btn-red btn-sm" onclick="this.closest(\'tr\').remove()">✕</button></td>'
+      + '</tr>';
+  }
+  var tableHtml = '<div style="overflow-x:auto"><table class="az-table" id="pt-slabs-table">'
+    + '<thead><tr><th>State</th><th>Gross ≤ (₹)</th><th>Tax (₹)</th><th>Period</th><th></th></tr></thead>'
+    + '<tbody>' + slabs.map(rowHtml).join('') + '</tbody></table></div>'
+    + '<button class="btn btn-dark btn-sm" style="margin-top:8px" onclick="_v96AddPTRow()">+ Add Row</button>'
+    + '<p style="font-size:11px;color:var(--gray);margin-top:8px">UP = ₹0 PT (current state). Add other states only when hiring outside UP.</p>';
+  showModal('Professional Tax Slabs Editor', tableHtml, [
+    { label:'Save Slabs', action: async function() {
+        var tbl = document.getElementById('pt-slabs-table');
+        if (!tbl) return;
+        var rows = tbl.querySelectorAll('tbody tr');
+        var slabs2 = [];
+        rows.forEach(function(tr) {
+          var id = tr.id.replace('pt-row-','');
+          slabs2.push({
+            state: (document.getElementById('pt-state-' + id)||{value:''}).value.trim().toUpperCase(),
+            monthlyGross: parseFloat((document.getElementById('pt-gross-' + id)||{value:'0'}).value)||0,
+            tax: parseFloat((document.getElementById('pt-tax-' + id)||{value:'0'}).value)||0,
+            period: (document.getElementById('pt-period-' + id)||{value:'M'}).value
+          });
+        });
+        var r = await API.call('savePTSlabs', { slabs: slabs2 });
+        if (r && r.ok) { hideModal(); toast('PT slabs saved (' + slabs2.length + ' rows)', 'success'); }
+        else toast((r&&r.error)||'Save failed', 'error');
+    }},
+    { label:'Reset to Defaults', action: async function() {
+        if (!confirm('Reset PT slabs to the built-in defaults? This cannot be undone.')) return;
+        var r = await API.call('seedPTSlabs', {});
+        if (r && r.ok) { hideModal(); toast('PT slabs reset to defaults', 'success'); }
+        else toast((r&&r.error)||'Failed', 'error');
+    }},
+    { label:'Cancel', action: hideModal }
+  ]);
+}
+var _v96_ptRowIdx = 1000;
+function _v96AddPTRow() {
+  var tbody = document.querySelector('#pt-slabs-table tbody');
+  if (!tbody) return;
+  _v96_ptRowIdx++;
+  var tr = document.createElement('tr');
+  tr.id = 'pt-row-' + _v96_ptRowIdx;
+  tr.innerHTML = '<td><input class="form-input" style="width:70px" id="pt-state-' + _v96_ptRowIdx + '" placeholder="MH"></td>'
+    + '<td><input class="form-input" style="width:90px" type="number" id="pt-gross-' + _v96_ptRowIdx + '" placeholder="0"></td>'
+    + '<td><input class="form-input" style="width:80px" type="number" id="pt-tax-' + _v96_ptRowIdx + '" placeholder="0"></td>'
+    + '<td><select class="form-input" style="width:110px" id="pt-period-' + _v96_ptRowIdx + '">'
+    + '<option value="M">Monthly</option><option value="HY">Half-Yearly</option>'
+    + '<option value="A">Annual</option><option value="Q">Quarterly</option></select></td>'
+    + '<td><button class="btn btn-red btn-sm" onclick="this.closest(\'tr\').remove()">✕</button></td>';
+  tbody.appendChild(tr);
+}
+
+// ─── C2: KRA recommended % in Promotions tab ─────────────────────────────────
+async function _v96LoadKRARecommendedForEmp(empId, containerEl) {
+  try {
+    var r = await API.call('getKRARecommendedPct', { empId: empId });
+    if (r && r.ok && r.recommendedPct != null) {
+      containerEl.textContent = (r.recommendedPct * 100).toFixed(1) + '% (KRA)';
+      containerEl.style.color = 'var(--green)';
+    } else {
+      containerEl.textContent = 'No KRA data';
+      containerEl.style.color = 'var(--gray)';
+    }
+  } catch(e) { containerEl.textContent = '—'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v96 WAVE 4 — Surface Built Features
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── F3: AI Clipboard Exports card (Settings) ────────────────────────────────
+function _v96RenderAIClipboardCard() {
+  return '<div class="settings-card" style="margin-top:12px">'
+    + '<div class="card-title" onclick="toggleCard(this)">🤖 AI Assist — Clipboard Exports</div>'
+    + '<div class="card-body">'
+    + '<p style="font-size:12px;color:var(--gray-light);margin-bottom:12px">Copy data to clipboard then paste into any AI assistant for analysis. Owner-only.</p>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+    + '<button class="btn btn-dark btn-sm" onclick="_v92AICopyPrePayrollAnomalies(new Date().getFullYear(), new Date().getMonth()+1)">Pre-Payroll Anomalies</button>'
+    + '<button class="btn btn-dark btn-sm" onclick="_v92AICopyComplianceStatus()">Compliance Status</button>'
+    + '<button class="btn btn-dark btn-sm" onclick="_v96AIExitInterviewPrompt()">Exit Interview Prep</button>'
+    + '<button class="btn btn-dark btn-sm" onclick="_v96AIResumeJDMatchPrompt()">Resume vs JD Match</button>'
+    + '</div></div></div>';
+}
+function _v96AIExitInterviewPrompt() {
+  showModal('Exit Interview — Employee Code',
+    '<div class="form-group"><label class="form-label">Employee Code</label><input id="ai-exit-emp" class="form-input" placeholder="e.g. AZ_EMP_0012"></div>',
+    [{label:'Copy', action: async function() {
+        var c = (document.getElementById('ai-exit-emp')||{value:''}).value.trim();
+        if (!c) { toast('Enter employee code','error'); return; }
+        await _v92AICopyExitInterview(c); hideModal();
+    }}, {label:'Cancel', action: hideModal}]);
+}
+function _v96AIResumeJDMatchPrompt() {
+  showModal('Resume vs JD — Candidate ID',
+    '<div class="form-group"><label class="form-label">Candidate ID</label><input id="ai-jd-cand" class="form-input" placeholder="e.g. C_ab12cd34"></div>'
+    + '<div class="form-group"><label class="form-label">Job Description (paste)</label><textarea id="ai-jd-text" class="form-input" rows="4" placeholder="Paste the JD here…"></textarea></div>',
+    [{label:'Copy', action: async function() {
+        var c = (document.getElementById('ai-jd-cand')||{value:''}).value.trim();
+        var jd = (document.getElementById('ai-jd-text')||{value:''}).value.trim();
+        if (!c) { toast('Enter candidate ID','error'); return; }
+        var r = await API.call('aiExportResumeJDMatch', {candidateId: c, jd: jd});
+        if (r && r.ok) { await navigator.clipboard.writeText(JSON.stringify(r,null,2)); toast('Copied','success'); hideModal(); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Cancel', action: hideModal}]);
+}
+
+// ─── F4: Reimbursements tab ───────────────────────────────────────────────────
+async function _v96RenderReimbursements() {
+  if (!['owner','manager'].includes(State.adminRole)) {
+    document.getElementById('admin-tab-content').innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>Owner / Manager only.</p></div>';
+    return;
+  }
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const res = await API.call('getReimbursements', {});
+  const all = (res && res.reqs) || [];
+  const pending = all.filter(function(r){ return r.status === 'Pending'; });
+  const approved = all.filter(function(r){ return r.status !== 'Pending'; });
+  const html = '<div style="max-width:1100px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h2 style="font-size:18px;font-weight:700">💰 Reimbursements</h2>'
+    + '<button class="btn btn-dark btn-sm" onclick="_v96RenderReimbursements()">↻ Refresh</button>'
+    + '</div>'
+    + (pending.length ? '<div style="margin-bottom:20px">'
+    + '<div class="section-title" style="color:var(--orange);margin-bottom:10px">Pending Approval (' + pending.length + ')</div>'
+    + pending.map(function(r) {
+        return '<div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;padding:14px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">'
+          + '<div style="flex:1;min-width:200px"><strong>' + escHtml(r.empCode) + '</strong>'
+          + ' <span class="badge-gray" style="font-size:10px">' + escHtml(r.category) + '</span>'
+          + '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-top:2px">₹ ' + parseFloat(r.amount||0).toLocaleString('en-IN') + '</div>'
+          + '<div style="font-size:11px;color:var(--gray-light)">' + escHtml(r.period||'') + (r.notes ? ' — ' + escHtml(r.notes) : '') + '</div>'
+          + '<div style="font-size:10px;color:var(--gray)">Req ID: ' + escHtml(r.reqId) + '</div></div>'
+          + '<div style="display:flex;gap:8px">'
+          + '<button class="btn btn-green btn-sm" onclick="_v96ApproveReimbursement(\'' + escHtml(r.reqId) + '\',\'approve\')">✓ Approve</button>'
+          + '<button class="btn btn-red btn-sm" onclick="_v96ApproveReimbursement(\'' + escHtml(r.reqId) + '\',\'reject\')">✗ Reject</button>'
+          + '</div></div>';
+    }).join('') + '</div>' : '<p style="color:var(--gray);font-size:13px;margin-bottom:16px">No pending reimbursements.</p>')
+    + (approved.length ? '<div><div class="section-title" style="margin-bottom:10px">History (' + approved.length + ')</div>'
+    + '<div style="overflow-x:auto"><table class="az-table"><thead><tr><th>Employee</th><th>Category</th><th>Amount</th><th>Status</th><th>Period</th></tr></thead><tbody>'
+    + approved.slice(0,50).map(function(r) {
+        return '<tr><td>' + escHtml(r.empCode) + '</td><td>' + escHtml(r.category) + '</td><td>₹ ' + parseFloat(r.amount||0).toLocaleString('en-IN')
+          + '</td><td><span style="color:' + (r.status==='Approved'?'var(--green)':'var(--red)') + '">' + escHtml(r.status) + '</span></td><td>' + escHtml(r.period||'') + '</td></tr>';
+    }).join('') + '</tbody></table></div></div>' : '')
+    + '</div>';
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+async function _v96ApproveReimbursement(reqId, action) {
+  var r = await API.call('approveReimbursement', { reqId: reqId, action: action }); // v97 BUG-01 fix: key was reimbId (GAS reads p.reqId)
+  if (r && r.ok) { toast(action === 'approve' ? 'Approved' : 'Rejected', 'success'); _v96RenderReimbursements(); }
+  else toast((r&&r.error)||'Failed', 'error');
+}
+
+// ESS: My Reimbursements
+async function showESSReimbursements() {
+  resetKioskTimer();
+  const empId = State.currentEmp && State.currentEmp.id;
+  if (!empId) return;
+  const res = await API.call('getReimbursements', { empCode: empId });
+  const reqs = (res && res.reqs) || [];
+  showModal('💰 My Reimbursements',
+    '<div style="margin-bottom:12px"><div class="form-group"><label class="form-label">Amount (₹) *</label><input type="number" id="ess-reimb-amt" class="form-input" placeholder="e.g. 500"></div>'
+    + '<div class="form-group"><label class="form-label">Category *</label><select id="ess-reimb-cat" class="form-input"><option>Travel</option><option>Medical</option><option>Meals</option><option>Other</option></select></div>'
+    + '<div class="form-group"><label class="form-label">Month/Period</label><input id="ess-reimb-period" class="form-input" placeholder="e.g. May 2026"></div>'
+    + '<div class="form-group"><label class="form-label">Description</label><textarea id="ess-reimb-note" class="form-input" rows="2" placeholder="What was the expense for?"></textarea></div>'
+    + (reqs.length ? '<div style="margin-top:10px;font-size:12px"><strong>My Requests</strong><table class="az-table" style="margin-top:6px"><thead><tr><th>Amount</th><th>Category</th><th>Status</th></tr></thead><tbody>'
+    + reqs.slice(0,10).map(function(r){ return '<tr><td>₹'+parseFloat(r.amount||0).toLocaleString('en-IN')+'</td><td>'+escHtml(r.category)+'</td><td>'+escHtml(r.status)+'</td></tr>'; }).join('')
+    + '</tbody></table></div>' : ''),
+    [{label:'Submit Request', action: async function() {
+        var amt = parseFloat(document.getElementById('ess-reimb-amt').value)||0;
+        if (!amt || amt <= 0) { toast('Enter a valid amount','error'); return; }
+        var r = await API.call('submitReimbursement', { empCode: empId, requesterId: empId,
+          amount: amt, category: document.getElementById('ess-reimb-cat').value,
+          period: document.getElementById('ess-reimb-period').value,
+          notes: document.getElementById('ess-reimb-note').value });
+        if (r && r.ok) { hideModal(); toast('Reimbursement request submitted','success'); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Close', action: hideModal}]);
+}
+
+// ─── F5: Assets register tab ──────────────────────────────────────────────────
+async function _v96RenderAssets() {
+  if (State.adminRole !== 'owner') {
+    document.getElementById('admin-tab-content').innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>Owner only.</p></div>';
+    return;
+  }
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const res = await API.call('getAssets', {});
+  const assets = (res && res.assets) || [];
+  const html = '<div style="max-width:1100px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h2 style="font-size:18px;font-weight:700">📦 Asset Register</h2>'
+    + '<div style="display:flex;gap:8px"><button class="btn btn-gold btn-sm" onclick="_v96AddAssetModal()">+ Add Asset</button>'
+    + '<button class="btn btn-dark btn-sm" onclick="_v96RenderAssets()">↻ Refresh</button></div></div>'
+    + (assets.length ? '<div style="overflow-x:auto"><table class="az-table"><thead><tr>'
+    + '<th>Type</th><th>Serial No</th><th>Assigned To</th><th>Issued On</th><th>Returned</th><th>Condition</th><th>Notes</th><th>Action</th>'
+    + '</tr></thead><tbody>'
+    + assets.map(function(a) {
+        var returned = a.returnedOn ? a.returnedOn.slice(0,10) : '';
+        return '<tr>'
+          + '<td>' + escHtml(a.type||'') + '</td>'
+          + '<td style="font-size:11px">' + escHtml(a.serialNo||'') + '</td>'
+          + '<td>' + escHtml(a.assignedTo||'—') + '</td>'
+          + '<td style="font-size:11px">' + escHtml((a.issuedOn||'').slice(0,10)) + '</td>'
+          + '<td style="font-size:11px">' + (returned || '<span style="color:var(--orange)">Active</span>') + '</td>'
+          + '<td style="font-size:11px">' + escHtml(a.condition||'') + '</td>'
+          + '<td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis">' + escHtml(a.notes||'') + '</td>'
+          + '<td>' + (!returned ? '<button class="btn btn-dark btn-sm" style="font-size:10px" onclick="_v96ReturnAsset(\'' + escHtml(a.assetId) + '\')">Return</button>' : '') + '</td>'
+          + '</tr>';
+    }).join('') + '</tbody></table></div>'
+    : '<div class="empty-state"><div class="empty-icon">📦</div><p>No assets registered yet.</p></div>')
+    + '</div>';
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+function _v96AddAssetModal() {
+  showModal('Add Asset',
+    '<div class="settings-grid">'
+    + '<div class="form-group"><label class="form-label">Type *</label><input id="a-type" class="form-input" placeholder="Laptop, Phone, Camera…"></div>'
+    + '<div class="form-group"><label class="form-label">Serial No</label><input id="a-serial" class="form-input" placeholder="SN-12345"></div>'
+    + '<div class="form-group"><label class="form-label">Assigned To (Employee Code)</label><input id="a-emp" class="form-input" placeholder="AZ_EMP_0001 (leave blank if unassigned)"></div>'
+    + '<div class="form-group"><label class="form-label">Issued On</label><input type="date" id="a-issued" class="form-input"></div>'
+    + '<div class="form-group"><label class="form-label">Condition</label><select id="a-cond" class="form-input"><option>New</option><option>Good</option><option>Fair</option><option>Damaged</option></select></div>'
+    + '</div><div class="form-group"><label class="form-label">Notes</label><textarea id="a-notes" class="form-input" rows="2"></textarea></div>',
+    [{label:'Add', action: async function() {
+        var type = (document.getElementById('a-type')||{value:''}).value.trim();
+        if (!type) { toast('Type is required','error'); return; }
+        var r = await API.call('upsertAsset', { row: {
+          assetId: 'AS_' + Date.now().toString(36),
+          type: type, serialNo: (document.getElementById('a-serial')||{value:''}).value.trim(),
+          assignedTo: (document.getElementById('a-emp')||{value:''}).value.trim(),
+          issuedOn: (document.getElementById('a-issued')||{value:''}).value,
+          condition: (document.getElementById('a-cond')||{value:'Good'}).value,
+          notes: (document.getElementById('a-notes')||{value:''}).value.trim()
+        }});
+        if (r && r.ok) { hideModal(); toast('Asset added','success'); _v96RenderAssets(); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Cancel', action: hideModal}]);
+}
+async function _v96ReturnAsset(assetId) {
+  if (!confirm('Mark this asset as returned?')) return;
+  var r = await API.call('returnAsset', { assetId: assetId });
+  if (r && r.ok) { toast('Asset returned','success'); _v96RenderAssets(); }
+  else toast((r&&r.error)||'Failed','error');
+}
+
+// ─── F6: Helpdesk tab ─────────────────────────────────────────────────────────
+async function _v96RenderHelpdesk() {
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const res = await API.call('getTickets', {});
+  const tickets = (res && res.tickets) || [];
+  const open   = tickets.filter(function(t){ return t.status !== 'Resolved'; });
+  const closed = tickets.filter(function(t){ return t.status === 'Resolved'; });
+  const catColors = {IT:'var(--blue)',HR:'var(--gold)',Admin:'var(--orange)',Other:'var(--gray)'};
+  function tRow(t) {
+    return '<div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">'
+      + '<div style="flex:1;min-width:200px">'
+      + '<span style="background:' + (catColors[t.category]||'var(--gray)') + '22;color:' + (catColors[t.category]||'var(--gray)') + ';border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">' + escHtml(t.category||'') + '</span>'
+      + ' <strong>' + escHtml(t.subject||'') + '</strong>'
+      + '<div style="font-size:12px;color:var(--gray-light);margin-top:2px">' + escHtml(t.empCode||'') + ' · ' + escHtml((t.filedOn||'').slice(0,10)) + '</div>'
+      + (t.body ? '<div style="font-size:11px;color:var(--gray);margin-top:2px">' + escHtml(t.body.slice(0,80)) + (t.body.length>80?'…':'') + '</div>' : '')
+      + '</div>'
+      + '<div><select class="form-input" style="font-size:12px;padding:4px 8px" onchange="_v96ConfirmTicketUpdate(\'' + escHtml(t.ticketId) + '\',this.value,this)">'
+      + ['Open','In Progress','Resolved'].map(function(s){ return '<option' + (t.status===s?' selected':'') + '>' + s + '</option>'; }).join('')
+      + '</select></div></div>';
+  }
+  const html = '<div style="max-width:1000px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h2 style="font-size:18px;font-weight:700">🎫 Helpdesk Tickets</h2>'
+    + '<button class="btn btn-dark btn-sm" onclick="_v96RenderHelpdesk()">↻ Refresh</button></div>'
+    + (open.length ? '<div style="margin-bottom:20px"><div class="section-title" style="color:var(--orange);margin-bottom:8px">Open (' + open.length + ')</div>'
+    + open.map(tRow).join('') + '</div>' : '<p style="color:var(--gray);font-size:13px;margin-bottom:16px">No open tickets.</p>')
+    + (closed.length ? '<details><summary style="cursor:pointer;font-size:13px;color:var(--gray-light);margin-bottom:8px">Resolved (' + closed.length + ')</summary>'
+    + closed.slice(0,20).map(tRow).join('') + '</details>' : '')
+    + '</div>';
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+async function _v96UpdateTicket(ticketId, status) {
+  var r = await API.call('updateTicket', { ticketId: ticketId, status: status });
+  if (r && r.ok) toast('Status updated to: ' + status, 'success');
+  else toast((r&&r.error)||'Failed','error');
+}
+// v97 BUG-04: confirm dialog before ticket status change
+function _v96ConfirmTicketUpdate(ticketId, status, el) {
+  if (!confirm('Update ticket status to "' + status + '"?')) {
+    _v96RenderHelpdesk(); // re-render to reset dropdown to saved state
+    return;
+  }
+  _v96UpdateTicket(ticketId, status);
+}
+
+// ESS: Helpdesk
+async function showESSHelpdesk() {
+  resetKioskTimer();
+  const empId = State.currentEmp && State.currentEmp.id;
+  if (!empId) return;
+  const res = await API.call('getTickets', { empCode: empId });
+  const mine = ((res && res.tickets) || []).filter(function(t){ return t.empCode === empId; });
+  showModal('🎫 Raise a Support Ticket',
+    '<div class="form-group"><label class="form-label">Category *</label><select id="ess-tk-cat" class="form-input"><option>HR</option><option>IT</option><option>Admin</option><option>Other</option></select></div>'
+    + '<div class="form-group"><label class="form-label">Subject *</label><input id="ess-tk-subj" class="form-input" maxlength="100" placeholder="Brief summary of the issue"></div>'
+    + '<div class="form-group"><label class="form-label">Description</label><textarea id="ess-tk-body" class="form-input" rows="3" placeholder="Describe your issue in detail…"></textarea></div>'
+    + (mine.length ? '<div style="margin-top:10px;font-size:12px"><strong>My Tickets</strong><table class="az-table" style="margin-top:6px"><thead><tr><th>Subject</th><th>Status</th></tr></thead><tbody>'
+    + mine.slice(0,5).map(function(t){ return '<tr><td>' + escHtml(t.subject||'') + '</td><td>' + escHtml(t.status||'') + '</td></tr>'; }).join('') + '</tbody></table></div>' : ''),
+    [{label:'Submit Ticket', action: async function() {
+        var subj = (document.getElementById('ess-tk-subj')||{value:''}).value.trim();
+        if (!subj) { toast('Subject is required','error'); return; }
+        var r = await API.call('addTicket', { empCode: empId,
+          category: (document.getElementById('ess-tk-cat')||{value:'HR'}).value,
+          subject: subj,
+          body: (document.getElementById('ess-tk-body')||{value:''}).value.trim() });
+        if (r && r.ok) { hideModal(); toast('Ticket submitted (ID: ' + (r.ticketId||'') + ')','success'); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Close', action: hideModal}]);
+}
+
+// ─── F7: Pulse surveys tab ────────────────────────────────────────────────────
+async function _v96RenderPulse() {
+  if (State.adminRole !== 'owner') {
+    document.getElementById('admin-tab-content').innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>Owner only.</p></div>';
+    return;
+  }
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const aqRes = await API.call('getActivePulseQuestion', {});
+  const aq = aqRes && aqRes.question;
+  const html = '<div style="max-width:800px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h2 style="font-size:18px;font-weight:700">📊 Pulse Surveys</h2>'
+    + '<button class="btn btn-gold btn-sm" onclick="_v96AddPulseQuestion()">+ New Question</button></div>'
+    + (aq ? '<div style="background:var(--dark2);border:1px solid var(--gold-dim);border-radius:10px;padding:16px;margin-bottom:16px">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:6px">Active Question</div>'
+    + '<div style="font-size:15px;color:var(--gold)">' + escHtml(aq.questionText||'') + '</div>'
+    + '<div style="font-size:11px;color:var(--gray-light);margin-top:6px">Type: ' + escHtml(aq.type||'rating') + '</div>'
+    + '<button class="btn btn-dark btn-sm" style="margin-top:10px" onclick="_v96LoadPulseAggregate(\'' + escHtml(aq.questionId||'') + '\')">📈 View Results</button>'
+    + '</div>'
+    : '<div style="color:var(--gray);font-size:13px;margin-bottom:16px">No active pulse question. Add one to start collecting responses.</div>')
+    + '<div id="v96-pulse-agg"></div></div>';
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+async function _v96LoadPulseAggregate(questionId) {
+  var el = document.getElementById('v96-pulse-agg');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner" style="height:40px"></div>';
+  var r = await API.call('getPulseAggregate', { questionId: questionId });
+  if (r && r.ok) {
+    el.innerHTML = r.count < 5
+      ? '<div style="color:var(--orange);font-size:13px;margin-top:10px">🔒 Insufficient responses (' + (r.count||0) + ') — need at least 5 for anonymity protection.</div>'
+      : '<div style="font-size:13px;margin-top:10px"><strong>Responses: ' + r.count + '</strong><br>Average Rating: <span style="color:var(--gold);font-size:18px;font-weight:700">' + (r.avgRating||0).toFixed(1) + '/5</span></div>';
+  } else el.innerHTML = '<div style="color:var(--red);font-size:12px">' + escHtml((r&&r.error)||'Failed') + '</div>';
+}
+function _v96AddPulseQuestion() {
+  showModal('Add Pulse Question',
+    '<div class="form-group"><label class="form-label">Question Text *</label><textarea id="pq-text" class="form-input" rows="3" placeholder="e.g. How would you rate your workload this week?"></textarea></div>'
+    + '<div class="form-group"><label class="form-label">Type</label><select id="pq-type" class="form-input"><option value="rating">Rating (1-5)</option><option value="text">Open Text</option></select></div>'
+    + '<div class="form-group"><label class="form-label"><input type="checkbox" id="pq-active" checked style="width:auto;margin-right:6px">Set as Active Question immediately</label></div>',
+    [{label:'Add', action: async function() {
+        var text = (document.getElementById('pq-text')||{value:''}).value.trim();
+        if (!text) { toast('Question text required','error'); return; }
+        var r = await API.call('addPulseQuestion', {
+          questionText: text,
+          type: (document.getElementById('pq-type')||{value:'rating'}).value,
+          active: (document.getElementById('pq-active')||{checked:false}).checked ? 'true' : 'false'
+        });
+        if (r && r.ok) { hideModal(); toast('Question added','success'); _v96RenderPulse(); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Cancel', action: hideModal}]);
+}
+
+// ESS: Pulse survey
+async function showESSPulse() {
+  resetKioskTimer();
+  const empId = State.currentEmp && State.currentEmp.id;
+  if (!empId) return;
+  const res = await API.call('getActivePulseQuestion', { empId: empId });
+  const q = res && res.question;
+  if (!q) { toast('No active pulse survey right now. Check back later.','info',4000); return; }
+  showModal('📊 Pulse Survey',
+    '<div style="font-size:15px;color:var(--gold);margin-bottom:16px;font-weight:600">' + escHtml(q.questionText||'') + '</div>'
+    + (q.type === 'text'
+      ? '<div class="form-group"><label class="form-label">Your Response</label><textarea id="ess-pulse-txt" class="form-input" rows="3" placeholder="Share your thoughts…"></textarea></div>'
+      : '<div class="form-group"><label class="form-label">Rating (1 = Poor, 5 = Excellent)</label>'
+      + '<div style="display:flex;gap:12px;justify-content:center;margin-top:8px">'
+      + [1,2,3,4,5].map(function(n){ return '<label style="text-align:center;cursor:pointer"><input type="radio" name="ess-pulse-r" value="' + n + '" style="display:block;margin:0 auto 4px"><span style="font-size:16px">' + n + '</span></label>'; }).join('')
+      + '</div></div>'),
+    [{label:'Submit Response', action: async function() {
+        var rating = null, comment = '';
+        if (q.type === 'text') {
+          comment = (document.getElementById('ess-pulse-txt')||{value:''}).value.trim();
+        } else {
+          var sel = document.querySelector('input[name="ess-pulse-r"]:checked');
+          if (!sel) { toast('Please select a rating','error'); return; }
+          rating = parseInt(sel.value, 10);
+        }
+        var r = await API.call('submitPulseResponse', { empId: empId, questionId: q.questionId, rating: rating, comment: comment });
+        if (r && r.ok) { hideModal(); toast('Response submitted — thank you!','success'); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Skip', action: hideModal}]);
+}
+
+// ─── F8: KRA / Performance tab ───────────────────────────────────────────────
+async function _v96RenderKRA() {
+  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  const [tmplRes, assRes] = await Promise.all([
+    API.call('getKRATemplates', {}),
+    API.call('getKRAAssessments', {})
+  ]);
+  const templates    = (tmplRes && tmplRes.templates) || [];
+  const assessments  = (assRes  && assRes.assessments) || [];
+  const html = '<div style="max-width:1100px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h2 style="font-size:18px;font-weight:700">🎯 KRA / Performance</h2>'
+    + '<button class="btn btn-gold btn-sm" onclick="_v96AddKRATemplate()">+ KRA Template</button></div>'
+
+    + '<div class="settings-card" style="margin-bottom:14px">'
+    + '<div class="card-title" onclick="toggleCard(this)">KRA Templates (' + templates.length + ')</div>'
+    + '<div class="card-body">'
+    + (templates.length ? '<table class="az-table"><thead><tr><th>Name</th><th>Criteria</th><th>Action</th></tr></thead><tbody>'
+    + templates.map(function(t) {
+        var criteria = [];
+        try { criteria = JSON.parse(t.criteria || '[]'); } catch(e) {}
+        return '<tr><td><strong>' + escHtml(t.name||'') + '</strong></td>'
+          + '<td style="font-size:11px">' + criteria.map(function(c){ return escHtml(c.name) + ' (' + c.weight + '%)'; }).join(', ') + '</td>'
+          + '<td><button class="btn btn-dark btn-sm" onclick="_v96EditKRATemplate(' + escHtml(JSON.stringify(t)) + ')">Edit</button></td></tr>';
+    }).join('') + '</tbody></table>'
+    : '<p style="color:var(--gray);font-size:13px">No templates yet. Create one to start KRA assessments.</p>')
+    + '</div></div>'
+
+    + '<div class="settings-card" style="margin-bottom:14px">'
+    + '<div class="card-title" onclick="toggleCard(this)">Assessment Cycle — All Employees (' + assessments.length + ')</div>'
+    + '<div class="card-body">'
+    + (assessments.length ? '<div style="overflow-x:auto"><table class="az-table"><thead><tr><th>Employee</th><th>Self Rating</th><th>Mgr Rating</th><th>KRA Recommended %</th><th>Action</th></tr></thead><tbody>'
+    + assessments.map(function(a) {
+        return '<tr><td><strong>' + escHtml(a.empName||a.empId||'') + '</strong>'
+          + '<div style="font-size:10px;color:var(--gray)">' + escHtml(a.empId||'') + '</div></td>'
+          + '<td>' + (a.selfRating != null ? a.selfRating + '/5' : '<span style="color:var(--orange)">Pending</span>') + '</td>'
+          + '<td>' + (a.mgrRating != null ? a.mgrRating + '/5' : '<span style="color:var(--gray)">—</span>') + '</td>'
+          + '<td id="kra-rec-' + escHtml(a.empId) + '"><button class="btn btn-dark btn-sm" style="font-size:10px" onclick="_v96LoadKRARecommendedForEmp(\'' + escHtml(a.empId) + '\',document.getElementById(\'kra-rec-' + escHtml(a.empId) + '\'))">Load</button></td>'
+          + '<td><button class="btn btn-dark btn-sm" onclick="_v96SubmitMgrRating(\'' + escHtml(a.empId) + '\',\'' + escHtml(a.cycleId||'') + '\')">Rate</button></td></tr>';
+    }).join('') + '</tbody></table></div>'
+    : '<p style="color:var(--gray);font-size:13px">No active assessment cycle data.</p>')
+    + '</div></div>'
+
+    + '<div class="settings-card"><div class="card-title" onclick="toggleCard(this)">1:1 Notes</div>'
+    + '<div class="card-body"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">'
+    + '<select id="kra-1on1-emp" class="form-input" style="max-width:220px" onchange="_v96Load1on1Notes()"><option value="">— Select Employee —</option>'
+    + (State.employees||[]).filter(function(e){ return e.status==='Active'; }).map(function(e){ return '<option value="' + escHtml(e.id) + '">' + escHtml(e.name) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div id="kra-1on1-area" style="font-size:12px;color:var(--gray)">Select an employee to view 1:1 notes.</div>'
+    + '</div></div></div>';
+  document.getElementById('admin-tab-content').innerHTML = html;
+}
+async function _v96Load1on1Notes() {
+  var empId = (document.getElementById('kra-1on1-emp')||{value:''}).value;
+  var area  = document.getElementById('kra-1on1-area');
+  if (!area || !empId) return;
+  area.innerHTML = '<div class="loading-spinner" style="height:32px"></div>';
+  var res = await API.call('getOneOnOneNotes', { empId: empId });
+  var notes = (res && res.notes) || [];
+  area.innerHTML = '<div style="margin-bottom:10px;display:flex;gap:8px">'
+    + '<textarea id="kra-1on1-text" class="form-input" style="flex:1;font-size:12px" rows="2" placeholder="Add a 1:1 note…"></textarea>'
+    + '<button class="btn btn-gold btn-sm" style="align-self:flex-end" onclick="_v96Add1on1Note(\'' + escHtml(empId) + '\')">Add</button></div>'
+    + (notes.length ? notes.slice(0,20).map(function(n){ return '<div style="background:var(--dark3);border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px"><div style="color:var(--gold-dim);margin-bottom:2px">' + escHtml((n.date||n.createdAt||'').slice(0,16)) + '</div>' + escHtml(n.note||n.text||'') + '</div>'; }).join('') : '<p style="color:var(--gray);font-size:12px">No notes yet for this employee.</p>');
+}
+async function _v96Add1on1Note(empId) {
+  var txt = (document.getElementById('kra-1on1-text')||{value:''}).value.trim();
+  if (!txt) { toast('Note cannot be empty','error'); return; }
+  var r = await API.call('addOneOnOneNote', { empId: empId, note: txt });
+  if (r && r.ok) { document.getElementById('kra-1on1-text').value=''; _v96Load1on1Notes(); toast('Note added','success'); }
+  else toast((r&&r.error)||'Failed','error');
+}
+function _v96AddKRATemplate() {
+  showModal('Add KRA Template',
+    '<div class="form-group"><label class="form-label">Template Name *</label><input id="kra-tpl-name" class="form-input" placeholder="e.g. Sales Rep Q3"></div>'
+    + '<div class="form-group"><label class="form-label">Criteria (name: weight%, comma-separated) *</label><input id="kra-tpl-crit" class="form-input" placeholder="Output Quality: 40, Client Feedback: 30, Attendance: 30"></div>'
+    + '<p style="font-size:11px;color:var(--gray);margin-top:4px">Weights must sum to 100%.</p>',
+    [{label:'Save Template', action: async function() {
+        var name = (document.getElementById('kra-tpl-name')||{value:''}).value.trim();
+        var critStr = (document.getElementById('kra-tpl-crit')||{value:''}).value.trim();
+        if (!name || !critStr) { toast('Name and criteria required','error'); return; }
+        var criteria = critStr.split(',').map(function(p) {
+          var parts = p.split(':'); return { name: parts[0].trim(), weight: parseInt(parts[1])||0 };
+        });
+        var total = criteria.reduce(function(s,c){ return s+c.weight; },0);
+        if (total !== 100) { toast('Weights must sum to 100 (currently ' + total + ')','error'); return; }
+        var r = await API.call('upsertKRATemplate', { name: name, criteria: JSON.stringify(criteria) });
+        if (r && r.ok) { hideModal(); toast('KRA template saved','success'); _v96RenderKRA(); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Cancel', action: hideModal}]);
+}
+function _v96EditKRATemplate(t) {
+  var criteria = [];
+  try { criteria = JSON.parse(t.criteria||'[]'); } catch(e) {}
+  showModal('Edit KRA Template — ' + escHtml(t.name||''),
+    '<div class="form-group"><label class="form-label">Template Name</label><input id="kra-edit-name" class="form-input" value="' + escHtml(t.name||'') + '"></div>'
+    + '<div class="form-group"><label class="form-label">Criteria (name: weight%)</label><input id="kra-edit-crit" class="form-input" value="' + escHtml(criteria.map(function(c){ return c.name+': '+c.weight; }).join(', ')) + '"></div>',
+    [{label:'Save', action: async function() {
+        var nm = (document.getElementById('kra-edit-name')||{value:''}).value.trim();
+        var critStr = (document.getElementById('kra-edit-crit')||{value:''}).value.trim();
+        var newCrit = critStr.split(',').map(function(p){ var pts = p.split(':'); return {name:pts[0].trim(), weight:parseInt(pts[1])||0}; });
+        var tot = newCrit.reduce(function(s,c){ return s+c.weight; },0);
+        if (tot !== 100) { toast('Weights must sum to 100 (currently '+tot+')','error'); return; }
+        var r = await API.call('upsertKRATemplate', { templateId: t.templateId, name: nm, criteria: JSON.stringify(newCrit) });
+        if (r && r.ok) { hideModal(); toast('Template updated','success'); _v96RenderKRA(); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Cancel', action: hideModal}]);
+}
+function _v96SubmitMgrRating(empId, cycleId) {
+  showModal('Manager Rating — ' + empId,
+    '<div style="font-size:13px;color:var(--gray-light);margin-bottom:10px">Rate 1–5 on each criterion. Blank criteria will be skipped.</div>'
+    + '<div class="form-group"><label class="form-label">Overall Manager Rating (1-5) *</label><input type="number" id="kra-mgr-rating" class="form-input" min="1" max="5" placeholder="3"></div>'
+    + '<div class="form-group"><label class="form-label">Comments</label><textarea id="kra-mgr-comment" class="form-input" rows="2"></textarea></div>',
+    [{label:'Submit Rating', action: async function() {
+        var rating = parseInt((document.getElementById('kra-mgr-rating')||{value:'0'}).value)||0;
+        if (rating < 1 || rating > 5) { toast('Rating must be 1-5','error'); return; }
+        var r = await API.call('submitKRAMgrRating', { empId: empId, cycleId: cycleId,
+          ratings: [{criterion:'Overall', rating: rating}],
+          comment: (document.getElementById('kra-mgr-comment')||{value:''}).value.trim() });
+        if (r && r.ok) { hideModal(); toast('Rating submitted','success'); _v96RenderKRA(); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Cancel', action: hideModal}]);
+}
+
+// ESS: My KRA
+async function showESSKRA() {
+  resetKioskTimer();
+  const empId = State.currentEmp && State.currentEmp.id;
+  if (!empId) return;
+  const res = await API.call('getKRAAssessments', { empId: empId });
+  const a = ((res && res.assessments) || []).find(function(x){ return x.empId === empId; });
+  if (!a) { toast('No active KRA assessment for you right now.','info',4000); return; }
+  var criteria = [];
+  try { criteria = JSON.parse(a.criteria||'[]'); } catch(e) {}
+  showModal('🎯 My KRA Assessment',
+    '<div style="font-size:13px;color:var(--gray-light);margin-bottom:12px">Rate yourself on each criterion (1=Poor, 5=Excellent).</div>'
+    + criteria.map(function(c, i) {
+        return '<div class="form-group"><label class="form-label">' + escHtml(c.name) + ' (' + c.weight + '%)</label>'
+          + '<input type="number" id="kra-self-' + i + '" class="form-input" min="1" max="5" placeholder="1-5"></div>';
+    }).join('')
+    + '<div class="form-group"><label class="form-label">Self Assessment Notes</label><textarea id="kra-self-note" class="form-input" rows="2" placeholder="What went well? What could improve?"></textarea></div>',
+    [{label:'Submit Self Rating', action: async function() {
+        var ratings = criteria.map(function(c, i) {
+          return { criterion: c.name, weight: c.weight, rating: parseInt((document.getElementById('kra-self-' + i)||{value:'0'}).value)||0 };
+        });
+        var invalid = ratings.filter(function(r){ return r.rating < 1 || r.rating > 5; });
+        if (invalid.length) { toast('All criteria must have a rating of 1-5','error'); return; }
+        var r = await API.call('submitKRASelfRating', { empId: empId, cycleId: a.cycleId,
+          ratings: ratings, note: (document.getElementById('kra-self-note')||{value:''}).value.trim() });
+        if (r && r.ok) { hideModal(); toast('Self rating submitted — thank you!','success'); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Cancel', action: hideModal}]);
+}
+
+// ─── F9: Onboarding checklist card (inside _v94RenderRecruitment) ────────────
+function _v96OnboardingCardHtml(cands) {
+  var hired = cands.filter(function(c){ return c.currentStage === 'Hired' || c.currentStage === 'OfferAccepted'; });
+  var opts = hired.map(function(c){ return '<option value="' + escHtml(c.candidateId) + '">' + escHtml(c.name||c.candidateId) + '</option>'; }).join('');
+  return '<div class="settings-card" style="margin-top:14px">'
+    + '<div class="card-title" onclick="toggleCard(this)">Onboarding Checklists (30/60/90 days)</div>'
+    + '<div class="card-body">'
+    + (hired.length === 0 ? '<p style="color:var(--gray);font-size:13px">No hired candidates yet. Hire a candidate to see their onboarding checklist.</p>'
+    : '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'
+    + '<select id="v96-onb-emp" class="form-input" style="max-width:240px" onchange="_v96LoadOnboardingChecklist()"><option value="">— Select hired employee —</option>' + opts + '</select>'
+    + '<button class="btn btn-dark btn-sm" onclick="_v96AddOnboardingTaskModal()">+ Add Task</button>'
+    + '</div>'
+    + '<div id="v96-onb-list" style="font-size:12px;color:var(--gray)">Select an employee above to see their tasks.</div>')
+    + '</div></div>';
+}
+async function _v96LoadOnboardingChecklist() {
+  var empCode = (document.getElementById('v96-onb-emp')||{value:''}).value;
+  var el = document.getElementById('v96-onb-list');
+  if (!el || !empCode) return;
+  el.innerHTML = '<div class="loading-spinner" style="height:32px"></div>';
+  var res = await API.call('getOnboardingChecklist', { empCode: empCode });
+  var tasks = (res && res.tasks) || [];
+  if (!tasks.length) { el.innerHTML = '<p style="color:var(--gray)">No tasks yet. Add the first task.</p>'; return; }
+  el.innerHTML = '<table class="az-table"><thead><tr><th>Task</th><th>Due Day</th><th>Status</th><th>Completed By</th><th>Action</th></tr></thead><tbody>'
+    + tasks.map(function(t) {
+        var done = t.completedOn || (t.status||'').toLowerCase() === 'completed';
+        return '<tr><td>' + escHtml(t.task||'') + '</td>'
+          + '<td>Day ' + (t.dueOffsetDays||'—') + '</td>'
+          + '<td><span style="color:' + (done?'var(--green)':'var(--orange)') + '">' + (done?'Completed':'Pending') + '</span></td>'
+          + '<td style="font-size:11px">' + escHtml(t.assignedTo||'') + '</td>'
+          + '<td>' + (!done ? '<button class="btn btn-green btn-sm" style="font-size:10px" onclick="_v96CompleteOnboardingTask(\'' + escHtml(t.empCode) + '\',\'' + escHtml((t.task||'').replace(/'/g,"\\'")) + '\')">Done</button>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+async function _v96CompleteOnboardingTask(empCode, task) {
+  var r = await API.call('completeOnboardingTask', { empCode: empCode, task: task });
+  if (r && r.ok) { toast('Task marked complete','success'); _v96LoadOnboardingChecklist(); }
+  else toast((r&&r.error)||'Failed','error');
+}
+function _v96AddOnboardingTaskModal() {
+  var empCode = (document.getElementById('v96-onb-emp')||{value:''}).value;
+  if (!empCode) { toast('Select an employee first','warning'); return; }
+  showModal('Add Onboarding Task',
+    '<div class="form-group"><label class="form-label">Task Description *</label><input id="onb-task-desc" class="form-input" placeholder="e.g. Complete IT access request"></div>'
+    + '<div class="form-group"><label class="form-label">Due Day Offset</label><input type="number" id="onb-task-days" class="form-input" value="30" placeholder="e.g. 30 = Day 30"></div>'
+    + '<div class="form-group"><label class="form-label">Assigned To</label><input id="onb-task-assign" class="form-input" placeholder="e.g. IT Team, HR"></div>',
+    [{label:'Add Task', action: async function() {
+        var desc = (document.getElementById('onb-task-desc')||{value:''}).value.trim();
+        if (!desc) { toast('Task description required','error'); return; }
+        var r = await API.call('addOnboardingTask', { empCode: empCode, task: desc,
+          dueOffsetDays: parseInt((document.getElementById('onb-task-days')||{value:'30'}).value)||30,
+          assignedTo: (document.getElementById('onb-task-assign')||{value:''}).value.trim() });
+        if (r && r.ok) { hideModal(); toast('Task added','success'); _v96LoadOnboardingChecklist(); }
+        else toast((r&&r.error)||'Failed','error');
+    }}, {label:'Cancel', action: hideModal}]);
+}
+
 
 </script>
 </body>
