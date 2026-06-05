@@ -894,30 +894,30 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
 
         <!-- v31: Upcoming Promotion Card -->
         <div class="mini-card" id="ec-promotion-card" style="display:none;border:1px solid var(--gold-dim)">
-          <h4>🎯 Upcoming Promotion</h4>
+          <h4>🎯 <span class="en">Upcoming Promotion</span><span class="hi">आगामी पदोन्नति</span></h4>
           <div id="ec-promotion-content" style="font-size:13px"></div>
         </div>
 
         <!-- v31: Pending Bonuses Card -->
         <div class="mini-card" id="ec-pending-bonuses-card" style="display:none">
-          <h4>🎁 Pending Bonuses</h4>
+          <h4>🎁 <span class="en">Pending Bonuses</span><span class="hi">लंबित बोनस</span></h4>
           <div id="ec-pending-bonuses-content" style="font-size:13px"></div>
         </div>
 
         <!-- v34: My Compensation Card -->
         <div class="mini-card" id="ec-comp-card" style="display:none">
           <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-comp-body')">
-            💼 My Compensation
+            💼 <span class="en">My Compensation</span><span class="hi">मेरा वेतनमान</span>
             <span id="ec-comp-toggle" style="font-size:12px;color:var(--gray-light)">▼</span>
           </h4>
           <div id="ec-comp-body" style="display:none">
             <!-- Sub-tab nav -->
             <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-              <button id="ec-comp-tab-salary-btn" title="Your current monthly salary breakdown — basic pay, allowances and statutory deductions (PF/ESI/PT/TDS), plus recent payslips." onclick="switchCompTab('salary')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:11px">Salary</button>
-              <button id="ec-comp-tab-timeline-btn" title="Your pay history over time — how your salary has changed with promotions and increments." onclick="switchCompTab('timeline')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Timeline</button>
-              <button id="ec-comp-tab-promo-btn" title="Your promotion eligibility — how close you are to the next level and what is still required." onclick="switchCompTab('promo')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Promotion</button>
-              <button id="ec-comp-tab-bonus-btn" title="Your joining bonus — total amount, how many instalments remain and when each is paid." onclick="switchCompTab('bonus')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Joining Bonus</button>
-              <button id="ec-comp-tab-wallet-btn" title="Your loyalty wallet — long-service balance accrued so far and what has vested and is withdrawable." onclick="switchCompTab('wallet')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Loyalty Wallet</button><!-- v120 Cluster H (R12.1): renamed Wallet → Loyalty Wallet -->
+              <button id="ec-comp-tab-salary-btn" title="Your current monthly salary breakdown — basic pay, allowances and statutory deductions (PF/ESI/PT/TDS), plus recent payslips." onclick="switchCompTab('salary')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:11px"><span class="en">Salary</span><span class="hi">वेतन</span></button>
+              <button id="ec-comp-tab-timeline-btn" title="Your pay history over time — how your salary has changed with promotions and increments." onclick="switchCompTab('timeline')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px"><span class="en">Timeline</span><span class="hi">समयरेखा</span></button>
+              <button id="ec-comp-tab-promo-btn" title="Your promotion eligibility — how close you are to the next level and what is still required." onclick="switchCompTab('promo')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px"><span class="en">Promotion</span><span class="hi">पदोन्नति</span></button>
+              <button id="ec-comp-tab-bonus-btn" title="Your joining bonus — total amount, how many instalments remain and when each is paid." onclick="switchCompTab('bonus')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px"><span class="en">Joining Bonus</span><span class="hi">जॉइनिंग बोनस</span></button>
+              <button id="ec-comp-tab-wallet-btn" title="Your loyalty wallet — long-service balance accrued so far and what has vested and is withdrawable." onclick="switchCompTab('wallet')" style="flex:1;padding:6px 10px;border:none;border-radius:16px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px"><span class="en">Loyalty Wallet</span><span class="hi">वफ़ादारी वॉलेट</span></button><!-- v120 Cluster H (R12.1): renamed Wallet → Loyalty Wallet -->
             </div>
             <div id="ec-comp-content" style="min-height:80px"></div>
           </div>
@@ -926,45 +926,45 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
         <!-- v31: OT and Extra Day Calculator Card (Tab A + Tab B) -->
         <div class="mini-card" id="ec-ot-calc-card" style="display:none">
           <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-ot-calc-body')">
-            ⏱ OT &amp; Extra Day Calculator
+            ⏱ <span class="en">OT &amp; Extra Day Calculator</span><span class="hi">ओटी और अतिरिक्त दिन कैलकुलेटर</span>
             <span id="ec-ot-calc-toggle" style="font-size:12px;color:var(--gray-light)">▼</span>
           </h4>
           <div id="ec-ot-calc-body" style="display:none">
             <!-- Tab selector -->
             <div style="display:flex;gap:6px;margin-bottom:12px">
-              <button id="ot-tab-a-btn" onclick="switchOTTab('A')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:12px">Tab A: Overtime Hours</button>
-              <button id="ot-tab-b-btn" onclick="switchOTTab('B')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:12px">Tab B: Extra Day</button>
+              <button id="ot-tab-a-btn" onclick="switchOTTab('A')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:12px"><span class="en">Tab A: Overtime Hours</span><span class="hi">टैब A: ओवरटाइम घंटे</span></button>
+              <button id="ot-tab-b-btn" onclick="switchOTTab('B')" style="flex:1;padding:8px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:12px"><span class="en">Tab B: Extra Day</span><span class="hi">टैब B: अतिरिक्त दिन</span></button>
             </div>
             <!-- TAB A: OT Hours Calculator -->
             <div id="ot-tab-a">
               <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">For working beyond your standard shift on a normal working day (arriving early or staying late)</div>
-              <label style="font-size:12px;color:var(--gray-light)">OT Hours Worked <span class="info-tooltip" title="The number of EXTRA hours you worked beyond your normal shift on a regular working day (e.g. arriving early or staying late). Enter only the extra time, not your full day. OT pay = (these hours ÷ your base hours per day) × one day's salary.">ℹ</span></label>
+              <label style="font-size:12px;color:var(--gray-light)"><span class="en">OT Hours Worked</span><span class="hi">किए गए ओटी घंटे</span> <span class="info-tooltip" title="The number of EXTRA hours you worked beyond your normal shift on a regular working day (e.g. arriving early or staying late). Enter only the extra time, not your full day. OT pay = (these hours ÷ your base hours per day) × one day's salary.">ℹ</span></label>
               <input type="number" id="ot-hours-input" min="0.5" step="0.5" placeholder="e.g. 2.5"
                 style="width:100%;padding:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:14px;margin:4px 0 8px"
                 oninput="calcOTLive()">
               <div id="ot-calc-breakdown" style="font-size:12px;background:var(--dark3);border-radius:6px;padding:10px;display:none;line-height:1.8"></div>
               <div style="display:none; gap:8px; margin-top:10px" id="ot-action-btns">
-                <button onclick="submitOTClaim('Instant')" style="flex:1;padding:8px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Claim Now</button>
-                <button onclick="submitOTClaim('Salary')" style="flex:1;padding:8px;background:var(--blue,#1976d2);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Add to Salary</button>
+                <button onclick="submitOTClaim('Instant')" style="flex:1;padding:8px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px"><span class="en">Claim Now</span><span class="hi">अभी क्लेम करें</span></button>
+                <button onclick="submitOTClaim('Salary')" style="flex:1;padding:8px;background:var(--blue,#1976d2);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px"><span class="en">Add to Salary</span><span class="hi">वेतन में जोड़ें</span></button>
               </div>
             </div>
             <!-- TAB B: Extra Day Calculator -->
             <div id="ot-tab-b" style="display:none">
               <div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">For working a full day on a day you are officially not supposed to work (holiday or weekly off)</div>
-              <label style="font-size:12px;color:var(--gray-light)">Day Type <span class="info-tooltip" title="Pick what kind of off-day you worked. This decides the extra-day rate: a full day's pay is credited for working on a day you were not scheduled to work (Company Holiday, your Weekly Off, or a National/Gazetted Holiday).">ℹ</span></label>
+              <label style="font-size:12px;color:var(--gray-light)"><span class="en">Day Type</span><span class="hi">दिन का प्रकार</span> <span class="info-tooltip" title="Pick what kind of off-day you worked. This decides the extra-day rate: a full day's pay is credited for working on a day you were not scheduled to work (Company Holiday, your Weekly Off, or a National/Gazetted Holiday).">ℹ</span></label>
               <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 10px">
-                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="Company Holiday" onchange="calcExtraDayLive()" checked> Company Holiday</label>
-                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="Weekly Off" onchange="calcExtraDayLive()"> Weekly Off Day</label>
-                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="National Holiday" onchange="calcExtraDayLive()"> National / Gazetted Holiday</label>
+                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="Company Holiday" onchange="calcExtraDayLive()" checked> <span class="en">Company Holiday</span><span class="hi">कंपनी अवकाश</span></label>
+                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="Weekly Off" onchange="calcExtraDayLive()"> <span class="en">Weekly Off Day</span><span class="hi">साप्ताहिक अवकाश दिन</span></label>
+                <label style="font-size:13px"><input type="radio" name="ed-day-type" value="National Holiday" onchange="calcExtraDayLive()"> <span class="en">National / Gazetted Holiday</span><span class="hi">राष्ट्रीय / राजपत्रित अवकाश</span></label>
               </div>
-              <label style="font-size:12px;color:var(--gray-light)">Date of Extra Day Worked <span class="info-tooltip" title="The calendar date you actually worked the extra day. Must be a holiday or your weekly-off — the system verifies it against the holiday list / your weekly-off before crediting the extra-day pay.">ℹ</span></label>
+              <label style="font-size:12px;color:var(--gray-light)"><span class="en">Date of Extra Day Worked</span><span class="hi">अतिरिक्त दिन की तारीख</span> <span class="info-tooltip" title="The calendar date you actually worked the extra day. Must be a holiday or your weekly-off — the system verifies it against the holiday list / your weekly-off before crediting the extra-day pay.">ℹ</span></label>
               <input type="date" id="ed-date-input"
                 style="width:100%;padding:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:13px;margin:4px 0 8px"
                 oninput="calcExtraDayLive()">
               <div id="ed-calc-breakdown" style="font-size:12px;background:var(--dark3);border-radius:6px;padding:10px;display:none;line-height:1.8"></div>
               <div style="display:flex;gap:8px;margin-top:10px">
-                <button onclick="submitExtraDayClaim('Instant')" style="flex:1;padding:8px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Claim Now</button>
-                <button onclick="submitExtraDayClaim('Salary')" style="flex:1;padding:8px;background:var(--blue,#1976d2);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Add to Salary</button>
+                <button onclick="submitExtraDayClaim('Instant')" style="flex:1;padding:8px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px"><span class="en">Claim Now</span><span class="hi">अभी क्लेम करें</span></button>
+                <button onclick="submitExtraDayClaim('Salary')" style="flex:1;padding:8px;background:var(--blue,#1976d2);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px"><span class="en">Add to Salary</span><span class="hi">वेतन में जोड़ें</span></button>
               </div>
             </div>
             <!-- Confirmation receipt area -->
@@ -975,20 +975,20 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
         <!-- v31: My Leaves Card -->
         <div class="mini-card" id="ec-leaves-card" style="display:none">
           <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-leaves-body')">
-            📅 My Leaves
+            📅 <span class="en">My Leaves</span><span class="hi">मेरी छुट्टियाँ</span>
             <span style="font-size:12px;color:var(--gray-light)">▼</span>
           </h4>
           <div id="ec-leaves-body" style="display:none">
             <!-- Sub-tabs -->
             <div style="display:flex;gap:6px;margin-bottom:12px">
-              <button onclick="switchLeaveTab('apply')" id="leave-apply-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:11px">Apply</button>
-              <button onclick="switchLeaveTab('status')" id="leave-status-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">My Status</button>
-              <button onclick="switchLeaveTab('encash')" id="leave-encash-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px">Encash</button>
+              <button onclick="switchLeaveTab('apply')" id="leave-apply-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;font-size:11px"><span class="en">Apply</span><span class="hi">आवेदन करें</span></button>
+              <button onclick="switchLeaveTab('status')" id="leave-status-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px"><span class="en">My Status</span><span class="hi">मेरी स्थिति</span></button>
+              <button onclick="switchLeaveTab('encash')" id="leave-encash-tab-btn" style="flex:1;padding:7px;border:none;border-radius:6px;background:var(--dark3);color:var(--white);font-weight:700;cursor:pointer;font-size:11px"><span class="en">Encash</span><span class="hi">नकदीकरण</span></button>
             </div>
             <!-- Apply for Leave -->
             <div id="leave-apply-section">
               <div style="margin-bottom:8px">
-                <label style="font-size:12px;color:var(--gray-light)">Leave Type</label>
+                <label style="font-size:12px;color:var(--gray-light)"><span class="en">Leave Type</span><span class="hi">छुट्टी का प्रकार</span></label>
                 <select id="leave-type-select" onchange="onLeaveTypeChange()"
                   style="width:100%;padding:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:13px;margin-top:4px">
                   <option value="">-- Select Leave Type --</option>
@@ -997,19 +997,19 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
                 <div>
-                  <label style="font-size:12px;color:var(--gray-light)">From Date</label>
+                  <label style="font-size:12px;color:var(--gray-light)"><span class="en">From Date</span><span class="hi">से तारीख</span></label>
                   <input type="date" id="leave-from-date" oninput="calcLeaveDays()"
                     style="width:100%;padding:7px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px;margin-top:4px">
                 </div>
                 <div>
-                  <label style="font-size:12px;color:var(--gray-light)">To Date</label>
+                  <label style="font-size:12px;color:var(--gray-light)"><span class="en">To Date</span><span class="hi">तक तारीख</span></label>
                   <input type="date" id="leave-to-date" oninput="calcLeaveDays()"
                     style="width:100%;padding:7px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px;margin-top:4px">
                 </div>
               </div>
               <div id="leave-days-display" style="font-size:12px;color:var(--gold-light);margin-bottom:8px"></div>
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-                <label style="font-size:12px;color:var(--gray-light)">Half Day?</label>
+                <label style="font-size:12px;color:var(--gray-light)"><span class="en">Half Day?</span><span class="hi">आधा दिन?</span></label>
                 <select id="leave-half-day" onchange="toggleHalfDayPeriod()"
                   style="padding:6px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px">
                   <option value="No">No</option><option value="Yes">Yes</option>
@@ -1019,7 +1019,7 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
                 </select>
               </div>
               <div style="margin-bottom:8px">
-                <label style="font-size:12px;color:var(--gray-light)">Reason</label>
+                <label style="font-size:12px;color:var(--gray-light)"><span class="en">Reason</span><span class="hi">कारण</span></label>
                 <textarea id="leave-reason" rows="2"
                   style="width:100%;padding:7px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:12px;margin-top:4px;resize:vertical"
                   placeholder="Reason for leave..."></textarea>
@@ -1028,7 +1028,7 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
               <button id="leave-submit-btn" onclick="submitLeaveRequest()"
                 title="Submit your leave request. Paid leave types you have no balance left for cannot be applied — apply Leave Without Pay (LWP) for those days instead."
                 style="width:100%;padding:10px;background:var(--gold);color:var(--dark);border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">
-                Submit Leave Request
+                <span class="en">Submit Leave Request</span><span class="hi">छुट्टी अनुरोध भेजें</span>
               </button>
             </div>
             <!-- My Leave Status -->
@@ -1037,13 +1037,13 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
             </div>
             <!-- Leave Encashment -->
             <div id="leave-encash-section" style="display:none">
-              <div style="font-size:12px;color:var(--gray-light);margin-bottom:8px">Encash unused eligible leave</div>
+              <div style="font-size:12px;color:var(--gray-light);margin-bottom:8px"><span class="en">Encash unused eligible leave</span><span class="hi">अप्रयुक्त पात्र छुट्टी नकदीकरण</span></div>
               <select id="encash-leave-type"
                 style="width:100%;padding:8px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:13px;margin-bottom:8px">
                 <option value="">-- Select Encashable Leave --</option>
               </select>
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                <label style="font-size:12px;color:var(--gray-light)">Days to Encash:</label>
+                <label style="font-size:12px;color:var(--gray-light)"><span class="en">Days to Encash:</span><span class="hi">नकदीकरण दिन:</span></label>
                 <input type="number" id="encash-days" min="1" step="1"
                   style="flex:1;padding:7px;background:var(--dark3);border:1px solid var(--gray);border-radius:6px;color:var(--white);font-size:13px"
                   oninput="calcEncashmentAmount()">
@@ -1051,28 +1051,17 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
               <div id="encash-amount-display" style="font-size:13px;color:var(--gold-light);margin-bottom:10px"></div>
               <button onclick="submitLeaveEncashment()"
                 style="width:100%;padding:10px;background:var(--gold);color:var(--dark);border:none;border-radius:6px;font-weight:700;cursor:pointer">
-                Request Encashment
+                <span class="en">Request Encashment</span><span class="hi">नकदीकरण अनुरोध</span>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- v31: Employment Status Card (Resignation / Notice Period) -->
-        <div class="mini-card" id="ec-employment-card" style="display:none">
-          <h4 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('ec-employment-body')">
-            🏢 Employment Status
-            <span style="font-size:12px;color:var(--gray-light)">▼</span>
-          </h4>
-          <div id="ec-employment-body" style="display:none;padding-top:8px">
-            <button onclick="initiateResignation()"
-              style="width:100%;padding:10px;background:var(--dark3);border:2px solid var(--red,#d32f2f);border-radius:6px;color:var(--red,#d32f2f);font-weight:700;cursor:pointer;font-size:13px">
-              ⚠️ Initiate Resignation / Notice Period
-            </button>
-            <div style="font-size:11px;color:var(--gray-light);margin-top:6px;text-align:center">
-              Warning: This will immediately forfeit your accrued Loyalty Bonus.
-            </div>
-          </div>
-        </div>
+        <!-- v127 FIX-127-4: the buried, English-only "Initiate Resignation" card was removed. It and the
+             "🚪 Apply for Exit" button both ended at the same handleInitiateNotice; Apply-for-Exit is the
+             bilingual, feature-complete superset (reason, early-buyout, LWD preview) and now carries the
+             type-CONFIRM hard-gate ported from here. The on-notice banner (#ec-notice-banner, above) is a
+             separate element and remains fully functional. -->
 
         <!-- Leave & Holidays Info Card -->
         <div class="mini-card" id="ec-leave-info-card">
@@ -1600,7 +1589,7 @@ const LS = {
     // v36 fix BUG-17: cache versioning bumped to v36 + stale-while-revalidate so CDN scripts pick up
     // updates on next visit; activate purges all non-current caches; never cache GAS API.
     const swCode = `
-const CACHE = 'artzfolio-hrms-v126-2026-06'; // v126: cache key bumped (v125->v126) so every device drops the stale shell and pulls FIX-A111 ESS Reimbursements/Helpdesk (ungated self-reads getMyReimbursements/getMyTickets + the cb-button fix), FIX-2 single-source earnings (dashboard tile = My Earnings = My Payslips; today shows ₹0 "Pending clock-out" until clock-out; full line-item breakdown that sums to net; x/30 paid-days/calendar-days denominator everywhere; approved reimbursements shown as a separate "paid outside salary" line that does NOT change net), FIX-A115 Apply-for-Exit now routes to the canonical initiateNotice (was the invalid status 'Notice' → silent Error), FIX-518 Initiate-Resignation gives feedback instead of a silent dead click, FIX-524 FnF starts EMPTY (no auto-loaded real employee). // v125: cache key bumped (v124->v125) so every device drops the stale shell and pulls FIX-L1 bulk-leave decision routing (decision param no longer collides with the routing action) + FIX-O1 phantom-OT kill (expected daily minutes = the employee's real scheduled window, not the registry shift's net hours) + FIX-U1 phantom-UL kill (attMap date-key normalised + today/future never auto-UL). // v124: cache key bumped (v123->v124) so every device drops the stale shell and pulls FIX-A Version&Sync panel, FIX-1 per-level increments, FIX-2 unified net earnings, FIX-3/4 phantom OT/UL kill, FIX-5 punch-date persist, FIX-6 blank clock-in/out, FIX-7/9/10 bulk delete + bonus eligibility, FIX-8 bulk-edit discoverability, FIX-11 self-resign, FIX-12 ledger banner. // v122: cache key bumped (v121->v122) so every device drops the stale shell and pulls the round-5 fixes (CRC-1 bulk approve, CRC-2 compounding increment timeline, CRC-3 Punch-Enabled-From field, CRC-5 jump-to-control feature search, CRC-6 full-window Data Fixes + auto-recompute, CRC-7 flexible attendance mode-picker, CRC-8 per-day undertime ON, CRC-10 Staff→Supervisor, L12 System Self-Test). // v121: cache key bumped (v120->v121) so every device drops the stale shell and pulls the round-4 DATA+ENGINE+MIGRATION fixes (CRC-1 false-UL cleanup+recurrence gate, CRC-2 phantom-OT shift resolver+migration, CRC-3 wallet go-live anchor, CRC-4 leave-policy-group Staff->Supervisor migration, CRC-5 Approvals bulk bar + hard-delete, D1 attendance back button, D3 manual clock-in custom time, D4 date-range filter). // v120: cache key bumped (v118->v120; v119 build MISSED this bump so v119 shells kept the v118 cache key — fixed now) so every device drops the stale shell and pulls the v120 mega-fix round-3 (Cluster B progressive earnings accrual, C identity/blank-month, D manual attendance authoring + delete + adjustment + date-range filter, E generic bulk field editor + Approvals multi-select, F Leave Policy Group naming + SH-12 display hardening, H Loyalty Wallet info pack). // v118: cache key bumped (v117->v118) so every device drops the stale shell and pulls the D1–D6 live-defect round-2 fixes (session-loop/freeze, ₹1,899 wallet poison, ESS earnings ₹0, timeline anchor, Unlock Owner Mode reaction, template label). // v117: cache key bumped (v116->v117) so every device drops the stale shell and pulls the A–K live-defect fixes. // v116 all-in-one: cache key bumped (v114->v116) so every device drops the stale shell and pulls the PART-1 defect fixes (A1/A2 bonus seed, A4/A5 attendance, B1-B4 settings persistence, C1-C4 employee module, F1 mobile, G1 loyalty naming). // v114 closeout-and-backlog: cache key bumped (v113->v114) so every device drops the stale shell and pulls the R1 per-employee override form fields + R2/R3/S1 backend changes. // v113 multifix: cache key bumped (v112->v113) so every device drops the stale shell and pulls the 17-bug-fix + 3-feature build (attendance read unification, bulk-hours selection/hours, advance gate, kiosk scroll, etc.). // v112 excel-templates-comprehensive: cache bumped so every device pulls the comprehensive Instructions sheet (format glossary + per-column reference table). // v111 excel-template-unification: cache key bumped so every device pulls the new Instructions sheet + version-stamped filenames. // v110 golive-autoseed-sheets: cache key bumped (forces all devices off the v109 shell). // v107 ess-tiles-security: cache key bumped (forces all devices off the v106 shell). // v106 FEATURE-9/10: cache key bumped (v105->v106) so every client drops the stale shell and re-fetches the bulk-edit + template build. // v105 FEATURE-8: cache key bumped (v104->v105) so every client drops the stale shell and re-fetches the rich-timesheet build. // v104 FIX-4: cache key bumped (v103->v104) so every existing client's service worker drops the stale shell cache on activate and re-fetches the new build. The app shell is already served NETWORK-FIRST (see v78 isShell branch below) + the boot version-mismatch path auto-applies the update when this shell is older than the live backend (see "v103 FIX-4" in API.call). // v98 (clarity + tooltips + role permissions -- 2026-05-29): A1 Role Access Permissions table extended from 24 to 30 tabs -- 6 tabs added: recruitment/reimbursements/assets/helpdesk/pulse/kra (present in nav sidebar since v92-v94 but never added to the permissions table; now with recommended Manager/Supervisor defaults). A2 Tooltip overhaul -- 8 info-tooltip / title additions: Default Approver (full 5-step routing chain explanation), Audit Log Health (all 4 buttons: Refresh/Install triggers/Run archive/Redact historical), Toggle Enforcement Self-Test (card header + 4 classification descriptions). A3 Secure Receipts button tooltip improved (petty cash tab, owner-only). Salary engine byte-identical v97->v98 (zero engine touches). Golden master predicted: 120/120. // v93 (audit-fix release over v92 — cache bumped so the SW serves the fixed shell). // v91 (completes v90 N1 server-side defense-in-depth + v90 N4 actual toggle sweep + audit refusals + Owner view-as preview — decision_log/2026.05.28_HRMS_v91_completion_register.md): P1 [SECURITY] Server-side role gate — new HMAC-signed roleToken issued at login (reuses apiToken as HMAC secret, no new config key, 8h TTL), client API.call now sends roleToken on every request, GAS _v91DeriveRole reads role from ownerToken→roleToken HMAC→'unknown', GAS _v91IsModuleAllowedForRole reads server-mirrored rolePerms_<role>_<moduleId> Config (synced from client by new saveRolePermissions GAS handler), _v91GateModule applied at handler entry for ~50 sensitive endpoints across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone. Owner unchanged (still via ownerToken). P2 [AUDIT] Owner-only "Toggle Enforcement Self-Test" panel under Settings → Danger Zone — read-only inventory of every cfg-* toggle + current value + static enforcement audit per row; full 188-row toggle table in the completion register (zero new BROKEN found beyond v90 N1; engine-adjacent toggles correctly DO-NOT-TOUCH). P3 [SECURITY TRAIL] every _v91GateModule refusal writes a structured Audit Log row (ROLE_REFUSED + moduleId + handler + caller). P4 [HELPER] Owner-only "Preview as Manager / Preview as Supervisor" buttons on the Role Access Permissions card — pure visual nav-filter simulation with a sticky PREVIEW MODE banner + Exit button (no server role switch). P5 [REGRESSION] all 11 salary-engine fns md5-byte-identical v90→v91; v87/v88/v89/v90 anchors grep-cited. NO salary-engine fn edited → golden master byte-identical predicted. // v90 (role-visibility fix + self-approval routing + M1 sub-label + Settings toggle sweep — decision_log/2026.05.28_HRMS_v90_completion_register.md): N1 [SECURITY] Role Access Permissions now actually enforce — key prefix realigned (perm_manager_*/perm_supervisor_* match State.adminRole), table extended from 16 to 25 tabs (added bonustracker/bonusmgmt/compmgmt/otclaims/promotions/compoff/recovery/auditlog), recommended default permission set applied for first-time Manager/Supervisor, Danger Zone independently gated, server-side _isAllowedForRole gate on dangerous data-read handlers (Owner unaffected). N2 [WORKFLOW] Self-approval impossible — new reportingManager schema field (self-healing column, surfaced in Add/Edit/Bulk), ESS leave/exit/advance route via _resolveApproverFor (reportingManager → supervisorId → managerId → defaultApprover config key → Owner; never the requester); server _requestLeaveCore + handleApproveLeave refuse approverId===requesterId. N3 [DISPLAY] Bilingual "Estimated as per payroll · final pay may differ / पेरोल अनुसार अनुमानित · अंतिम भुगतान भिन्न हो सकता है" sub-label on the ESS Month's Earning So Far tile. N4 [AUDIT] Owner-only Settings Self-Test panel (one-click save/read/enforce evidence per toggle). N5 [REGRESSION] All v87/v88/v89 fixes verified by md5 + grep cite (salary engine + v88 _fnfExitMonthSalary + v89 L1/L2/M1/F2/U1 byte-identical). NO salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test — decision_log/2026.05.26_HRMS_v89_completion_register.md): S1 proactive idempotent migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both via _verifyPassword since v43); L1 ESS shows unpaid leave (LWP/UL) as "Unlimited", never a finite balance; L2 ESS lists entitled paid leave types with "N available"/"0 available" + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" now payroll-accurate earned-through-today (calcMonthlySalary bounded at today via the v88 opts.exitDay — ENGINE UNTOUCHED, golden master 120/120); F1 read-only ESS payslip breakdown (gated by v62 dashSections.salary, reuses the salary object, no new math); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F records (soft-void, never Paid); R1 SpreadsheetApp.flush() before cache-bust in bulk money handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED (salary-engine-adjacent). NO salary-engine fn edited → golden master byte-identical v88→v89. // v88 (FnF exit-month salary accuracy + ESS date-lock — decision_log/2026.05.26_HRMS_v88_completion_register.md): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths (handleCalcFnF + generateFnFRecord) compute the exit-month salary via the ATTENDANCE-ACCURATE engine (calcMonthlySalary bounded at the last working day via default-neutral opts.exitDay; post-exit days = unpaid/no-penalty/no-sandwich), pulling ONLY the payslip-style earned salary (− UL/late/sandwich/under-time) + statutory (PF/ESI/PT/TDS), NOT advances/loans/bonuses (FnF itemises those → no double-count); early-exit minDayRate + notice/abscond/KYC/EL/gratuity preserved; calcMonthlySalary byte-neutral for every normal call (proven). WORK ITEM 2 [UI] ESS leave date pickers disabled (not just Submit) when a paid leave's balance can't cover the request (LWP/ML/PTL exempt). // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard (always mark the resolved attendance row + idempotency key, refuse if unmarkable); A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button + record-mode owner gate; B2 per-execution SalaryLadder cache; B3 full mismatch detail (25-row cap removed); C1 (owner policy) block leave self-apply once a paid-leave balance can't cover the request (LWP/ML/PTL exempt) + negative-balance clamp; C2 FnF exit-date parsed at local midnight (calcMonthlySalary-reuse deferred); C3 modal double-submit guard; C4 delete-rule confirm; C5 post-seed null guard; C6 toast error normalisation; C7 dead inc-mult reads; C8 read-only audit allow-list; C9 _safeCompare token; C10 IST weekAgoStr; C11 dead lateMultiplier knob removed; C12 tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
+const CACHE = 'artzfolio-hrms-v127-2026-06'; // v127: cache key bumped (v126->v127) so every device drops the stale shell and pulls FIX-127-1 hideModal alias (the real reason v126's ESS Reimbursement/Helpdesk tiles + 12 admin modals were dead) + action:→cb: sweep, FIX-127-3 My-Earnings always-on zero rows, FIX-127-4 single consolidated Apply-for-Exit (CONFIRM-gated; buried Initiate-Resignation card removed), FIX-127-5 admin Exits & Notices management surface (immediate vs approval mode + Approve/Reject/Cancel-with-loyalty-restore/Modify), FIX-127-6 bilingual ESS sweep. // v126: cache key bumped (v125->v126) so every device drops the stale shell and pulls FIX-A111 ESS Reimbursements/Helpdesk (ungated self-reads getMyReimbursements/getMyTickets + the cb-button fix), FIX-2 single-source earnings (dashboard tile = My Earnings = My Payslips; today shows ₹0 "Pending clock-out" until clock-out; full line-item breakdown that sums to net; x/30 paid-days/calendar-days denominator everywhere; approved reimbursements shown as a separate "paid outside salary" line that does NOT change net), FIX-A115 Apply-for-Exit now routes to the canonical initiateNotice (was the invalid status 'Notice' → silent Error), FIX-518 Initiate-Resignation gives feedback instead of a silent dead click, FIX-524 FnF starts EMPTY (no auto-loaded real employee). // v125: cache key bumped (v124->v125) so every device drops the stale shell and pulls FIX-L1 bulk-leave decision routing (decision param no longer collides with the routing action) + FIX-O1 phantom-OT kill (expected daily minutes = the employee's real scheduled window, not the registry shift's net hours) + FIX-U1 phantom-UL kill (attMap date-key normalised + today/future never auto-UL). // v124: cache key bumped (v123->v124) so every device drops the stale shell and pulls FIX-A Version&Sync panel, FIX-1 per-level increments, FIX-2 unified net earnings, FIX-3/4 phantom OT/UL kill, FIX-5 punch-date persist, FIX-6 blank clock-in/out, FIX-7/9/10 bulk delete + bonus eligibility, FIX-8 bulk-edit discoverability, FIX-11 self-resign, FIX-12 ledger banner. // v122: cache key bumped (v121->v122) so every device drops the stale shell and pulls the round-5 fixes (CRC-1 bulk approve, CRC-2 compounding increment timeline, CRC-3 Punch-Enabled-From field, CRC-5 jump-to-control feature search, CRC-6 full-window Data Fixes + auto-recompute, CRC-7 flexible attendance mode-picker, CRC-8 per-day undertime ON, CRC-10 Staff→Supervisor, L12 System Self-Test). // v121: cache key bumped (v120->v121) so every device drops the stale shell and pulls the round-4 DATA+ENGINE+MIGRATION fixes (CRC-1 false-UL cleanup+recurrence gate, CRC-2 phantom-OT shift resolver+migration, CRC-3 wallet go-live anchor, CRC-4 leave-policy-group Staff->Supervisor migration, CRC-5 Approvals bulk bar + hard-delete, D1 attendance back button, D3 manual clock-in custom time, D4 date-range filter). // v120: cache key bumped (v118->v120; v119 build MISSED this bump so v119 shells kept the v118 cache key — fixed now) so every device drops the stale shell and pulls the v120 mega-fix round-3 (Cluster B progressive earnings accrual, C identity/blank-month, D manual attendance authoring + delete + adjustment + date-range filter, E generic bulk field editor + Approvals multi-select, F Leave Policy Group naming + SH-12 display hardening, H Loyalty Wallet info pack). // v118: cache key bumped (v117->v118) so every device drops the stale shell and pulls the D1–D6 live-defect round-2 fixes (session-loop/freeze, ₹1,899 wallet poison, ESS earnings ₹0, timeline anchor, Unlock Owner Mode reaction, template label). // v117: cache key bumped (v116->v117) so every device drops the stale shell and pulls the A–K live-defect fixes. // v116 all-in-one: cache key bumped (v114->v116) so every device drops the stale shell and pulls the PART-1 defect fixes (A1/A2 bonus seed, A4/A5 attendance, B1-B4 settings persistence, C1-C4 employee module, F1 mobile, G1 loyalty naming). // v114 closeout-and-backlog: cache key bumped (v113->v114) so every device drops the stale shell and pulls the R1 per-employee override form fields + R2/R3/S1 backend changes. // v113 multifix: cache key bumped (v112->v113) so every device drops the stale shell and pulls the 17-bug-fix + 3-feature build (attendance read unification, bulk-hours selection/hours, advance gate, kiosk scroll, etc.). // v112 excel-templates-comprehensive: cache bumped so every device pulls the comprehensive Instructions sheet (format glossary + per-column reference table). // v111 excel-template-unification: cache key bumped so every device pulls the new Instructions sheet + version-stamped filenames. // v110 golive-autoseed-sheets: cache key bumped (forces all devices off the v109 shell). // v107 ess-tiles-security: cache key bumped (forces all devices off the v106 shell). // v106 FEATURE-9/10: cache key bumped (v105->v106) so every client drops the stale shell and re-fetches the bulk-edit + template build. // v105 FEATURE-8: cache key bumped (v104->v105) so every client drops the stale shell and re-fetches the rich-timesheet build. // v104 FIX-4: cache key bumped (v103->v104) so every existing client's service worker drops the stale shell cache on activate and re-fetches the new build. The app shell is already served NETWORK-FIRST (see v78 isShell branch below) + the boot version-mismatch path auto-applies the update when this shell is older than the live backend (see "v103 FIX-4" in API.call). // v98 (clarity + tooltips + role permissions -- 2026-05-29): A1 Role Access Permissions table extended from 24 to 30 tabs -- 6 tabs added: recruitment/reimbursements/assets/helpdesk/pulse/kra (present in nav sidebar since v92-v94 but never added to the permissions table; now with recommended Manager/Supervisor defaults). A2 Tooltip overhaul -- 8 info-tooltip / title additions: Default Approver (full 5-step routing chain explanation), Audit Log Health (all 4 buttons: Refresh/Install triggers/Run archive/Redact historical), Toggle Enforcement Self-Test (card header + 4 classification descriptions). A3 Secure Receipts button tooltip improved (petty cash tab, owner-only). Salary engine byte-identical v97->v98 (zero engine touches). Golden master predicted: 120/120. // v93 (audit-fix release over v92 — cache bumped so the SW serves the fixed shell). // v91 (completes v90 N1 server-side defense-in-depth + v90 N4 actual toggle sweep + audit refusals + Owner view-as preview — decision_log/2026.05.28_HRMS_v91_completion_register.md): P1 [SECURITY] Server-side role gate — new HMAC-signed roleToken issued at login (reuses apiToken as HMAC secret, no new config key, 8h TTL), client API.call now sends roleToken on every request, GAS _v91DeriveRole reads role from ownerToken→roleToken HMAC→'unknown', GAS _v91IsModuleAllowedForRole reads server-mirrored rolePerms_<role>_<moduleId> Config (synced from client by new saveRolePermissions GAS handler), _v91GateModule applied at handler entry for ~50 sensitive endpoints across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone. Owner unchanged (still via ownerToken). P2 [AUDIT] Owner-only "Toggle Enforcement Self-Test" panel under Settings → Danger Zone — read-only inventory of every cfg-* toggle + current value + static enforcement audit per row; full 188-row toggle table in the completion register (zero new BROKEN found beyond v90 N1; engine-adjacent toggles correctly DO-NOT-TOUCH). P3 [SECURITY TRAIL] every _v91GateModule refusal writes a structured Audit Log row (ROLE_REFUSED + moduleId + handler + caller). P4 [HELPER] Owner-only "Preview as Manager / Preview as Supervisor" buttons on the Role Access Permissions card — pure visual nav-filter simulation with a sticky PREVIEW MODE banner + Exit button (no server role switch). P5 [REGRESSION] all 11 salary-engine fns md5-byte-identical v90→v91; v87/v88/v89/v90 anchors grep-cited. NO salary-engine fn edited → golden master byte-identical predicted. // v90 (role-visibility fix + self-approval routing + M1 sub-label + Settings toggle sweep — decision_log/2026.05.28_HRMS_v90_completion_register.md): N1 [SECURITY] Role Access Permissions now actually enforce — key prefix realigned (perm_manager_*/perm_supervisor_* match State.adminRole), table extended from 16 to 25 tabs (added bonustracker/bonusmgmt/compmgmt/otclaims/promotions/compoff/recovery/auditlog), recommended default permission set applied for first-time Manager/Supervisor, Danger Zone independently gated, server-side _isAllowedForRole gate on dangerous data-read handlers (Owner unaffected). N2 [WORKFLOW] Self-approval impossible — new reportingManager schema field (self-healing column, surfaced in Add/Edit/Bulk), ESS leave/exit/advance route via _resolveApproverFor (reportingManager → supervisorId → managerId → defaultApprover config key → Owner; never the requester); server _requestLeaveCore + handleApproveLeave refuse approverId===requesterId. N3 [DISPLAY] Bilingual "Estimated as per payroll · final pay may differ / पेरोल अनुसार अनुमानित · अंतिम भुगतान भिन्न हो सकता है" sub-label on the ESS Month's Earning So Far tile. N4 [AUDIT] Owner-only Settings Self-Test panel (one-click save/read/enforce evidence per toggle). N5 [REGRESSION] All v87/v88/v89 fixes verified by md5 + grep cite (salary engine + v88 _fnfExitMonthSalary + v89 L1/L2/M1/F2/U1 byte-identical). NO salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test — decision_log/2026.05.26_HRMS_v89_completion_register.md): S1 proactive idempotent migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both via _verifyPassword since v43); L1 ESS shows unpaid leave (LWP/UL) as "Unlimited", never a finite balance; L2 ESS lists entitled paid leave types with "N available"/"0 available" + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" now payroll-accurate earned-through-today (calcMonthlySalary bounded at today via the v88 opts.exitDay — ENGINE UNTOUCHED, golden master 120/120); F1 read-only ESS payslip breakdown (gated by v62 dashSections.salary, reuses the salary object, no new math); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F records (soft-void, never Paid); R1 SpreadsheetApp.flush() before cache-bust in bulk money handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED (salary-engine-adjacent). NO salary-engine fn edited → golden master byte-identical v88→v89. // v88 (FnF exit-month salary accuracy + ESS date-lock — decision_log/2026.05.26_HRMS_v88_completion_register.md): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths (handleCalcFnF + generateFnFRecord) compute the exit-month salary via the ATTENDANCE-ACCURATE engine (calcMonthlySalary bounded at the last working day via default-neutral opts.exitDay; post-exit days = unpaid/no-penalty/no-sandwich), pulling ONLY the payslip-style earned salary (− UL/late/sandwich/under-time) + statutory (PF/ESI/PT/TDS), NOT advances/loans/bonuses (FnF itemises those → no double-count); early-exit minDayRate + notice/abscond/KYC/EL/gratuity preserved; calcMonthlySalary byte-neutral for every normal call (proven). WORK ITEM 2 [UI] ESS leave date pickers disabled (not just Submit) when a paid leave's balance can't cover the request (LWP/ML/PTL exempt). // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard (always mark the resolved attendance row + idempotency key, refuse if unmarkable); A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button + record-mode owner gate; B2 per-execution SalaryLadder cache; B3 full mismatch detail (25-row cap removed); C1 (owner policy) block leave self-apply once a paid-leave balance can't cover the request (LWP/ML/PTL exempt) + negative-balance clamp; C2 FnF exit-date parsed at local midnight (calcMonthlySalary-reuse deferred); C3 modal double-submit guard; C4 delete-rule confirm; C5 post-seed null guard; C6 toast error normalisation; C7 dead inc-mult reads; C8 read-only audit allow-list; C9 _safeCompare token; C10 IST weekAgoStr; C11 dead lateMultiplier knob removed; C12 tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW per-event 3-state (OFF/Flat ₹/Divisor) extra-pay methods, scoped (Global→Level→Designation→Shift→Employee, most-specific-wins) via the self-healing ExtraPay_Rules sheet; Settings → Compensation "Extra-Time Pay Methods" card + bulk-apply; ESS "Extra-time earnings" block; payslip Holiday/Weekly-off line. DEFAULT-NEUTRAL (seeded Global=divisor → byte-identical pay; golden master proven). // v85 (v84 forensic-audit fixes): FIX1 Leave Types seed/repair — owner-gated force-seed of the default leave types when 0 rows are Active==='Yes' (independent of getLastRow, idempotent) + A3 logs A3_NO_LEAVE_TYPES when it allocates 0 types; FIX2 [SECURITY] petty-cash/FnF receipts now PRIVATE (saveToDrive_ drops the public link, receiptFileId persisted, owner-gated downloadReceipt + secureExistingReceipts, receipt thumbnails replaced by an authenticated View button); FIX3 corrected the v84 saveToDrive_ privacy overclaim in the version comment; FIX4 8MB size-guard on document + receipt download; FIX5 A3 leave-year derived from IST todayStr(); FIX6 version-mismatch banner verified. Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI + doc-security): A1 employee status constrained to {Active,Exited,Archived}; A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead code); A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated); A4 [SECURITY] document uploads no longer ANYONE_WITH_LINK — stored PRIVATE, served via new role-gated downloadDocument; A5 Performance-Bonus help text clarifies points pay only with rate>0 AND include-in-salary; B1 bank/UPI fields (bankAccountName/Number/IFSC/bankName/upiId) on schema+Add/Edit+bulk template+profile (masked in lists, full view role-gated, hidden in ESS) + optional private passbook/UPI-QR upload. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 Bonus/Points UI consolidation + shift-name propagation — ISSUE1/2 renamed two Settings headings (Attendance Bonus Policy / Performance Bonus Policy; text only); ISSUE3 removed the duplicate PA "Applicable Levels" picker (385 bonusAutoLevels_PA is the single source; GAS gate reconciled + one-time migration preserves the PA population); ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker (385 Performance Bonus levels are the single editor; Perf save syncs pointsEligibleLevels so the leaderboard/prizes stay fed); ISSUE5 shift name/time edits now propagate to the bonus shift-chips + assigned-shift dropdowns + matrix headers without a reload. Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 settings-fix — BUG1 bonus shift/designation scope CSVs + Increment/Referral/OT/Night auto-levels now persist (20 keys added to the VALID_CONFIG_KEYS whitelist that handleUpdateSettings was silently dropping while returning ok:true); BUG2 shift-registry/salary-matrix redraw renders from the authoritative just-saved data (no longer "reverts to 9hr/11hr/12hr" on a lagging re-read); BUG3 verified already-correct (fixed by BUG1); BUG4 Points heading level range derived from pointsEligibleLevels; dropped-key hardening (skipped[] surfaced). Golden master byte-identical v81->v82. // v73 SAFE cleanup (full SAFE scope: chip fix, top tabs, ML/PTL+min-OT dedup, dead-multiplier UI removal, salary-ladder schema guard, version badge + safety-test) // v72 PHASE 2 redesign DIRECT SALARY MATRIX — ratio/% removed; Salary Ladder = fully-typeable matrix (Level × shift × Morning/Night, directly entered ₹); seeded from current values (zero-change); salary engine byte-identical (golden master unaffected); existing pay untouched. // v71 PHASE 3.2+4 Attendance/Timesheet UNIFY — Records-table ↔ Grid-matrix view toggle on one shared filter bar, multi-view CSV, clarifying cross-links (same Attendance sheet, two views); HTML-only, no pay formula changed. // v70 PHASE 3.1 Attendance-Adjustment fix — handleAttendanceAdjustment realigned to the frontend contract (reason/adminCode/otMinutes), clock times normalised (no double-date), workMinutes robust (no NaN); display sanitizers fix legacy rows + Timesheet hours; no pay formula changed. // v69 PHASE 1 SAFE Settings cleanup — removed orphan ulPenaltyDays duplicate (clears red banner), single-homed Joining-Bonus amount, consolidated OT/Night + removed 3 deprecated multiplier fields, leave-codes + bonus-levels → tick-boxes, tooltip/label sweep; no money-path logic changed. // v68 Stage-2C Universal edit/cancel/revert cascade — one engine reverts Transactions/Bonus/Petty-Cash/OT/Points (status→Voided or zero), idempotent + audit-logged; cascade automatic via existing payroll/leaderboard/FnF derivations; no money-path logic changed. // v67 Stage-2B Recovery-ledger carry-forward — negative net (Recoverable LOP) carries to next month as a Penalty-type recovery txn the existing payroll loop subtracts; idempotent (RECOVERY:<id> marker), never double-recovers; calcMonthlySalary untouched. // v66 Stage-2A Comp-Off subsystem — earn/approve/consume/encash ledger + FIFO expiry batch + FnF balance surfacing (isolated + additive, money path untouched). // v65 Stage-1 usability batch — live saved-register load + recompute + attendance-change detect (Issue 3), rich day-type display + reconciliation invariant (Issue 4), tooltip sweep (Issue 6), attendance multi-employee filter table (Issue 8); additive, no money-path logic changed. // v64 Stage-B substantive removals — retired OT Pre-Approval flow (item 7; OT Claims is the sole OT path), removed force-reset extra-day OT multipliers (item 4; constant 1 inlined) + deprecated otMultiplierRegular/otBaseHoursPolicy (item 5; perDayDivisor→Advanced), Approvals is the single leave approve/reject surface (item 6; Leaves ledger keeps edit/cancel). Item 10 (fixed _11HR/_12HR keys) retained — they ARE the per-shift table's 11/12 entries (gate failed, reported). Items 8/9 locked on the v61 migration. v63 bonus configurability — 4 global kill switches + per-employee eligibility (Emp_Bonus_Eligibility + auto-by-level; manual override wins; default ON/eligible = unchanged; OFF stops future accrual, keeps earned) + Stage-B free-win removals (dead leave-management branch, getAuditLog synonym, 3 orphan handler bodies); heavier Stage-B removals → v64. v62 employee-dashboard access control (master + per-section toggles, server-gated salary) + configurable shift-hour slabs (SHIFT_HOURS_SET + per-slab ratio/increment-mult table; computeSalaryFromLadder untouched; 9/11/12 byte-identical, new 8/10hr supported) + bug repairs (Issue 8 attendance Dept/Search filters, Issue 9 bulk-attendance per-row feedback + retry-overwrite, Issue 10 Emergency-NOW vs dated Bulk-Hours separation); v61 double-count guard + Restore button + Leaves migration (dry-run/apply); v60 exit workflow (3-consecutive-UL alert + Absconding FnF + archive/continue/restore); v59 ulPenaltyDays 2→1 auto-correct + SOL label + Transactions clarity; v58 UL penalty cap + auto-UL + rewritten sandwich rule; v57 Go-Live Cutoff pay model + monthly-roster leave creation; v56 deep-audit hardening (payroll/statutory correctness, dead-code, robustness); v55 unified leave store + subtractive payroll + roster persistence; v51 additive safety-nets; v50 template-v3 overhaul; v37 fix H-02; v43 W1.1 bump pattern; v46 W1-Q4 fixed stale drift; v47 bulk-import shift-time fix; v48 increment policy overhaul + PWA install/update UX; v49 audit-fix sync (H1 version unification)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -2434,7 +2423,9 @@ function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&
 function statusBadge(s) {
   const map = {P:'green',IL:'blue',IHL:'blue',UL:'red',UHL:'red',H:'gold',WO:'gray',EW:'orange',SL:'blue',PL:'blue',A:'red',Active:'green',Exited:'gray',Archived:'gray',Approved:'green',Pending:'orange',Rejected:'red',Auto:'red',
     // v31 leave type codes
-    CL:'blue',EL:'green',ML:'red',PTL:'green',LWP:'red',BL:'orange',SOL:'gray',COL:'blue'};
+    CL:'blue',EL:'green',ML:'red',PTL:'green',LWP:'red',BL:'orange',SOL:'gray',COL:'blue',
+    // v127 FIX-127-5: notice/exit lifecycle statuses so on-notice staff are visible & colour-coded
+    'Notice Period':'orange','Notice':'orange',Cancelled:'gray',Left:'gray'};
   // v31 leave codes get distinct inline color overrides for quick visual distinction
   const v31Color = {ML:'#AD1457',PTL:'#558B2F',LWP:'#B71C1C',BL:'#E65100',SOL:'#546E7A',COL:'#4527A0',EL:'#2E7D32',CL:'#1565C0'};
   const cls = map[s] || 'gray';
@@ -2495,6 +2486,11 @@ function closeModal() {
   // Resume kiosk timer if employee is logged in and no API call in progress
   if (State.currentEmp && !LoadingOverlay.isActive()) resetKioskTimer();
 }
+// v127 FIX-127-1: `hideModal` was referenced 31x across modal builders but never defined anywhere,
+// throwing ReferenceError while building each modal's button array (this is the real reason the ESS
+// Reimbursement/Helpdesk tiles stayed dead after v126). Alias it to the real close fn so every
+// existing call-site (bare hideModal() success-handlers AND cb: hideModal footer buttons) works.
+function hideModal() { return closeModal(); }
 document.getElementById('modal-overlay').addEventListener('click', e => {
   const overlay = document.getElementById('modal-overlay');
   if (e.target === overlay && overlay.dataset.noDismiss !== '1') closeModal();
@@ -2711,7 +2707,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // API.call surfaces a single toast on mismatch so kiosks promptly hard-refresh.
 // v43 W1.1: stale 'v37' value was triggering the mismatch toast on every session
 // (server has been v38/v39/v40/v41/v42 since this line was last touched).
-window.HRMS_VERSION = 'v126';  // v126 (all-in-one 2026-06-05 ESS-earnings-exit fixes — decision_log/2026.06.05_HRMS_v126_build_register_v1.md): FIX-A111 ESS Reimbursements/Helpdesk tiles open with content (point at the new ungated self-reads getMyReimbursements/getMyTickets instead of the admin-gated getReimbursements/getTickets the role gate was blocking; modal buttons fixed from b.action to b.cb so Submit/Close fire). FIX-2 single-source earnings: dashboard tile = My Earnings modal = My Payslips (handleGetESSData now bounds the current month at today, so all three score the same month-to-date window); "Today's Earning" shows ₹0 "Pending clock-out" until the clock-out lands (mirrors the engine creditDayOnClockOutOnly rule on the tile); My Earnings shows the FULL line-item breakdown (base, earned, OT incl. v31OTTotal, monthly bonus incl. v31BonusTotal, extra days, holiday/weekly-off, travel, every deduction, advances, statutory) that visibly sums to net, plus approved reimbursements as a separate "paid outside salary" line that does NOT change net; the displayed day fraction is unified to paid-days/calendar-days (x/30) on all three surfaces. FIX-A115 Apply-for-Exit now POSTs the canonical initiateNotice (was the invalid status 'Notice' to updateEmployee → bulk-status validator rejected it → silent "Error"); the toast now surfaces the server error. FIX-518 Initiate-Resignation no longer dies silently on a null State.currentEmp — it shows a "session expired, log in again" toast so the click always does something. FIX-524 FnF starts EMPTY (removed the auto-load of the first roster employee) — a real employee loads only on search/select. GAS REDEPLOY REQUIRED (Manage deployments -> Edit existing -> New version). // v125 (all-in-one 2026-06-05 live-proven root causes — decision_log/2026.06.05_HRMS_v125_build_register_v1.md): FIX-L1 bulk leave approve/reject/cancel/delete fixed — the decision is sent as `decision:` so it no longer collides with the routing `action` (the router 'bulkApproveLeaves' was overwriting params.action → server saw "Unknown bulk action: bulkApproveLeaves" for every row); FIX-O1 phantom OT killed — OT = max(0, workMinutes − the employee's REAL scheduled minutes [shiftStart→shiftEnd span, else dailyHours×60, else the resolved-shift net]); a worked==scheduled day now yields 0 OT (Gaurav's sh-12 12h/2h-break mismatch no longer pays ₹347 on a clean 11h day); FIX-U1 phantom UL killed — _computeV58UlSandwich normalises the attendance date key to yyyy-MM-dd (a present day stored "2026-06-01 00:00:00" now matches the iterated key, so it is no longer mis-marked UL_AUTO) and never auto-UL's today/future days. // v124 (all-in-one 2026-06-04 deploy-trust + per-level-increment + earnings-unification — decision_log/2026.06.04_HRMS_v124_build_register_v1.md): FIX-A Settings "Version & Sync" card (HTML vs live-GAS version, backend URL, green/red IN-SYNC badge, Re-check button + redeploy guidance) is the new deploy-trust gate; FIX-B self-test version assert now reads the live constant vs expected v124. FIX-1 [OWNER-SIGNED-OFF] per-level flat increment from Settings (L6=600/L7=500/L8=400/L9=300/L10=300) drives the engine directly (no shift multiplier). FIX-2 dashboard "Month's Earning So Far" tile + My-Earnings modal show ONE net figure (same calcMonthlySalary source). FIX-3 phantom OT killed (no OT without a resolved shift). FIX-4 phantom UL killed (UL_AUTO gated on punchEnabledFrom). FIX-5 punchEnabledFrom now persists. FIX-6 Edit-Attendance clock-in/out blank on no-punch days (no 9:00/6:00 injection). FIX-7 bulk Delete on the Leaves ledger; FIX-8 persistent "Bulk Edit Fields" button; FIX-9 bulk Delete employees; FIX-10 bulk bonus-eligibility editor; FIX-11 ESS self-resignation works; FIX-12 ledger banner reworded. GAS REDEPLOY REQUIRED (Manage deployments -> Edit existing -> New version). // v123 (all-in-one 2026-06-04 owner-signed-off pay-policy correction — decision_log/2026.06.04_HRMS_v123_build_register_v1.md): CRC-A late penalty ON by default + DECOUPLED from undertime (late minutes excluded from the undertime shortfall — each minute penalised once). CRC-B v122 ₹0 monthly clamp REMOVED → months may go net-negative "Recoverable (LOP)" (PF/ESI/PT/TDS never negative). CRC-C a day pays ₹0 until clock-OUT — clock-in-only days become "Pending clock-out", flip to paid when the clock-out lands. CRC-D missed-clock-out next-day block gated on blockNextScanOnMissedClockOut (default ON) + supervisor/manager/owner can reactivate with the real exit time. CRC-E TWO auto-clock-out engines CONSOLIDATED into one (Shift-End+Buffer merged in, default OFF). 7 toggles as real Settings switches + collector + Feature Finder + ℹ tooltips. GAS REDEPLOY REQUIRED. // v122 (all-in-one 2026-06-04 mega-fix round 5 — decision_log/2026.06.04_HRMS_v122_build_register_v1.md): CRC-1 bulk Approve/Reject/Cancel/Delete now work (adminRole threaded server-side). CRC-2 increment timeline COMPOUNDS off the actual salary (cycle1 ≥ base). CRC-3 new Settings → Punch Enabled From date field (+ collector). CRC-4 Loyalty Wallet "Run Monthly Wallet Credit" breadcrumb + searchable. CRC-5 top-right 🔍 Feature Finder now jumps to and HIGHLIGHTS the exact control (scroll+gold ring), indexes every cfg-* field via a generated index, and includes punch/wallet/undertime/data-fix/increment/bulk-approve/diagnostic. CRC-6 Data Fixes default to the FULL go-live window + auto-chain Recompute after Apply. CRC-7 one flexible attendance control: Clock-in / Clock-out only / Set total hours / Edit / Delete (any date/time, mandatory reason). CRC-8 SHORT column now uses the shift-first basis (matches the per-day undertime now deducted from pay). CRC-10 "Staff" removed from the category + holiday applies-to lists (Workforce/Supervisor/Management). L12 Settings/Attendance → 🔧 System Self-Test "Run Full Diagnostic" live PASS/FAIL panel. GAS REDEPLOY REQUIRED. // v121 (all-in-one 2026-06-04 mega-fix round 4 — decision_log/2026.06.04_HRMS_v121_build_register_v1.md): DATA+ENGINE+MIGRATION (display-only is not done). CRC-1 false-UL: recurrence gate on auto-UL + force-overwrite of auto-UL rows + one-shot go-live cleanup utility → −₹2,340 penalty/₹0 clears once Present honoured. CRC-2 phantom-OT: _shiftForEmp case-insensitive + hours-secondary resolve + assignedShift migration → OT ₹0 for a clean shift day (calcMonthlySalary byte-identical). CRC-3 wallet: tenure/next-withdrawal/accrual anchored to max(go-live, joining) → next withdrawal 1-Dec-2026, tenure ≈0mo. CRC-4 leave-policy-group: 'Staff'→'Supervisor' migration + read-mapping + stale-injection removed + glossary scrub. CRC-5 Approvals: select-all + per-row checkboxes + bulk bar (Approve/Reject/Cancel/Delete/Modify) + hard-delete handler. D1 attendance back-to-all-employees button; D3 manual clock-in at custom time (+individual clock-out custom time); D4 member+date-RANGE filter; D5/D6 verified already end-to-end in v120. Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED + owner runs 3 migrations + go-live cleanup + Recompute + wallet batch. // v120 (all-in-one 2026-06-03 mega-fix round 3 — decision_log/2026.06.03_HRMS_v120_build_register_v1.md): SW CACHE bumped v118->v120 (v119 missed it). Cluster B: tile + Net-Payable modal now show PROGRESSIVE month-to-date earnings (₹780/day accrued day-by-day, weekly-offs paid only once the day arrives) instead of ₹0/−₹2,860; divisor already actual-days (no engine change). Cluster C: employee/attendance edit reads trimmed+fresh by stable id (kills wrong-employee-opens), getAttendanceMonthBulk date normalised (kills blank present-day). Cluster D: per-day attendance editor gains Delete + adjustment minutes/amount + Short/Extra populate; member+date-RANGE filter; individual custom-time clock. Cluster E: generic employee bulk Field Editor (full safe whitelist, ALL/SELECTED/SINGLE) + Approvals Inbox multi-select bulk approve/reject. Cluster F: Leave Policy Group options = Supervisor/Management/Workforce everywhere; SH-12 unresolved-shift shown as "(unknown shift)". Cluster H: "Wallet"->"Loyalty Wallet" + full info pack (accrued total/months, next withdrawal date, withdrawable amount). Cluster A (false-LATE) + G (timeline) were ALREADY CORRECT in v119 disk code — they need GAS REDEPLOY + owner Recompute, not new code; small shiftStart-fallback hardening added. Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v119 (all-in-one 2026-06-03 mega-fix+features): BUG-01A decimal-shiftStart false-late fix (GAS). BUG-03 [CRITICAL mobile] kiosk Who's-In/Out panel bounded (max-height:45vh) + internally scrollable so the clock buttons stay on-screen; reauth banner buttons stack on phones + the banner can RE-appear after Dismiss (guard now keys on the live element, not a one-shot flag). BUG-04 attendance editor gains a manual late-minutes override + Timesheets Grid cells are click-to-edit. FEATURE-01 column-picker per-section ✓ All + title HTML-escape fix. FEATURE-02 bulk edit += Mobile/Email/Joining Date, button relabelled "Bulk Field Edit". BUG-02 (9-7 showing 11h) = stale bulk-entry data → repair via the existing owner Recompute Late & Hours tool (no engine/display defect). Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v118 (all-in-one 2026-06-03): live-defect remediation round 2 D1–D6. D1 [CRITICAL] killed the session-refresh loop + dashboard freeze + "Loading…" hang — removed the 60s countdown/auto-reload from _v116ShowReauthBanner, the banner now only fires on a GENUINE expiry (State._roleToken present) and never for background/badge calls (_suppressReauth), refreshApprovalsBadge made silent, duplicate #kiosk-body CSS now scrolls (overflow-y:auto), dashboard-mode hide moved from sticky inline styles to a body.kiosk-dash-mode class, role-token TTL raised 8h→7d. D2 [HIGH] phantom ₹1,899 wallet leak fixed in ALL THREE places — renderer sanitiser treats Date/date-string/year-range as 0, Sync & Repair detector now also flags the numeric-1899 writeback (so repair actually rewrites the poison), credit math clamps a poisoned prior cell so balance can't go negative. D3 [HIGH] ESS "Month's Earning So Far" ₹0 fixed — calcSalary ungated (removed from the payroll role gate, same posture as getSalaryProjection; keeps its softer ESS gate) + client guard on {ok:false}. D4 [MED] ESS comp timeline anchored at max(go-live 2026-06-01, joining) with the ACTUAL current salary at cycle 0, forward-only projections — no fabricated pre-go-live history. D5 [MED] Unlock Owner Mode now produces a visible re-render + a toast naming where owner actions live (the owner screens were already visible by role; unlock only arms the backend action). D6 bulk template filename labels bumped v112→v118 (panel generator already current at 61 cols). Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v117 (all-in-one 2026-06-02): live-defect remediation A–K — A mobile reauth graceful banner + kiosk scroll breakpoint widened to 768px + showEmployeeCard pre-hide guard; B per-employee eligibility overrides for all 7 bonus/extra-pay types in Add+Edit (writes Emp_Bonus_Eligibility, engines already read it; +Level-loyalty now honours Loyalty override); C Attendance defaults to current month; D Early Exit Rate Mode now persisted; E "Min Day Rate"→"Early Exit Day Rate" (blank=follow Settings); F/H owner-gated Recompute Late & Hours repair tool; G visible Unlock/Lock Owner Mode + inline statutory unlock + Feature Finder entries; I loyalty wallet month-format fix (YYYY-MM) + finite-guard; J bulk-hours default times pinned to text (persist); K promotion direction toward L1 + full ladder L10..L1 + window from scheme go-live 2026-06-01 (4 sites). Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v116 (all-in-one 2026-06-02): PART 1 go-live defect remediation — A1/A2 ₹2,026 bonus/wallet seed leak fixed + live-repair via Sync; A3/G1 two loyalty engines named "Loyalty Retention Bonus (Tenure)/(Level)"; A4 leave rows blank time + false-Late shiftStart sanitize + Short/OT columns; A5 attendance↔timesheet dedup unified; B1-B4 settings date/checkbox persistence; C1 full column picker; C2 shift label; C3 false-overdue baseline; C4 ladder bulk-op safety; E2 PA grace clarity; F1 mobile reauth scroll. Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v114 (closeout-and-backlog 2026-06-01): R1 per-employee override UI (5 form fields: joiningBonusActive, joiningBonusPolicyDateOverride, incrementEnabled, incrementPolicyStartDateOverride, incrementIntervalMonthsOverride — added to Add+Edit employee forms; ESS 'not applicable' branches already shipped in v113). R2 admin joining-bonus re-date parity (GAS). R3 Attendance_YYYY dual-write retired (GAS, default OFF). S1 RBAC gate fail-closed at the function boundary (GAS); S2/S3/S5 verified already-closed in v92/v101/v107. Engine 11/11 BYTE-IDENTICAL to v113. GAS REDEPLOY REQUIRED. // v113 (multifix 2026-06-01): 17 bug fixes + 3 config-gated features (undertime + late-formula deductions default OFF → engine byte-neutral; increment-policy-date display-only). Critical: BUG-17 unify attendance reads on legacy sheet, BUG-15 bulk-hours saves only ticked rows, BUG-16 hours field authoritative, BUG-09 kioskDirectClockIn persistence, BUG-04 advance gate <15th, BUG-01 kiosk scroll, BUG-02/03/05/06/07/12/13/14. See CHANGELOG. // v112 (excel-templates-comprehensive 2026-06-01): SAME single fix point in downloadBulkTemplateRich, now FAR richer Instructions sheet — full format glossary (23 data-type rules from DATE/TIME/PHONE/AADHAAR/IFSC/UPI/CURRENCY/etc.) PLUS an auto-built per-column reference table (# / Column / Required? / Format / Example / Dropdown values / Notes) generated from headers + validValues + colDropMap so every template self-documents every column without per-caller code. All 7 bulk-import templates inherit it (Employees, Transactions, Leaves, Petty Cash, Holidays, Attendance Backfill, Leave Backfill). Append-only — every prior sheet (Template / Dropdowns-hidden / Valid_Values_Reference / Schema-hidden) preserved; nothing deleted. Engine BYTE-IDENTICAL v111->v112 (no pay-math touched). GAS unchanged (no redeploy). // v111 (excel-template-unification 2026-05-31): SINGLE-FIX in downloadBulkTemplateRich — adds a friendly "Instructions" sheet at position 0 on every generated template (title + how-to-use + dropdown legend + reference-sheet map + import-path + filename), freezes the Template header row, sets Template as the workbook active-tab so users land on data entry. All 7 bulk-template callers (Employees, Transactions, Leaves, Petty Cash, Holidays, Attendance Backfill, Leave Backfill) now version-stamp the downloaded filename (..._v112_YYYYMMDD.xlsx) AND pass moduleName + importPath to drive the Instructions copy. Engine BYTE-IDENTICAL v110->v111 (no pay-math touched). GAS redeploy NOT REQUIRED (HTML-only change). Root cause of "the v103 folder template doesn't match the panel": the v103 folder files were Claude-generated REFERENCE ARTIFACTS saved during the v103 session — they were never wired into the panel. The panel always generated its own template via downloadBulkTemplateRich, which is the source of truth. The folder files are now superseded; v111-stamped regenerated samples saved in /Excel Templates/. // v107 (ess-tiles-security): FIX-4 persistent non-blocking amber "default password in use" banner for owner (re-evaluated live at each login from the entered password; clears automatically once a strong password is set) + FIX-5 historical-token redaction is now one-time (records auditLogLastRedactRun timestamp, button disables + shows "✅ redacted on <date>"). AUDIT FINDING: FIX-1 (ESS tile grid — idb-queue-pill already moved out of grid, uniform-height flex, all Hindi subtitles + title tooltips present), FIX-2 (9 admin-write handlers already gated in _V91_ACTION_MODULE via v92 A1; map is action→module, addTransaction intentionally excluded for ESS kiosk), and FIX-3 (Save Permissions re-render already fixed in v92 B6) were ALREADY SHIPPED in the v106 base — verified on-disk, no churn. Engine byte-identical v106->v107 (no pay-math touched). // v106 (bulk-edit-templates): FEATURE-9 in-app bulk employee editor (owner-gated handleBulkUpdateEmployees) + FEATURE-10 Excel template/parser overhaul (Employees +assignedShift/designation/loyaltyScheme; live leaveType dropdowns). Engine byte-identical v105->v106 (only employee row data changes). // v105 (rich-timesheet): FEATURE-8 rich attendance grid cells (shared _renderDayCell — status chip + in–out + OT/hours, colour-coded, pending/manual-edit/late markers, WO+holiday tints, legend). DISPLAY-ONLY; engine byte-identical v104->v105. // v104 (cache-tooltips-golive): FIX-4 stale-cache auto-apply (SW cache key bumped + network-first shell + auto-update-on-version-mismatch) · FIX-6 tooltip sweep · FIX-7 Go-Live status chip click-to-scroll + helper line. Engine byte-identical v103->v104. // v93 (audit-fix release over v92 — FIX-1 ESS encashment, FIX-2 _safeCell type-preserving, FIX-3 LWF period, FIX-4 gated A9 migration, FIX-5 selfie/geofence wired, FIX-6 audit-health card, FIX-7/8/9 hardening; decision_log/2026.05.29_HRMS_v93_StaticAudit_report_v1.md). // v92 (MEGA BUILD — Option B, multi-session, owner sign-off 2026-05-28; decision_log/2026.05.28_HRMS_v92_PreCoding_Analysis.md). WAVE W1 (Security + Operational, this commit) — A1-A14 + B1-B6. Remaining waves W2 Statutory / W3 Features / W4 PWA+AI in subsequent commits. // v91 (completes v90 deferrals): P1 server-side role gate (HMAC roleToken at login, _v91GateModule applied to ~50 sensitive handlers across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone; Owner via ownerToken unchanged); P2 owner-only Toggle Enforcement Self-Test panel + full 188-row toggle table in completion register; P3 audit-log every role refusal; P4 Owner Preview-as-Manager/Supervisor visual nav simulation; P5 all 11 engine fns md5-byte-identical v90→v91 (no engine touch). // v90 (role-visibility + self-approval routing + M1 sub-label + Settings self-test): N1 Role Access Permissions enforce (key prefix realigned to perm_manager_*/perm_supervisor_*, table extended 16→25 tabs, recommended default permission set, Danger Zone independently gated, server-side _isAllowedForRole). N2 reportingManager schema (self-healing) + _resolveApproverFor chain (reportingManager→supervisorId→managerId→defaultApprover→Owner, never requester); server refuses self-approval. N3 bilingual ESS earnings sub-label. N4 owner-only Settings Self-Test panel. N5 all v87/v88/v89 fixes verified (engine + _fnfExitMonthSalary + L1/L2/M1/F2/U1 byte-identical). No salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test): S1 proactive migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both since v43); L1 ESS unpaid leave shows "Unlimited" not a finite balance; L2 ESS lists entitled paid leave types ("N/0 available") + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" = payroll-accurate earned-through-today (calcMonthlySalary bounded at today via v88 opts.exitDay — ENGINE UNTOUCHED, GM 120/120); F1 read-only ESS payslip breakdown (gated by dashSections.salary); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F; R1 flush before cache-bust in bulk handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED. No salary-engine fn edited. // v88 (FnF exit-month salary accuracy + ESS leave date-lock): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths now compute the exit-month salary via the attendance-accurate engine (calcMonthlySalary bounded at the last working day), payslip-style salary + statutory, no double-count; calcMonthlySalary byte-neutral for normal calls. WORK ITEM 2 [UI] ESS leave date pickers disabled when a paid leave's balance can't cover the request. // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard; A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button; B2 per-execution SalaryLadder cache; B3 full mismatch detail (cap removed); C1-C12 medium/low fixes + tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
+window.HRMS_VERSION = 'v127';  // v127 (all-in-one 2026-06-05 modal-exit-notice-i18n: FIX-127-1 hideModal alias + action:→cb: admin-modal sweep [root cause of v126's dead ESS tiles], FIX-127-3 My-Earnings always-on ₹0 rows, FIX-127-4 consolidated CONFIRM-gated Apply-for-Exit, FIX-127-5 admin Exits & Notices lifecycle surface incl. loyalty-forfeit reversal, FIX-127-6 bilingual ESS sweep — decision_log/2026.06.05_HRMS_v127_build_register_v1.md) — GAS REDEPLOY REQUIRED. // v126 (all-in-one 2026-06-05 ESS-earnings-exit fixes — decision_log/2026.06.05_HRMS_v126_build_register_v1.md): FIX-A111 ESS Reimbursements/Helpdesk tiles open with content (point at the new ungated self-reads getMyReimbursements/getMyTickets instead of the admin-gated getReimbursements/getTickets the role gate was blocking; modal buttons fixed from b.action to b.cb so Submit/Close fire). FIX-2 single-source earnings: dashboard tile = My Earnings modal = My Payslips (handleGetESSData now bounds the current month at today, so all three score the same month-to-date window); "Today's Earning" shows ₹0 "Pending clock-out" until the clock-out lands (mirrors the engine creditDayOnClockOutOnly rule on the tile); My Earnings shows the FULL line-item breakdown (base, earned, OT incl. v31OTTotal, monthly bonus incl. v31BonusTotal, extra days, holiday/weekly-off, travel, every deduction, advances, statutory) that visibly sums to net, plus approved reimbursements as a separate "paid outside salary" line that does NOT change net; the displayed day fraction is unified to paid-days/calendar-days (x/30) on all three surfaces. FIX-A115 Apply-for-Exit now POSTs the canonical initiateNotice (was the invalid status 'Notice' to updateEmployee → bulk-status validator rejected it → silent "Error"); the toast now surfaces the server error. FIX-518 Initiate-Resignation no longer dies silently on a null State.currentEmp — it shows a "session expired, log in again" toast so the click always does something. FIX-524 FnF starts EMPTY (removed the auto-load of the first roster employee) — a real employee loads only on search/select. GAS REDEPLOY REQUIRED (Manage deployments -> Edit existing -> New version). // v125 (all-in-one 2026-06-05 live-proven root causes — decision_log/2026.06.05_HRMS_v125_build_register_v1.md): FIX-L1 bulk leave approve/reject/cancel/delete fixed — the decision is sent as `decision:` so it no longer collides with the routing `action` (the router 'bulkApproveLeaves' was overwriting params.action → server saw "Unknown bulk action: bulkApproveLeaves" for every row); FIX-O1 phantom OT killed — OT = max(0, workMinutes − the employee's REAL scheduled minutes [shiftStart→shiftEnd span, else dailyHours×60, else the resolved-shift net]); a worked==scheduled day now yields 0 OT (Gaurav's sh-12 12h/2h-break mismatch no longer pays ₹347 on a clean 11h day); FIX-U1 phantom UL killed — _computeV58UlSandwich normalises the attendance date key to yyyy-MM-dd (a present day stored "2026-06-01 00:00:00" now matches the iterated key, so it is no longer mis-marked UL_AUTO) and never auto-UL's today/future days. // v124 (all-in-one 2026-06-04 deploy-trust + per-level-increment + earnings-unification — decision_log/2026.06.04_HRMS_v124_build_register_v1.md): FIX-A Settings "Version & Sync" card (HTML vs live-GAS version, backend URL, green/red IN-SYNC badge, Re-check button + redeploy guidance) is the new deploy-trust gate; FIX-B self-test version assert now reads the live constant vs expected v124. FIX-1 [OWNER-SIGNED-OFF] per-level flat increment from Settings (L6=600/L7=500/L8=400/L9=300/L10=300) drives the engine directly (no shift multiplier). FIX-2 dashboard "Month's Earning So Far" tile + My-Earnings modal show ONE net figure (same calcMonthlySalary source). FIX-3 phantom OT killed (no OT without a resolved shift). FIX-4 phantom UL killed (UL_AUTO gated on punchEnabledFrom). FIX-5 punchEnabledFrom now persists. FIX-6 Edit-Attendance clock-in/out blank on no-punch days (no 9:00/6:00 injection). FIX-7 bulk Delete on the Leaves ledger; FIX-8 persistent "Bulk Edit Fields" button; FIX-9 bulk Delete employees; FIX-10 bulk bonus-eligibility editor; FIX-11 ESS self-resignation works; FIX-12 ledger banner reworded. GAS REDEPLOY REQUIRED (Manage deployments -> Edit existing -> New version). // v123 (all-in-one 2026-06-04 owner-signed-off pay-policy correction — decision_log/2026.06.04_HRMS_v123_build_register_v1.md): CRC-A late penalty ON by default + DECOUPLED from undertime (late minutes excluded from the undertime shortfall — each minute penalised once). CRC-B v122 ₹0 monthly clamp REMOVED → months may go net-negative "Recoverable (LOP)" (PF/ESI/PT/TDS never negative). CRC-C a day pays ₹0 until clock-OUT — clock-in-only days become "Pending clock-out", flip to paid when the clock-out lands. CRC-D missed-clock-out next-day block gated on blockNextScanOnMissedClockOut (default ON) + supervisor/manager/owner can reactivate with the real exit time. CRC-E TWO auto-clock-out engines CONSOLIDATED into one (Shift-End+Buffer merged in, default OFF). 7 toggles as real Settings switches + collector + Feature Finder + ℹ tooltips. GAS REDEPLOY REQUIRED. // v122 (all-in-one 2026-06-04 mega-fix round 5 — decision_log/2026.06.04_HRMS_v122_build_register_v1.md): CRC-1 bulk Approve/Reject/Cancel/Delete now work (adminRole threaded server-side). CRC-2 increment timeline COMPOUNDS off the actual salary (cycle1 ≥ base). CRC-3 new Settings → Punch Enabled From date field (+ collector). CRC-4 Loyalty Wallet "Run Monthly Wallet Credit" breadcrumb + searchable. CRC-5 top-right 🔍 Feature Finder now jumps to and HIGHLIGHTS the exact control (scroll+gold ring), indexes every cfg-* field via a generated index, and includes punch/wallet/undertime/data-fix/increment/bulk-approve/diagnostic. CRC-6 Data Fixes default to the FULL go-live window + auto-chain Recompute after Apply. CRC-7 one flexible attendance control: Clock-in / Clock-out only / Set total hours / Edit / Delete (any date/time, mandatory reason). CRC-8 SHORT column now uses the shift-first basis (matches the per-day undertime now deducted from pay). CRC-10 "Staff" removed from the category + holiday applies-to lists (Workforce/Supervisor/Management). L12 Settings/Attendance → 🔧 System Self-Test "Run Full Diagnostic" live PASS/FAIL panel. GAS REDEPLOY REQUIRED. // v121 (all-in-one 2026-06-04 mega-fix round 4 — decision_log/2026.06.04_HRMS_v121_build_register_v1.md): DATA+ENGINE+MIGRATION (display-only is not done). CRC-1 false-UL: recurrence gate on auto-UL + force-overwrite of auto-UL rows + one-shot go-live cleanup utility → −₹2,340 penalty/₹0 clears once Present honoured. CRC-2 phantom-OT: _shiftForEmp case-insensitive + hours-secondary resolve + assignedShift migration → OT ₹0 for a clean shift day (calcMonthlySalary byte-identical). CRC-3 wallet: tenure/next-withdrawal/accrual anchored to max(go-live, joining) → next withdrawal 1-Dec-2026, tenure ≈0mo. CRC-4 leave-policy-group: 'Staff'→'Supervisor' migration + read-mapping + stale-injection removed + glossary scrub. CRC-5 Approvals: select-all + per-row checkboxes + bulk bar (Approve/Reject/Cancel/Delete/Modify) + hard-delete handler. D1 attendance back-to-all-employees button; D3 manual clock-in at custom time (+individual clock-out custom time); D4 member+date-RANGE filter; D5/D6 verified already end-to-end in v120. Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED + owner runs 3 migrations + go-live cleanup + Recompute + wallet batch. // v120 (all-in-one 2026-06-03 mega-fix round 3 — decision_log/2026.06.03_HRMS_v120_build_register_v1.md): SW CACHE bumped v118->v120 (v119 missed it). Cluster B: tile + Net-Payable modal now show PROGRESSIVE month-to-date earnings (₹780/day accrued day-by-day, weekly-offs paid only once the day arrives) instead of ₹0/−₹2,860; divisor already actual-days (no engine change). Cluster C: employee/attendance edit reads trimmed+fresh by stable id (kills wrong-employee-opens), getAttendanceMonthBulk date normalised (kills blank present-day). Cluster D: per-day attendance editor gains Delete + adjustment minutes/amount + Short/Extra populate; member+date-RANGE filter; individual custom-time clock. Cluster E: generic employee bulk Field Editor (full safe whitelist, ALL/SELECTED/SINGLE) + Approvals Inbox multi-select bulk approve/reject. Cluster F: Leave Policy Group options = Supervisor/Management/Workforce everywhere; SH-12 unresolved-shift shown as "(unknown shift)". Cluster H: "Wallet"->"Loyalty Wallet" + full info pack (accrued total/months, next withdrawal date, withdrawable amount). Cluster A (false-LATE) + G (timeline) were ALREADY CORRECT in v119 disk code — they need GAS REDEPLOY + owner Recompute, not new code; small shiftStart-fallback hardening added. Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v119 (all-in-one 2026-06-03 mega-fix+features): BUG-01A decimal-shiftStart false-late fix (GAS). BUG-03 [CRITICAL mobile] kiosk Who's-In/Out panel bounded (max-height:45vh) + internally scrollable so the clock buttons stay on-screen; reauth banner buttons stack on phones + the banner can RE-appear after Dismiss (guard now keys on the live element, not a one-shot flag). BUG-04 attendance editor gains a manual late-minutes override + Timesheets Grid cells are click-to-edit. FEATURE-01 column-picker per-section ✓ All + title HTML-escape fix. FEATURE-02 bulk edit += Mobile/Email/Joining Date, button relabelled "Bulk Field Edit". BUG-02 (9-7 showing 11h) = stale bulk-entry data → repair via the existing owner Recompute Late & Hours tool (no engine/display defect). Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v118 (all-in-one 2026-06-03): live-defect remediation round 2 D1–D6. D1 [CRITICAL] killed the session-refresh loop + dashboard freeze + "Loading…" hang — removed the 60s countdown/auto-reload from _v116ShowReauthBanner, the banner now only fires on a GENUINE expiry (State._roleToken present) and never for background/badge calls (_suppressReauth), refreshApprovalsBadge made silent, duplicate #kiosk-body CSS now scrolls (overflow-y:auto), dashboard-mode hide moved from sticky inline styles to a body.kiosk-dash-mode class, role-token TTL raised 8h→7d. D2 [HIGH] phantom ₹1,899 wallet leak fixed in ALL THREE places — renderer sanitiser treats Date/date-string/year-range as 0, Sync & Repair detector now also flags the numeric-1899 writeback (so repair actually rewrites the poison), credit math clamps a poisoned prior cell so balance can't go negative. D3 [HIGH] ESS "Month's Earning So Far" ₹0 fixed — calcSalary ungated (removed from the payroll role gate, same posture as getSalaryProjection; keeps its softer ESS gate) + client guard on {ok:false}. D4 [MED] ESS comp timeline anchored at max(go-live 2026-06-01, joining) with the ACTUAL current salary at cycle 0, forward-only projections — no fabricated pre-go-live history. D5 [MED] Unlock Owner Mode now produces a visible re-render + a toast naming where owner actions live (the owner screens were already visible by role; unlock only arms the backend action). D6 bulk template filename labels bumped v112→v118 (panel generator already current at 61 cols). Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v117 (all-in-one 2026-06-02): live-defect remediation A–K — A mobile reauth graceful banner + kiosk scroll breakpoint widened to 768px + showEmployeeCard pre-hide guard; B per-employee eligibility overrides for all 7 bonus/extra-pay types in Add+Edit (writes Emp_Bonus_Eligibility, engines already read it; +Level-loyalty now honours Loyalty override); C Attendance defaults to current month; D Early Exit Rate Mode now persisted; E "Min Day Rate"→"Early Exit Day Rate" (blank=follow Settings); F/H owner-gated Recompute Late & Hours repair tool; G visible Unlock/Lock Owner Mode + inline statutory unlock + Feature Finder entries; I loyalty wallet month-format fix (YYYY-MM) + finite-guard; J bulk-hours default times pinned to text (persist); K promotion direction toward L1 + full ladder L10..L1 + window from scheme go-live 2026-06-01 (4 sites). Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v116 (all-in-one 2026-06-02): PART 1 go-live defect remediation — A1/A2 ₹2,026 bonus/wallet seed leak fixed + live-repair via Sync; A3/G1 two loyalty engines named "Loyalty Retention Bonus (Tenure)/(Level)"; A4 leave rows blank time + false-Late shiftStart sanitize + Short/OT columns; A5 attendance↔timesheet dedup unified; B1-B4 settings date/checkbox persistence; C1 full column picker; C2 shift label; C3 false-overdue baseline; C4 ladder bulk-op safety; E2 PA grace clarity; F1 mobile reauth scroll. Engine 11/11 BYTE-IDENTICAL. GAS REDEPLOY REQUIRED. // v114 (closeout-and-backlog 2026-06-01): R1 per-employee override UI (5 form fields: joiningBonusActive, joiningBonusPolicyDateOverride, incrementEnabled, incrementPolicyStartDateOverride, incrementIntervalMonthsOverride — added to Add+Edit employee forms; ESS 'not applicable' branches already shipped in v113). R2 admin joining-bonus re-date parity (GAS). R3 Attendance_YYYY dual-write retired (GAS, default OFF). S1 RBAC gate fail-closed at the function boundary (GAS); S2/S3/S5 verified already-closed in v92/v101/v107. Engine 11/11 BYTE-IDENTICAL to v113. GAS REDEPLOY REQUIRED. // v113 (multifix 2026-06-01): 17 bug fixes + 3 config-gated features (undertime + late-formula deductions default OFF → engine byte-neutral; increment-policy-date display-only). Critical: BUG-17 unify attendance reads on legacy sheet, BUG-15 bulk-hours saves only ticked rows, BUG-16 hours field authoritative, BUG-09 kioskDirectClockIn persistence, BUG-04 advance gate <15th, BUG-01 kiosk scroll, BUG-02/03/05/06/07/12/13/14. See CHANGELOG. // v112 (excel-templates-comprehensive 2026-06-01): SAME single fix point in downloadBulkTemplateRich, now FAR richer Instructions sheet — full format glossary (23 data-type rules from DATE/TIME/PHONE/AADHAAR/IFSC/UPI/CURRENCY/etc.) PLUS an auto-built per-column reference table (# / Column / Required? / Format / Example / Dropdown values / Notes) generated from headers + validValues + colDropMap so every template self-documents every column without per-caller code. All 7 bulk-import templates inherit it (Employees, Transactions, Leaves, Petty Cash, Holidays, Attendance Backfill, Leave Backfill). Append-only — every prior sheet (Template / Dropdowns-hidden / Valid_Values_Reference / Schema-hidden) preserved; nothing deleted. Engine BYTE-IDENTICAL v111->v112 (no pay-math touched). GAS unchanged (no redeploy). // v111 (excel-template-unification 2026-05-31): SINGLE-FIX in downloadBulkTemplateRich — adds a friendly "Instructions" sheet at position 0 on every generated template (title + how-to-use + dropdown legend + reference-sheet map + import-path + filename), freezes the Template header row, sets Template as the workbook active-tab so users land on data entry. All 7 bulk-template callers (Employees, Transactions, Leaves, Petty Cash, Holidays, Attendance Backfill, Leave Backfill) now version-stamp the downloaded filename (..._v112_YYYYMMDD.xlsx) AND pass moduleName + importPath to drive the Instructions copy. Engine BYTE-IDENTICAL v110->v111 (no pay-math touched). GAS redeploy NOT REQUIRED (HTML-only change). Root cause of "the v103 folder template doesn't match the panel": the v103 folder files were Claude-generated REFERENCE ARTIFACTS saved during the v103 session — they were never wired into the panel. The panel always generated its own template via downloadBulkTemplateRich, which is the source of truth. The folder files are now superseded; v111-stamped regenerated samples saved in /Excel Templates/. // v107 (ess-tiles-security): FIX-4 persistent non-blocking amber "default password in use" banner for owner (re-evaluated live at each login from the entered password; clears automatically once a strong password is set) + FIX-5 historical-token redaction is now one-time (records auditLogLastRedactRun timestamp, button disables + shows "✅ redacted on <date>"). AUDIT FINDING: FIX-1 (ESS tile grid — idb-queue-pill already moved out of grid, uniform-height flex, all Hindi subtitles + title tooltips present), FIX-2 (9 admin-write handlers already gated in _V91_ACTION_MODULE via v92 A1; map is action→module, addTransaction intentionally excluded for ESS kiosk), and FIX-3 (Save Permissions re-render already fixed in v92 B6) were ALREADY SHIPPED in the v106 base — verified on-disk, no churn. Engine byte-identical v106->v107 (no pay-math touched). // v106 (bulk-edit-templates): FEATURE-9 in-app bulk employee editor (owner-gated handleBulkUpdateEmployees) + FEATURE-10 Excel template/parser overhaul (Employees +assignedShift/designation/loyaltyScheme; live leaveType dropdowns). Engine byte-identical v105->v106 (only employee row data changes). // v105 (rich-timesheet): FEATURE-8 rich attendance grid cells (shared _renderDayCell — status chip + in–out + OT/hours, colour-coded, pending/manual-edit/late markers, WO+holiday tints, legend). DISPLAY-ONLY; engine byte-identical v104->v105. // v104 (cache-tooltips-golive): FIX-4 stale-cache auto-apply (SW cache key bumped + network-first shell + auto-update-on-version-mismatch) · FIX-6 tooltip sweep · FIX-7 Go-Live status chip click-to-scroll + helper line. Engine byte-identical v103->v104. // v93 (audit-fix release over v92 — FIX-1 ESS encashment, FIX-2 _safeCell type-preserving, FIX-3 LWF period, FIX-4 gated A9 migration, FIX-5 selfie/geofence wired, FIX-6 audit-health card, FIX-7/8/9 hardening; decision_log/2026.05.29_HRMS_v93_StaticAudit_report_v1.md). // v92 (MEGA BUILD — Option B, multi-session, owner sign-off 2026-05-28; decision_log/2026.05.28_HRMS_v92_PreCoding_Analysis.md). WAVE W1 (Security + Operational, this commit) — A1-A14 + B1-B6. Remaining waves W2 Statutory / W3 Features / W4 PWA+AI in subsequent commits. // v91 (completes v90 deferrals): P1 server-side role gate (HMAC roleToken at login, _v91GateModule applied to ~50 sensitive handlers across payroll/fnf/bonusmgmt/bonustracker/compmgmt/otclaims/promotions/compoff/recovery/auditlog/trackedtime/activities/reports/transactions/pettycash/settings/dangerzone; Owner via ownerToken unchanged); P2 owner-only Toggle Enforcement Self-Test panel + full 188-row toggle table in completion register; P3 audit-log every role refusal; P4 Owner Preview-as-Manager/Supervisor visual nav simulation; P5 all 11 engine fns md5-byte-identical v90→v91 (no engine touch). // v90 (role-visibility + self-approval routing + M1 sub-label + Settings self-test): N1 Role Access Permissions enforce (key prefix realigned to perm_manager_*/perm_supervisor_*, table extended 16→25 tabs, recommended default permission set, Danger Zone independently gated, server-side _isAllowedForRole). N2 reportingManager schema (self-healing) + _resolveApproverFor chain (reportingManager→supervisorId→managerId→defaultApprover→Owner, never requester); server refuses self-approval. N3 bilingual ESS earnings sub-label. N4 owner-only Settings Self-Test panel. N5 all v87/v88/v89 fixes verified (engine + _fnfExitMonthSalary + L1/L2/M1/F2/U1 byte-identical). No salary-engine fn edited → golden master byte-identical v89→v90. // v89 (pending fixes from v88 live test): S1 proactive migration hashes plaintext manager/supervisor passwords (login already verified+upgraded both since v43); L1 ESS unpaid leave shows "Unlimited" not a finite balance; L2 ESS lists entitled paid leave types ("N/0 available") + hardened all-active idempotent Seed Leave Balances; M1 [owner-signed-off, display-only] ESS "Month's Earning So Far" = payroll-accurate earned-through-today (calcMonthlySalary bounded at today via v88 opts.exitDay — ENGINE UNTOUCHED, GM 120/120); F1 read-only ESS payslip breakdown (gated by dashSections.salary); F2 read-only "My Referrals" ESS card; U1 owner-gated Void for Draft F&F; R1 flush before cache-bust in bulk handlers; R2 structured old→new approval audit; R3 (PT-slabs→config) DEFERRED. No salary-engine fn edited. // v88 (FnF exit-month salary accuracy + ESS leave date-lock): WORK ITEM 1 [MONEY, owner-signed-off] both FnF paths now compute the exit-month salary via the attendance-accurate engine (calcMonthlySalary bounded at the last working day), payslip-style salary + statutory, no double-count; calcMonthlySalary byte-neutral for normal calls. WORK ITEM 2 [UI] ESS leave date pickers disabled when a paid leave's balance can't cover the request. // v87 (audit fixes — decision_log/2026.05.26_HRMS_v87_completion_register.md): A1 instant-OT double-pay guard; A2 owner-token gate on the financial-approval handlers; A3 FnF print-record JSON escaping; A4 canonical exited/active employee helpers; A5 IST-safe weekday in HolidayOff/ExtraDay classifier; B1 owner "Update Salary Baseline" button; B2 per-execution SalaryLadder cache; B3 full mismatch detail (cap removed); C1-C12 medium/low fixes + tooltip sweep. DEFAULT-NEUTRAL (golden master 120/120; only A5/B2/C2 salary-adjacent, all proven neutral). // v86 (Extra-Pay Methods engine): NEW Settings → Compensation "Extra-Time Pay Methods" card — every extra-time event (Overtime / Night / Extra day / Holiday-Weekly-off) gets a 3-state per-scope method OFF | Flat ₹ | Divisor, with a global default + scope-overrides table (Level/Designation/Shift/Employee, most-specific-wins) + a bulk-apply modal (filter by Level/Designation/Dept + multi-select employees). Flat = ₹/hour (OT/Night) or ₹/day (Extra day / Holiday-Weekly-off); Divisor = the existing salary-derived calc; OFF = ₹0. ESS dashboard gains an "Extra-time earnings" block (hours/days × rate (method) = ₹). Payslip/register surface a Holiday/Weekly-off line (the merged Holiday/Weekly-off worked event, split out of EW). DEFAULT-NEUTRAL: with only the seeded Global=divisor rows pay is byte-identical to v85 (golden master proven). // v85 (v84 forensic-audit fixes — decision_log/2026.05.25_HRMS_v84_audit_v1.md): FIX1 [HIGH] Leave Types seed/repair — owner-gated repairLeaveTypes force-seeds the default leave types whenever 0 rows are Active==='Yes' (independent of getLastRow, idempotent by Code) so a non-empty-but-inactive/unseeded registry becomes usable; _allocateLeaveBalancesForEmployee audit-logs A3_NO_LEAVE_TYPES when it finds 0 active types (the silent A3 no-op is visible). A "🔁 Seed / Repair Leave Types" owner button added to the Leave Types settings card. FIX2 [SECURITY] petty-cash + FnF receipts are now PRIVATE — saveToDrive_ drops the ANYONE_WITH_LINK share, the Drive receiptFileId is persisted, the receipt thumbnails (Petty Cash table + FnF prefill) are replaced by an authenticated 👁 View button (viewReceipt → owner-gated downloadReceipt → local blob), and a "🔒 Secure existing receipts" owner action revokes public sharing on already-uploaded receipts. FIX3 corrected the v84 saveToDrive_ privacy overclaim in the GAS version comment. FIX4 8MB size-guard on both document + receipt download (friendly "open it in Drive" message). FIX5 the A3 leave-year is derived from the IST todayStr() (was server-tz new Date().getFullYear()). FIX6 the existing v78 version-mismatch banner is verified to fire on HTML-v85/GAS-v84 (no rebuild). Golden master byte-identical v84->v85 (no salary-engine fn touched). // v84 (live-QA fixes + bank/UPI feature + doc-security): A1 employee status constrained to {Active,Exited,Archived} (UI dropdowns + _add/_updateEmployeeCore normalize). A2 Owner-only Delete control wired to existing handleDeleteEmployee + confirm modal (was dead/unwired code). A3 new hires auto-allocate leave opening balances from AnnualQuota (pro-rated) via _allocateLeaveBalancesForEmployee in _addEmployeeCore. A4 [SECURITY] document uploads no longer set ANYONE_WITH_LINK — files stored PRIVATE (Drive fileId persisted), served via new owner/role-gated downloadDocument endpoint (base64); document list uses an authenticated open, not a public link. A5 Performance-Bonus settings now explain points pay only when rate>0 AND include-in-salary is enabled. B1 bank/UPI fields (bankAccountName/bankAccountNumber/bankIFSC/bankName/upiId) on the employee schema + Add/Edit form + bulk Excel template + profile (masked in lists, full view owner/role-gated, hidden in ESS) + optional private passbook & UPI-QR upload. Part C static end-to-end audit pass. Golden master byte-identical v83->v84 (no salary-engine fn touched). // v83 (Bonus/Points UI consolidation + shift-name propagation, 5 owner-requested fixes): ISSUE1/2 renamed two Settings headings — "Bonus Policy"->"Attendance Bonus Policy" + "Points & Bonus Settings"->"Performance Bonus Policy" (visible text only; toggleCard ids unchanged). ISSUE3 removed the duplicate PA "Applicable Levels" picker from the Attendance-Bonus card + dropped it from saveV31BonusSettings + removed _v45UpdatePABonusStatusLine; PA level eligibility is now SOLELY the 385 "Perfect Attendance Bonus -> Auto-eligible levels" (bonusAutoLevels_PA); GAS gate reconciled + one-time migration preserves the population. ISSUE4 removed the duplicate "Points Competition Eligible Levels" picker from the Performance-Bonus card + dropped it from savePointsSettings; the 385 "Performance Bonus -> Auto-eligible levels" (bonusAutoLevels_Perf) is the single editor; GAS handleSaveBonusPolicies syncs pointsEligibleLevels = Perf levels so the leaderboard/points-prizes/ESS readers stay fed (key kept, readers untouched). ISSUE5 after saveShiftRegistry the bonus-eligibility shift chips + open assigned-shift selects + matrix headers refresh without a reload (loadBonusPolicies re-run; _v83RefreshShiftSelects). Populations unchanged (PA/Perf/leaderboard all L8,L9,L10); golden master byte-identical v82->v83. // v82 (settings-fix — symptoms live-proven via Claude-in-Chrome): BUG1 bonus shift/designation scope + Increment/Referral/OT/Night auto-levels now persist (GAS: 20 keys added to VALID_CONFIG_KEYS that handleUpdateSettings silently dropped while returning ok:true); BUG2 shift-registry/salary-matrix "always reverts to 9hr/11hr/12hr defaults" ROOT CAUSE = _shiftRegistry()/_shiftHoursList() guarded on `window.State`, but State is `const State={}` (a lexical binding, NEVER a window property) so the guard was ALWAYS false and the helpers ALWAYS returned the [9,11,12] fallback, ignoring the saved registry -> now read the lexical State (same class fixed in getPerDayDivisor client-mirror + empDashOn ESS gate); plus belt-and-suspenders: saveShiftRegistry pins State.shiftConfig.registry to what it just saved + initCompLadderEditor({reload:false}) + loadShiftConfig never drops a good registry (defends read-after-write lag); BUG3 verified ALREADY-correct (loadBonusPolicies re-fetches getBonusPolicies fresh + repaints checkboxes/chips) -> fixed transitively by BUG1; BUG4 Points-Tracker heading + ESS ineligible notice level range derived from pointsEligibleLevels via _pointsLevelLabel(); dropped-key hardening (saveBonusPolicies surfaces skipped[]). Golden master byte-identical v81->v82 (whitelist + client redraw + text only). // v81 (FINAL cleanup + deep audit): §3.2 removed dead increment-multiplier display reads (kept 4 false-orphans that are actually live); §3.1 empty-catch audit found NO swallowed-save bug; §3.3 dup ids safe (mutually-exclusive); §3.4 stale wallet TODO removed. v78 cache-hardening + Leave_Requests deletion + v80 wallet-in-Bonus all intact; RUN-clean; B-CHIP 5/5. lateMultiplier/increment-% card + full per-persona click-matrix reported as named follow-ups. // v80: §6 Tenure-Wallet editor moved to Settings -> Bonuses & Promotion -> Loyalty Programs card (was a Compensation sub-tab) — rendered-DOM proof 15/15, IDs + Save button moved intact; §3 scope->money proven (empBonusEligible 11/11); v79 blank-screen fix carried (RUN-clean); B-CHIP 5/5; golden master ₹0. §7 orphan-id/dup-id audit reported -> v81. // v79 (CRITICAL runtime fix): removed 3 dangling `async` tokens left by v78's leave-deletion that caused `ReferenceError: async is not defined` -> blank screen on load (node --check missed it; now proven RUN-clean via jsdom). v78 cache-hardening + Leave_Requests deletion intact; B-CHIP real-DOM 5/5; salary engine byte-identical. §6/§3/§7/§8 deferred to v80. // v78 (cache-hardening + leave deletion): app shell now NETWORK-FIRST (kills the stale-cache 'fixed bug came back' trap) + loud version-mismatch banner + always-visible header Update button; B-CHIP proven correct via real-DOM jsdom click test (root cause of the recurring chip/shift bugs = stale cache, not code); System-B Leave_Requests + dead leavemgmt UI DELETED (ESS leave on canonical Leaves only). Salary engine byte-identical (golden master Rs.0). // v77 (loyalty + leave): Gate A ESS leave self-service -> canonical Leaves (System-B Leave_Requests retired; auto-approve preserved) + one-click migration + leavemgmt tab retired; Gate B per-employee Loyalty Scheme selector (Add/Edit employee) + Tenure-Wallet withdrawal UI; cleanup of dead orphans. Salary engine byte-identical (golden master Rs.0 on current roster). // v76 — B1 shift registry re-keyed by stable id (two same-length shifts coexist; per-shift matrix columns) + B2 night pay shift-driven (global Night Window removed) + B3 scope chips on the proven toggle control (shift chips show names) + SC1(a) OT/Night shift+designation scope + SC1(b) per-employee Increment/Referral overrides. Pay engine byte-identical for the current unassigned roster (golden master proven); F4 dual-loyalty verified, P2 Finding-#6 verified; P3/W7 deferred (ESS still writes Leave_Requests). // v74 — Shift Registry (W1) + scope shift-facet (W2 core) + hours-based night pay & nightShiftMultiplier removed (B1) + Finding-#6 fees bucketed (B2) + single base-hours (W3) + Points revert (W5) + stray-pill removal (W0). Salary-path but rupee-neutral on the live roster; pay engine byte-identical except the intended calcMonthlySalary B1/B2 lines. See decision_log/2026.05.24_HRMS_v74_implementation_and_completion_register.md. // v73 SAFE cleanup (full SAFE scope: D1-D8,D10-D12) — D1 chip-toggle fix (span/data-val; no label->checkbox double-fire), visible version badge + one-click salary safety-test (D7), removed orphan Salary Bands card (D4) + duplicate Save-Salary-Ladder button & contradictory subtitle (D2 UI). Salary engine + golden master byte-identical to v72; no pay maths changed. // v72 PHASE 2 (redesign) — DIRECT SALARY MATRIX: percentage/ratio model removed; Compensation → Salary Ladder is now a fully-typeable matrix (every Level L1–L10 × shift × Morning/Night = a directly-entered ₹; no ratios/%). Seeded from current values = zero-change until edited. Salary engine byte-identical (golden master unaffected); does NOT change existing employees' pay. Per-employee salaries still override the matrix default.
 
 // ── v65 Issue 6: reusable [data-help] tooltip helper ──────────────────────────────────────────
 // Event-delegated on document → a SINGLE position:fixed bubble (#dataHelpTip) shown on hover/focus
@@ -3540,11 +3536,11 @@ function buildActionButtons(rec, emp) {
   let clockInBtnHtml;
   if (missedClockOut) {
     clockInBtnHtml = `<button class="action-btn danger" onclick="doRequestClockInAfterMissedOut('${missedClockOutData.date||''}')" id="btn-clock-in">
-      🚨 Request Clock-In<br><small style="font-size:9px">Yesterday's clock-out missing</small>
+      🚨 <span class="en">Request Clock-In</span><span class="hi">प्रवेश अनुरोध</span><br><small style="font-size:9px">Yesterday's clock-out missing</small>
     </button>`;
   } else if (lateClockIn) {
     clockInBtnHtml = `<button class="action-btn" style="background:rgba(255,152,0,0.2);border-color:var(--orange);color:var(--orange)" onclick="doRequestLateClockIn()" id="btn-clock-in">
-      🕐 Request Late Clock-In<br><small style="font-size:9px">Mgr approval needed</small>
+      🕐 <span class="en">Request Late Clock-In</span><span class="hi">देर से प्रवेश अनुरोध</span><br><small style="font-size:9px">Mgr approval needed</small>
     </button>`;
   } else {
     clockInBtnHtml = `<button class="action-btn primary" onclick="doClockIn()" ${!clkIn?'disabled':''} id="btn-clock-in">
@@ -3966,7 +3962,7 @@ async function showAdvanceRequest() {
   // employee when the window opens. (Server checkAdvanceEligibility enforces the same gate.)
   if (dayOfMonth < limit1Day) {
     const _openDate = new Date(today.getFullYear(), today.getMonth(), limit1Day);
-    showModal('🤝 Salary Advance Request',
+    showModal('🤝 Salary Advance Request / वेतन अग्रिम अनुरोध',
       `<div style="background:rgba(229,57,53,0.1);border:1px solid var(--red);border-radius:10px;padding:14px;font-size:13px">
         <div style="color:var(--red);font-weight:700;margin-bottom:6px">⏳ Advances open on the ${limit1Day}th</div>
         <div style="color:var(--gray-light)">Salary advances are not available before the ${limit1Day}th of the month. Please come back on <strong>${_openDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</strong>.</div>
@@ -4026,8 +4022,8 @@ async function showAdvanceRequest() {
     <p style="font-size:11px;color:var(--gray-light);margin-top:8px">ℹ️ Request sent to ${escHtml(approverName)} for approval. Will be deducted from next salary.</p>
   `;
 
-  showModal('🤝 Salary Advance Request', bodyHtml, [
-    {label:'Submit Request', cls:'btn-gold', cb: async () => {
+  showModal('🤝 Salary Advance Request / वेतन अग्रिम अनुरोध', bodyHtml, [
+    {label:'Submit Request / अनुरोध भेजें', cls:'btn-gold', cb: async () => {
       const amount = parseFloat(document.getElementById('adv-amount')?.value);
       const reason = document.getElementById('adv-reason')?.value?.trim();
       const urgency = document.getElementById('adv-urgency')?.value;
@@ -4041,7 +4037,7 @@ async function showAdvanceRequest() {
           note: `[${urgency}] ${reason}`, approvedBy: 'pending-approval', date: todayStr()
         });
         if (res.ok) {
-          showModal('✅ Advance Request Submitted', `
+          showModal('✅ Advance Request Submitted / अग्रिम अनुरोध भेजा गया', `
             <div style="text-align:center;padding:16px">
               <div style="font-size:2.5rem">✅</div>
               <div style="font-size:16px;font-weight:700;margin:8px 0">Request Submitted!</div>
@@ -4055,7 +4051,7 @@ async function showAdvanceRequest() {
         }
       } catch(e) { toast('Network error','error'); }
     }},
-    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+    {label:'Cancel / रद्द करें', cls:'btn-dark', cb: closeModal},
   ]);
 }
 
@@ -4644,14 +4640,14 @@ async function showEarnings() {
   // v62: server returns {restricted:true} when the admin has hidden the Salary
   // section (defense-in-depth — the button is normally hidden too).
   if (salRes && salRes.restricted) {
-    showModal('💰 My Earnings', '<p style="color:var(--gray-light)">Salary view is currently turned off by the administrator.</p>');
+    showModal('💰 My Earnings / मेरी कमाई', '<p style="color:var(--gray-light)">Salary view is currently turned off by the administrator.</p>');
     resetKioskTimer();
     return;
   }
   // v118 D3-B: defense-in-depth — if the server refused or errored (e.g. role gate), every field would be
   // undefined and the modal would render a misleading ₹0 / "0 / 0 days". Show a clear retry instead.
   if (salRes && salRes.ok === false) {
-    showModal('💰 My Earnings', '<p style="color:var(--gray-light)">Couldn\'t load your earnings just now. Please close this and try again in a moment.</p>');
+    showModal('💰 My Earnings / मेरी कमाई', '<p style="color:var(--gray-light)">Couldn\'t load your earnings just now. Please close this and try again in a moment.</p>');
     resetKioskTimer();
     return;
   }
@@ -4690,8 +4686,9 @@ async function showEarnings() {
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       ${row('Base Salary / आधार वेतन', R(State.currentEmp?.salary||0))}
       ${row('Earned Salary / अर्जित वेतन', R(sal.earnedSalary||0))}
-      ${sal.otEarnings  ? row('OT Earnings / ओटी', RC(sal.otEarnings,'green')) : ''}
-      ${sal.v31OTTotal ? row('Overtime Claims / ओवरटाइम क्लेम', RC(sal.v31OTTotal,'green')) : ''}
+      <!-- v127 FIX-127-3: canonical earnings/deduction rows ALWAYS visible (even at ₹0) so the employee always sees the full breakdown. Cell helpers R/RC/RD coalesce missing values to 0 — this is display-only, no salary-math change. Rare/contextual components stay conditional to avoid clutter. -->
+      ${row('OT Earnings / ओटी', RC(sal.otEarnings||0,'green'))}
+      ${row('Overtime Claims / ओवरटाइम क्लेम', RC(sal.v31OTTotal||0,'green'))}
       ${sal.ewEarnings  ? row('Extra Days / अतिरिक्त दिन', RC(sal.ewEarnings,'green')) : ''}
       ${sal.holidayOffEarnings ? row('Holiday / Weekly-off Worked / छुट्टी पर कार्य', RC(sal.holidayOffEarnings,'green')) : ''}
       ${sal.nightAllowance ? row('Night Allowance / रात्रि भत्ता', RC(sal.nightAllowance,'green')) : ''}
@@ -4699,21 +4696,20 @@ async function showEarnings() {
       ${(sal.bonuses||sal.performanceBonus) ? row('Bonus / बोनस', RC((sal.bonuses||0)+(sal.performanceBonus||0),'green')) : ''}
       ${sal.v31BonusTotal ? row('Monthly Bonus / मासिक बोनस', RC(sal.v31BonusTotal,'green')) : ''}
       ${sal.v31PromoSalaryAdj ? row('Promotion Adjustment / पदोन्नति समायोजन', RC(sal.v31PromoSalaryAdj,'green')) : ''}
-      ${sal.ulDeduction   ? row('UL Penalty / UL कटौती', RD(sal.ulDeduction)) : ''}
-      ${sal.lateDeduction ? row('Late Deduction / लेट कटौती', RD(sal.lateDeduction)) : ''}
-      ${sal.undertimeDeduction ? row('Undertime Deduction / कम समय कटौती', RD(sal.undertimeDeduction)) : ''}
-      ${sal.sandwichDeduction ? row('Sandwich Penalty', RD(sal.sandwichDeduction)) : ''}
+      ${row('UL Penalty / UL कटौती', RD(sal.ulDeduction||0))}
+      ${row('Late Deduction / लेट कटौती', RD(sal.lateDeduction||0))}
+      ${row('Undertime Deduction / कम समय कटौती', RD(sal.undertimeDeduction||0))}
+      ${sal.sandwichDeduction ? row('Sandwich Penalty / सैंडविच जुर्माना', RD(sal.sandwichDeduction)) : ''}
       ${sal.lwpDeduction ? row('Loss of Pay / बिना वेतन', RD(sal.lwpDeduction)) : ''}
-      ${sal.advances ? row('Advances / अग्रिम', RD(sal.advances)) : ''}
+      ${row('Advances / अग्रिम', RD(sal.advances||0))}
       ${sal.loans ? row('Loan / ऋण', RD(sal.loans)) : ''}
-      ${sal.penalties ? row('Other Deductions / अन्य कटौती', RD(sal.penalties)) : ''}
-      ${sal.pfEmployee ? row('PF — Employee / पीएफ', RD(sal.pfEmployee)) : ''}
-      ${sal.esiEmployee ? row('ESI — Employee / ईएसआई', RD(sal.esiEmployee)) : ''}
-      ${sal.professionalTax ? row('Professional Tax / पीटी', RD(sal.professionalTax)) : ''}
-      ${sal.tds ? row('TDS', RD(sal.tds)) : ''}
-      ${sal.lwfEmployee ? row('Labour Welfare Fund / श्रम कल्याण', RD(sal.lwfEmployee)) : ''}
+      ${row('Other Deductions / अन्य कटौती', RD(sal.penalties||0))}
+      ${row('PF — Employee / पीएफ', RD(sal.pfEmployee||0))}
+      ${row('ESI — Employee / ईएसआई', RD(sal.esiEmployee||0))}
+      ${row('Professional Tax / पीटी', RD(sal.professionalTax||0))}
+      ${row('TDS', RD(sal.tds||0))}
+      ${row('Labour Welfare Fund / श्रम कल्याण', RD(sal.lwfEmployee||0))}
       ${Math.abs(_residual)>=1 ? row('Other Adjustments / अन्य समायोजन', _residual<0 ? RD(-_residual) : RC(_residual,'green')) : ''}
-      ${!_hasExtra ? `<tr><td colspan="2" style="padding:6px 0;color:var(--gray-light);font-style:italic">✓ No additions or deductions this month — your net equals your earned salary.</td></tr>` : ''}
       <tr style="border-top:1px solid var(--dark3)">
         <td style="padding:8px 0;font-weight:700;color:var(--gold)">Net Payable / देय राशि</td>
         <td style="text-align:right;font-weight:900;font-size:1.1rem;color:var(--gold)">${fmtMoney(sal.netSalary||0)}</td>
@@ -4730,18 +4726,18 @@ async function showEarnings() {
       }).join('');
       return rows ? ('<div style="margin-top:10px;padding:8px;background:rgba(0,0,0,0.18);border-radius:6px;font-size:11px;color:var(--gray-light)"><div style="font-weight:700;color:var(--gold);margin-bottom:4px">⏱ Extra-time earnings <span style="font-weight:400">(how each is calculated)</span></div>' + rows + '</div>') : '';
     })()}
-    ${_reimb.length ? `
+    <!-- v127 FIX-127-3: Reimbursements line ALWAYS shown (₹0 when none) — a separate "paid outside salary" line that never changes Net Payable (locked v126 owner decision). -->
     <div style="margin-top:12px;padding:10px;background:rgba(0,0,0,0.18);border-radius:8px;font-size:12px">
-      <div style="font-weight:700;color:var(--gold);margin-bottom:4px">Reimbursements <span style="font-weight:400;color:var(--gray-light)">(paid outside salary — NOT part of Net above)</span></div>
-      ${_reimb.map(function(r){ return '<div style="display:flex;justify-content:space-between;gap:8px"><span>'+escHtml(r.category||'Reimbursement')+(r.period?(' · '+escHtml(r.period)):'')+'</span><span style="color:var(--green)">'+fmtMoney(r.amount||0)+'</span></div>'; }).join('')}
-      <div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--dark3);margin-top:4px;padding-top:4px;font-weight:700"><span>Total reimbursed</span><span style="color:var(--green)">${fmtMoney(_reimbTotal)}</span></div>
+      <div style="font-weight:700;color:var(--gold);margin-bottom:4px">Reimbursements / प्रतिपूर्ति <span style="font-weight:400;color:var(--gray-light)">(paid outside salary — NOT part of Net above)</span></div>
+      ${_reimb.length ? _reimb.map(function(r){ return '<div style="display:flex;justify-content:space-between;gap:8px"><span>'+escHtml(r.category||'Reimbursement')+(r.period?(' · '+escHtml(r.period)):'')+'</span><span style="color:var(--green)">'+fmtMoney(r.amount||0)+'</span></div>'; }).join('') : '<div style="color:var(--gray-light)">No reimbursements this month / इस महीने कोई प्रतिपूर्ति नहीं</div>'}
+      <div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--dark3);margin-top:4px;padding-top:4px;font-weight:700"><span>Total reimbursed / कुल प्रतिपूर्ति</span><span style="color:var(--green)">${fmtMoney(_reimbTotal||0)}</span></div>
       <div style="font-size:10px;color:var(--gray-light);margin-top:3px">Settled separately from your monthly salary — does not change the Net Payable figure.</div>
-    </div>` : ''}
+    </div>
     <div style="margin-top:10px;padding:8px;background:rgba(201,168,76,0.05);border-radius:8px;font-size:11px;color:var(--gray-light)">
       * Estimate as of today. Final payable confirmed on salary day. Statutory deductions (PF / ESI / PT / TDS / LWF) are itemised in the table above.
     </div>
   </div>`;
-  showModal(`💰 ${tt('monthEarning')} — ${State.currentEmp?.name}`, html);
+  showModal(`💰 Month's Earning / इस महीने की कमाई — ${State.currentEmp?.name}`, html);
 }
 
 // ─── ESS: My Referrals (v89 F2) ──────────────────────────────
@@ -4785,7 +4781,7 @@ async function showESSPayslips() {
   let res;
   try { res = await API.call('getESSData', {empId, year:now.getFullYear(), month:now.getMonth()+1}); }
   catch(e) { toast('Network error — could not load payslips','error'); resetKioskTimer(); return; }
-  if (!res.ok) { showModal('My Payslips', `<p style="color:var(--red)">${escHtml(res.error||'Failed to load')}</p>`); return; }
+  if (!res.ok) { showModal('My Payslips / मेरी वेतन पर्चियाँ', `<p style="color:var(--red)">${escHtml(res.error||'Failed to load')}</p>`); return; }
   const { salary, salaryRecords=[] } = res;
   let html = '';
 
@@ -4826,7 +4822,7 @@ async function showESSPayslips() {
   } else if (!salary) {
     html = `<div style="text-align:center;padding:24px;color:var(--gray-light)">No salary records yet.</div>`;
   }
-  showModal(`📄 My Payslips — ${escHtml(State.currentEmp?.name||'')}`, html);
+  showModal(`📄 My Payslips / मेरी वेतन पर्चियाँ — ${escHtml(State.currentEmp?.name||'')}`, html);
 }
 
 // ─── ESS: My Attendance ──────────────────────────────────────
@@ -4838,7 +4834,7 @@ async function showESSAttendance() {
   let res;
   try { res = await API.call('getESSData', {empId, year:now.getFullYear(), month:now.getMonth()+1}); }
   catch(e) { toast('Network error — could not load attendance','error'); resetKioskTimer(); return; }
-  if (!res.ok) { showModal('My Attendance', `<p style="color:var(--red)">${escHtml(res.error)}</p>`); return; }
+  if (!res.ok) { showModal('My Attendance / मेरी उपस्थिति', `<p style="color:var(--red)">${escHtml(res.error)}</p>`); return; }
   const { attendance=[], leaveBalance={} } = res;
 
   // Leave balance summary
@@ -4880,7 +4876,7 @@ async function showESSAttendance() {
   } else {
     attHtml = `<div style="text-align:center;padding:16px;color:var(--gray-light)">No attendance records in last 30 days.</div>`;
   }
-  showModal(`🗓 My Attendance — ${escHtml(State.currentEmp?.name||'')}`,
+  showModal(`🗓 My Attendance / मेरी उपस्थिति — ${escHtml(State.currentEmp?.name||'')}`,
     lbHtml + attHtml);
 }
 
@@ -4982,11 +4978,20 @@ async function doApplyExit() {
         <option value="immediate">Immediate exit (if special circumstances)</option>
       </select>
     </div>
+    <div style="padding:10px;background:rgba(229,57,53,0.08);border-radius:8px;margin-top:4px;border:1px solid var(--red)">
+      <div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:6px">⚠️ This starts your notice period and <strong>forfeits your accrued Loyalty Bonus</strong>. This cannot be undone by you. / यह आपका नोटिस पीरियड शुरू करेगा और आपका लॉयल्टी बोनस ज़ब्त कर देगा।</div>
+      <label class="form-label">Type CONFIRM to proceed / आगे बढ़ने के लिए CONFIRM टाइप करें</label>
+      <input id="exit-confirm-input" class="form-input" placeholder="Type CONFIRM" autocomplete="off">
+    </div>
   </div>`;
   showModal('🚪 Apply for Exit / इस्तीफा', html, [
     {label:'Submit / जमा करें', cls:'btn-red', cb:async()=>{
       const reason=document.getElementById('exit-reason')?.value;
       const exitType=document.getElementById('exit-type')?.value;
+      // v127 FIX-127-4: hard type-CONFIRM gate ported from the removed initiateResignation card — an
+      // irreversible, loyalty-forfeiting action must not fire on a single tap.
+      const _confTyped=(document.getElementById('exit-confirm-input')?.value||'').trim();
+      if (_confTyped !== 'CONFIRM') { toast('⚠ Exit NOT submitted — type the word CONFIRM (in capitals) exactly in the box, then press Submit.','warning',7000); return; }
       let res;
       // v126 FIX-A115: route through the canonical self-resignation engine (initiateNotice) instead of a bare
       // updateEmployee status poke. The old code POSTed status:'Notice', but the canonical status string is
@@ -5003,7 +5008,9 @@ async function doApplyExit() {
         // v37 fix BUG-77: do not show error toast after success toast for the same action.
         // Background refetch failure must NOT visibly contradict the success message.
         closeModal();
-        toast('Exit application submitted. Last Working Day: ' + (res.lastWorkingDate || '—') + '. Salary on hold until notice completion.','success',6000);
+        // v127 FIX-127-5: in approval mode the server returns {pending:true, message} — tell the employee it
+        // awaits admin approval (and that loyalty is NOT forfeited yet) instead of the immediate-mode message.
+        toast(res.pending ? (res.message || 'Exit request submitted — awaiting admin approval.') : ('Exit application submitted. Last Working Day: ' + (res.lastWorkingDate || '—') + '. Salary on hold until notice completion.'),'success',6500);
         API.call('getEmployees').then(r=>{if(r&&r.ok)State.employees=r.employees||[];}).catch(e=>{console.warn('Background employee refetch failed:', e);});
       }
       else toast((res&&res.error) || 'Could not submit exit — please try again.','error',6000);
@@ -6560,7 +6567,7 @@ async function renderEmployees(filter='') {
   <div class="filters-bar">
     <input id="emp-search-input" class="filter-input" placeholder="Search name/ID/dept…" oninput="applyEmpFilters()" value="${escHtml(filter)}">
     <select id="emp-status-filter" class="filter-input" onchange="applyEmpFilters()">
-      <option value="">All Status</option><option value="Active">Active</option><option value="Exited">Exited</option><option value="Archived">Archived</option>
+      <option value="">All Status</option><option value="Active">Active</option><option value="Notice Period">Notice Period</option><option value="Exited">Exited</option><option value="Archived">Archived</option>
     </select>
     <select id="emp-level-filter" class="filter-input" onchange="applyEmpFilters()">
       <option value="">All Levels</option>
@@ -12388,8 +12395,11 @@ async function runCompOffExpiry(){
 }
 
 async function renderFnF() {
-  const empsRes=await API.call('getEmployees',{status:'Active'});
-  const emps=(empsRes.employees||[]).filter(e=>e.status==='Active'||e.status==='Notice');
+  // v127 FIX-127-5: include Notice-Period staff in the FnF picker. The canonical status string is
+  // 'Notice Period' (handleInitiateNotice writes that); the old filter looked for 'Notice' and the
+  // server-side {status:'Active'} request also dropped them — so a notice employee never appeared here.
+  const empsRes=await API.call('getEmployees',{});
+  const emps=(empsRes.employees||[]).filter(e=>e.status==='Active'||e.status==='Notice Period'||e.status==='Notice');
   const html=`
   <div class="section-hdr"><div class="section-title" data-help="Full & Final Settlement: calculates the complete exit payout — salary for exit month (attendance-accurate) + earned leave encashment + gratuity (if eligible) − notice shortfall penalty − damage recovery − deductions. Owner must approve before payment.">Full & Final Settlement / पूर्ण एवं अंतिम भुगतान</div></div>
   <div style="background:var(--dark2);border:1px solid var(--dark3);border-radius:var(--radius);padding:20px;max-width:680px">
@@ -12417,6 +12427,7 @@ async function renderFnF() {
     <button class="btn btn-gold" onclick="calculateFnF()">▶ Calculate Complete F&F</button>
   </div>
   <div id="fnf-result" style="margin-top:20px"></div>
+  <div id="notice-records-section" style="margin-top:28px"></div>
   <div id="fnf-records-section" style="margin-top:28px"></div>
   <div id="fnf-restore-section" style="margin-top:28px"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
@@ -12425,8 +12436,115 @@ async function renderFnF() {
   // only by searching/selecting via the fnf-emp-input control above.
   var _fnfInfo = document.getElementById('fnf-emp-info');
   if (_fnfInfo) _fnfInfo.innerHTML = '<div style="background:var(--dark3);border-radius:8px;padding:16px;margin-bottom:14px;font-size:13px;color:var(--gray-light);text-align:center">🔍 Search and select an employee above to begin a Full &amp; Final settlement.</div>';
+  loadNoticeRecords(); // v127 FIX-127-5: admin Exits & Notices management surface
   loadFnFRecords();
   loadFnFRestore(); // v61 A1: restore archived/exited employees (voids draft FnF)
+}
+
+// ── v127 FIX-127-5: Admin "Exits & Notices" management surface ───────────────────────────────────────
+// Lists every notice/exit record with a status filter, and per-row owner actions: Approve (approval mode),
+// Reject, Cancel/Revoke (restores the employee to Active + reverses the loyalty forfeiture), and Modify.
+let _noticeRecordsCache = [];
+let _noticeStatusFilter = '';
+async function loadNoticeRecords() {
+  const sec = document.getElementById('notice-records-section');
+  if (!sec) return;
+  sec.innerHTML = '<div class="loading-spinner"></div>';
+  let res;
+  try { res = await API.call('getNoticeRecords', {}); } catch(e) { sec.innerHTML = ''; return; }
+  if (!res || !res.ok) { sec.innerHTML = `<div class="section-hdr"><div class="section-title">🚪 Exits & Notices / निकास एवं नोटिस</div></div><div class="empty-state" style="margin-top:0"><p>${escHtml((res&&res.error)||'Could not load exit records')}</p></div>`; return; }
+  _noticeRecordsCache = res.records || [];
+  _renderNoticeRecords();
+}
+function _renderNoticeRecords() {
+  const sec = document.getElementById('notice-records-section');
+  if (!sec) return;
+  const isOwner = State.adminRole === 'owner';
+  const all = _noticeRecordsCache || [];
+  if (!all.length) {
+    sec.innerHTML = `<div class="section-hdr"><div class="section-title" data-help="Every exit/notice request. In approval mode a new exit shows Pending until you Approve (which starts the notice period and forfeits the Loyalty Bonus). Cancel/Revoke restores an employee to Active and reverses the loyalty forfeiture.">🚪 Exits & Notices / निकास एवं नोटिस</div></div><div class="empty-state" style="margin-top:0"><div class="empty-icon">🚪</div><p>No exit / notice records yet / अभी तक कोई निकास रिकॉर्ड नहीं</p></div>`;
+    return;
+  }
+  const recs = _noticeStatusFilter ? all.filter(r => (r.status||'') === _noticeStatusFilter) : all;
+  const filterSel = `<select class="filter-input" onchange="_noticeStatusFilter=this.value;_renderNoticeRecords()" style="max-width:150px">
+    <option value="">All statuses</option>
+    ${['Pending','Active','Approved','Rejected','Cancelled'].map(s=>`<option value="${s}" ${_noticeStatusFilter===s?'selected':''}>${s}</option>`).join('')}
+  </select>`;
+  const rows = recs.map(r => {
+    const st = r.status || '';
+    const canApprove = isOwner && st === 'Pending';
+    const canReject  = isOwner && st === 'Pending';
+    const canCancel  = isOwner && (st === 'Active' || st === 'Approved' || st === 'Pending');
+    const canModify  = isOwner && st !== 'Cancelled' && st !== 'Rejected';
+    return `<tr>
+      <td><strong>${escHtml(r.empName||r.empId)}</strong> <span style="font-size:10px;color:var(--gray)">${escHtml(r.empId)}</span></td>
+      <td style="font-size:11px">${escHtml(r.noticeType||'—')}<br><span style="color:var(--gray-light)">${escHtml(r.source||'')}</span></td>
+      <td style="font-size:11px">${escHtml(r.triggerDate||'—')}</td>
+      <td style="font-size:11px">${escHtml(r.lwd||'—')}</td>
+      <td style="font-size:11px;max-width:170px">${escHtml(r.reason||'—')}</td>
+      <td>${statusBadge(st||'—')}</td>
+      <td>
+        ${canApprove?`<button class="btn btn-gold btn-sm" onclick="noticeAction(${r.rowIndex},'approve')">✓ Approve</button> `:''}
+        ${canReject?`<button class="btn btn-dark btn-sm" onclick="noticeAction(${r.rowIndex},'reject')">✗ Reject</button> `:''}
+        ${canCancel?`<button class="btn btn-dark btn-sm" style="color:var(--red)" onclick="noticeAction(${r.rowIndex},'cancel')">↩ Cancel/Revoke</button> `:''}
+        ${canModify?`<button class="btn btn-dark btn-sm" onclick="noticeModify(${r.rowIndex})">✎ Modify</button>`:''}
+        ${!isOwner?'<span style="font-size:11px;color:var(--gray-light)">Owner only</span>':''}
+      </td>
+    </tr>`;
+  }).join('');
+  sec.innerHTML = `
+  <div class="section-hdr"><div class="section-title" data-help="Every exit/notice request. In approval mode a new exit is Pending until you Approve (starts notice + forfeits loyalty). Reject leaves them Active. Cancel/Revoke restores an Active employee and reverses the loyalty forfeiture. Modify changes notice days / reason / LWD.">🚪 Exits & Notices / निकास एवं नोटिस</div>
+    <div class="section-actions">${filterSel}<button class="btn btn-dark btn-sm" onclick="loadNoticeRecords()">↻ Refresh</button></div></div>
+  <div class="table-wrap"><table class="az-table">
+    <thead><tr><th>Employee</th><th>Type</th><th>Trigger</th><th>LWD</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>
+  ${recs.length===0?'<div style="font-size:12px;color:var(--gray-light);padding:8px">No records with this status.</div>':''}`;
+}
+async function noticeAction(rowIndex, action) {
+  const labels = {
+    approve:'Approve this exit? This starts the notice period now and forfeits the employee\'s accrued Loyalty Bonus.',
+    reject:'Reject this exit request? The employee stays Active and nothing is forfeited.',
+    cancel:'Cancel / Revoke this exit? The employee returns to Active, their last-working-date is cleared, and any forfeited Loyalty Bonus is restored.'
+  };
+  if (!(await confirm2(labels[action] || ('Proceed with ' + action + '?')))) return;
+  if (!(await _ensureOwnerToken())) return; // owner-gated server-side
+  const actionMap = { approve:'approveNotice', reject:'rejectNotice', cancel:'cancelNotice' };
+  const res = await API.call(actionMap[action], { rowIndex: rowIndex, triggeredBy: State.adminUser || State.adminRole });
+  if (res && res.ok) {
+    const msg = action==='approve' ? 'Exit approved — notice period started.'
+      : (action==='reject' ? 'Exit request rejected — employee stays Active.'
+      : ('Exit cancelled — employee restored to Active' + (res.restored ? (', Loyalty Bonus restored ₹'+res.restored) : '') + '.'));
+    toast(msg,'success',5000);
+    loadNoticeRecords();
+    API.call('getEmployees').then(r=>{if(r&&r.ok)State.employees=r.employees||[];}).catch(()=>{});
+  } else toast((res&&res.error)||'Action failed','error',6000);
+}
+async function noticeModify(rowIndex) {
+  const rec = (_noticeRecordsCache||[]).find(r => r.rowIndex === rowIndex);
+  if (!rec) { toast('Record not found — refresh and retry','error'); return; }
+  const html = `
+  <div style="font-size:13px">
+    <div class="form-group"><label class="form-label">Notice Period (days)</label><input id="mod-notice-days" class="form-input" type="number" value="${escHtml(String(rec.noticeDays||''))}"></div>
+    <div class="form-group"><label class="form-label">Notice Type</label><input id="mod-notice-type" class="form-input" value="${escHtml(rec.noticeType||'')}"></div>
+    <div class="form-group"><label class="form-label">Reason</label><input id="mod-notice-reason" class="form-input" value="${escHtml(rec.reason||'')}"></div>
+    <div style="font-size:11px;color:var(--gray-light)">The Last Working Date is recomputed from the trigger date (${escHtml(rec.triggerDate||'')}) + notice days.</div>
+  </div>`;
+  showModal('✎ Modify Exit / निकास संशोधित करें', html, [
+    {label:'Save / सहेजें', cls:'btn-gold', cb: async () => {
+      if (!(await _ensureOwnerToken())) return;
+      const res = await API.call('modifyNotice', {
+        rowIndex: rowIndex,
+        noticeDays: document.getElementById('mod-notice-days')?.value,
+        noticeType: document.getElementById('mod-notice-type')?.value,
+        reason: document.getElementById('mod-notice-reason')?.value,
+        triggeredBy: State.adminUser || State.adminRole
+      });
+      if (res && res.ok) { closeModal(); toast('Exit updated — new Last Working Date ' + (res.lwd||'—'),'success',5000); loadNoticeRecords(); }
+      else toast((res&&res.error)||'Update failed','error',6000);
+    }},
+    {label:'Cancel / रद्द करें', cls:'btn-dark', cb: closeModal},
+  ]);
 }
 
 // v61 A1: list Left/Archived/Exited employees with a Restore button (wires v60 handleRestoreFromArchive).
@@ -16060,6 +16178,16 @@ async function renderSettings() {
         </label>
         <input class="form-input" type="number" id="cfg-earlyExitRateFixed" min="0" value="${cfg['earlyExitRateFixed']||300}">
       </div>
+      <div class="form-group">
+        <!-- v127 FIX-127-5: choose the exit workflow model -->
+        <label class="form-label">Exit / Resignation Approval Mode
+          <span class="info-tooltip" title="Immediate (default): an Apply-for-Exit submission starts the notice period and forfeits the Loyalty Bonus right away.&#10;Approval Required: the submission becomes a Pending request on the Exits & Notices screen (FnF / Exit tab); the notice period and loyalty forfeiture only happen when an owner Approves it. Reject/Cancel leave the employee Active.">ℹ</span>
+        </label>
+        <select class="form-input" id="cfg-exitApprovalMode">
+          <option value="immediate" ${(cfg['exitApprovalMode']||'immediate')==='immediate'?'selected':''}>Immediate — notice starts on submit (default)</option>
+          <option value="approval" ${cfg['exitApprovalMode']==='approval'?'selected':''}>Approval required — owner approves first</option>
+        </select>
+      </div>
     </div>
     <div style="background:var(--dark3);border-radius:8px;padding:12px;margin-top:14px">
       <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px">⚠️ Abrupt Quit Policy (No Notice Served)</div>
@@ -16599,7 +16727,7 @@ async function renderBonusTracker() {
   window._lbBalancesCache = balances;
 
   // v108: filter to active employees only
-  const activeIds = new Set((State.employees||[]).filter(e=>e.status==='Active'||e.status==='Notice').map(e=>e.id));
+  const activeIds = new Set((State.employees||[]).filter(e=>e.status==='Active'||e.status==='Notice Period'||e.status==='Notice').map(e=>e.id));
   const filteredBalances = balances.filter(b => activeIds.has(b.employee_id));
   const archivedCount = balances.length - filteredBalances.length;
   const totalLiability  = filteredBalances.reduce((s,b)=>s+parseFloat(b.current_balance||0),0);
@@ -20733,9 +20861,7 @@ async function loadV31KioskCards(emp, dash) {
   // Leaves card (v62: Leaves section)
   const leavesCard = document.getElementById('ec-leaves-card');
   if (leavesCard) leavesCard.style.display = dash.leaves ? '' : 'none';
-  // Employment Status card (core — never gated)
-  const empStatusCard = document.getElementById('ec-employment-card');
-  if (empStatusCard && emp.status !== 'Notice Period') empStatusCard.style.display = '';
+  // v127 FIX-127-4: Employment Status card removed — exit is consolidated into the "Apply for Exit" control.
   // Load pending bonuses (v62: Bonus section — skipped entirely when off)
   if (dash.bonus) try {
     const now = new Date();
@@ -21000,54 +21126,10 @@ async function submitLeaveEncashment() {
   else toast(res.error || 'Error', 'error');
 }
 
-async function initiateResignation() {
-  const emp = State.currentEmp;
-  // v126 FIX-518: never a silent dead click. State.currentEmp is set on a kiosk PIN/face self-login and
-  // nulled by hideEmpCard — if it was cleared (timeout / card hidden), the old code returned silently so
-  // the button "did nothing". Now we always give feedback, prompting the employee to log in again.
-  if (!emp || !emp.id) { toast('Session expired — please log in again to initiate your resignation.', 'warning', 5000); return; }
-  const conf = await new Promise(resolve => {
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay active';
-    overlay.innerHTML = `<div class="modal" style="max-width:420px">
-      <h3 style="color:#c62828">Confirm Resignation</h3>
-      <p style="font-size:13px">WARNING: Initiating a notice period will <strong>IMMEDIATELY forfeit</strong> your accrued Loyalty Bonus. This action cannot be undone.</p>
-      <p style="font-size:13px">Type <strong>CONFIRM</strong> to proceed:</p>
-      <input id="resign-confirm-input" type="text" class="form-control" placeholder="Type CONFIRM" autocomplete="off">
-      <div class="modal-footer" style="margin-top:1rem;display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn btn-dark" id="resign-cancel-btn">Cancel</button>
-        <button class="btn btn-danger" id="resign-ok-btn" style="background:#c62828;color:#fff">Proceed</button>
-      </div>
-    </div>`;
-    document.body.appendChild(overlay);
-    overlay.querySelector('#resign-cancel-btn').onclick = () => { overlay.remove(); resolve({status:'cancel'}); };
-    overlay.querySelector('#resign-ok-btn').onclick = () => {
-      const val = (overlay.querySelector('#resign-confirm-input').value || '').trim();
-      overlay.remove();
-      // v124 FIX-11: distinguish "clicked Proceed without typing CONFIRM" from "cancelled" so the abort is loud.
-      resolve({status: val === 'CONFIRM' ? 'ok' : 'bad', typed: val});
-    };
-    setTimeout(() => overlay.querySelector('#resign-confirm-input')?.focus(), 100);
-  });
-  // v124 FIX-11: a louder, clearer abort — the old quiet "info" toast looked like "nothing happened".
-  if (!conf || conf.status !== 'ok') {
-    if (conf && conf.status === 'bad') {
-      toast('⚠ Resignation NOT submitted — you must type the word CONFIRM (in capitals) exactly in the box, then press Proceed. Please try again.', 'warning', 7000);
-    } else {
-      toast('Resignation cancelled — nothing was submitted.', 'info', 4000);
-    }
-    return;
-  }
-  const res = await API.call('initiateNotice', {empId: emp.id, source: 'Self', triggeredBy: emp.id, noticeType: 'Resignation'});
-  if (res && res.ok) {   // v126 FIX-518: null-guard so a null/failed response can't throw on res.ok
-    toast('Notice period initiated. Last Working Day: ' + res.lastWorkingDate, 'success');
-    // Refresh card to show banner
-    document.getElementById('ec-notice-banner').style.display = '';
-    document.getElementById('ec-notice-lwd').textContent = 'Last Working Day: ' + res.lastWorkingDate;
-    document.getElementById('ec-notice-countdown').textContent = 'Days Remaining: ' + res.noticeDays;
-    document.getElementById('ec-employment-card').style.display = 'none';
-  } else toast((res && res.error) || 'Could not initiate notice — please try again.', 'error');
-}
+// v127 FIX-127-4: initiateResignation() removed. It was a buried, English-only duplicate of the
+// "🚪 Apply for Exit" control (doApplyExit), reaching the same handleInitiateNotice backend. Its only
+// unique feature — the type-CONFIRM hard-gate — was ported into doApplyExit. The on-notice banner
+// (#ec-notice-banner) is driven independently from emp.status/lwd at login, so nothing here is lost.
 
 async function claimAllInstantBonuses() {
   toast('Instant bonus claim is not yet connected to backend approval. Please contact admin.', 'error');
@@ -21738,6 +21820,8 @@ async function saveV31ExitSettings() {
     // Early Exit Rate Mode silently reverted to 'fixed' on every revisit. Now persisted.
     earlyExitRateMode: _cfgVal('cfg-earlyExitRateMode','fixed'),
     earlyExitRateFixed: _cfgVal('cfg-earlyExitRateFixed','300'),
+    // v127 FIX-127-5: persist the exit-approval workflow model (immediate vs approval-required)
+    exitApprovalMode: _cfgVal('cfg-exitApprovalMode','immediate'),
   };
   const res = await API.call('updateSettings', {settings: updates});
   if (!res || typeof res !== 'object') { toast('Settings saved. Refresh to verify.', 'warning'); return; }
@@ -24067,7 +24151,7 @@ function _v94OfferLetterModal(candidateId, name) {
     </div>
     <div class="form-group"><label class="form-label">Terms (optional)</label><textarea id="v94-terms" class="form-input" rows="2" placeholder="As per company policy."></textarea></div>`,
     [
-      { label:'Generate PDF', action: async function() {
+      { label:'Generate PDF', cb: async function() {
           const res = await API.call('generateOfferLetter', { candidateId,
             ctc: document.getElementById('v94-ctc').value,
             role: document.getElementById('v94-offrole').value,
@@ -24084,7 +24168,7 @@ function _v94OfferLetterModal(candidateId, name) {
             }
           } else toast('Failed: ' + ((res&&res.error)||''), 'error');
       }},
-      { label:'Cancel', action: hideModal }
+      { label:'Cancel', cb: hideModal }
     ]);
 }
 
@@ -24105,7 +24189,7 @@ function _v94AddCandidateModal() {
     </div>
     <div class="form-group"><label class="form-label">Notes</label><textarea id="v94-cand-notes" class="form-input" rows="2"></textarea></div>`,
     [
-      { label:'Add Candidate', action: async function() {
+      { label:'Add Candidate', cb: async function() {
           const n = document.getElementById('v94-cand-name').value.trim();
           const e = document.getElementById('v94-cand-email').value.trim();
           if (!n || !e) { toast('Name and email required','error'); return; }
@@ -24113,7 +24197,7 @@ function _v94AddCandidateModal() {
           if (res && res.ok) { hideModal(); toast('Candidate added','success'); _v94RenderRecruitment(); }
           else toast('Failed: ' + ((res&&res.error)||''), 'error');
       }},
-      { label:'Cancel', action: hideModal }
+      { label:'Cancel', cb: hideModal }
     ]);
 }
 
@@ -24285,7 +24369,7 @@ async function _v96OpenPTSlabsEditor() {
     + '<button class="btn btn-dark btn-sm" style="margin-top:8px" onclick="_v96AddPTRow()">+ Add Row</button>'
     + '<p style="font-size:11px;color:var(--gray);margin-top:8px">UP = ₹0 PT (current state). Add other states only when hiring outside UP.</p>';
   showModal('Professional Tax Slabs Editor', tableHtml, [
-    { label:'Save Slabs', action: async function() {
+    { label:'Save Slabs', cb: async function() {
         var tbl = document.getElementById('pt-slabs-table');
         if (!tbl) return;
         var rows = tbl.querySelectorAll('tbody tr');
@@ -24303,13 +24387,13 @@ async function _v96OpenPTSlabsEditor() {
         if (r && r.ok) { hideModal(); toast('PT slabs saved (' + slabs2.length + ' rows)', 'success'); }
         else toast((r&&r.error)||'Save failed', 'error');
     }},
-    { label:'Reset to Defaults', action: async function() {
+    { label:'Reset to Defaults', cb: async function() {
         if (!confirm('Reset PT slabs to the built-in defaults? This cannot be undone.')) return;
         var r = await API.call('seedPTSlabs', {});
         if (r && r.ok) { hideModal(); toast('PT slabs reset to defaults', 'success'); }
         else toast((r&&r.error)||'Failed', 'error');
     }},
-    { label:'Cancel', action: hideModal }
+    { label:'Cancel', cb: hideModal }
   ]);
 }
 var _v96_ptRowIdx = 1000;
@@ -24363,24 +24447,24 @@ function _v96RenderAIClipboardCard() {
 function _v96AIExitInterviewPrompt() {
   showModal('Exit Interview — Employee Code',
     '<div class="form-group"><label class="form-label">Employee Code</label><input id="ai-exit-emp" class="form-input" placeholder="e.g. AZ_EMP_0012"></div>',
-    [{label:'Copy', action: async function() {
+    [{label:'Copy', cb: async function() {
         var c = (document.getElementById('ai-exit-emp')||{value:''}).value.trim();
         if (!c) { toast('Enter employee code','error'); return; }
         await _v92AICopyExitInterview(c); hideModal();
-    }}, {label:'Cancel', action: hideModal}]);
+    }}, {label:'Cancel', cb: hideModal}]);
 }
 function _v96AIResumeJDMatchPrompt() {
   showModal('Resume vs JD — Candidate ID',
     '<div class="form-group"><label class="form-label">Candidate ID</label><input id="ai-jd-cand" class="form-input" placeholder="e.g. C_ab12cd34"></div>'
     + '<div class="form-group"><label class="form-label">Job Description (paste)</label><textarea id="ai-jd-text" class="form-input" rows="4" placeholder="Paste the JD here…"></textarea></div>',
-    [{label:'Copy', action: async function() {
+    [{label:'Copy', cb: async function() {
         var c = (document.getElementById('ai-jd-cand')||{value:''}).value.trim();
         var jd = (document.getElementById('ai-jd-text')||{value:''}).value.trim();
         if (!c) { toast('Enter candidate ID','error'); return; }
         var r = await API.call('aiExportResumeJDMatch', {candidateId: c, jd: jd});
         if (r && r.ok) { await navigator.clipboard.writeText(JSON.stringify(r,null,2)); toast('Copied','success'); hideModal(); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Cancel', action: hideModal}]);
+    }}, {label:'Cancel', cb: hideModal}]);
 }
 
 // ─── F4: Reimbursements tab ───────────────────────────────────────────────────
@@ -24435,7 +24519,7 @@ async function showESSReimbursements() {
   if (!empId) return;
   const res = await API.call('getMyReimbursements', { empCode: empId }); // v126 FIX-A111: ungated ESS self-read (was admin-gated getReimbursements → role gate blocked → blank list)
   const reqs = (res && res.reqs) || [];
-  showModal('💰 My Reimbursements',
+  showModal('💰 My Reimbursements / मेरी प्रतिपूर्ति',
     '<div style="margin-bottom:12px"><div class="form-group"><label class="form-label">Amount (₹) *</label><input type="number" id="ess-reimb-amt" class="form-input" placeholder="e.g. 500"></div>'
     + '<div class="form-group"><label class="form-label">Category *</label><select id="ess-reimb-cat" class="form-input"><option>Travel</option><option>Medical</option><option>Meals</option><option>Other</option></select></div>'
     + '<div class="form-group"><label class="form-label">Month/Period</label><input id="ess-reimb-period" class="form-input" placeholder="e.g. May 2026"></div>'
@@ -24443,7 +24527,7 @@ async function showESSReimbursements() {
     + (reqs.length ? '<div style="margin-top:10px;font-size:12px"><strong>My Requests</strong><table class="az-table" style="margin-top:6px"><thead><tr><th>Amount</th><th>Category</th><th>Status</th></tr></thead><tbody>'
     + reqs.slice(0,10).map(function(r){ return '<tr><td>₹'+parseFloat(r.amount||0).toLocaleString('en-IN')+'</td><td>'+escHtml(r.category)+'</td><td>'+escHtml(r.status)+'</td></tr>'; }).join('')
     + '</tbody></table></div>' : ''),
-    [{label:'Submit Request', cb: async function() {   // v126 FIX-A111: showModal invokes b.cb (was b.action → Submit threw "b.cb is not a function")
+    [{label:'Submit Request / अनुरोध भेजें', cb: async function() {   // v126 FIX-A111: showModal invokes b.cb (was b.action → Submit threw "b.cb is not a function")
         var amt = parseFloat(document.getElementById('ess-reimb-amt').value)||0;
         if (!amt || amt <= 0) { toast('Enter a valid amount','error'); return; }
         var r = await API.call('submitReimbursement', { empCode: empId, requesterId: empId,
@@ -24452,7 +24536,7 @@ async function showESSReimbursements() {
           notes: document.getElementById('ess-reimb-note').value });
         if (r && r.ok) { hideModal(); toast('Reimbursement request submitted','success'); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Close', cb: hideModal}]);
+    }}, {label:'Close / बंद करें', cb: hideModal}]);
 }
 
 // ─── F5: Assets register tab ──────────────────────────────────────────────────
@@ -24498,7 +24582,7 @@ function _v96AddAssetModal() {
     + '<div class="form-group"><label class="form-label">Issued On</label><input type="date" id="a-issued" class="form-input"></div>'
     + '<div class="form-group"><label class="form-label">Condition</label><select id="a-cond" class="form-input"><option>New</option><option>Good</option><option>Fair</option><option>Damaged</option></select></div>'
     + '</div><div class="form-group"><label class="form-label">Notes</label><textarea id="a-notes" class="form-input" rows="2"></textarea></div>',
-    [{label:'Add', action: async function() {
+    [{label:'Add', cb: async function() {
         var type = (document.getElementById('a-type')||{value:''}).value.trim();
         if (!type) { toast('Type is required','error'); return; }
         var r = await API.call('upsertAsset', { row: {
@@ -24511,7 +24595,7 @@ function _v96AddAssetModal() {
         }});
         if (r && r.ok) { hideModal(); toast('Asset added','success'); _v96RenderAssets(); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Cancel', action: hideModal}]);
+    }}, {label:'Cancel', cb: hideModal}]);
 }
 async function _v96ReturnAsset(assetId) {
   if (!confirm('Mark this asset as returned?')) return;
@@ -24592,13 +24676,13 @@ async function showESSHelpdesk() {
   if (!empId) return;
   const res = await API.call('getMyTickets', { empCode: empId }); // v126 FIX-A111: ungated ESS self-read (was admin-gated getTickets → role gate blocked → blank list)
   const mine = ((res && res.tickets) || []).filter(function(t){ return String(t.empCode) === String(empId); });
-  showModal('🎫 Raise a Support Ticket',
+  showModal('🎫 Raise a Support Ticket / सहायता टिकट बनाएं',
     '<div class="form-group"><label class="form-label">Category *</label><select id="ess-tk-cat" class="form-input"><option>HR</option><option>IT</option><option>Admin</option><option>Other</option></select></div>'
     + '<div class="form-group"><label class="form-label">Subject *</label><input id="ess-tk-subj" class="form-input" maxlength="100" placeholder="Brief summary of the issue"></div>'
     + '<div class="form-group"><label class="form-label">Description</label><textarea id="ess-tk-body" class="form-input" rows="3" placeholder="Describe your issue in detail…"></textarea></div>'
     + (mine.length ? '<div style="margin-top:10px;font-size:12px"><strong>My Tickets</strong><table class="az-table" style="margin-top:6px"><thead><tr><th>Subject</th><th>Status</th></tr></thead><tbody>'
     + mine.slice(0,5).map(function(t){ return '<tr><td>' + escHtml(t.subject||'') + '</td><td>' + escHtml(t.status||'') + '</td></tr>'; }).join('') + '</tbody></table></div>' : ''),
-    [{label:'Submit Ticket', cb: async function() {   // v126 FIX-A111: showModal invokes b.cb (was b.action → Submit threw)
+    [{label:'Submit Ticket / टिकट भेजें', cb: async function() {   // v126 FIX-A111: showModal invokes b.cb (was b.action → Submit threw)
         var subj = (document.getElementById('ess-tk-subj')||{value:''}).value.trim();
         if (!subj) { toast('Subject is required','error'); return; }
         var r = await API.call('addTicket', { empCode: empId,
@@ -24607,7 +24691,7 @@ async function showESSHelpdesk() {
           body: (document.getElementById('ess-tk-body')||{value:''}).value.trim() });
         if (r && r.ok) { hideModal(); toast('Ticket submitted (ID: ' + (r.ticketId||'') + ')','success'); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Close', cb: hideModal}]);
+    }}, {label:'Close / बंद करें', cb: hideModal}]);
 }
 
 // ─── F7: Pulse surveys tab ────────────────────────────────────────────────────
@@ -24649,7 +24733,7 @@ function _v96AddPulseQuestion() {
     '<div class="form-group"><label class="form-label">Question Text *</label><textarea id="pq-text" class="form-input" rows="3" placeholder="e.g. How would you rate your workload this week?"></textarea></div>'
     + '<div class="form-group"><label class="form-label">Type</label><select id="pq-type" class="form-input"><option value="rating">Rating (1-5)</option><option value="text">Open Text</option></select></div>'
     + '<div class="form-group"><label class="form-label"><input type="checkbox" id="pq-active" checked style="width:auto;margin-right:6px">Set as Active Question immediately</label></div>',
-    [{label:'Add', action: async function() {
+    [{label:'Add', cb: async function() {
         var text = (document.getElementById('pq-text')||{value:''}).value.trim();
         if (!text) { toast('Question text required','error'); return; }
         var r = await API.call('addPulseQuestion', {
@@ -24659,7 +24743,7 @@ function _v96AddPulseQuestion() {
         });
         if (r && r.ok) { hideModal(); toast('Question added','success'); _v96RenderPulse(); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Cancel', action: hideModal}]);
+    }}, {label:'Cancel', cb: hideModal}]);
 }
 
 // ESS: Pulse survey
@@ -24670,7 +24754,7 @@ async function showESSPulse() {
   const res = await API.call('getActivePulseQuestion', { empId: empId });
   const q = res && res.question;
   if (!q) { toast('No active pulse survey right now. Check back later.','info',4000); return; }
-  showModal('📊 Pulse Survey',
+  showModal('📊 Pulse Survey / पल्स सर्वे',
     '<div style="font-size:15px;color:var(--gold);margin-bottom:16px;font-weight:600">' + escHtml(q.questionText||'') + '</div>'
     + (q.type === 'text'
       ? '<div class="form-group"><label class="form-label">Your Response</label><textarea id="ess-pulse-txt" class="form-input" rows="3" placeholder="Share your thoughts…"></textarea></div>'
@@ -24678,7 +24762,7 @@ async function showESSPulse() {
       + '<div style="display:flex;gap:12px;justify-content:center;margin-top:8px">'
       + [1,2,3,4,5].map(function(n){ return '<label style="text-align:center;cursor:pointer"><input type="radio" name="ess-pulse-r" value="' + n + '" style="display:block;margin:0 auto 4px"><span style="font-size:16px">' + n + '</span></label>'; }).join('')
       + '</div></div>'),
-    [{label:'Submit Response', action: async function() {
+    [{label:'Submit Response / जवाब भेजें', cb: async function() {
         var rating = null, comment = '';
         if (q.type === 'text') {
           comment = (document.getElementById('ess-pulse-txt')||{value:''}).value.trim();
@@ -24690,7 +24774,7 @@ async function showESSPulse() {
         var r = await API.call('submitPulseResponse', { empId: empId, questionId: q.questionId, rating: rating, comment: comment });
         if (r && r.ok) { hideModal(); toast('Response submitted — thank you!','success'); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Skip', action: hideModal}]);
+    }}, {label:'Skip / छोड़ें', cb: hideModal}]);
 }
 
 // ─── F8: KRA / Performance tab ───────────────────────────────────────────────
@@ -24769,7 +24853,7 @@ function _v96AddKRATemplate() {
     '<div class="form-group"><label class="form-label">Template Name *</label><input id="kra-tpl-name" class="form-input" placeholder="e.g. Sales Rep Q3"></div>'
     + '<div class="form-group"><label class="form-label">Criteria (name: weight%, comma-separated) *</label><input id="kra-tpl-crit" class="form-input" placeholder="Output Quality: 40, Client Feedback: 30, Attendance: 30"></div>'
     + '<p style="font-size:11px;color:var(--gray);margin-top:4px">Weights must sum to 100%.</p>',
-    [{label:'Save Template', action: async function() {
+    [{label:'Save Template', cb: async function() {
         var name = (document.getElementById('kra-tpl-name')||{value:''}).value.trim();
         var critStr = (document.getElementById('kra-tpl-crit')||{value:''}).value.trim();
         if (!name || !critStr) { toast('Name and criteria required','error'); return; }
@@ -24781,7 +24865,7 @@ function _v96AddKRATemplate() {
         var r = await API.call('upsertKRATemplate', { name: name, criteria: JSON.stringify(criteria) });
         if (r && r.ok) { hideModal(); toast('KRA template saved','success'); _v96RenderKRA(); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Cancel', action: hideModal}]);
+    }}, {label:'Cancel', cb: hideModal}]);
 }
 function _v96EditKRATemplate(t) {
   var criteria = [];
@@ -24789,7 +24873,7 @@ function _v96EditKRATemplate(t) {
   showModal('Edit KRA Template — ' + escHtml(t.name||''),
     '<div class="form-group"><label class="form-label">Template Name</label><input id="kra-edit-name" class="form-input" value="' + escHtml(t.name||'') + '"></div>'
     + '<div class="form-group"><label class="form-label">Criteria (name: weight%)</label><input id="kra-edit-crit" class="form-input" value="' + escHtml(criteria.map(function(c){ return c.name+': '+c.weight; }).join(', ')) + '"></div>',
-    [{label:'Save', action: async function() {
+    [{label:'Save', cb: async function() {
         var nm = (document.getElementById('kra-edit-name')||{value:''}).value.trim();
         var critStr = (document.getElementById('kra-edit-crit')||{value:''}).value.trim();
         var newCrit = critStr.split(',').map(function(p){ var pts = p.split(':'); return {name:pts[0].trim(), weight:parseInt(pts[1])||0}; });
@@ -24798,14 +24882,14 @@ function _v96EditKRATemplate(t) {
         var r = await API.call('upsertKRATemplate', { templateId: t.templateId, name: nm, criteria: JSON.stringify(newCrit) });
         if (r && r.ok) { hideModal(); toast('Template updated','success'); _v96RenderKRA(); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Cancel', action: hideModal}]);
+    }}, {label:'Cancel', cb: hideModal}]);
 }
 function _v96SubmitMgrRating(empId, cycleId) {
   showModal('Manager Rating — ' + empId,
     '<div style="font-size:13px;color:var(--gray-light);margin-bottom:10px">Rate 1–5 on each criterion. Blank criteria will be skipped.</div>'
     + '<div class="form-group"><label class="form-label">Overall Manager Rating (1-5) *</label><input type="number" id="kra-mgr-rating" class="form-input" min="1" max="5" placeholder="3"></div>'
     + '<div class="form-group"><label class="form-label">Comments</label><textarea id="kra-mgr-comment" class="form-input" rows="2"></textarea></div>',
-    [{label:'Submit Rating', action: async function() {
+    [{label:'Submit Rating', cb: async function() {
         var rating = parseInt((document.getElementById('kra-mgr-rating')||{value:'0'}).value)||0;
         if (rating < 1 || rating > 5) { toast('Rating must be 1-5','error'); return; }
         var r = await API.call('submitKRAMgrRating', { empId: empId, cycleId: cycleId,
@@ -24813,7 +24897,7 @@ function _v96SubmitMgrRating(empId, cycleId) {
           comment: (document.getElementById('kra-mgr-comment')||{value:''}).value.trim() });
         if (r && r.ok) { hideModal(); toast('Rating submitted','success'); _v96RenderKRA(); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Cancel', action: hideModal}]);
+    }}, {label:'Cancel', cb: hideModal}]);
 }
 
 // ESS: My KRA
@@ -24826,14 +24910,14 @@ async function showESSKRA() {
   if (!a) { toast('No active KRA assessment for you right now.','info',4000); return; }
   var criteria = [];
   try { criteria = JSON.parse(a.criteria||'[]'); } catch(e) {}
-  showModal('🎯 My KRA Assessment',
+  showModal('🎯 My KRA Assessment / मेरा KRA मूल्यांकन',
     '<div style="font-size:13px;color:var(--gray-light);margin-bottom:12px">Rate yourself on each criterion (1=Poor, 5=Excellent).</div>'
     + criteria.map(function(c, i) {
         return '<div class="form-group"><label class="form-label">' + escHtml(c.name) + ' (' + c.weight + '%)</label>'
           + '<input type="number" id="kra-self-' + i + '" class="form-input" min="1" max="5" placeholder="1-5"></div>';
     }).join('')
     + '<div class="form-group"><label class="form-label">Self Assessment Notes</label><textarea id="kra-self-note" class="form-input" rows="2" placeholder="What went well? What could improve?"></textarea></div>',
-    [{label:'Submit Self Rating', cb: async function() {   // v126 FIX-A111: showModal invokes b.cb (was b.action → Submit threw)
+    [{label:'Submit Self Rating / स्व-रेटिंग भेजें', cb: async function() {   // v126 FIX-A111: showModal invokes b.cb (was b.action → Submit threw)
         var ratings = criteria.map(function(c, i) {
           return { criterion: c.name, weight: c.weight, rating: parseInt((document.getElementById('kra-self-' + i)||{value:'0'}).value)||0 };
         });
@@ -24843,7 +24927,7 @@ async function showESSKRA() {
           ratings: ratings, note: (document.getElementById('kra-self-note')||{value:''}).value.trim() });
         if (r && r.ok) { hideModal(); toast('Self rating submitted — thank you!','success'); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Cancel', cb: hideModal}]);
+    }}, {label:'Cancel / रद्द करें', cb: hideModal}]);
 }
 
 // ─── F9: Onboarding checklist card (inside _v94RenderRecruitment) ────────────
@@ -24891,7 +24975,7 @@ function _v96AddOnboardingTaskModal() {
     '<div class="form-group"><label class="form-label">Task Description *</label><input id="onb-task-desc" class="form-input" placeholder="e.g. Complete IT access request"></div>'
     + '<div class="form-group"><label class="form-label">Due Day Offset</label><input type="number" id="onb-task-days" class="form-input" value="30" placeholder="e.g. 30 = Day 30"></div>'
     + '<div class="form-group"><label class="form-label">Assigned To</label><input id="onb-task-assign" class="form-input" placeholder="e.g. IT Team, HR"></div>',
-    [{label:'Add Task', action: async function() {
+    [{label:'Add Task', cb: async function() {
         var desc = (document.getElementById('onb-task-desc')||{value:''}).value.trim();
         if (!desc) { toast('Task description required','error'); return; }
         var r = await API.call('addOnboardingTask', { empCode: empCode, task: desc,
@@ -24899,7 +24983,7 @@ function _v96AddOnboardingTaskModal() {
           assignedTo: (document.getElementById('onb-task-assign')||{value:''}).value.trim() });
         if (r && r.ok) { hideModal(); toast('Task added','success'); _v96LoadOnboardingChecklist(); }
         else toast((r&&r.error)||'Failed','error');
-    }}, {label:'Cancel', action: hideModal}]);
+    }}, {label:'Cancel', cb: hideModal}]);
 }
 
 
@@ -25149,9 +25233,24 @@ async function _v122RunDiagnosticsPanel(){
   var rows=[];
   var line=function(name,pass,detail){ rows.push({name:name,pass:pass,detail:detail||''}); };
   // ── client-side checks ──
-  try{ var _expV='v126'; line('App (HTML) version = '+_expV, (window.HRMS_VERSION||'')===_expV, 'window.HRMS_VERSION='+(window.HRMS_VERSION||'?')+' (expected '+_expV+')'); }catch(e){ line('App version', false, String(e)); }  // v125 FIX-B / v126: assert live constant vs expected, not a frozen literal
+  try{ var _expV='v127'; line('App (HTML) version = '+_expV, (window.HRMS_VERSION||'')===_expV, 'window.HRMS_VERSION='+(window.HRMS_VERSION||'?')+' (expected '+_expV+')'); }catch(e){ line('App version', false, String(e)); }  // v125 FIX-B / v126: assert live constant vs expected, not a frozen literal
   try{ var feats=(typeof _v122AllFeatures==='function')?_v122AllFeatures():[]; var jumpable=feats.filter(function(f){return f.target||f.go;}).length; line('Feature search indexes controls', feats.length>=60 && jumpable>=8, feats.length+' searchable, '+jumpable+' jump-to-exact-control'); }catch(e){ line('Feature search', false, String(e)); }
   try{ var keyTerms=['punch','wallet credit','undertime','data fix','increment','bulk approve','diagnostic']; var miss=keyTerms.filter(function(t){ var qL=t.toLowerCase(); return !_v122AllFeatures().some(function(f){ return f.q.some(function(k){return k.includes(qL);})||f.label.toLowerCase().includes(qL)||f.desc.toLowerCase().includes(qL); }); }); line('Search finds every key term', miss.length===0, miss.length?('missing: '+miss.join(', ')):'punch, wallet credit, undertime, data fix, increment, bulk approve, diagnostic'); }catch(e){ line('Search key terms', false, String(e)); }
+  // ── v127 client-side checks ──
+  // FIX-127-1 LIVE PROOF: actually RENDER a modal client-side and assert it opens, then close it via a
+  // `cb: hideModal` button — the exact construct that was DEAD in v126 (hideModal undefined). A backend
+  // self-test can never catch this; only rendering the modal does. We re-show the diagnostics shell after.
+  try{
+    var _ov=document.getElementById('modal-overlay');
+    showModal('Self-test modal', '<p>probe</p>', [{label:'Close', cb: hideModal}]);
+    var _opened=!!(_ov && _ov.classList.contains('open')) && document.querySelectorAll('#modal-footer button').length>0;
+    closeModal();
+    line('FIX-127-1 modal renders + hideModal alias works', _opened && typeof hideModal==='function', _opened?'a real modal opened & closed via a cb: hideModal button':'modal did not open');
+  }catch(e){ line('FIX-127-1 modal render', false, String(e)); }
+  // re-show the diagnostics shell (the probe replaced it) so the panel can finish rendering its report
+  showModal('🔧 System Self-Test / Diagnostics', '<div id="v122diag-body" style="font-size:12px;color:var(--gray-light)">Running live checks…</div>', [{label:'Close',cls:'btn-dark',cb:closeModal}]);
+  try{ line('FIX-127-4 single consolidated exit control', typeof doApplyExit==='function' && typeof initiateResignation==='undefined', 'Apply-for-Exit present; buried Initiate-Resignation removed'); }catch(e){ line('FIX-127-4', false, String(e)); }
+  try{ line('FIX-127-5 admin Exits & Notices surface present', typeof loadNoticeRecords==='function' && typeof noticeAction==='function' && typeof noticeModify==='function', 'loadNoticeRecords/noticeAction/noticeModify wired'); }catch(e){ line('FIX-127-5', false, String(e)); }
   // ── server-side read-only self-test ──
   var srv=null;
   try{ srv=await API.call('v122SelfTest',{}); }catch(e){ srv={ok:false,error:String(e)}; }
