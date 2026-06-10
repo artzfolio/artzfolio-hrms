@@ -1,7 +1,7 @@
 {
   "name": "ArtzFolio Employee",
   "short_name": "ArtzFolio ESS",
-  "description": "View your own pay, attendance & leave — ArtzFolio",
+  "description": "View your own pay, attendance & leave \u2014 ArtzFolio",
   "start_url": "./?ess",
   "scope": "./",
   "display": "standalone",
@@ -9,7 +9,23 @@
   "theme_color": "#C8922A",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "https://ui-avatars.com/api/?name=ESS&background=C8922A&color=111111&size=192&bold=true", "sizes": "192x192", "type": "image/png" },
-    { "src": "https://ui-avatars.com/api/?name=ESS&background=C8922A&color=111111&size=512&bold=true", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "ess-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "ess-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "ess-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
