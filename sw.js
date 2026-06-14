@@ -6,7 +6,7 @@
 // repo root, the SW registers, the shell is cached network-first, and the employee app becomes installable.
 //
 // Cache key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML (~L1687).
-const CACHE = 'artzfolio-hrms-v160-2026-06'; // v150: bumped so every device drops the stale shell and pulls the T&C-kiosk-gate + FnF-notice + freeze-pane build
+const CACHE = 'artzfolio-hrms-v164-2026-06'; // v164: bumped (v160->v164) so every device drops the stale shell and pulls the single-click PDF download + F&F page-2 navy/gold + shift de-dup + OT entry-path build
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 
 self.addEventListener('install', e => { self.skipWaiting(); });
