@@ -1,4 +1,4 @@
-// ArtzFolio HRMS — Service Worker (v159)
+// ArtzFolio HRMS — Service Worker (v165)
 // This is a REAL same-origin service-worker file (NOT a split of the single-file app — it is a separate
 // static asset). The app HTML registers it via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // A blob: URL is refused by browsers as an SW script, which is why the v144 inline-blob SW never registered
@@ -6,7 +6,7 @@
 // repo root, the SW registers, the shell is cached network-first, and the employee app becomes installable.
 //
 // Cache key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML (~L1687).
-const CACHE = 'artzfolio-hrms-v164-2026-06'; // v164: bumped (v160->v164) so every device drops the stale shell and pulls the single-click PDF download + F&F page-2 navy/gold + shift de-dup + OT entry-path build
+const CACHE = 'artzfolio-hrms-v165-2026-06'; // v165: bumped (v164->v165) so every device drops the stale shell and pulls the PDF margins + identity-font + employee-filters + OT-discoverability build
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 
 self.addEventListener('install', e => { self.skipWaiting(); });
@@ -35,6 +35,6 @@ self.addEventListener('fetch', e => {
       }
       return r;
     }).catch(() => cached);
-    return (isCdn || isShell) ? (await fetchPromise || cached) : (cached || fetchPromise);
+    return (isShell || isCdn) ? (fetchPromise.then(r => r || cached)) : (cached || fetchPromise);
   }));
 });
