@@ -6,7 +6,7 @@
 // repo root, the SW registers, the shell is cached network-first, and the employee app becomes installable.
 //
 // Cache key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML (~L1687).
-const CACHE = 'artzfolio-hrms-v304-2026-07'; // v195: bumped so every device drops the stale shell and pulls the face-liveness + Biometric Settings build (in lockstep with the inline CACHE in the app HTML)
+const CACHE = 'artzfolio-hrms-v311-2026-07'; // v195: bumped so every device drops the stale shell and pulls the face-liveness + Biometric Settings build (in lockstep with the inline CACHE in the app HTML)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 
 self.addEventListener('install', e => { self.skipWaiting(); });
@@ -39,7 +39,7 @@ self.addEventListener('fetch', e => {
     // cached shell immediately while the fetchPromise above refreshes the cache in the background. A new
     // deploy still lands: the new sw.js has a new CACHE key, activate() purges the old cache, and the app's
     // skipWaiting + controllerchange listener reloads once so the fresh shell is fetched. CDN libs stay network-first.
-    if (isShell) return cached || fetchPromise;
+    if (isShell) return fetchPromise.then(r => r || cached).catch(() => cached); // v308: NETWORK-FIRST shell - always serve the freshest deployed build; fall back to cache only when offline (fixes 'ESS/kiosk not updating to the latest version').
     return isCdn ? (fetchPromise.then(r => r || cached)) : (cached || fetchPromise);
   }));
 });

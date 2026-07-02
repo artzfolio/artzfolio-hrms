@@ -8358,6 +8358,17 @@ async function showMonthAccount(opts) {
   const perPresent = presentDays>0 ? Math.round((sal.netSalary||0)/presentDays) : 0;
   const _stat = (lbl,val,color)=>`<div style="background:var(--dark3);border-radius:8px;padding:8px;text-align:center"><div style="font-size:1.1rem;font-weight:800;color:${color||'var(--white)'}">${val}</div><div style="font-size:10px;color:var(--gray-light)">${lbl}</div></div>`;
   const _sectTitle = (icon,en,hi)=>`<div style="font-weight:700;color:var(--gold);margin:14px 0 8px;font-size:13px">${icon} <span class="en">${en}</span><span class="hi">${hi}</span></div>`;
+  // v305 Cluster-1 FIX (ESS weekly-counter = 0 bug): source the "My Days" counts from the engine's ONE
+  // canonical, reconciling day-count breakdown (sal.dayTypes.canon) instead of the punch-only scalar fields
+  // (sal.WO / sal.H). Those scalars only count EXPLICIT punch rows, so an employee who simply does not punch
+  // on a weekly-off / holiday shows 0 - that was the "Weekly-off shows 0, should be 4" report. canon.weeklyOff
+  // / canon.holiday are calendar-derived and every canon bucket sums to days-in-month. Falls back to the raw
+  // fields when dayTypes is absent (e.g. salary view restricted). DISPLAY-ONLY - the salary engine is untouched.
+  const _dt = (sal.dayTypes && sal.dayTypes.canon) ? sal.dayTypes.canon : null;
+  const _dv = (k,f)=> (_dt && _dt[k]!=null) ? _dt[k] : f;
+  const _canonPresent = _dt ? (_dt.present||0) : presentDays;
+  const _canonHalf = _dt ? ((_dt.ihl||0)+(_dt.uhl||0)) : ((sal.UHL||0)+(sal.IHL||0));
+  const _canonAbsent = _dt ? (Math.round(((_dt.ul||0)+(_dt.il||0)+(_dt.ihl||0)+(_dt.uhl||0)+(_dt.lwpOther||0))*100)/100) : (sal.absentDays||0);
   const html = `<div style="font-size:13px">
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px">
       <label style="font-size:11px;color:var(--gray-light)"><span class="en">Month</span><span class="hi">माह</span></label>
@@ -8388,19 +8399,20 @@ async function showMonthAccount(opts) {
 
     ${_sectTitle('🗓','My Days','मेरे दिन')}
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-      ${_stat('Present', presentDays, 'var(--green)')}
-      ${_stat('Absent', sal.absentDays||0, 'var(--red)')}
+      ${_stat('Present', _canonPresent, 'var(--green)')}
+      ${_stat('Absent', _canonAbsent, 'var(--red)')}
       ${_stat('Working Days', sal.workingDays||0)}
       ${_stat('Sick (SL)', sal.SL||0)}
       ${_stat('Privilege (PL)', sal.PL||0)}
-      ${_stat('Uninformed (UL)', sal.UL||0, 'var(--red)')}
-      ${_stat('Half-days', (sal.UHL||0)+(sal.IHL||0))}
-      ${_stat('Holidays (H)', sal.H||0)}
-      ${_stat('Weekly-off (WO)', sal.WO||0)}
-      ${_stat('Extra Worked (EW)', sal.EW||0, 'var(--green)')}
+      ${_stat('Uninformed (UL)', _dv('ul', sal.UL||0), 'var(--red)')}
+      ${_stat('Half-days', _canonHalf)}
+      ${_stat('Holidays (H)', _dv('holiday', sal.H||0))}
+      ${_stat('Weekly-off (WO)', _dv('weeklyOff', sal.WO||0))}
+      ${_stat('Extra Worked (EW)', _dv('extraWork', sal.EW||0), 'var(--green)')}
       ${_stat('Pending clock-out', sal.pendingDays||0, 'var(--orange)')}
       ${_stat('Sandwich', sal.sandwichDays||0)}
     </div>
+    ${_dt ? `<div style="font-size:10px;color:${_dt.total===_dt.daysInMonth?'var(--green)':'var(--orange)'};text-align:center;margin-top:6px">${_dt.total===_dt.daysInMonth?'✅':'⚠️'} <span class="en">Accounted</span>: <strong>${_dt.total}</strong> / ${_dt.daysInMonth} <span class="en">days</span> &nbsp;=&nbsp; present ${_dt.present} + extra ${_dt.extraWork} + weekly-off ${_dt.weeklyOff} + holiday ${_dt.holiday} + paid-leave ${_dt.paidLeave} + unpaid ${_canonAbsent}${_dt.remaining?` + not-yet ${_dt.remaining}`:''}</div>` : ''}
 
     ${_sectTitle('📅','My Leaves (this year)','मेरी छुट्टियाँ (इस वर्ष)')}
     <div style="font-size:10px;color:var(--gray-light);margin:-4px 0 6px">Leave used so far this calendar year (not month-specific).</div>
@@ -8828,7 +8840,13 @@ function resetKioskTimer() {
   // the 60s clock-screen timer was logging employees out mid-read and re-demanding auth. The clock screen
   // keeps kioskLogoutSeconds unchanged. body.kiosk-dash-mode is set only while a dashboard card is open.
   const _isDashIdle = !!(document.body && document.body.classList && document.body.classList.contains('kiosk-dash-mode'));
-  const logoutSecs = _isDashIdle ? (parseInt(State.settings && State.settings.dashIdleSeconds) || 300) : (CFG.kioskLogoutSeconds || 60);
+  // v308 Cluster-4: honour the configured session length so the ESS/dashboard idle timer never logs the
+  // employee out BEFORE their server session (essTokenTtlMinutes) expires. The old 300s dash idle (or the
+  // 60s clock timer) was cutting a longer configured session short. Only ever EXTENDS the idle timeout; the
+  // clock-in screen timer is unchanged. Applies the longer idle to the ESS app mode too (State.essMode).
+  const _essTtlSecs = (parseInt(State.settings && State.settings.essTokenTtlMinutes) || 45) * 60;
+  const _longIdle = _isDashIdle || !!(State && State.essMode);
+  const logoutSecs = _longIdle ? Math.max((parseInt(State.settings && State.settings.dashIdleSeconds) || 300), _essTtlSecs) : (CFG.kioskLogoutSeconds || 60);
   const warnSecs = Math.min(30, Math.floor(logoutSecs * 0.5));
   const countdown = document.getElementById('kiosk-countdown');
   const countdownText = document.getElementById('kiosk-countdown-text');
@@ -11875,8 +11893,8 @@ async function renderEmployees(filter='') {
     <div class="section-actions">
       ${canEdit?`<button class="btn btn-gold btn-sm" onclick="showAddEmpModal()">+ Add Employee</button> <button class="btn btn-gold btn-sm" onclick="showQuickAddEmpModal()" title="Fast onboarding — only Name, Level and Shift are required. The monthly salary fills in from the Salary Matrix and the shift fills in its default category, employment type, weekly-off, travel allowance and leave-policy group.">⚡ Quick Add</button> <button class="btn btn-dark btn-sm" onclick="showBulkShiftModal()" title="Assign a shift and/or designation to many employees at once">🧩 Bulk Assign Shift</button> <button class="btn btn-dark btn-sm" onclick="openShiftChangePanel()" title="Change a shift effective from a chosen date - earlier days keep their original shift and OT; the prior period is frozen">🔄 Shift Change</button> <button class="btn btn-dark btn-sm" onclick="_v198ResyncShiftTypes()" title="Fix the shift-type label for every employee to match their assigned shift (clears legacy Morning/stale values). Owner only; no pay or shift-assignment change.">🔧 Resync Shift Types</button> <button class="btn btn-dark btn-sm" onclick="_v177WeeklyOffChange()" title="Change an employee’s weekly off (add a 2nd off day, change the day, or remove one) effective from a chosen date — earlier days keep the old weekly-off, finalised past months stay frozen, and every change is logged in Change History. Tick the employee(s) first.">📅 Weekly-Off Change</button> <button class="btn btn-dark btn-sm" id="emp-bulk-edit-toolbar-btn" onclick="_v124BulkEditFields()" title="Bulk-edit fields (shift, level, salary, department, weekly-off, supervisor, mobile, email, bonus eligibility…) for the ticked employees. Tick rows — or use the Select-All box at the top of the table — first.">✎ Bulk Edit Fields</button>`:''}
       ${canEdit?`<button class="btn btn-dark btn-sm" onclick="bulkImportEmployees()">📥 Bulk Import</button> <button class="btn btn-dark btn-sm" onclick="quickAddBulkImport()" title="Bulk onboard new joiners from a short Excel sheet — only Name, Level and Shift per row. Salary fills from the Salary Matrix and the shift fills its default category, employment type, weekly-off, travel and leave-policy.">⚡ Quick Bulk (slim Excel)</button>`:''}
-      <button class="btn btn-dark btn-sm" onclick="exportCSV(State.employees,'employees')">📤 Export CSV</button>
-      <button class="btn btn-dark btn-sm" onclick="downloadXLSX('ArtzFolio_Employees.xlsx','Employees',['id','name','dept','level','salary','mobile','shiftStart','shiftEnd','weeklyOff1','weeklyOff2','doj','status'],State.employees.map(e=>[e.id,e.name,e.dept,e.level,e.salary,e.mobile,e.shiftStart,e.shiftEnd,e.weeklyOff1,e.weeklyOff2,e.doj,e.status]),['id','mobile','shiftStart','shiftEnd','doj'])">📊 Export Excel</button>
+      <button class="btn btn-dark btn-sm" onclick="exportEmployeesFull('csv')">📤 Export CSV</button>
+      <button class="btn btn-dark btn-sm" onclick="exportEmployeesFull('xlsx')">📊 Export Excel</button>
       <button class="btn btn-dark btn-sm" title="Show/hide optional columns in this table" onclick="showEmpColPicker()">⚙ Columns</button>
     </div>
   </div>
@@ -26515,11 +26533,14 @@ const _V73_SETTINGS_TABS = [
   { id:'bonuses',   label:'\uD83C\uDF81 Bonuses & Promotion' },
   { id:'leaves',    label:'\uD83C\uDF34 Leaves' },
   { id:'employees', label:'\uD83D\uDC64 Employees' },
+  { id:'cloud',    label:'\u26A1 Supabase / Cloud & Speed' },
   { id:'panel',     label:'\uD83D\uDEE0 Panel / Master' },
   { id:'danger',    label:'\u26A0 Danger Zone' }
 ];
 const _V73_SETTINGS_TAB_MAP = {
-  'settings-body-v280cc':'panel',
+  'settings-body-v280cc':'cloud', 'settings-body-v265dr':'cloud', 'settings-body-v267kw':'cloud',
+  'settings-body-v269parity':'cloud', 'settings-body-sbspeed':'cloud', 'settings-body-cloudstatus':'cloud',
+  'settings-body-massenroll':'cloud', 'sb-cloud-intro':'cloud',
   'v177-tools-index-card':'panel', 'v133-admin-tools-card':'panel', /* v195: tidy — tool cards live in Panel/Master tab, no longer cluttering the top of every tab */
   'settings-body-connection':'panel', 'settings-body-policy':'shifts', 'settings-body-company':'panel',
   'settings-body-locale':'panel', 'settings-body-2fa':'panel', 'settings-body-automation':'shifts',
@@ -26564,8 +26585,206 @@ function _v73AssignSettingsTabs() {
 // Show only the chosen tab; highlight its button; persist the choice.
 function _v196TidySettings(){ try{ var root=document.getElementById('admin-tab-content'); if(!root) return; var bar=document.getElementById('v73-settings-tabbar'); var cur=window._v73ActiveSettingsTab||localStorage.getItem('hrms_v73_settings_tab')||'salaries'; ['_v191BioCard','v177-tools-index-card','v133-admin-tools-card'].forEach(function(id){ var el=document.getElementById(id); if(!el) return; if(!el.classList.contains('settings-section')) el.classList.add('settings-section'); if(el.dataset.settingsTab!=='panel') el.dataset.settingsTab='panel'; if(bar && el.parentElement===root && (el.compareDocumentPosition(bar)&Node.DOCUMENT_POSITION_FOLLOWING)) root.appendChild(el); var want=(el.dataset.settingsTab===cur)?'':'none'; if(el.style.display!==want) el.style.display=want; }); }catch(_e){} }
 (function(){ try{ var t=setInterval(function(){ var c=document.getElementById('admin-content'); if(c){ try{ new MutationObserver(function(){ _v196TidySettings(); }).observe(c,{childList:true,subtree:true}); }catch(_o){} clearInterval(t); _v196TidySettings(); } },800); }catch(_e){} })();
+// v309 Cluster-2: document + consolidate the Supabase/cloud/speed settings. Additive, display-only.
+function _v309EnsureCloudIntro(){
+  try{
+    var root=document.getElementById('admin-tab-content'); if(!root) return;
+    if(document.getElementById('sb-cloud-intro')) return;
+    var d=document.createElement('div');
+    d.id='sb-cloud-intro'; d.className='settings-section'; d.dataset.settingsTab='cloud';
+    d.style.cssText='border:1px solid var(--gold-dim);border-radius:10px;background:var(--dark2);padding:14px;margin-bottom:14px';
+    d.innerHTML='<div class="settings-section-title" style="color:var(--gold)">⚡ Supabase / Cloud & Speed — what these settings mean</div>'
+      +'<div style="font-size:12px;color:var(--gray-light);line-height:1.6;margin-top:6px"><b>Supabase</b> is the fast cloud database (the “base”) that mirrors your Google Sheets. Google Sheets stays the single source of truth; Supabase is a fast read-only copy so screens load in under a second. Turning a “fast read” ON only changes where a screen READS from — it never changes your data, and the app auto-falls back to Google Sheets if the cloud is unavailable.'
+      +'<ul style="margin:8px 0 0 16px;padding:0"><li><b>Direct Read / Fast Mode</b> — lists load straight from Supabase (fastest).</li><li><b>Keep-Warm</b> — stops the backend going cold and slow.</li><li><b>Parity / Shadow / Golden-Master</b> — safety checks that Sheets and Supabase match before switching over.</li><li><b>Migration & Speed Control Center</b> — sync tables and turn fast reads on/off in one place.</li><li><b>Cloud Face Status / Mass Enroll</b> — kiosk face-recognition enrolment.</li></ul>'
+      +'<div id="sb-cloud-live-state" style="margin-top:10px;padding:8px;background:var(--dark3);border-radius:6px;font-size:12px">Loading current state…</div>';
+    var anchor=document.getElementById('settings-body-v265dr'); var ac=anchor?anchor.closest('.settings-section'):null;
+    if(ac&&ac.parentNode) ac.parentNode.insertBefore(d, ac); else root.appendChild(d);
+  }catch(e){}
+}
+function _v309CloudTooltips(){
+  try{
+    var tips={
+      'settings-body-v265dr':'Direct Read / Fast Mode: load employee/leave/attendance lists straight from the fast Supabase database instead of the slower Google backend. Google Sheets stays the source of truth; the app auto-falls back if the cloud is unavailable.',
+      'settings-body-v267kw':'Keep-Warm: periodically pings the backend so it never goes cold and slow on first use.',
+      'settings-body-v269parity':'Attendance Parity: safety check that attendance is identical in Google Sheets and Supabase before you switch a screen over.',
+      'settings-body-v280cc':'Supabase Migration & Speed Control Center: one place to sync tables and turn fast reads on/off, with built-in safety checks.',
+      'settings-body-sbspeed':'Supabase Speed: per-table sync + health check (that the row counts match) before enabling fast reads.',
+      'settings-body-cloudstatus':'Cloud Face Status: AWS face-recognition enrolment status for the kiosk (who is enrolled in the cloud).',
+      'settings-body-massenroll':'Cloud Face Mass Enroll: enrol many employees into AWS cloud face recognition at once.'
+    };
+    Object.keys(tips).forEach(function(id){ var b=document.getElementById(id); if(!b) return; var card=b.closest('.settings-section'); var t=card&&card.querySelector('.settings-section-title'); if(t){ t.title=tips[id]; } });
+  }catch(e){}
+}
+function _v309CloudStateSummary(){
+  try{
+    var el=document.getElementById('sb-cloud-live-state'); if(!el) return;
+    var dr=(function(){ try{ var v=LS.g('az3_directRead'); if(v==='on')return true; if(v==='off')return false; return (typeof State!=='undefined'&&State&&State.adminRole==='owner'); }catch(e){ return false; } })();
+    var chip=function(on){ return '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#fff;background:'+(on?'var(--green)':'var(--gray-light)')+'">'+(on?'ON':'OFF')+'</span>'; };
+    el.innerHTML='<b>Currently active:</b><br>⚡ Direct Read / Fast Mode: '+chip(dr)+' <span style="color:var(--gray-light);font-size:11px">(mirrors the ⚡ pill in the top bar)</span><br><span style="color:var(--gray-light);font-size:11px">Open each card below to see and change its live ON/OFF status. Google Sheets always stays the source of truth.</span>';
+  }catch(e){}
+}
+// v310: universal active-state chips + section tooltips + settings search. Additive, DISPLAY-ONLY.
+var _V310_SECTION_TIPS = {
+  'settings-body-v257notif':'Notifications & Alerts Center: in-app alerts for approvals, exits, expiries and system events.',
+  'settings-body-connection':'Connection: the Google Apps Script backend URL + API token this app talks to.',
+  'settings-body-company':'Company: legal name, brand, factory address and geofence used across the app and documents.',
+  'settings-body-locale':'Locale: language, date format and number format defaults.',
+  'settings-body-2fa':'Two-Factor Auth: extra login security for admin roles.',
+  'settings-body-policy':'Attendance Policy: grace period, late rules, pay day and the extended pay window.',
+  'settings-body-automation':'Attendance Automation: auto-clock-out and auto-mark-present engines.',
+  'settings-body-role-access':'Role Access: what each role (owner/manager/supervisor) can see and do.',
+  'settings-body-emp-dashboard':'Employee Dashboard: which self-service sections (Salary, Leaves, Attendance, Bonus, Points) employees can see. Turn Salary ON here so staff see their pay breakdown + slip.',
+  'settings-body-emp-id-format':'Employee ID Format: the auto-generated staff code pattern.',
+  'settings-body-holidays':'Holidays: the company holiday calendar used by payroll and attendance.',
+  'settings-body-org-structure':'Organisation Structure: departments, projects, designations and levels.',
+  'settings-body-statutory':'Statutory: PF / ESI / Professional Tax / TDS / LWF settings.',
+  'settings-body-petty-cash':'Petty Cash: petty-cash categories and approval settings.',
+  'settings-body-whatsapp-sms':'WhatsApp / SMS: messaging channel settings for OTP and notifications.',
+  'settings-body-backup':'Backup & Data Management: export / import and scheduled backups.',
+  'settings-body-backups':'Backups & Restore: point-in-time backup snapshots.',
+  'settings-body-selftest':'Self-Test: built-in health checks for the salary engine and data integrity.',
+  'settings-body-maintenance':'System Maintenance: owner-only maintenance and repair tools.',
+  'settings-body-danger-zone':'Danger Zone: destructive/irreversible operations - owner only.',
+  'settings-body-danger-token':'Danger Zone Token: the owner token that authorises destructive actions server-side.',
+  'settings-body-mid-month':'Mid-Month: mid-month salary policy controls.',
+  'settings-body-backfill':'Backfill: bulk-import historical attendance from Excel.',
+  'settings-body-loyalty-milestones':'Loyalty Milestones: tenure milestones for loyalty rewards.',
+  'settings-body-loyalty-programs':'Loyalty Programs: configure loyalty/retention bonus programs.',
+  'settings-body-loyalty-vesting':'Loyalty Vesting: how loyalty bonuses vest over time.',
+  'settings-body-points':'Points: gamification points rules and leaderboards.',
+  'settings-body-promotion':'Promotion: scheduled promotions and pro-rated salary.',
+  'settings-body-bonus-policies':'Bonus Policies: rules for Perfect Attendance / Performance / Loyalty / Joining bonuses.',
+  'settings-body-bonus':'Bonus: bonus assignment and configuration.',
+  'settings-body-referral':'Referral: employee referral bonus amounts by level.',
+  'settings-body-notice-exit':'Notice & Exit: notice-period defaults and exit handling.',
+  'settings-body-leave-management':'Leave Management: leave types, balances and accrual rules.',
+  'settings-body-ot-extraday':'OT & Extra-Day: overtime and extra-day pay rules.',
+  'settings-body-night-allow':'Night Allowance: night-shift pay settings.',
+  'settings-body-sheet-org':'Sheet Organisation: maintenance tool for the underlying Google Sheets.',
+  'comp-settings-section':'Compensation: salary bands by level, the increment ladder and shift-hour slabs.'
+};
+function _v310SectionTooltips(){
+  try{
+    Object.keys(_V310_SECTION_TIPS).forEach(function(id){
+      var b=document.getElementById(id); if(!b) return;
+      var card=b.closest('.settings-section'); var t=card&&card.querySelector('.settings-section-title');
+      if(t && t.getAttribute('data-v310tip')!=='1'){ t.title=_V310_SECTION_TIPS[id]; t.setAttribute('data-v310tip','1'); }
+    });
+  }catch(e){}
+}
+function _v310CardStates(){
+  try{
+    var root=document.getElementById('admin-tab-content'); if(!root) return;
+    var YESNO={yes:1,no:1,on:1,off:1,'true':1,'false':1,enabled:1,disabled:1};
+    var ONV={yes:1,on:1,'true':1,enabled:1};
+    root.querySelectorAll('.settings-section').forEach(function(card){
+      var title=card.querySelector('.settings-section-title'); if(!title) return;
+      var boxes=card.querySelectorAll('input[type=checkbox]');
+      var sels=[]; card.querySelectorAll('select').forEach(function(sl){ var v=String(sl.value||'').trim().toLowerCase(); if(YESNO[v]) sels.push(sl); });
+      var total=boxes.length+sels.length; if(!total) return;
+      var on=0, onLabels=[];
+      boxes.forEach(function(cb){ if(cb.checked){ on++; var l=cb.closest('label'); var lab=(l?l.textContent:(cb.getAttribute('aria-label')||cb.id||'')); lab=(lab||'').trim(); if(lab.length>42) lab=lab.slice(0,42); if(lab) onLabels.push(lab); } });
+      sels.forEach(function(sl){ var v=String(sl.value||'').trim().toLowerCase(); if(ONV[v]){ on++; var l=sl.closest('.form-group')||sl.parentElement; var lab=(l?l.textContent:'')||sl.id||''; lab=(lab||'').trim(); if(lab.length>42) lab=lab.slice(0,42); if(lab) onLabels.push(lab); } });
+      var chip=title.querySelector('.v310-state-chip');
+      if(!chip){ chip=document.createElement('span'); chip.className='v310-state-chip'; chip.style.cssText='margin-left:8px;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;vertical-align:middle'; title.appendChild(chip); }
+      var want=(on>0?(on+' ON'):'off');
+      if(chip.textContent!==want) chip.textContent=want;
+      var bg=(on>0?'var(--green)':'var(--dark3)'); if(chip.style.background!==bg) chip.style.background=bg;
+      var fc=(on>0?'#fff':'var(--gray-light)'); if(chip.style.color!==fc) chip.style.color=fc;
+      var ht=(on>0?('ON: '+onLabels.join(', ')):'All switches in this card are off')+' ('+total+' total)';
+      if(chip.title!==ht) chip.title=ht;
+    });
+  }catch(e){}
+}
+function _v310EnsureSearch(){
+  try{
+    var bar=document.getElementById('v73-settings-tabbar'); if(!bar || !bar.parentNode) return;
+    if(document.getElementById('v310-settings-search')) return;
+    var wrap=document.createElement('div'); wrap.style.cssText='margin:0 0 10px';
+    wrap.innerHTML='<input id="v310-settings-search" type="search" placeholder="Search all settings..." autocomplete="off" style="width:100%;max-width:340px;padding:7px 10px;border-radius:8px;border:1px solid var(--dark3);background:var(--dark3);color:var(--white);font-size:13px">';
+    bar.parentNode.insertBefore(wrap, bar);
+    var inp=document.getElementById('v310-settings-search');
+    inp.addEventListener('input', function(){
+      var q=(inp.value||'').trim().toLowerCase();
+      var root=document.getElementById('admin-tab-content'); if(!root) return;
+      if(!q){ var cur=window._v73ActiveSettingsTab||'salaries'; if(typeof switchSettingsTab==='function') switchSettingsTab(cur); return; }
+      root.querySelectorAll('.settings-section').forEach(function(card){
+        var t=card.querySelector('.settings-section-title'); var txt=((t?t.textContent:'')||'')+' '+(card.textContent||'').slice(0,400);
+        card.style.display=(txt.toLowerCase().indexOf(q)>=0)?'':'none';
+      });
+    });
+  }catch(e){}
+}
+function _v310Refresh(){ _v310EnsureSearch(); _v310SectionTooltips(); _v310CardStates(); }
+(function(){ try{ var t=setInterval(function(){ var c=document.getElementById('admin-tab-content'); if(!c) return; clearInterval(t); try{ c.addEventListener('change', function(ev){ if(ev && ev.target && ev.target.type==='checkbox') setTimeout(_v310CardStates,50); }); }catch(_){} setInterval(function(){ if(document.getElementById('admin-tab-content')) _v310Refresh(); }, 1500); _v310Refresh(); }, 800); }catch(e){} })();
+
+// v311: comprehensive settings/app polish. Additive, DISPLAY-ONLY.
+function _v311SetAllCards(open){
+  try{ document.querySelectorAll('#admin-tab-content .settings-card-body').forEach(function(b){ b.style.display = open?'':'none'; }); }catch(e){}
+}
+function _v311SearchCount(){
+  try{
+    var inp=document.getElementById('v310-settings-search'); var out=document.getElementById('v311-search-count'); if(!inp||!out) return;
+    var q=(inp.value||'').trim(); if(!q){ out.textContent=''; return; }
+    var n=0, root=document.getElementById('admin-tab-content'); if(root) root.querySelectorAll('.settings-section').forEach(function(c){ if(c.style.display!=='none') n++; });
+    out.textContent=n+' match'+(n===1?'':'es');
+  }catch(e){}
+}
+function _v311SettingsToolbar(){
+  try{
+    var inp=document.getElementById('v310-settings-search'); if(!inp) return;
+    if(document.getElementById('v311-settings-tools')) return;
+    var host=inp.parentNode; if(!host) return;
+    var box=document.createElement('span'); box.id='v311-settings-tools'; box.style.cssText='margin-left:8px;font-size:12px;white-space:nowrap';
+    box.innerHTML='<button type="button" id="v311-expand-all" class="btn btn-dark btn-sm" style="padding:5px 9px;font-size:11px">Expand all</button> '
+      +'<button type="button" id="v311-collapse-all" class="btn btn-dark btn-sm" style="padding:5px 9px;font-size:11px">Collapse all</button> '
+      +'<span id="v311-search-count" style="margin-left:6px;color:var(--gray-light)"></span>';
+    host.appendChild(box);
+    document.getElementById('v311-expand-all').addEventListener('click', function(){ _v311SetAllCards(true); });
+    document.getElementById('v311-collapse-all').addEventListener('click', function(){ _v311SetAllCards(false); });
+    inp.addEventListener('input', function(){ _v311SearchCount(); });
+    inp.addEventListener('keydown', function(ev){ if(ev.key==='Escape'){ inp.value=''; try{ inp.dispatchEvent(new Event('input',{bubbles:true})); }catch(_){} _v311SearchCount(); } });
+  }catch(e){}
+}
+function _v311SalaryNudge(){
+  try{
+    var b=document.getElementById('settings-body-emp-dashboard'); if(!b) return;
+    var st=(typeof State!=='undefined'&&State&&State.settings)||{};
+    var enabled=function(k){ var v=st[k]; return (v===undefined||v===null||v===''||String(v)==='true'); };
+    var salaryOn = enabled('empDashboardEnabled') && enabled('empDashSalary');
+    var note=document.getElementById('v311-salary-nudge');
+    if(salaryOn){ if(note&&note.parentNode) note.parentNode.removeChild(note); return; }
+    if(note) return;
+    note=document.createElement('div'); note.id='v311-salary-nudge';
+    note.style.cssText='margin:6px 0 10px;padding:8px 10px;border-radius:6px;background:rgba(201,168,76,0.12);border:1px solid var(--gold-dim);color:var(--gold);font-size:12px';
+    note.innerHTML='Employees currently <b>cannot</b> see their salary breakdown or download their own slip because the <b>Salary</b> section here is OFF. Switch it ON to enable it for all staff.';
+    b.insertBefore(note, b.firstChild);
+  }catch(e){}
+}
+function _v311BackToTop(){
+  try{
+    if(document.getElementById('v311-top-btn') || !document.body) return;
+    var btn=document.createElement('button'); btn.id='v311-top-btn'; btn.type='button'; btn.textContent='\u2191 Top';
+    btn.style.cssText='position:fixed;right:16px;bottom:16px;z-index:9998;display:none;padding:8px 12px;border-radius:20px;border:none;background:var(--gold);color:var(--dark);font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3)';
+    btn.addEventListener('click', function(){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(_){ window.scrollTo(0,0); } });
+    document.body.appendChild(btn);
+    window.addEventListener('scroll', function(){
+      try{
+        var cl=document.body.classList;
+        var kiosk=cl.contains('kiosk')||cl.contains('kiosk-mode')||cl.contains('kiosk-clockin-mode')||(typeof State!=='undefined'&&State&&State.essMode);
+        btn.style.display=(!kiosk && ((window.scrollY||document.documentElement.scrollTop)>500))?'block':'none';
+      }catch(_){}
+    }, {passive:true});
+  }catch(e){}
+}
+function _v311Refresh(){ _v311SettingsToolbar(); _v311SalaryNudge(); _v311SearchCount(); }
+(function(){ try{ _v311BackToTop(); var t=setInterval(function(){ _v311BackToTop(); if(!document.getElementById('admin-tab-content')) return; clearInterval(t); setInterval(function(){ if(document.getElementById('admin-tab-content')) _v311Refresh(); }, 1600); _v311Refresh(); }, 850); }catch(e){} })();
+
 function switchSettingsTab(tab) {
   _v196TidySettings();
+  try{ _v309EnsureCloudIntro(); _v309CloudTooltips(); }catch(e){}
+  try{ _v310Refresh(); }catch(e){}
+  try{ _v311Refresh(); }catch(e){}
   window._v73ActiveSettingsTab = tab;
   try { localStorage.setItem('hrms_v73_settings_tab', tab); } catch(e){}
   var root = document.getElementById('admin-tab-content');
@@ -26579,6 +26798,7 @@ function switchSettingsTab(tab) {
     btn.style.color = on ? 'var(--dark)' : 'var(--white)';
     btn.setAttribute('aria-selected', on ? 'true' : 'false');
   });
+  if(tab==='cloud'){ try{ _v309CloudStateSummary(); }catch(e){} }
 }
 /* v73-d8-end */
 
@@ -29354,6 +29574,28 @@ function fmtDateForFile(d) {
 }
 
 // v36 fix BUG-03/BUG-06: Generic CSV exporter — used by Employees and Loyalty Bonus tabs
+// v308 Cluster-3: SINGLE source of truth for the employee export so CSV and Excel are IDENTICAL and include
+// EVERY field for EVERY employee. Old mismatch: the CSV button unioned all keys but the Excel button
+// hard-coded only 12 columns. Now BOTH build the same union-of-all-keys header set + the same value matrix,
+// then render CSV or XLSX from it. ID/code/date-like columns are forced to TEXT in Excel so long codes are
+// not mangled into scientific notation. DISPLAY/EXPORT ONLY; no data is modified.
+function exportEmployeesFull(fmt){
+  var rows = (State.employees||[]).slice();
+  if(!rows.length){ toast('No employees to export','warn',3000); return; }
+  var set={}, headers=[];
+  rows.forEach(function(r){ if(r && typeof r==='object'){ Object.keys(r).forEach(function(k){ if(!set[k]){ set[k]=1; headers.push(k); } }); } });
+  var cell=function(v){ return (v===null||v===undefined)?'':(typeof v==='object'?JSON.stringify(v):v); };
+  var matrix=rows.map(function(r){ return headers.map(function(h){ return cell(r?r[h]:''); }); });
+  if(fmt==='csv'){
+    downloadCSV('ArtzFolio_Employees_'+fmtDateForFile()+'.csv',[headers].concat(matrix));
+    toast('✅ CSV downloaded ('+rows.length+' employees × '+headers.length+' fields)','success',2500);
+  } else {
+    var textCols=headers.filter(function(h){ return /(^id$|code|mobile|phone|pin|aadhaar|pan|uan|esi|account|ifsc|upi|shift|doj|date|lwd)/i.test(h); });
+    downloadXLSX('ArtzFolio_Employees.xlsx','Employees',headers,matrix,textCols);
+    toast('✅ Excel downloaded ('+rows.length+' employees × '+headers.length+' fields)','success',2500);
+  }
+}
+
 function exportCSV(rows, filename) {
   try {
     if (!Array.isArray(rows) || rows.length === 0) {
