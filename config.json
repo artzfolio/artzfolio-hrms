@@ -1,4 +1,6 @@
 {
-  "gasUrl": "https://script.google.com/macros/s/AKfycbysdjVmZObua47zEsdDLHXcXby1W6uuxw6GAnyZinFx58OX0E1SYtwBOKaYX3neSs7ovw/exec",
-  "apiToken": "AZ_TOKEN_9DF679EEEBE13D2D4A0375AA87E058F6"
+  "gasUrl": "https://script.google.com/macros/s/AKfycbyx_ifzkrTqZR9eeHF36wNP8QKLBx-zaSJviM0k7RD5V2fi7tMQVsk96moWdGh0ncSTUw/exec",
+  "apiToken": "AZ_TOKEN_9DF679EEEBE13D2D4A0375AA87E058F6",
+  "supabaseAuthCheckUrl": "https://vvtwcggcfopnfddiffxb.supabase.co/functions/v1/hrms-auth-check",
+  "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2dHdjZ2djZm9wbmZkZGlmZnhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NjYxODgsImV4cCI6MjA5NzM0MjE4OH0.tMubFggAL2shqZs8ClESFJBn4iha6mbwZ6fQV2oM9ss"
 }
