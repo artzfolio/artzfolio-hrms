@@ -6,7 +6,7 @@
 // repo root, the SW registers, the shell is cached network-first, and the employee app becomes installable.
 //
 // Cache key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML (~L1687).
-const CACHE = 'artzfolio-hrms-v345-2026-07'; // v345: ID card approved final design -- flexbox rows (fixes table row-height clipping bug), sharp corners, bigger QR (in lockstep with the inline CACHE in the app HTML)
+const CACHE = 'artzfolio-hrms-v350-2026-07'; // v345: ID card approved final design -- flexbox rows (fixes table row-height clipping bug), sharp corners, bigger QR (in lockstep with the inline CACHE in the app HTML)
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 // v341 OFFLINE KIOSK: face-api model weights are large, static and version-pinned. Serve them CACHE-FIRST
 // (cache-on-first-fetch, then serve from cache forever) so a kiosk that has scanned once works with NO network.
