@@ -1,4 +1,4 @@
-// ArtzFolio HRMS — Service Worker (v341 — OFFLINE KIOSK: cache-first face-api model weights + prefetch weight manifests on install so kiosk scanning works with ZERO network; cache key -> v354 (v354: field tooltips + owner-only PIN column). Was v296 — cache key bump for the defer-CDN build; was v295 — shell cache-first for instant loads; was v294 — FIX: v251 file was truncated/missing the final closer so 'ServiceWorker script evaluation failed' and it never registered on any device; restored + cache key bumped to v294)
+// ArtzFolio HRMS — Service Worker (v341 — OFFLINE KIOSK: cache-first face-api model weights + prefetch weight manifests on install so kiosk scanning works with ZERO network; cache key -> v356 (v356: device-lock save fix, PIN-show fix, one-time device auth code, clock-in/out silent auto-correct, Who's-In/Out manual refresh, effective-date reposition, ESS unlock link hidden). Was v354: field tooltips + owner-only PIN column. Was v296 — cache key bump for the defer-CDN build; was v295 — shell cache-first for instant loads; was v294 — FIX: v251 file was truncated/missing the final closer so 'ServiceWorker script evaluation failed' and it never registered on any device; restored + cache key bumped to v294)
 // This is a REAL same-origin service-worker file (NOT a split of the single-file app — it is a separate
 // static asset). The app HTML registers it via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // A blob: URL is refused by browsers as an SW script, which is why the v144 inline-blob SW never registered
@@ -6,7 +6,7 @@
 // repo root, the SW registers, the shell is cached network-first, and the employee app becomes installable.
 //
 // Cache key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML (~L1687).
-const CACHE = 'artzfolio-hrms-v355-2026-07'; // v352: effective-dating bulk-import fix (Change History on bulk update path); v345: ID card approved final design -- flexbox rows (fixes table row-height clipping bug), sharp corners, bigger QR (in lockstep with the inline CACHE in the app HTML)
+const CACHE = 'artzfolio-hrms-v359-2026-07'; // v359: Bonus & Loyalty reorg — folds Loyalty Retention (Level) + Tenure Wallet into Bonus Management; in lockstep with the inline CACHE in the app HTML; v358: salary payment-status tracker; v357: Bonus Management overhaul; v356: bug-fix + device-code batch
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 // v341 OFFLINE KIOSK: face-api model weights are large, static and version-pinned. Serve them CACHE-FIRST
 // (cache-on-first-fetch, then serve from cache forever) so a kiosk that has scanned once works with NO network.
