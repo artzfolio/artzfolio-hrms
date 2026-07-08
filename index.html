@@ -1591,21 +1591,36 @@ tbody tr:hover td, tbody tr:hover th { background-color: rgba(46, 116, 181, 0.15
     <div class="nav-section">Employees</div>
     <div class="nav-item" data-tab="employees" onclick="switchTab('employees')" data-help="Add, edit and archive staff — salary, level, shift hours, weekly-offs and bonus eligibility."><span class="nav-icon">👥</span>Employees</div>
     <div class="nav-item" data-tab="changehistory" onclick="switchTab('changehistory')" data-help="Effective-dated log of every shift / weekly-off / shift-time / salary / level / OT·night·travel change — old value, new value, the date it took effect and the role that made it. For audit, payroll &amp; F&amp;F cross-checks."><span class="nav-icon">🕑</span>Change History</div>
-    <div class="nav-item" data-tab="transactions" onclick="switchTab('transactions')" data-help="Manual money entries only — advances, loans, bonuses, penalties you add by hand. Payroll-computed deductions (UL penalty, late, sandwich) are NOT listed here; see the salary register/slip tooltip for those."><span class="nav-icon">💳</span>Manual Transactions</div>
     <div class="nav-item" data-tab="pettycash" onclick="switchTab('pettycash')" data-help="Petty-cash expenses in / out, with receipts and approval."><span class="nav-icon">💵</span>Petty Cash</div>
     <div class="nav-section">Performance</div>
     <div class="nav-item" data-tab="points" onclick="switchTab('points')" data-help="Gamification points and weekly leaderboards; optional points-to-salary performance bonus."><span class="nav-icon">⭐</span>Points</div>
+    <!-- v360: Performance Review moved here from "Payroll & Reports" — it's a performance-tracking
+         feature, not a payroll one; sits naturally alongside Points. data-tab unchanged (perfreview),
+         so all permission keys / stored role grants keep working with zero behaviour change. -->
+    <div class="nav-item" data-tab="perfreview" onclick="switchTab('perfreview')" data-help="Post dated, evidenced performance reviews (single or bulk). Optionally deduct/increase the Performance Bonus, Loyalty Wallet or Base Salary directly — base deductions follow the Settings overflow mode (apply-in-full or floor-and-carry) and are fully reversible — and issue accumulating warnings. v139 WS-H · v141 WS-1."><span class="nav-icon">📝</span>Performance Review</div>
     <div class="nav-section">Payroll & Reports</div>
-    <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')" data-help="Generate, save and view the monthly salary register + slips. Picking a month shows the last SAVED register instantly; click Recompute for live figures."><span class="nav-icon">💰</span>Payroll</div>
+    <div class="nav-item" data-tab="payroll" onclick="switchTab('payroll')" data-help="Generate, save and view the monthly salary register + slips (payment status shown inline per row). Also home to the Salary Ladder viewer and Bulk Operations (moved from Compensation Management in v360)."><span class="nav-icon">💰</span>Payroll</div>
+    <!-- v360: Manual Transactions moved here from "Employees" — it is a money/payroll-adjacent ledger,
+         grouped with the rest of Payroll & Reports. data-tab unchanged (transactions). -->
+    <div class="nav-item" data-tab="transactions" onclick="switchTab('transactions')" data-help="Manual money entries only — advances, loans, bonuses, penalties you add by hand. Payroll-computed deductions (UL penalty, late, sandwich) are NOT listed here; see the salary register/slip tooltip for those."><span class="nav-icon">💳</span>Manual Transactions</div>
     <!-- v359: Loyalty Retention (Level) and the Tenure Wallet (formerly under Compensation) are now
          sub-tabs INSIDE Bonus & Loyalty below — one home for every bonus/loyalty concept instead of three
          separate places. The old separate nav entry is removed; switchTab('bonustracker') still works
-         (redirects here) for any lingering caller. -->
-    <div class="nav-item" data-tab="bonusmgmt" onclick="switchTab('bonusmgmt')" data-help="One home for every bonus and loyalty program: Perfect Attendance, Performance, Joining, Loyalty Retention (Level), and the Loyalty Tenure Wallet."><span class="nav-icon">🎁</span>Bonus &amp; Loyalty</div>
-    <div class="nav-item" data-tab="perfreview" onclick="switchTab('perfreview')" data-help="Post dated, evidenced performance reviews (single or bulk). Optionally deduct/increase the Performance Bonus, Loyalty Wallet or Base Salary directly — base deductions follow the Settings overflow mode (apply-in-full or floor-and-carry) and are fully reversible — and issue accumulating warnings. v139 WS-H · v141 WS-1."><span class="nav-icon">📝</span>Performance Review</div>
-    <div class="nav-item" data-tab="compmgmt" onclick="switchTab('compmgmt')" data-help="Salary bands by level, the increment ladder and configurable shift-hour slabs."><span class="nav-icon">💼</span>Compensation</div>
+         (redirects here) for any lingering caller.
+         v360: Joining Bonus (formerly Compensation Management's "Joining Bonus" tab) and Loyalty Wallet
+         Adjustments (formerly a separate Payroll tab, functionally redundant with the Tenure Wallet's own
+         Reduce/Forfeit tool) also folded in here — Bonus & Loyalty is now the single home for every
+         bonus/loyalty program. -->
+    <div class="nav-item" data-tab="bonusmgmt" onclick="switchTab('bonusmgmt')" data-help="One home for every bonus and loyalty program: Perfect Attendance, Performance, Joining, Loyalty Retention (Level), and the Loyalty Tenure Wallet (incl. Reduce/Forfeit adjustments)."><span class="nav-icon">🎁</span>Bonus &amp; Loyalty</div>
+    <!-- v360: "Compensation Management" retired as a standalone nav item. Its 5 sub-tabs were
+         redistributed to where the owner naturally looks for them:
+           • Joining Bonus              → 🎁 Bonus & Loyalty (new tab)
+           • Promotion + Review Queue   → 🎯 Promotions (new sub-tabs)
+           • Salary Ladder + Bulk Ops   → 💰 Payroll (new tabs)
+         switchTab('compmgmt') still redirects (to Payroll, with a banner explaining the new locations)
+         for any lingering internal caller — see decision_log/2026.07.08_HRMS_v360_nav-section-reorg_v1.md. -->
     <div class="nav-item" data-tab="otclaims" onclick="switchTab('otclaims')" data-help="Submit → approve → pay overtime claims. This is the sole OT path (OT Pre-Approval was retired in v64)."><span class="nav-icon">⏱</span>OT Claims</div>
-    <div class="nav-item" data-tab="promotions" onclick="switchTab('promotions')" data-help="Schedule and apply promotions; salary is pro-rated across the effective date."><span class="nav-icon">🎯</span>Promotions</div>
+    <div class="nav-item" data-tab="promotions" onclick="switchTab('promotions')" data-help="Schedule and apply promotions; salary is pro-rated across the effective date. Now also home to the eligibility-window Promotion view and the Promotion Review Queue (moved from Compensation Management in v360, as sub-tabs)."><span class="nav-icon">🎯</span>Promotions</div>
     <div class="nav-item" data-tab="compoff" onclick="switchTab('compoff')" data-help="Comp-off (compensatory off) ledger — earn (manual or auto from extra-work days) → approve → consume as a paid day off → encash for money. Unused credits expire after the configured window; the balance is offered into Full & Final."><span class="nav-icon">🔄</span>Comp-Off</div>
     <div class="nav-item" data-tab="recovery" onclick="switchTab('recovery')" data-help="Recovery ledger — when a month's net pay is negative (Recoverable LOP), the owed amount carries forward and is recovered from a later month's pay. Idempotent; never double-recovers."><span class="nav-icon">🔁</span>Recovery</div>
     <!-- v55 unification: "Leave Management" tab RETIRED. It rendered the duplicate Leave_Requests
@@ -11049,6 +11064,10 @@ async function switchTab(tab) {
       // v31 new tabs
       case 'bonusmgmt':   await renderBonusManagement(); break;
       case 'perfreview':  await renderPerfReview(); break; // v139 WS-H
+      // v360: "Compensation Management" retired as a standalone tab — redirect any remaining caller
+      // (e.g. a stale bookmark/help-search link) to Payroll, which now hosts 2 of its 5 former sub-tabs
+      // (Salary Ladder, Bulk Operations). A banner there + on Promotions/Bonus & Loyalty explains where
+      // the other 3 (Promotion, Review Queue, Joining Bonus) moved to. See renderCompMgmt() below.
       case 'compmgmt':    await renderCompMgmt(); break;
       case 'otclaims':    await renderOTClaims(); break;
       case 'promotions':  await renderPromotions(); break;
@@ -16739,14 +16758,27 @@ function _bulkShiftLabel(e) {
 // v140/v150 drift class: a tab added to one but not the other silently became un-toggleable or invisible).
 // The editor now reads THIS list, and a boot-time assert compares it against the rendered sidebar — any
 // difference shows a loud banner instead of failing silently. Unknown tab stays DENY for non-owners.
-window.PERM_TAB_IDS = ['dashboard','approvals','timesheets','attendance','leaves','roster','employees','changehistory','transactions','pettycash','points','payroll','bonusmgmt','perfreview','compmgmt','otclaims','promotions','compoff','recovery','fnf','reports','trackedtime','dashboardtime','tnc','recruitment','reimbursements','assets','helpdesk','pulse','kra','activities','auditlog','settings'];
+// v360 Point 12: reordered (membership unchanged) to visually regroup the Settings → Role Access
+// Permissions table to match the new nav layout — perfreview next to points (Performance), transactions
+// next to payroll (Payroll & Reports), compmgmt kept adjacent to payroll/bonusmgmt/promotions (its 3
+// former destinations) even though it no longer has a live nav-item — see _LEGACY_PERM_IDS below.
+window.PERM_TAB_IDS = ['dashboard','approvals','timesheets','attendance','leaves','roster','employees','changehistory','pettycash','points','perfreview','payroll','transactions','bonusmgmt','compmgmt','otclaims','promotions','compoff','recovery','fnf','reports','trackedtime','dashboardtime','tnc','recruitment','reimbursements','assets','helpdesk','pulse','kra','activities','auditlog','settings'];
+// v360 Point 5/12: 'compmgmt' is RETIRED as a sidebar nav-item (Compensation Management's 5 tabs were
+// redistributed to Payroll/Promotions/Bonus & Loyalty — see renderCompMgmt()) but its permission KEY is
+// intentionally kept alive: the 3 relocated render functions (renderSalaryLadderViewer,
+// renderCompBulkOperations, renderPromotionReviewQueue, renderCompPromotionManagement,
+// renderJoiningBonusDashboard) still call checkTabPermission('compmgmt') so existing Manager/Supervisor
+// grants for these actions are preserved EXACTLY (same key, same stored boolean — "do not change WHO has
+// access", only where the toggle appears). The drift-assert below is taught this one legacy exception so
+// it doesn't fire a false "editor tab missing from the sidebar" alarm for it.
+window._LEGACY_PERM_IDS = ['compmgmt'];
 function _v151PermDriftAssert(){
   try {
     const side = Array.from(document.querySelectorAll('.nav-item[data-tab]')).map(n=>n.getAttribute('data-tab'));
     if (!side.length) return; // kiosk / ESS boot — no admin sidebar rendered
     const sideSet = new Set(side), permSet = new Set(window.PERM_TAB_IDS);
     const missingFromEditor = side.filter(t=>!permSet.has(t));
-    const missingFromSidebar = window.PERM_TAB_IDS.filter(t=>!sideSet.has(t));
+    const missingFromSidebar = window.PERM_TAB_IDS.filter(t=>!sideSet.has(t) && (window._LEGACY_PERM_IDS||[]).indexOf(t)===-1);
     if (missingFromEditor.length || missingFromSidebar.length) {
       console.error('[v151 WS-B4] PERM TAB DRIFT', {missingFromEditor, missingFromSidebar});
       if (!document.getElementById('v151-perm-drift-banner')) {
@@ -19875,11 +19907,13 @@ async function renderPayroll() {
   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
     <button class="btn btn-gold btn-sm" id="pay-tab-salaries" onclick="switchPayrollView('salaries')" style="font-weight:700">💰 Salary Register</button>
     <button class="btn btn-dark btn-sm" id="pay-tab-statutory" onclick="switchPayrollView('statutory')">📋 Statutory Compliance</button>
-    <!-- v45 Workstream A2: third tab — Wallet Adjustments moved here from Settings → Compensation -->
-    <button class="btn btn-dark btn-sm" id="pay-tab-walletadj" onclick="switchPayrollView('walletadj')">💎 Loyalty Wallet Adjustments</button>
     <button class="btn btn-dark btn-sm" id="pay-tab-paystatus" onclick="switchPayrollView('paystatus')">💵 Payment Status</button>
+    <!-- v360: moved from the retired Compensation Management tab. -->
+    <button class="btn btn-dark btn-sm" id="pay-tab-ladder" onclick="switchPayrollView('ladder')">🪜 Salary Ladder</button>
+    <button class="btn btn-dark btn-sm" id="pay-tab-bulkops" onclick="switchPayrollView('bulkops')">⚙ Bulk Operations</button>
      <button class="btn btn-gold btn-sm" onclick="v224DownloadAllPayslips()" title="Download a PDF payslip for every employee in the currently shown month register">📄 Download all payslips</button>
   </div>
+  <div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">📍 Loyalty Wallet Adjustments moved to <a href="#" onclick="switchTab('bonusmgmt');return false" style="color:var(--gold)">🎁 Bonus &amp; Loyalty → Loyalty Tenure Wallet</a> — the ⚠ Reduce button there does the same Reduce/Partial/Hold/Full workflow (now with bulk-select).</div>
   <div id="payroll-salary-view">
   <div class="filters-bar">
     <select id="pay-month" class="filter-input" onchange="onPayrollPeriodChange()" data-help="Pick a month — the last SAVED register loads instantly (no recompute, so no 6-minute wait). If attendance changed since it was saved, it auto-recomputes live.">
@@ -19912,10 +19946,12 @@ async function renderPayroll() {
   <div id="payroll-result"></div>
   </div>
   <div id="payroll-statutory-view" style="display:none"></div>
-  <!-- v45 Workstream A2: Wallet Adjustments view container (initially hidden). -->
-  <div id="payroll-walletadj-view" style="display:none"></div>
   <!-- v358: Payment Status view container (initially hidden). -->
-  <div id="payroll-paystatus-view" style="display:none"></div>`;
+  <div id="payroll-paystatus-view" style="display:none"></div>
+  <!-- v360: Salary Ladder + Bulk Operations view containers (moved from the retired Compensation
+       Management tab; initially hidden). -->
+  <div id="payroll-ladder-view" style="display:none"></div>
+  <div id="payroll-bulkops-view" style="display:none"></div>`;
   document.getElementById('admin-tab-content').innerHTML=html;
   try{ _v154PayFilterHint(); }catch(e){} // v154 WS-7: seed the active-filter hint on first paint
   // v44 Workstream E3: render the mid-month onboarding banner if toggled on.
@@ -20109,14 +20145,35 @@ async function loadSavedRegister(year, month){
   if (changed === true) banner += `<span style="color:var(--red);font-weight:600">⚠ Attendance changed since this was saved — recompute recommended.</span>`;
   banner += `</div>`;
   _v65SetRegisterStatus(banner);
-  container.innerHTML = _v65RenderSavedRegisterTable(records, year, month);
+  container.innerHTML = await _v65RenderSavedRegisterTable(records, year, month);
   _v151PayrollApplyFilter(); // v151 WS-B3: same who-filter over the saved view (display-only)
   return status;
 }
 
 // ── v65 Issue 3: render saved register rows from SalaryRecords columns (no live recompute) ──
-function _v65RenderSavedRegisterTable(records, year, month){
+// v360 Point 7: now async — fetches Payment Status inline (same merge as the live generateAllSalaries
+// table) so the DEFAULT view (saved register, shown the instant a month is picked) also shows payment
+// status per row without a trip to the separate Payment Status tab.
+async function _v65RenderSavedRegisterTable(records, year, month){
   const totalNet = records.reduce((a,r)=>a+(parseFloat(r.netSalary)||0),0);
+  let _v360PsByEmp = {};
+  try {
+    const _psRes = await API.call('getSalaryPaymentStatus', {year, month});
+    if (_psRes && _psRes.ok) { (_psRes.rows||[]).forEach(r => { _v360PsByEmp[String(r['Employee Code'])] = r; }); }
+  } catch(e) { /* Payment Status is a display add-on — never blocks the register */ }
+  _v358Rows = records.map(r => {
+    const ps = _v360PsByEmp[String(r.empId)];
+    return {
+      empId: r.empId, empName: r.empName, netSalary: parseFloat(r.netSalary)||0, hasSalary: true,
+      status: ps ? ps['Payment Status'] : 'Not Paid',
+      amountPaid: ps ? (parseFloat(ps['Amount Paid'])||0) : 0,
+      amountPending: ps ? (parseFloat(ps['Amount Pending'])||0) : (parseFloat(r.netSalary)||0),
+      reason: ps ? ps['Reason/Notes'] : '',
+      markedBy: ps ? ps['Marked By'] : '',
+      markedOn: ps ? ps['Marked On'] : '',
+    };
+  });
+  window._psRowIndex = {}; _v358Rows.forEach(r => { window._psRowIndex[r.empId] = r; });
   let html = `
   <div id="uf-pay-banner"></div>
   <div style="margin-bottom:16px;padding:14px;background:var(--dark2);border:1px solid var(--gold-dim);border-radius:8px;display:flex;gap:20px;flex-wrap:wrap">
@@ -20124,7 +20181,7 @@ function _v65RenderSavedRegisterTable(records, year, month){
     <div><div id="uf-pay-count" style="font-size:1.2rem;font-weight:700">${records.length}</div><div style="font-size:11px;color:var(--gray-light)">Employees (saved)</div></div>
   </div>
   <div class="table-wrap frz-scroll" style="--frz-offset:320px"><table class="az-table"> <!-- v150 WS-3 -->
-    <thead><tr><th>Employee</th><th>Dept/Level</th>${_v155RegisterHeadCells()}<th>Net Salary</th><th>Slip</th></tr></thead>
+    <thead><tr><th>Employee</th><th>Dept/Level</th>${_v155RegisterHeadCells()}<th>Net Salary</th><th>Payment Status <span class="info-tooltip" title="Whether this employee has actually been PAID this net salary (separate from the computed number). Click Update to change it — same tool as the Payment Status tab.">ℹ</span></th><th>Slip</th></tr></thead>
     <tbody>`;
   records.forEach(r=>{
     const sid='slip_'+Math.random().toString(36).substr(2,6);
@@ -20132,11 +20189,13 @@ function _v65RenderSavedRegisterTable(records, year, month){
     const advTotal=(parseFloat(r.advances||0)+parseFloat(r.loans||0)+parseFloat(r.penalties||0)+parseFloat(r.perfReviewDeduction||0)); // v141 WS-3: include perfReviewDeduction so the column total stays whole (stored records lump it in penalties → perfReviewDeduction 0)
     const net=parseFloat(r.netSalary)||0;
     const dtTip='Saved counts — Present '+(r.presentDays??'—')+'/'+(r.workingDays??'—')+' · Absent/UL '+(r.absentDays??'—')+' · Paid leave '+((parseInt(r.SL)||0)+(parseInt(r.PL)||0))+' · Extra '+(r.ewDays??0)+' · OT days '+(r.otDays??0)+' · Days in month '+(r.daysInMonth??'—')+'. Recompute (live) for the full reconciling day-type breakdown.';
+    const _psRow = window._psRowIndex[r.empId] || {status:'Not Paid'};
     html+=`<tr data-uf-emp="${escHtml(r.empId||'')}" data-uf-net="${parseFloat(r.netSalary)||0}">
       ${_idCellInlineById(r.empId, r.empName)}
       <td>${escHtml(r.dept||'')}<br><span class="badge badge-${r.level&&String(r.level).startsWith('L')&&parseInt(String(r.level).slice(1))<=5?'blue':'orange'}">${escHtml(r.level||'')}</span></td>
       ${_v155RegisterBodyCells(r)}
       <td style="font-weight:900;font-size:1rem;color:${net<0?'var(--red)':'var(--gold)'}">${fmtMoney(net)}${net<0?'<br><span style="font-size:9px;font-weight:600">Recoverable (LOP)</span>':''}</td>
+      <td><span id="ps-inline-${escHtml(r.empId||'')}">${_v358StatusBadge(_psRow.status)}</span> <button class="btn btn-sm" style="font-size:9px;padding:1px 6px" onclick="_v358UpdatePrompt('${escHtml(r.empId||'')}', true)">Update</button></td>
       <td style="white-space:nowrap">
         <button class="btn btn-gold btn-sm" title="Download PDF Slip" onclick="downloadSalarySlipPDF(window['_slipData_${sid}'])">📄</button>
         <button class="btn btn-dark btn-sm" title="View transactions" onclick="viewEmpTransactions('${escHtml(r.empId||'')}',${year},${month})">💸</button>
@@ -20237,6 +20296,29 @@ async function generateAllSalaries(forceAll, forceRecompute) {
   }
   const salaries=res.salaries||[];
   const fnfExcluded=res.fnfExcluded||[]; // v61 A0
+  // v360 Point 7: fetch Payment Status for this period so the Salary Register can show it INLINE per
+  // row instead of requiring a trip to the separate Payment Status tab. Best-effort — a failure here
+  // must never block the register itself from rendering.
+  let _v360PsByEmp = {};
+  try {
+    const _psRes = await API.call('getSalaryPaymentStatus', {year, month});
+    if (_psRes && _psRes.ok) { (_psRes.rows||[]).forEach(r => { _v360PsByEmp[String(r['Employee Code'])] = r; }); }
+  } catch(e) { /* Payment Status is a display add-on — never blocks the register */ }
+  // Feed the same _v358Rows/_psRowIndex cache the standalone Payment Status tab uses, so its Update
+  // modal (_v358UpdatePrompt) works identically when opened from this inline column.
+  _v358Rows = salaries.map(s => {
+    const ps = _v360PsByEmp[String(s.empId)];
+    return {
+      empId: s.empId, empName: s.name || s.empName, netSalary: parseFloat(s.netSalary)||0, hasSalary: true,
+      status: ps ? ps['Payment Status'] : 'Not Paid',
+      amountPaid: ps ? (parseFloat(ps['Amount Paid'])||0) : 0,
+      amountPending: ps ? (parseFloat(ps['Amount Pending'])||0) : (parseFloat(s.netSalary)||0),
+      reason: ps ? ps['Reason/Notes'] : '',
+      markedBy: ps ? ps['Marked By'] : '',
+      markedOn: ps ? ps['Marked On'] : '',
+    };
+  });
+  window._psRowIndex = {}; _v358Rows.forEach(r => { window._psRowIndex[r.empId] = r; });
   // v67 Stage-2B: are there prior-month open recoveries not yet applied to THIS month? (read-only dry-run)
   let recDry=null; try{ recDry=await API.call('applyRecoveries',{year,month,mode:'dryRun'}); }catch(e){ recDry=null; }
   const totalNet=salaries.reduce((s,e)=>s+(parseFloat(e.netSalary)||0),0);
@@ -20257,7 +20339,7 @@ async function generateAllSalaries(forceAll, forceRecompute) {
     <button class="btn btn-sm" style="background:#1565C0;color:#fff" onclick="saveAllSalaries()">💾 Save to Records</button>
   </div>
   <div class="table-wrap frz-scroll" style="--frz-offset:320px"><table class="az-table"> <!-- v150 WS-3 -->
-    <thead><tr><th>Employee</th><th>Dept/Level</th>${_v155RegisterHeadCells()}<th>Net Salary</th><th>Slip</th></tr></thead>
+    <thead><tr><th>Employee</th><th>Dept/Level</th>${_v155RegisterHeadCells()}<th>Net Salary</th><th>Payment Status <span class="info-tooltip" title="Whether this employee has actually been PAID this net salary (separate from the computed number). Click Update to change it — same tool as the Payment Status tab.">ℹ</span></th><th>Slip</th></tr></thead>
     <tbody>`;
   salaries.forEach(s=>{
     const sid='slip_'+Math.random().toString(36).substr(2,6);
@@ -20266,11 +20348,13 @@ async function generateAllSalaries(forceAll, forceRecompute) {
     const _slipMeta=window._lastPayrollMeta||{};
     window['_slipData_'+sid]=Object.assign({}, s, {year:s.year||_slipMeta.year, month:s.month||_slipMeta.month});
     const advTotal=(parseFloat(s.advances||0)+parseFloat(s.loans||0)+parseFloat(s.penalties||0)+parseFloat(s.perfReviewDeduction||0)); // v141 WS-3: include perfReviewDeduction (stored records lump it in penalties → 0 here)
+    const _psRowLive = window._psRowIndex[s.empId] || {status:'Not Paid'};
     html+=`<tr data-uf-emp="${escHtml(s.empId||'')}" data-uf-net="${parseFloat(s.netSalary)||0}">
       ${_idCellInlineById(s.empId, s.name||s.empName)} <!-- v155 WS-9: rich identity cell on the LIVE register (was a plain name+code td) -->
       <td>${escHtml(s.dept)}<br><span class="badge badge-${s.level&&s.level.startsWith('L')&&parseInt(s.level.slice(1))<=5?'blue':'orange'}">${escHtml(s.level)}</span></td>
       ${_v155RegisterBodyCells(s)}
       <td style="font-weight:900;font-size:1rem;color:${parseFloat(s.netSalary)<0?'var(--red)':'var(--gold)'}" title="Net payable = base − unpaid days − deductions.&#10;Payroll-computed deductions (NOT in Manual Transactions):&#10;• UL penalty: ${fmtMoney(s.ulDeduction||0)}&#10;• Late: ${fmtMoney(s.lateDeduction||0)}&#10;• Sandwich${s.sandwichDays?' ('+s.sandwichDays+'d)':''}: ${fmtMoney(s.sandwichDeduction||0)}&#10;• Statutory (PF+ESI+PT+TDS): ${fmtMoney((parseFloat(s.pfEmployee)||0)+(parseFloat(s.esiEmployee)||0)+(parseFloat(s.professionalTax)||0)+(parseFloat(s.tds)||0))}&#10;Manual (shown in Transactions): Advances/Loans/Penalties ${fmtMoney((parseFloat(s.advances)||0)+(parseFloat(s.loans)||0)+(parseFloat(s.penalties)||0)+(parseFloat(s.perfReviewDeduction)||0))}.${parseFloat(s.netSalary)<0?'&#10;Negative = Recoverable (LOP) — carries to next month.':''}">${fmtMoney(s.netSalary)}${parseFloat(s.netSalary)<0?'<br><span style="font-size:9px;font-weight:600">Recoverable (LOP)</span>':''}</td>
+      <td><span id="ps-inline-${escHtml(s.empId||'')}">${_v358StatusBadge(_psRowLive.status)}</span> <button class="btn btn-sm" style="font-size:9px;padding:1px 6px" onclick="_v358UpdatePrompt('${escHtml(s.empId||'')}', true)">Update</button></td>
       <td style="white-space:nowrap">
         <button class="btn btn-gold btn-sm" title="Download PDF Slip" onclick="downloadSalarySlipPDF(window['_slipData_${sid}'])">📄</button>
         <button class="btn btn-dark btn-sm" title="Share via WhatsApp" onclick="shareSlipWhatsApp(window['_slipData_${sid}'])">📱</button>
@@ -20502,23 +20586,31 @@ function shareSlipEmail(data) {
 
 // ─── Payroll view switcher ────────────────────────────────────
 function switchPayrollView(view) {
+  // v360: 'walletadj' retired here — redirect to Bonus & Loyalty → Tenure Wallet, which has the same
+  // Reduce/Partial/Hold/Full workflow (submitLoyaltyWalletAdjustment) plus bulk-select + Pending Approvals.
+  if (view === 'walletadj') { try { switchTab('bonusmgmt').then(function(){ switchBonusMgmtTab('tenurewallet'); }); } catch(e) {} return; }
   document.getElementById('payroll-salary-view').style.display    = view==='salaries'  ? '' : 'none';
   document.getElementById('payroll-statutory-view').style.display = view==='statutory' ? '' : 'none';
-  // v45 Workstream A2: third view = Wallet Adjustments (moved from Settings).
-  var waView = document.getElementById('payroll-walletadj-view');
-  if (waView) waView.style.display = view==='walletadj' ? '' : 'none';
-  // v358: fourth view = Payment Status tracker.
+  // v358: Payment Status tracker view.
   var psView = document.getElementById('payroll-paystatus-view');
   if (psView) psView.style.display = view==='paystatus' ? '' : 'none';
+  // v360: Salary Ladder + Bulk Operations views (moved from the retired Compensation Management tab).
+  var ldView = document.getElementById('payroll-ladder-view');
+  if (ldView) ldView.style.display = view==='ladder' ? '' : 'none';
+  var boView = document.getElementById('payroll-bulkops-view');
+  if (boView) boView.style.display = view==='bulkops' ? '' : 'none';
   document.getElementById('pay-tab-salaries').className  = 'btn btn-sm ' + (view==='salaries'  ? 'btn-gold' : 'btn-dark');
   document.getElementById('pay-tab-statutory').className = 'btn btn-sm ' + (view==='statutory' ? 'btn-gold' : 'btn-dark');
-  var waBtn = document.getElementById('pay-tab-walletadj');
-  if (waBtn) waBtn.className = 'btn btn-sm ' + (view==='walletadj' ? 'btn-gold' : 'btn-dark');
   var psBtn = document.getElementById('pay-tab-paystatus');
   if (psBtn) psBtn.className = 'btn btn-sm ' + (view==='paystatus' ? 'btn-gold' : 'btn-dark');
+  var ldBtn = document.getElementById('pay-tab-ladder');
+  if (ldBtn) ldBtn.className = 'btn btn-sm ' + (view==='ladder' ? 'btn-gold' : 'btn-dark');
+  var boBtn = document.getElementById('pay-tab-bulkops');
+  if (boBtn) boBtn.className = 'btn btn-sm ' + (view==='bulkops' ? 'btn-gold' : 'btn-dark');
   if (view==='statutory') renderStatutoryCompliance();
-  if (view==='walletadj' && typeof _v45RenderWalletAdjPanel === 'function') _v45RenderWalletAdjPanel();
   if (view==='paystatus' && typeof renderSalaryPaymentStatus === 'function') renderSalaryPaymentStatus();
+  if (view==='ladder' && typeof renderSalaryLadderViewer === 'function') renderSalaryLadderViewer();
+  if (view==='bulkops' && typeof renderCompBulkOperations === 'function') renderCompBulkOperations();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -20648,7 +20740,11 @@ function _v358UpdateBulkCount() {
 }
 
 // Per-row Update modal: full status change + partial amount + mandatory-for-partial reason.
-function _v358UpdatePrompt(empId) {
+// v360 Point 7: optional `fromRegister` — when true (opened from the Salary Register's inline Payment
+// Status column) the badge is updated IN PLACE on that table instead of re-rendering the whole
+// (different) Payment Status tab. Existing callers (the standalone Payment Status tab) pass no 2nd arg,
+// so behaviour there is unchanged.
+function _v358UpdatePrompt(empId, fromRegister) {
   const r = (window._psRowIndex || {})[empId] || (_v358Rows.find(x => x.empId === empId));
   if (!r) { toast('Row not found — refresh and try again', 'error'); return; }
   const year  = parseInt(document.getElementById('pay-year')?.value  || new Date().getFullYear());
@@ -20677,7 +20773,19 @@ function _v358UpdatePrompt(empId) {
         empId: r.empId, empName: r.empName, year, month, netSalary: r.netSalary||0,
         status, amountPaid, reason, markedBy: State.adminRole || 'Admin',
       });
-      if (res && res.ok) { closeModal(); toast('Payment status updated', 'success'); await renderSalaryPaymentStatus(); }
+      if (res && res.ok) {
+        closeModal(); toast('Payment status updated', 'success');
+        if (fromRegister) {
+          // v360 Point 7: update the cached row + the inline badge on the Salary Register table in
+          // place — no full re-render, so the register the owner is looking at doesn't jump/reload.
+          const idx = _v358Rows.findIndex(x => x.empId === r.empId);
+          if (idx >= 0) { _v358Rows[idx].status = status; _v358Rows[idx].amountPaid = amountPaid; _v358Rows[idx].amountPending = Math.max((r.netSalary||0) - amountPaid, 0); _v358Rows[idx].reason = reason; }
+          const badgeHost = document.getElementById('ps-inline-' + r.empId);
+          if (badgeHost) badgeHost.innerHTML = _v358StatusBadge(status);
+        } else {
+          await renderSalaryPaymentStatus();
+        }
+      }
       else toast((res && res.error) || 'Error', 'error');
     }},
     {label:'Cancel', cls:'btn-dark', cb: closeModal}
@@ -26100,7 +26208,12 @@ async function renderSettings() {
               dashboard:'📊 Dashboard', approvals:'✅ Approvals', timesheets:'⏱ Timesheets', attendance:'📅 Attendance',
               leaves:'🏖 Leaves', roster:'📋 Roster', employees:'👥 Employees', changehistory:'🕑 Change History', transactions:'💳 Manual Transactions',
               pettycash:'💵 Petty Cash', points:'⭐ Points', payroll:'💰 Payroll',
-              bonustracker:'🎁 Bonus & Loyalty (legacy link — same as below)', bonusmgmt:'🎁 Bonus & Loyalty', perfreview:'📝 Performance Review', compmgmt:'💼 Compensation',
+              bonustracker:'🎁 Bonus & Loyalty (legacy link — same as below)', bonusmgmt:'🎁 Bonus & Loyalty', perfreview:'📝 Performance Review',
+              // v360 Point 12: relabeled — Compensation Management is retired as a nav item; this permission
+              // key now solely governs the 5 relocated actions (Joining Bonus, Promotion, Review Queue,
+              // Salary Ladder, Bulk Operations) wherever they live now (Bonus & Loyalty / Promotions / Payroll).
+              // Same key, same stored per-role grants — only the label changed so this row is understandable.
+              compmgmt:'💼 Compensation Actions (Joining Bonus · Promotion · Review Queue · Salary Ladder · Bulk Ops — now inside Bonus & Loyalty / Promotions / Payroll)',
               otclaims:'⏱ OT Claims', promotions:'🎯 Promotions', compoff:'🔄 Comp-Off', recovery:'🔁 Recovery',
               fnf:'🤝 FnF / Exit', reports:'📈 Reports', trackedtime:'⏱ Tracked Time', dashboardtime:'⏱ Dashboard Time', activities:'🏷 Activities',
               auditlog:'📋 Audit Log', settings:'⚙ Settings',
@@ -29021,6 +29134,8 @@ async function saveLoyaltyBonusSettings() {
 }
 
 // ── Admin: Bonus Tracker Tab ───────────────────────────────────
+// v360 Point 1: toggle-state for showing archived/exited rows (persists across re-renders in this tab session).
+var _lbShowArchived = false;
 async function renderBonusTracker() {
   // v359: retargeted from admin-tab-content to bm-loyaltylevel-content — this now renders as a sub-tab
   // INSIDE Bonus & Loyalty (renderBonusManagement) instead of replacing the whole page. Falls back to
@@ -29039,16 +29154,18 @@ async function renderBonusTracker() {
   // v108: filter to active employees only
   const activeIds = new Set((State.employees||[]).filter(e=>e.status==='Active'||e.status==='Notice Period'||e.status==='Notice').map(e=>e.id));
   const filteredBalances = balances.filter(b => activeIds.has(b.employee_id));
-  const archivedCount = balances.length - filteredBalances.length;
+  const archivedBalances = balances.filter(b => !activeIds.has(b.employee_id));
+  const archivedCount = archivedBalances.length;
   const totalLiability  = filteredBalances.reduce((s,b)=>s+parseFloat(b.current_balance||0),0);
   const totalEligible   = filteredBalances.reduce((s,b)=>s+parseFloat(b.eligible_to_withdraw||0),0);
   const totalForfeited  = filteredBalances.reduce((s,b)=>s+parseFloat(b.total_forfeited||0),0);
   const pendingCount    = pending.length;
   const pendingTotal    = pending.reduce((s,p)=>s+parseFloat(p.amount||0),0);
 
-  // Build employee name map for display
+  // Build employee name + status map for display
   const empMap = {};
-  (State.employees||[]).forEach(e => { empMap[e.id] = e.name; });
+  const empStatusMap = {};
+  (State.employees||[]).forEach(e => { empMap[e.id] = e.name; empStatusMap[e.id] = e.status; });
 
   const pendingRows = pending.map(p => {
     const name = empMap[p.employee_id] || p.employee_id;
@@ -29061,26 +29178,45 @@ async function renderBonusTracker() {
     </tr>`;
   }).join('');
 
-  const balRows = filteredBalances.map(b => {
+  // v360 Point 1: checkbox column + row builder shared by both the active list and the archived list.
+  // archived=true adds a status badge + Reactivate button instead of the row checkbox (reactivating is
+  // a one-off admin action, not something you'd bulk-select alongside a Reduce/Forfeit).
+  function _lbRow(b, archived) {
     const name = empMap[b.employee_id] || b.employee_id;
     const hasPend = b.has_pending_withdrawal;
-    return `<tr data-uf-emp="${escHtml(b.employee_id||'')}">
-      <td style="padding:8px 6px;font-size:12px">${escHtml(b.employee_id)}</td>
+    return `<tr data-uf-emp="${escHtml(b.employee_id||'')}"${archived?' style="opacity:0.75"':''}>
+      <td style="padding:8px 6px">${archived
+        ? `<button class="btn btn-dark btn-sm" title="Restore this employee to Active (reverses an archive/exit done in error)" onclick="exitRestore('${escHtml(b.employee_id)}').then(()=>renderBonusTracker())">↺ Reactivate</button>`
+        : `<input type="checkbox" class="lb-row-chk" value="${escHtml(b.employee_id||'')}" onchange="_lbUpdateBulkCount()">`}</td>
+      <td style="padding:8px 6px;font-size:12px">${escHtml(b.employee_id)}${archived?` <span style="font-size:10px;color:var(--gray-light)">(${escHtml(empStatusMap[b.employee_id]||'Exited')})</span>`:''}</td>
       ${_idCellInlineById(b.employee_id, name)}${/* v157 WS-1: compiled identity cell */''}
       <td style="text-align:right">₹${Math.round(parseFloat(b.current_balance||0)).toLocaleString('en-IN')}</td>
       <td style="text-align:right;color:var(--green)">₹${Math.round(parseFloat(b.eligible_to_withdraw||0)).toLocaleString('en-IN')}</td>
       <td style="text-align:right;color:var(--gray-light)">₹${Math.round(parseFloat(b.total_accrued||0)).toLocaleString('en-IN')}</td>
       <td style="text-align:right">${parseFloat(b.total_forfeited||0)>0?`<span style="color:var(--red)">₹${Math.round(parseFloat(b.total_forfeited)).toLocaleString('en-IN')}</span>`:'—'}</td>
       <td>${hasPend?'<span style="color:var(--orange);font-size:11px">⏳ Pending</span>':'—'}</td>
-      <td><button class="btn btn-dark btn-sm" onclick="showEmpLBHistory('${escHtml(b.employee_id)}','${escHtml(name)}')">📋</button></td>
+      <td><button class="btn btn-dark btn-sm" title="View this employee's month-by-month accrual/withdrawal/forfeiture ledger" onclick="showEmpLBHistory('${escHtml(b.employee_id)}','${escHtml(name)}')">📋</button></td>
     </tr>`;
-  }).join('');
+  }
+  const balRows = filteredBalances.map(b => _lbRow(b, false)).join('');
+  const archivedRows = archivedBalances.map(b => _lbRow(b, true)).join('');
+
+  // v360 Point 1: column header tooltips — the previous headers (Balance/Eligible/Total Accrued/Forfeited/
+  // Pending) had no explanation of what each figure means or when it applies.
+  const _lbColHead = `<th><input type="checkbox" id="lb-check-all" onchange="_lbToggleAll(this.checked)" title="Select all rows currently shown"></th>` +
+    `<th>Emp ID</th><th>Name</th>` +
+    `<th style="text-align:right">Balance <span class="info-tooltip" title="Current withdrawable + locked balance for this employee's per-LEVEL loyalty retention bonus = Total Accrued − Withdrawn − Forfeited.">ℹ</span></th>` +
+    `<th style="text-align:right">Eligible <span class="info-tooltip" title="Portion of the balance that has vested and can be withdrawn right now, per the vesting schedule in Settings → Compensation → Loyalty Retention (Level).">ℹ</span></th>` +
+    `<th style="text-align:right">Total Accrued <span class="info-tooltip" title="Lifetime amount ever credited to this employee at their job Level (sum of every monthly accrual run since they became eligible) — does not subtract withdrawals or forfeitures.">ℹ</span></th>` +
+    `<th style="text-align:right">Forfeited <span class="info-tooltip" title="Amount permanently forfeited (e.g. for a disciplinary reason) via ⚠ Reduce/Forfeit Selected below. ₹0 unless a forfeiture has been recorded.">ℹ</span></th>` +
+    `<th>Pending <span class="info-tooltip" title="⏳ Pending = this employee has a withdrawal request awaiting approval — see the Pending Withdrawal Approvals panel above.">ℹ</span></th>` +
+    `<th>History <span class="info-tooltip" title="Full month-by-month ledger for this employee: every accrual, withdrawal and forfeiture with date and running balance.">ℹ</span></th>`;
 
   const html = `
   <div class="section-hdr">
     <div>
       <div class="section-title">💎 Loyalty Retention Bonus (Level)</div>
-      <div style="font-size:12px;color:var(--gray-light);margin-top:2px">Per-job-level retention bonus: accrued balances, vesting status, and pending withdrawal approvals across all employees. Separate from the Tenure wallet under Compensation.</div>
+      <div style="font-size:12px;color:var(--gray-light);margin-top:2px">Per-job-level retention bonus: accrued balances, vesting status, and pending withdrawal approvals across all employees. Separate from the Tenure Wallet (tenure-based) — both live here under 🎁 Bonus &amp; Loyalty.</div>
     </div>
     <div class="section-actions">
       <button class="btn btn-gold btn-sm" onclick="runLBAccrualConfirm()" title="Credits this month's loyalty bonus to all eligible active employees. Run once per month after payroll is saved. Employees with no row yet (newly added) will have one created automatically.">▶ Run Monthly Accrual</button>
@@ -29108,12 +29244,26 @@ async function renderBonusTracker() {
   </div>` : ''}
 
   <div class="settings-section">
-    <div class="settings-section-title">📊 All Employee Balances${archivedCount>0?` <span style="font-size:11px;color:var(--gray-light);font-weight:400">(${archivedCount} archived/exited row(s) hidden)</span>`:''}</div>
+    <div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span>📊 All Employee Balances${archivedCount>0?` <span style="font-size:11px;color:var(--gray-light);font-weight:400">(${archivedCount} archived/exited row(s) ${_lbShowArchived?'shown below':'hidden'})</span>`:''}</span>
+      ${archivedCount>0 ? `<button class="btn btn-dark btn-sm" onclick="_lbToggleArchived()">${_lbShowArchived?'🙈 Hide':'👁 View'} archived/exited (${archivedCount})</button>` : ''}
+    </div>
+    <!-- v360 Point 1: bulk-action toolbar, mirrors the Tenure Wallet's existing wl-* bulk Reduce/Forfeit pattern -->
+    <div id="lb-bulk-toolbar" style="display:none;margin:8px 0;padding:8px 12px;background:var(--dark3);border-radius:var(--radius-sm)"><span id="lb-bulk-count" style="font-size:12px;margin-right:10px">0 selected</span>
+      <button class="btn btn-red btn-sm" onclick="lbForfeitModal(_lbSelectedIds())">⚠ Reduce / Forfeit Selected</button></div>
     ${balances.length ? `<div class="table-wrap"><table class="az-table">
-      <thead><tr><th>Emp ID</th><th>Name</th><th style="text-align:right">Balance</th><th style="text-align:right">Eligible</th><th style="text-align:right">Total Accrued</th><th style="text-align:right">Forfeited</th><th>Pending</th><th>History</th></tr></thead>
+      <thead><tr>${_lbColHead}</tr></thead>
       <tbody>${balRows}</tbody>
     </table></div>`
     : '<div style="text-align:center;padding:20px;color:var(--gray-light)">No bonus balances yet. Run a monthly accrual to begin.</div>'}
+    ${(_lbShowArchived && archivedCount>0) ? `
+    <div style="margin-top:16px">
+      <div class="settings-section-title" style="font-size:12px;color:var(--gray-light)">🗄 Archived / Exited (${archivedCount}) <span class="info-tooltip" title="Employees whose status is no longer Active/Notice Period. Hidden from the totals above and from bulk actions. Use Reactivate to restore an employee archived/exited in error.">ℹ</span></div>
+      <div class="table-wrap"><table class="az-table">
+        <thead><tr>${_lbColHead}</tr></thead>
+        <tbody>${archivedRows}</tbody>
+      </table></div>
+    </div>` : ''}
 
   <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-dark btn-sm" data-help="Adds a zero-balance loyalty tracker row for every active employee not yet in the tracker. Safe to run anytime — idempotent." onclick="seedMissingLBEmployees()">➕ Initialize Missing Employees</button>
@@ -29123,6 +29273,53 @@ async function renderBonusTracker() {
   _v359Host.innerHTML = html;
   window._uniApply['bonustracker'] = function(){ _uniApplyHide('bonustracker', '#bm-loyaltylevel-content'); };
   _uniApplyHide('bonustracker', '#bm-loyaltylevel-content');
+}
+
+// v360 Point 1: archived/exited visibility toggle + bulk-select toolbar for Loyalty Retention (Level) —
+// mirrors the Tenure Wallet's existing _wl* helpers (see walletAdjustModal et al. above) so the two
+// loyalty engines share one consistent bulk-action UX.
+function _lbToggleArchived() { _lbShowArchived = !_lbShowArchived; renderBonusTracker(); }
+function _lbSelectedIds() {
+  return Array.from(document.querySelectorAll('.lb-row-chk:checked')).map(function(c){ return c.value; });
+}
+function _lbToggleAll(master) {
+  document.querySelectorAll('.lb-row-chk').forEach(function(c){ c.checked = master; });
+  _lbUpdateBulkCount();
+}
+function _lbUpdateBulkCount() {
+  var n = _lbSelectedIds().length;
+  var bar = document.getElementById('lb-bulk-toolbar'), cnt = document.getElementById('lb-bulk-count');
+  if (bar) bar.style.display = n ? 'block' : 'none';
+  if (cnt) cnt.textContent = n + ' selected';
+}
+// Bulk Reduce/Forfeit for one or more employees — loops the existing single-employee forfeitEmployeeLoyaltyBonus
+// GAS action (same one a per-row forfeit would use), mirroring how the Tenure Wallet's walletAdjustModal loops
+// submitLoyaltyWalletAdjustment per selected employee. No GAS changes needed.
+async function lbForfeitModal(empIds) {
+  empIds = (empIds || []).filter(Boolean);
+  if (!empIds.length) { toast('Select at least one employee', 'error'); return; }
+  var html = '<div style="font-size:13px">'
+    + '<div style="margin-bottom:8px;color:var(--gray-light);font-size:12px">Applying to <b>' + empIds.length + '</b> employee(s): ' + empIds.map(escHtml).join(', ') + '</div>'
+    + '<div style="font-size:11px;color:var(--orange);margin-bottom:8px">⚠ This forfeits the employee\'s ENTIRE current Loyalty Retention (Level) balance (not a partial/monthly reduction — see the History button for a month-by-month ledger before deciding).</div>'
+    + '<div class="form-group"><label class="form-label">Reason (mandatory)</label><textarea id="lb-forfeit-reason" class="form-input" rows="3" placeholder="Specific reason — this goes on the audit record"></textarea></div>'
+    + '</div>';
+  showModal('⚠ Reduce / Forfeit Loyalty Retention (Level)', html, [
+    {label:'Submit', cls:'btn-red', cb: async () => {
+      var reason = (document.getElementById('lb-forfeit-reason').value || '').trim();
+      if (reason.length < 10) { toast('Reason must be at least 10 characters', 'error'); return; }
+      if (!await confirm2('Forfeit the entire Loyalty Retention (Level) balance for ' + empIds.length + ' employee(s)?\nReason: ' + reason)) return;
+      var okCount = 0, errs = [];
+      for (var i = 0; i < empIds.length; i++) {
+        var res = await API.call('forfeitEmployeeLoyaltyBonus', { employee_id: empIds[i], reason: reason });
+        if (res && res.ok) okCount++; else errs.push(empIds[i] + ': ' + ((res && res.error) || 'failed'));
+      }
+      closeModal();
+      if (okCount) toast('✓ Forfeited for ' + okCount + ' employee(s)' + (errs.length ? (' — ' + errs.length + ' failed') : ''), errs.length ? 'warning' : 'success');
+      if (errs.length) showModal('Some forfeitures failed', '<div style="font-size:12px">' + errs.map(escHtml).join('<br>') + '</div>', [{label:'Close', cls:'btn-dark', cb:closeModal}]);
+      renderBonusTracker();
+    }},
+    {label:'Cancel', cls:'btn-dark', cb: closeModal},
+  ]);
 }
 
 async function runLBAccrualConfirm() {
@@ -35576,6 +35773,8 @@ async function renderBonusManagement() {
       <!-- v359: folded in from the old separate "Loyalty Retention (Level)" nav item + the Compensation tab's "wallet" sub-tab — same programs, same data, one home. -->
       <button id="bm-tab-loyaltylevel" onclick="switchBonusMgmtTab('loyaltylevel')" class="btn btn-dark btn-sm">💎 Loyalty Retention (Level)</button>
       <button id="bm-tab-tenurewallet" onclick="switchBonusMgmtTab('tenurewallet')" class="btn btn-dark btn-sm">💰 Loyalty Tenure Wallet</button>
+      <!-- v360: folded in from the retired Compensation Management tab's "Joining Bonus" sub-tab. -->
+      <button id="bm-tab-joining" onclick="switchBonusMgmtTab('joining')" class="btn btn-dark btn-sm">🎉 Joining Bonus</button>
     </div>
     <!-- Add Individual Bonus -->
     <div id="bm-section-add">
@@ -35666,6 +35865,10 @@ async function renderBonusManagement() {
     <div id="bm-section-tenurewallet" style="display:none">
       <div id="comp-mgmt-content"><div class="loading-spinner"></div></div>
     </div>
+    <!-- v360: Joining Bonus — folded in from the retired Compensation Management tab. -->
+    <div id="bm-section-joining" style="display:none">
+      <div id="bm-joining-content"><div class="loading-spinner"></div></div>
+    </div>
   </div>`;
   document.getElementById('admin-tab-content').innerHTML = html;
   // v357: index by Bonus ID so voidBonusPrompt can show details without embedding free-text (names,
@@ -35678,15 +35881,17 @@ async function renderBonusManagement() {
 
 function switchBonusMgmtTab(tab) {
   // v359: added 'loyaltylevel' + 'tenurewallet' (folded in from their old separate homes).
-  ['add','bulk','all','pending','loyaltylevel','tenurewallet'].forEach(t => {
+  // v360: added 'joining' (folded in from the retired Compensation Management tab).
+  ['add','bulk','all','pending','loyaltylevel','tenurewallet','joining'].forEach(t => {
     const sec = document.getElementById('bm-section-' + t);
     const btn = document.getElementById('bm-tab-' + t);
     if (sec) sec.style.display = t === tab ? '' : 'none';
     if (btn) { btn.className = t === tab ? 'btn btn-gold btn-sm' : 'btn btn-dark btn-sm'; }
   });
-  // Lazy-render the two folded-in sections only when first opened (they do their own API calls).
+  // Lazy-render the folded-in sections only when first opened (they do their own API calls).
   if (tab === 'loyaltylevel' && typeof renderBonusTracker === 'function') renderBonusTracker();
   if (tab === 'tenurewallet' && typeof renderLoyaltyWalletDashboard === 'function') renderLoyaltyWalletDashboard();
+  if (tab === 'joining' && typeof renderJoiningBonusDashboard === 'function') renderJoiningBonusDashboard();
 }
 
 // v357 — bulk-select toolbar for the All Bonuses table
@@ -35936,14 +36141,57 @@ async function submitBulkBonus() {
   }
 }
 
+// v360: Promotions is now a tabbed shell — History (this tab's original content, unchanged logic) plus
+// two NEW sub-tabs folded in from the retired Compensation Management tab: Promotion (the eligibility-
+// window view) and Review Queue. Mirrors the same sub-tab shell pattern already used by Bonus & Loyalty
+// (renderBonusManagement/switchBonusMgmtTab) and the old Compensation Management (renderCompMgmt).
+var _promotionsTab = 'history';
 async function renderPromotions() {
-  document.getElementById('admin-tab-content').innerHTML = '<div class="loading-spinner"></div>';
+  var el = document.getElementById('admin-tab-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  var subTabs = [
+    {id:'history', label:'History'},
+    {id:'promo', label:'Promotion'},
+    {id:'review', label:'Review Queue'}
+  ];
+  var tabBtns = subTabs.map(function(t) {
+    var active = (t.id === _promotionsTab) ? ' active' : '';
+    return '<button class="comp-sub-tab' + active + '" onclick="switchPromotionsTab(\'' + t.id + '\')">' + t.label + '</button>';
+  }).join('');
+  el.innerHTML = '<div style="max-width:1100px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+      '<h2 style="font-size:18px;font-weight:700">🎯 Promotions</h2>' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">📍 v360: Promotion &amp; Review Queue moved here from the old Compensation Management screen — same functionality, new home.</div>' +
+    '<div class="comp-sub-tabs" id="promo-tabs">' + tabBtns + '</div>' +
+    '<div id="promo-tab-content" style="min-height:120px"><div class="loading-spinner"></div></div>' +
+  '</div>';
+  await switchPromotionsTab(_promotionsTab);
+}
+
+async function switchPromotionsTab(tab) {
+  _promotionsTab = tab;
+  var tabLabels = {history:'History', promo:'Promotion', review:'Review Queue'};
+  document.querySelectorAll('#promo-tabs .comp-sub-tab').forEach(function(btn) {
+    btn.classList.toggle('active', btn.textContent.trim() === (tabLabels[tab] || ''));
+  });
+  if (tab === 'history') await renderPromotionHistoryTab();
+  else if (tab === 'promo') await renderCompPromotionManagement();
+  else if (tab === 'review') await renderPromotionReviewQueue();
+}
+
+// v360: this is the original renderPromotions() body — unchanged logic, only retargeted from
+// admin-tab-content to promo-tab-content so it renders as the "History" sub-tab.
+async function renderPromotionHistoryTab() {
+  var el = document.getElementById('promo-tab-content') || document.getElementById('admin-tab-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-spinner"></div>';
   const res = await API.call('getPromotionHistory', {});
   const history = res.history || [];
-  const html = `<div style="max-width:1100px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h2 style="font-size:18px;font-weight:700">🎯 Promotion Management</h2>
-      <button class="btn btn-gold btn-sm" onclick="API.call('applyPromotions',{}).then(r=>{if(r.ok){toast('Scheduled promotions applied','success');renderPromotions();}})">▶ Apply Scheduled Promotions Now</button>
+  const html = `<div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:16px">
+      <button class="btn btn-gold btn-sm" onclick="API.call('applyPromotions',{}).then(r=>{if(r.ok){toast('Scheduled promotions applied','success');renderPromotionHistoryTab();}})">▶ Apply Scheduled Promotions Now</button>
     </div>
     ${_uniFilterBar('promotions')}
     ${history.length === 0 ? '<div class="empty-state"><div class="empty-icon">🎯</div><p>No promotion records found</p></div>' :
@@ -35965,9 +36213,9 @@ async function renderPromotions() {
       </tr>`).join('')}</tbody>
     </table></div>`}
   </div>`;
-  document.getElementById('admin-tab-content').innerHTML = html;
-  window._uniApply['promotions'] = function(){ _uniApplyHide('promotions', '#admin-tab-content'); };
-  _uniApplyHide('promotions', '#admin-tab-content');
+  el.innerHTML = html;
+  window._uniApply['promotions'] = function(){ _uniApplyHide('promotions', '#promo-tab-content'); };
+  _uniApplyHide('promotions', '#promo-tab-content');
 }
 
 // v78 (§5): removed dead renderLeaveManagement (System-B leavemgmt UI retired). [v79: dropped dangling async]
@@ -38387,59 +38635,58 @@ async function initCompSheets() {
   else toast(res.error || 'Initialization failed', 'error');
 }
 
-// ── Admin: Compensation Management Tab ───────────────────────────────
+// ── Admin: Compensation Management Tab — RETIRED in v360 ───────────────────────────────
+// v360: Compensation Management is no longer a standalone nav destination (see the sidebar comment
+// above the old "compmgmt" spot). Its 5 sub-tabs were redistributed:
+//   joining (Joining Bonus)            → Bonus & Loyalty  (renderJoiningBonusDashboard, retargeted)
+//   promo (Promotion) + review         → Promotions       (renderCompPromotionManagement /
+//   (Review Queue)                       renderPromotionReviewQueue, retargeted)
+//   ladder (Salary Ladder) + bulk      → Payroll          (renderSalaryLadderViewer /
+//   (Bulk Operations)                    renderCompBulkOperations, retargeted)
+// This function (and switchCompMgmtTab below) are kept ONLY as a back-compat redirect shim for any
+// stray internal caller of switchTab('compmgmt') / switchCompMgmtTab(...) — they no longer render a
+// standalone Compensation Management page. All 5 render functions + their permission gate
+// (checkTabPermission('compmgmt') — unchanged key, so existing Manager/Supervisor grants are preserved
+// exactly, see decision log) are unchanged other than which DOM element id they mount into.
 var _compMgmtTab = 'joining';
 async function renderCompMgmt() {
   var el = document.getElementById('admin-tab-content');
   if (!el) return;
-  el.innerHTML = '<div class="loading-spinner"></div>';
-  // v43 W4.7: added 'review' sub-tab for Promotion Review Queue
-  // v43 W4.10: added 'bulk' sub-tab for Bulk Operations (Recompute All Salaries etc.)
-  // v359: 'wallet' (Loyalty Retention/Tenure) moved OUT — it now lives under Bonus & Loyalty alongside
-  // the per-level Loyalty Retention and every other bonus program, per owner request to keep every
-  // bonus/loyalty concept in one place. Compensation now covers salary bands, increments, and promotion —
-  // the money-BAND side, not the bonus side. switchCompMgmtTab('wallet') still redirects there if called.
-  var subTabs = [
-    {id:'joining', label:'Joining Bonus'},
-    {id:'promo', label:'Promotion'},
-    {id:'review', label:'Review Queue'},
-    {id:'ladder', label:'Salary Ladder'},
-    {id:'bulk', label:'Bulk Operations'}
-  ];
-  var tabBtns = subTabs.map(function(t) {
-    var active = (t.id === _compMgmtTab) ? ' active' : '';
-    return '<button class="comp-sub-tab' + active + '" onclick="switchCompMgmtTab(\'' + t.id + '\')">' + t.label + '</button>';
-  }).join('');
-  el.innerHTML = '<div style="padding:4px 0 0">' +
-    '<div style="font-size:16px;font-weight:700;margin-bottom:14px">💼 Compensation Management</div>' +
-    '<div style="font-size:11px;color:var(--gray-light);margin-bottom:10px">📍 Looking for Loyalty Retention or the Tenure Wallet? They moved to <a href="#" onclick="switchTab(\'bonusmgmt\');return false" style="color:var(--gold)">🎁 Bonus &amp; Loyalty</a> — one home for every bonus/loyalty program.</div>' +
-    '<div class="comp-sub-tabs" id="comp-mgmt-tabs">' + tabBtns + '</div>' +
-    '<div id="comp-mgmt-content" style="min-height:120px"><div class="loading-spinner"></div></div>' +
-  '</div>';
-  await switchCompMgmtTab(_compMgmtTab);
+  el.innerHTML = '<div style="padding:20px;max-width:640px">' +
+    '<div style="font-size:16px;font-weight:700;margin-bottom:10px">💼 Compensation Management has moved</div>' +
+    '<div style="font-size:13px;color:var(--gray-light);line-height:1.7">' +
+    'This screen was reorganized in v360 — every tab is still here, just regrouped where the owner naturally looks for it:<br>' +
+    '• <b>Joining Bonus</b> → <a href="#" onclick="switchTab(\'bonusmgmt\');return false" style="color:var(--gold)">🎁 Bonus &amp; Loyalty</a><br>' +
+    '• <b>Promotion</b> &amp; <b>Review Queue</b> → <a href="#" onclick="switchTab(\'promotions\');return false" style="color:var(--gold)">🎯 Promotions</a><br>' +
+    '• <b>Salary Ladder</b> &amp; <b>Bulk Operations</b> → <a href="#" onclick="switchTab(\'payroll\');return false" style="color:var(--gold)">💰 Payroll</a>' +
+    '</div></div>';
+  try { if (typeof switchTab === 'function') await switchTab('payroll'); } catch(e) {}
 }
 
 async function switchCompMgmtTab(tab) {
-  // v359: 'wallet' moved to Bonus & Loyalty — redirect any remaining caller instead of rendering it here.
-  if (tab === 'wallet') { try { if (typeof switchTab === 'function') await switchTab('bonusmgmt'); } catch(e) {} try { if (typeof switchBonusMgmtTab === 'function') await switchBonusMgmtTab('tenurewallet'); } catch(e) {} return; }
+  // v360: every former sub-tab now redirects to its new home (see renderCompMgmt() comment above).
+  if (tab === 'wallet' || tab === 'tenurewallet') { try { await switchTab('bonusmgmt'); await switchBonusMgmtTab('tenurewallet'); } catch(e) {} return; }
+  if (tab === 'joining') { try { await switchTab('bonusmgmt'); await switchBonusMgmtTab('joining'); } catch(e) {} return; }
+  if (tab === 'promo') { try { await switchTab('promotions'); await switchPromotionsTab('promo'); } catch(e) {} return; }
+  if (tab === 'review') { try { await switchTab('promotions'); await switchPromotionsTab('review'); } catch(e) {} return; }
+  if (tab === 'ladder') { try { await switchTab('payroll'); switchPayrollView('ladder'); } catch(e) {} return; }
+  if (tab === 'bulk') { try { await switchTab('payroll'); switchPayrollView('bulkops'); } catch(e) {} return; }
   _compMgmtTab = tab;
-  var tabLabels = {joining:'Joining Bonus', promo:'Promotion', review:'Review Queue', ladder:'Salary Ladder', bulk:'Bulk Operations'};
-  document.querySelectorAll('#comp-mgmt-tabs .comp-sub-tab').forEach(function(btn) {
-    btn.classList.toggle('active', btn.textContent.trim() === (tabLabels[tab] || ''));
-  });
-  if (tab === 'joining') await renderJoiningBonusDashboard();
-  else if (tab === 'wallet') await renderLoyaltyWalletDashboard();
-  else if (tab === 'promo') await renderCompPromotionManagement();
-  else if (tab === 'review') await renderPromotionReviewQueue();   // v43 W4.7
-  else if (tab === 'ladder') await renderSalaryLadderViewer();
-  else if (tab === 'bulk') await renderCompBulkOperations();        // v43 W4.10
 }
 
 // v43 W4.7: render the Promotion Review Queue admin widget. Sortable by status (overdue first),
 // each row has Promote / Defer / Mark Reviewed actions.
 async function renderPromotionReviewQueue() {
-  var el = document.getElementById('comp-mgmt-content');
+  // v360: retargeted from comp-mgmt-content to promo-tab-content — renders as a sub-tab INSIDE
+  // Promotions now (moved out of the retired Compensation Management tab).
+  var el = document.getElementById('promo-tab-content') || document.getElementById('admin-tab-content');
   if (!el) return;
+  // v360: same permission key as before the move (compmgmt) — preserves exact existing Manager/
+  // Supervisor grants; Promotions' own broader 'promotions' permission only gates the TAB itself.
+  if (typeof checkTabPermission === 'function' && !checkTabPermission('compmgmt')) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>You do not have permission to view the Promotion Review Queue.</p></div>';
+    return;
+  }
   el.innerHTML = '<div class="loading-spinner"></div>';
   try {
     var res = await API.call('getPromotionReviewQueue');
@@ -38488,8 +38735,8 @@ async function renderPromotionReviewQueue() {
           '</tr>';
         }).join('') +
       '</tbody></table></div></div>';
-    window._uniApply['promotionqueue'] = function(){ _uniApplyHide('promotionqueue', '#comp-mgmt-content'); };
-    _uniApplyHide('promotionqueue', '#comp-mgmt-content');
+    window._uniApply['promotionqueue'] = function(){ _uniApplyHide('promotionqueue', '#promo-tab-content'); };
+    _uniApplyHide('promotionqueue', '#promo-tab-content');
   } catch(e) {
     console.error('renderPromotionReviewQueue:', e);
     el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
@@ -38569,10 +38816,17 @@ function prqMarkReviewed(empId, name) {
      }}]);
 }
 
-// v43 W4.10: Bulk Operations panel inside Compensation Management
+// v43 W4.10: Bulk Operations panel — v360: retargeted from comp-mgmt-content to payroll-bulkops-view,
+// moved out of the retired Compensation Management tab into Payroll.
 async function renderCompBulkOperations() {
-  var el = document.getElementById('comp-mgmt-content');
+  var el = document.getElementById('payroll-bulkops-view') || document.getElementById('admin-tab-content');
   if (!el) return;
+  // v360: same permission key as before the move (compmgmt) — preserves exact existing Manager/
+  // Supervisor grants; Payroll's own broader 'payroll' permission only gates the TAB itself.
+  if (typeof checkTabPermission === 'function' && !checkTabPermission('compmgmt')) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>You do not have permission to view Bulk Operations.</p></div>';
+    return;
+  }
   el.innerHTML = '<div style="padding:6px 4px;max-width:680px">' +
     '<div style="font-size:14px;font-weight:600;margin-bottom:6px">Bulk Operations</div>' +
     '<div style="font-size:12px;color:var(--gray-light);margin-bottom:14px">Destructive or wide-impact actions. Each requires confirmation.</div>' +
@@ -38608,8 +38862,17 @@ async function bulkRecomputeAllSalaries() {
 }
 
 async function renderJoiningBonusDashboard() {
-  var el = document.getElementById('comp-mgmt-content');
+  // v360: retargeted from comp-mgmt-content to bm-joining-content — renders as a sub-tab INSIDE
+  // Bonus & Loyalty now (moved out of the retired Compensation Management tab). Falls back to
+  // admin-tab-content if the sub-tab container isn't present (defensive — e.g. a stale cached page).
+  var el = document.getElementById('bm-joining-content') || document.getElementById('admin-tab-content');
   if (!el) return;
+  // v360: same permission key as before the move (compmgmt) — preserves exact existing Manager/
+  // Supervisor grants; Bonus & Loyalty's own broader 'bonusmgmt' permission only gates the TAB itself.
+  if (typeof checkTabPermission === 'function' && !checkTabPermission('compmgmt')) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>You do not have permission to view Joining Bonus.</p></div>';
+    return;
+  }
   el.innerHTML = '<div class="loading-spinner"></div>';
   try {
     var res = await API.call('getCompMgmtDashboard');
@@ -38638,8 +38901,8 @@ async function renderJoiningBonusDashboard() {
       '<div style="margin-top:10px">' +
       '<button class="btn btn-dark btn-sm" data-help="Creates a correct joining-bonus schedule for every active employee missing one, AND repairs any malformed legacy records (the v110 8-column rows that showed ₹2,026). Safe to run repeatedly — never overwrites a valid existing schedule or a released instalment." onclick="seedJoiningBonusForAll()">➕ Sync &amp; Repair All</button>' +
       '</div>';
-    window._uniApply['joiningbonus'] = function(){ _uniApplyHide('joiningbonus', '#comp-mgmt-content'); };
-    _uniApplyHide('joiningbonus', '#comp-mgmt-content');
+    window._uniApply['joiningbonus'] = function(){ _uniApplyHide('joiningbonus', '#bm-joining-content'); };
+    _uniApplyHide('joiningbonus', '#bm-joining-content');
   } catch(e) {
     el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
   }
@@ -38671,6 +38934,7 @@ async function renderLoyaltyWalletDashboard() {
       '<th>Balance <span class="info-tooltip" title="Current withdrawable + locked balance = Total Credited minus Withdrawn.">ℹ</span></th>' +
       '<th>Withdrawn <span class="info-tooltip" title="Total amount the employee has withdrawn from the wallet. ₹0 until an actual withdrawal is processed.">ℹ</span></th>' +
       '<th>Monthly Credit <span class="info-tooltip" title="The amount this employee earns per month at their CURRENT year-of-service tier (Settings → Compensation → Loyalty Wallet tiers). This is the rate, not a stored balance.">ℹ</span></th>' +
+      '<th>History <span class="info-tooltip" title="Full month-by-month credit ledger for this employee: which month(s) contributed, amount, and running balance — so you can target a Reduce/Forfeit at one specific month instead of the whole balance.">ℹ</span></th>' +
       '<th>Action</th>' +
       '</tr></thead><tbody>' +
       rows.map(function(r) {
@@ -38679,8 +38943,9 @@ async function renderLoyaltyWalletDashboard() {
           '<td style="color:var(--gold);font-weight:700">' + fmtINR(r.balance) + '</td>' +
           '<td>' + fmtINR(r.totalWithdrawn) + '</td>' +
           '<td>' + fmtINR(r.monthlyCredit) + '</td>' +
+          '<td><button class="btn btn-dark btn-sm" onclick="showEmpWalletHistory(\'' + escHtml(r.employeeId||'') + '\',\'' + escHtml(r.name||'') + '\')">📋</button></td>' +
           '<td><button class="btn btn-dark btn-sm" onclick="walletWithdrawModal(\'' + (r.employeeId||'') + '\')">Withdraw</button> ' +
-          '<button class="btn btn-red btn-sm" onclick="walletAdjustModal([\'' + (r.employeeId||'') + '\'])" title="Reduce, hold, or forfeit this employee\'s wallet credit for a performance reason">⚠ Reduce</button></td></tr>';
+          '<button class="btn btn-red btn-sm" onclick="walletAdjustModal([\'' + (r.employeeId||'') + '\'])" title="Reduce, hold, or forfeit this employee\'s wallet credit for a performance reason — can target ONE specific month via the Month field in that form">⚠ Reduce</button></td></tr>';
       }).join('') +
       '</tbody></table></div>' +
       '<div style="margin-top:10px">' +
@@ -38705,6 +38970,41 @@ async function runMonthlyWalletBatch() {
   var res = await API.call('runMonthlyLoyaltyWalletBatch', {month: month});
   if (res.ok) { toast('✓ Wallet batch complete: ' + (res.processed || 0) + ' processed', 'success'); renderLoyaltyWalletDashboard(); }
   else toast(res.error || 'Batch failed', 'error');
+}
+
+// v360 Point 9: month-by-month ledger drill-down for the Tenure Wallet — mirrors showEmpLBHistory()
+// (the Level engine's equivalent "History" button) but calls the new getLoyaltyWalletMonthlyLedger action,
+// which returns the FULL history (not the last-12-months slice bundled into getLoyaltyWalletStatus).
+async function showEmpWalletHistory(empId, empName) {
+  var res = await API.call('getLoyaltyWalletMonthlyLedger', {employeeId: empId});
+  if (!res.ok) { toast(res.error || 'Could not load history', 'error'); return; }
+  var ledger = res.ledger || [];
+  var rows = ledger.slice().reverse().map(function(r) {
+    var statusTxt = r.credited ? '<span style="color:var(--green)">Credited</span>' : '<span style="color:var(--gray-light)">Skipped' + (r.reason ? ' — ' + escHtml(r.reason) : '') + '</span>';
+    return '<tr>' +
+      '<td style="padding:6px 4px;font-size:11px">' + escHtml(r.month || '') + '</td>' +
+      '<td style="text-align:right;font-size:12px;font-weight:600">' + (r.credited ? fmtINR(r.amount) : '—') + '</td>' +
+      '<td style="text-align:right;font-size:12px">' + fmtINR(r.runningBalance) + '</td>' +
+      '<td style="font-size:11px">' + statusTxt + '</td>' +
+      '<td style="padding:6px 4px">' + (r.credited ? '<button class="btn btn-red btn-sm" onclick="closeModal();walletAdjustModalForMonth([\'' + escHtml(empId) + '\'],\'' + escHtml(r.month || '') + '\')" title="Reduce/forfeit specifically this month\'s credit">⚠ Reduce this month</button>' : '') + '</td>' +
+    '</tr>';
+  }).join('');
+  var html = ledger.length ? ('<div style="font-size:11px;color:var(--gray-light);margin-bottom:8px">Current balance: <b style="color:var(--gold)">' + fmtINR(res.currentBalance) + '</b></div>' +
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' +
+    '<thead><tr style="background:var(--dark3)"><th style="padding:6px 4px;text-align:left;font-size:11px">Month</th><th style="padding:6px 4px;text-align:right;font-size:11px">Amount Credited</th><th style="padding:6px 4px;text-align:right;font-size:11px">Running Balance</th><th style="padding:6px 4px;text-align:left;font-size:11px">Status</th><th style="padding:6px 4px;font-size:11px">Action</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div>')
+    : '<div style="text-align:center;padding:20px;color:var(--gray-light)">No monthly credit history yet.</div>';
+  showModal('💰 Loyalty Wallet History — ' + escHtml(empName), html, [{label:'Close', cls:'btn-dark', cb:closeModal}]);
+}
+
+// v360 Point 9: opens the existing walletAdjustModal pre-filled to a specific month (called from the
+// History drill-down's "Reduce this month" button) instead of the current-month default.
+function walletAdjustModalForMonth(empIds, month) {
+  walletAdjustModal(empIds);
+  setTimeout(function() {
+    var m = document.getElementById('wa-month');
+    if (m && month) m.value = month;
+  }, 50);
 }
 
 // v77 (Gate B): Tenure-Wallet withdrawal. Reconnects the always-complete, lock-protected
@@ -38815,8 +39115,16 @@ async function _wlApproveAdj(id, decision) {
 }
 
 async function renderCompPromotionManagement() {
-  var el = document.getElementById('comp-mgmt-content');
+  // v360: retargeted from comp-mgmt-content to promo-tab-content — renders as a sub-tab INSIDE
+  // Promotions now (moved out of the retired Compensation Management tab).
+  var el = document.getElementById('promo-tab-content') || document.getElementById('admin-tab-content');
   if (!el) return;
+  // v360: same permission key as before the move (compmgmt) — preserves exact existing Manager/
+  // Supervisor grants; Promotions' own broader 'promotions' permission only gates the TAB itself.
+  if (typeof checkTabPermission === 'function' && !checkTabPermission('compmgmt')) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>You do not have permission to view Promotion management.</p></div>';
+    return;
+  }
   el.innerHTML = '<div class="loading-spinner"></div>';
   try {
     var cmRes = await API.call('getCompMgmtDashboard');
@@ -38856,8 +39164,8 @@ async function renderCompPromotionManagement() {
       html = _uniFilterBar('comppromo') + html; // v183 WS: shared who-filter over both promotion lists
     }
     el.innerHTML = html;
-    window._uniApply['comppromo'] = function(){ _uniApplyHide('comppromo', '#comp-mgmt-content'); };
-    _uniApplyHide('comppromo', '#comp-mgmt-content');
+    window._uniApply['comppromo'] = function(){ _uniApplyHide('comppromo', '#promo-tab-content'); };
+    _uniApplyHide('comppromo', '#promo-tab-content');
   } catch(e) {
     el.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + escHtml(String(e)) + '</div>';
   }
@@ -38891,8 +39199,16 @@ async function _confirmCompPromo(empId) {
 }
 
 async function renderSalaryLadderViewer() {
-  var el = document.getElementById('comp-mgmt-content');
+  // v360: retargeted from comp-mgmt-content to payroll-ladder-view, moved out of the retired
+  // Compensation Management tab into Payroll.
+  var el = document.getElementById('payroll-ladder-view') || document.getElementById('admin-tab-content');
   if (!el) return;
+  // v360: same permission key as before the move (compmgmt) — preserves exact existing Manager/
+  // Supervisor grants; Payroll's own broader 'payroll' permission only gates the TAB itself.
+  if (typeof checkTabPermission === 'function' && !checkTabPermission('compmgmt')) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><p>You do not have permission to view the Salary Ladder.</p></div>';
+    return;
+  }
   el.innerHTML = '<div class="loading-spinner"></div>';
   try {
     await loadShiftConfig();  // v62: configurable shift-hour set
