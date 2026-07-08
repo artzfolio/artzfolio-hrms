@@ -6,7 +6,7 @@
 // repo root, the SW registers, the shell is cached network-first, and the employee app becomes installable.
 //
 // Cache key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML (~L1687).
-const CACHE = 'artzfolio-hrms-v359-2026-07'; // v359: Bonus & Loyalty reorg — folds Loyalty Retention (Level) + Tenure Wallet into Bonus Management; in lockstep with the inline CACHE in the app HTML; v358: salary payment-status tracker; v357: Bonus Management overhaul; v356: bug-fix + device-code batch
+const CACHE = 'artzfolio-hrms-v360-2026-07'; // v360: wired the existing-but-unused GAS Loyalty Wallet performance-adjustment handlers to the UI — bulk-select + per-row Reduce/Forfeit + Pending Approvals panel on the Tenure Wallet screen. v359b: fixed window.HRMS_VERSION stuck at v355 + removed vestigial 'bonustracker' from PERM_TAB_IDS. v359: Bonus & Loyalty reorg; v358: salary payment-status tracker; v357: Bonus Management overhaul
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 // v341 OFFLINE KIOSK: face-api model weights are large, static and version-pinned. Serve them CACHE-FIRST
 // (cache-on-first-fetch, then serve from cache forever) so a kiosk that has scanned once works with NO network.
