@@ -1,4 +1,7 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v372-2026-07 (v372: Full Sync effective-dating fully
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v373-2026-07 (v373: salary-slip / Excel / payroll-panel
+// transparency — the auto Bonus_Ledger total (Perfect-Attendance etc.) + the effective-dated salary revision are now
+// itemised as their own labelled lines instead of collapsing into an unlabeled "Other adjustments". Display-only.
+// v372 base: Full Sync effective-dating fully
 // wired — upload parser now passes effectiveDate/changeReason to the backend + preview shows an "Effective from"
 // column and pre-flags a pay change missing its date; backend id-match upsert enforces the mandatory-date guard.
 // v370 base: Excel "Repaired: Data validation" corruption fixed + effectiveDate/changeReason added to the export.).
@@ -6,7 +9,7 @@
 // NOT a split of the single-file app); the app registers it via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // The CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML. Shell = network-first
 // (fresh deploys land immediately); face-api weights = cache-first (offline kiosk); CDN libs = network-first.
-const CACHE = 'artzfolio-hrms-v372-2026-07';
+const CACHE = 'artzfolio-hrms-v375-2026-07';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
@@ -46,8 +49,4 @@ self.addEventListener('fetch', e => {
       }
       return r;
     }).catch(() => cached);
-    if (isShell) return fetchPromise.then(r => r || cached).catch(() => cached); // NETWORK-FIRST shell
-    if (_v341IsFaceWeight(url)) return cached || fetchPromise;                    // CACHE-FIRST face weights
-    return isCdn ? (fetchPromise.then(r => r || cached)) : (cached || fetchPromise);
-  }));
-});
+    if (isShell) return f
