@@ -1,15 +1,17 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v384-2026-07 (v384: SETTINGS TAB MAP completed +
-// per-tab count badges, all display/UX only — salary + F&F engine byte-identical. (1) The one settings card still
-// falling through to the generic "Panel" tab by accident — Field Visibility — is now explicitly mapped to the
-// Employees tab, so every keyed settings card has an intentional home. (2) Each Settings sub-tab button now shows
-// a "(N)" badge = how many cards it holds, so the layout is legible at a glance. v383 base: settings/search
-// declutter (full-card settings search, phone/email global search, duplicate card+button removed, Data-Fixes
-// one-shots archived, Supabase cards grouped). v382: separate-slip ZIP. v381: F&F exit-month + dual slip buttons.
-// Full history in prior sw_vNNN.js archives. REAL same-origin SW; registered via
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v386-2026-07 (v386: FIX — the Edit/Add Employee
+// "Assigned Shift" dropdown updated the hidden shiftHours/shiftType/start/end on change, but silently left the
+// VISIBLE "Daily Work Hours" field stale (e.g. shift changed 11hr Day -> 10hr Day, Daily Work Hours stayed 11)
+// — wrong under-time/OT basis feeding attendance + payroll. _syncShiftHoursFromAssigned now also syncs Daily
+// Work Hours to the selected shift's registry hours, matching the existing Shift Timing/Duration tool's
+// shiftHours+dailyHours pairing. Frontend-only fix (submits the corrected value via the existing save path; no
+// GAS/salary-formula change). v385 base: fixed the INERT Field-Visibility tab-map entry (split T&C / Field
+// Visibility / 2FA into independent .settings-section cards). v384 base: SETTINGS TAB MAP completed + per-tab
+// count badges. v383 base: settings/search declutter. v382: separate-slip ZIP. v381: F&F exit-month + dual slip
+// buttons. Full history in prior sw_vNNN.js archives. REAL same-origin SW; registered via
 // navigator.serviceWorker.register('sw.js', {scope:'./'}). CACHE key MUST stay in lockstep with the inline
 // fallback CACHE constant in the app HTML.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v384-2026-07';
+const CACHE = 'artzfolio-hrms-v386-2026-07';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
