@@ -1,14 +1,15 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v377-2026-07 (v377: slip / Excel / panel NUMBER
-// unification — a payslip generated from the panel/saved register now normalises the saved-record field names
-// (ulDays/lateDays/ewDays -> UL/lateCount/EW) so it foots IDENTICALLY to a live-computed slip; the payroll Excel
-// export now foots to the month shown on screen — live figures when they match, else the SAVED register rows —
-// instead of exporting a stale other-month snapshot or aborting. v376 base: one-click "Reset payroll history"
-// (backup + purge Emp_Change_History + re-assert flat 1-June salaries) + weekly-off/holiday counts on the slip +
-// ASCII revision arrow. Full history in prior sw_vNNN.js archives. REAL same-origin SW (a static asset, NOT a
-// split of the single-file app); registered via navigator.serviceWorker.register('sw.js', {scope:'./'}). The CACHE
-// key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML. Shell = network-first (fresh
-// deploys land immediately); face-api weights = cache-first (offline kiosk); CDN libs = network-first.
-const CACHE = 'artzfolio-hrms-v377-2026-07';
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v384-2026-07 (v384: SETTINGS TAB MAP completed +
+// per-tab count badges, all display/UX only — salary + F&F engine byte-identical. (1) The one settings card still
+// falling through to the generic "Panel" tab by accident — Field Visibility — is now explicitly mapped to the
+// Employees tab, so every keyed settings card has an intentional home. (2) Each Settings sub-tab button now shows
+// a "(N)" badge = how many cards it holds, so the layout is legible at a glance. v383 base: settings/search
+// declutter (full-card settings search, phone/email global search, duplicate card+button removed, Data-Fixes
+// one-shots archived, Supabase cards grouped). v382: separate-slip ZIP. v381: F&F exit-month + dual slip buttons.
+// Full history in prior sw_vNNN.js archives. REAL same-origin SW; registered via
+// navigator.serviceWorker.register('sw.js', {scope:'./'}). CACHE key MUST stay in lockstep with the inline
+// fallback CACHE constant in the app HTML.
+// Shell = network-first; face-api weights = cache-first; CDN = network-first.
+const CACHE = 'artzfolio-hrms-v384-2026-07';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
