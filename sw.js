@@ -1,4 +1,8 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v386-2026-07 (v386: FIX — the Edit/Add Employee
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v388-2026-07 (v388: SALARY-ENGINE change — late
+// penalty rebuilt to the escalating monthly-tier MULTIPLIER model: grace is a gate only, penalty base = FULL
+// lateness from shift start, ×2/×3/×4 by monthly late ordinal (tiers 3/6/10), 11th+ late = marked absent (one
+// full day, capped); undertime no longer double-docks the late window. New weekly auto JSON backup to Drive.
+// Carries v387: late labels, POSH/Tools/Biometric collapse, backfill-grid clock-in/out/hours. Prior: v386 FIX
 // "Assigned Shift" dropdown updated the hidden shiftHours/shiftType/start/end on change, but silently left the
 // VISIBLE "Daily Work Hours" field stale (e.g. shift changed 11hr Day -> 10hr Day, Daily Work Hours stayed 11)
 // — wrong under-time/OT basis feeding attendance + payroll. _syncShiftHoursFromAssigned now also syncs Daily
@@ -11,7 +15,7 @@
 // navigator.serviceWorker.register('sw.js', {scope:'./'}). CACHE key MUST stay in lockstep with the inline
 // fallback CACHE constant in the app HTML.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v386-2026-07';
+const CACHE = 'artzfolio-hrms-v388-2026-07';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
@@ -51,9 +55,4 @@ self.addEventListener('fetch', e => {
       }
       return r;
     }).catch(() => cached);
-    if (isShell) return (await fetchPromise) || cached;                 // shell: network-first (fresh deploy lands immediately)
-    if (_v341IsFaceWeight(url)) return cached || fetchPromise;          // face weights: cache-first (offline kiosk)
-    if (isCdn) return (await fetchPromise) || cached;                   // CDN libs: network-first
-    return cached || fetchPromise;                                      // default: cache-then-network
-  }));
-});
+    if (isShell) return (await fetchPromise) || cached;                 // shell: network-first (fresh deploy lands immediat
