@@ -1,14 +1,14 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v392-2026-07
-// v392 (2026-07-14): cache key bumped v391->v392 for the in-app resume-after-clock-out Settings toggle
-//   (resumeAfterClockoutEnabled) + the per-segment timesheet badge. Salary engine byte-identical.
-//   Deploy this file AS sw.js (identical to the maintained sw.js; kept as the versioned archive copy).
-// v391 (2026-07-14): MULTI-PUNCH / resume-after-clock-out build (clock out and clock in again the same day;
-//   each worked segment summed, gaps deducted as under-time).
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v393-2026-07
+// v393 (2026-07-14): cache key bumped v392->v393 — fixes the multi-punch clock-out "Server error" flash
+//   (kiosk local direction map now clears `out` on a resume clock-in, so a post-resume clock-out is no longer
+//   mis-sent as a clock-in). Salary engine byte-identical. Deploy this file AS sw.js.
+// v392 (2026-07-14): in-app resume-after-clock-out Settings toggle + per-segment timesheet badge.
+// v391 (2026-07-14): MULTI-PUNCH / resume-after-clock-out (clock out and clock in again the same day).
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v392-2026-07';
+const CACHE = 'artzfolio-hrms-v393-2026-07';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
