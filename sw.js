@@ -1,4 +1,8 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v393-2026-07
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v394-2026-07
+// v394 (2026-07-14): cache key bumped v393->v394 — selfie/photo audit capture on clock-in/out is now
+//   fire-and-forget (fires AFTER the punch succeeds, in the background) instead of blocking the punch on a
+//   fresh camera open; also fixed the Settings "Buffer minutes after shift end" field being hidden whenever
+//   Trigger Method != "At Shift End + Buffer". Salary engine byte-identical. Deploy this file AS sw.js.
 // v393 (2026-07-14): cache key bumped v392->v393 — fixes the multi-punch clock-out "Server error" flash
 //   (kiosk local direction map now clears `out` on a resume clock-in, so a post-resume clock-out is no longer
 //   mis-sent as a clock-in). Salary engine byte-identical. Deploy this file AS sw.js.
@@ -8,7 +12,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v393-2026-07';
+const CACHE = 'artzfolio-hrms-v394-2026-07';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
