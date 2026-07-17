@@ -1,4 +1,13 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v399-2026-07
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v400-2026-07-17
+// v400 (2026-07-17): cache key bumped v399->v400 — ID Card Reissue Fee moved off the standalone
+//   Card_Reissue_Log/logCardReissue system (which had two lifecycle bugs) and onto the existing, proven
+//   Manual Transactions pipeline as a new 'CardReissueFee' type, with its own distinct payslip bucket
+//   (cardReissueFeeDeduction, mirroring the existing perfReviewDeduction pattern) so it still shows as its
+//   own clearly-labeled line everywhere (payslip, panel, Excel, ESS) instead of being lumped into generic
+//   Penalties. The old per-employee Reissue Card button/modal/GAS handlers are removed. Mobile Fine, PIN
+//   Reactivation Fee, and ID Card Reissue Fee default amounts are now consolidated in one Settings card,
+//   and selecting any of these types in Add Transaction auto-fills the configured default amount (editable).
+//   No change to calcMonthlySalary beyond the additive bucket (byte-identical otherwise). Deploy AS sw.js.
 // v399 (2026-07-17): cache key bumped v398->v399 — REAL FIX for the ID Card Reissue Fee: the v398 display
 //   patch was correct but the underlying data was being silently consumed/dropped. Root cause #1: opening
 //   the "Why this salary?" preview or the payroll Recompute (live) button was marking the Pending reissue
@@ -35,7 +44,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v399-2026-07';
+const CACHE = 'artzfolio-hrms-v400-2026-07-17';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
