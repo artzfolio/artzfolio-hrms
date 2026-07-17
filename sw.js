@@ -1,4 +1,14 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v398-2026-07
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v399-2026-07
+// v399 (2026-07-17): cache key bumped v398->v399 — REAL FIX for the ID Card Reissue Fee: the v398 display
+//   patch was correct but the underlying data was being silently consumed/dropped. Root cause #1: opening
+//   the "Why this salary?" preview or the payroll Recompute (live) button was marking the Pending reissue
+//   charge as Processed on mere VIEW — before payroll was ever saved — so the fee vanished after the first
+//   look. Root cause #2: even a real Save to Records never wrote the fee into the saved SalaryRecords sheet,
+//   so nothing reading the saved register (Excel export, saved-month panel view, ESS) could ever see it.
+//   Both fixed: preview paths are now read-only again (nothing consumed until an actual Save to Records),
+//   and the saved record now persists the fee so every surface — panel, Excel, ESS "My Earnings" — shows the
+//   same number. Also added to the ESS/employee-facing earnings views and the Salary History PDF re-download.
+//   No change to calcMonthlySalary (byte-identical). Deploy AS sw.js.
 // v398 (2026-07-17): cache key bumped v397->v398 — FIX: "Why this salary?" panel waterfall and the Payroll
 //   Excel/CSV export were both missing the new ID Card Reissue Fee deduction line (the PDF payslip already
 //   showed it correctly) — both now display it. No engine change; cache key bump only. Deploy AS sw.js.
@@ -25,7 +35,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v398-2026-07';
+const CACHE = 'artzfolio-hrms-v399-2026-07';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
