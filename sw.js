@@ -1,4 +1,20 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v401-2026-07-17
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v403-2026-07-17
+// v403 (2026-07-17): cache key bumped v402->v403 — GAS-ONLY FIX (BUG-03): Advance Salary eligibility
+//   (checkAdvanceEligibility) now also counts 'Approved'-status advances when computing how much of the
+//   monthly cap an employee has already used (previously only Applied/Paid/Pending were counted, so an
+//   advance approved earlier in the month silently didn't count against a second request the same month).
+//   Payroll itself already treated 'Approved' as real money — the eligibility check is now in sync with it.
+//   No HTML/JS logic change (the ESS Request-Advance modal just displays whatever the server returns) — cache
+//   key bumped in lockstep per standing convention so every device drops the stale v402 shell. Deploy AS sw.js.
+// v402 (2026-07-17): cache key bumped v401->v402 — FIX: Reimbursement requests submitted via ESS were never
+//   surfacing in the unified ✅ Approvals inbox (only a separate standalone 💰 Reimbursements tab, with no
+//   pending-count badge) — an owner/manager following the Approvals tab, as the app itself instructs, could
+//   miss a submitted claim entirely. Approvals inbox now fetches reimbursements alongside leaves/advances/exits
+//   and shows a "💰 Reimbursement Requests" card with approve/reject actions; the Reimbursements nav item now
+//   carries its own live badge; both badges (Approvals + Reimbursements) refresh in sync from either surface.
+//   Also removed a redundant internal owner-token re-check on the reimbursements GAS handlers that could
+//   silently block a fully role-permitted Manager session (the router's own role gate already covers this).
+//   No salary/payroll engine change. Deploy AS sw.js.
 // v401 (2026-07-17): cache key bumped v400->v401 — FIX: Add Transaction Amount auto-fill was getting stuck on the first fee Type selected (Mobile Fine / PIN Reactivation Fee / ID Card Reissue Fee) instead of refreshing on each Type change; fixed via auto-fill provenance tracking. Frontend-only, no engine/GAS behavior change. Deploy AS sw.js.
 // v400 (2026-07-17): cache key bumped v399->v400 — ID Card Reissue Fee moved off the standalone
 //   Card_Reissue_Log/logCardReissue system (which had two lifecycle bugs) and onto the existing, proven
@@ -45,7 +61,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v401-2026-07-17';
+const CACHE = 'artzfolio-hrms-v403-2026-07-17';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
