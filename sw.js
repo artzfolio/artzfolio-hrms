@@ -1,4 +1,5 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v404-2026-07-17
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v405-2026-07-17
+// v405 (2026-07-17): cache key bumped v404->v405 — FIX: ESS Reimbursement submit try/catch (silent-failure guard). Deploy AS sw.js.
 // v404 (2026-07-17): cache key bumped v403->v404 — HOTFIX, version markers only (see HTML/GAS v404 changelog: window.HRMS_VERSION was stuck at v401 since v402, causing a false OUT-OF-SYNC banner). No caching-strategy change. Deploy AS sw.js.
 // v403 (2026-07-17): cache key bumped v402->v403 — GAS-ONLY FIX (BUG-03): Advance Salary eligibility
 //   (checkAdvanceEligibility) now also counts 'Approved'-status advances when computing how much of the
@@ -62,7 +63,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v404-2026-07-17';
+const CACHE = 'artzfolio-hrms-v405-2026-07-17';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
