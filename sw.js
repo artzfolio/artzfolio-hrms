@@ -1,4 +1,5 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v400-2026-07-17
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v401-2026-07-17
+// v401 (2026-07-17): cache key bumped v400->v401 — FIX: Add Transaction Amount auto-fill was getting stuck on the first fee Type selected (Mobile Fine / PIN Reactivation Fee / ID Card Reissue Fee) instead of refreshing on each Type change; fixed via auto-fill provenance tracking. Frontend-only, no engine/GAS behavior change. Deploy AS sw.js.
 // v400 (2026-07-17): cache key bumped v399->v400 — ID Card Reissue Fee moved off the standalone
 //   Card_Reissue_Log/logCardReissue system (which had two lifecycle bugs) and onto the existing, proven
 //   Manual Transactions pipeline as a new 'CardReissueFee' type, with its own distinct payslip bucket
@@ -44,7 +45,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v400-2026-07-17';
+const CACHE = 'artzfolio-hrms-v401-2026-07-17';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
