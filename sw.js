@@ -1,4 +1,7 @@
-// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v397-2026-07
+// ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v398-2026-07
+// v398 (2026-07-17): cache key bumped v397->v398 — FIX: "Why this salary?" panel waterfall and the Payroll
+//   Excel/CSV export were both missing the new ID Card Reissue Fee deduction line (the PDF payslip already
+//   showed it correctly) — both now display it. No engine change; cache key bump only. Deploy AS sw.js.
 // v397 (2026-07-17): cache key bumped v396->v397 — NEW FEATURE: ID Card Reissue Fee (Settings field,
 //   searchable, per-employee reissue log, additive payroll deduction, distinct payslip line). No shell
 //   caching behaviour changed — cache key bump only, so every device drops the stale v396 shell. Deploy AS sw.js.
@@ -22,7 +25,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v397-2026-07';
+const CACHE = 'artzfolio-hrms-v398-2026-07';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
