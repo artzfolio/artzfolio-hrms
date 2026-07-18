@@ -67,7 +67,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v406-2026-07-17';
+const CACHE = 'artzfolio-hrms-v410-2026-07-18';
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
