@@ -1,4 +1,8 @@
 // ArtzFolio HRMS — Service Worker · cache key artzfolio-hrms-v406-2026-07-17
+// v416 (2026-07-19): cache key bumped v415->v416 — HTML-ONLY, display-only salary clarity fix + a real Excel
+//   export bug fix (Under-time/Overtime Hours columns + Daily Attendance sheet were always 0/empty — dailyRows
+//   was never fetched before a bulk export). See HTML v416 changelog for full detail. No SW/caching-strategy
+//   change, no calcMonthlySalary/engine change. Deploy AS sw.js.
 // v415 (2026-07-19): cache key bumped v414->v415 — GAS+HTML FIX: a partial single-field attendance edit
 //   (only clockIn OR only clockOut) with Overwrite ticked was being silently diverted to a phantom OT-session
 //   row instead of updating the primary punch (money-adjacent — see HTML changelog). No SW/caching-strategy change.
@@ -74,7 +78,8 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v415-2026-07-19'; // v415 (2026-07-19): version bump only, for HTML/GAS/SW 4-way lockstep — critical follow-up: a partial single-field attendance edit was being silently diverted to a phantom OT-session row instead of updating the primary punch, even with Overwrite ticked (money-adjacent — see HTML/GAS changelog). No SW/caching-strategy change.
+const CACHE = 'artzfolio-hrms-v416-2026-07-19'; // v416 (2026-07-19): version bump only, for HTML/GAS/SW 4-way lockstep — salary-slip/Excel clarity + Excel data-bug fix (see HTML changelog). No SW/caching-strategy change, no engine change.
+// v415 (2026-07-19): version bump only, for HTML/GAS/SW 4-way lockstep — critical follow-up: a partial single-field attendance edit was being silently diverted to a phantom OT-session row instead of updating the primary punch, even with Overwrite ticked (money-adjacent — see HTML/GAS changelog). No SW/caching-strategy change.
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
 const FACE_WEIGHT_BASE = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
