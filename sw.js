@@ -78,7 +78,7 @@
 // REAL same-origin SW; registered via navigator.serviceWorker.register('sw.js', {scope:'./'}).
 // CACHE key MUST stay in lockstep with the inline fallback CACHE constant in the app HTML + GAS HRMS_VERSION.
 // Shell = network-first; face-api weights = cache-first; CDN = network-first.
-const CACHE = 'artzfolio-hrms-v426-2026-07-23'; // v426 (2026-07-23): version bump for HTML/GAS/SW lockstep — PERF-02 getEmployees() render-path caching, no SW/caching-strategy change itself.
+const CACHE = 'artzfolio-hrms-v429-2026-07-23'; // v428 (2026-07-23): version bump for HTML/GAS/SW lockstep — Quick Add full form for quickOnboard-only Manager/Supervisor, no SW/caching-strategy change itself.
 // v415 (2026-07-19): version bump only, for HTML/GAS/SW 4-way lockstep — critical follow-up: a partial single-field attendance edit was being silently diverted to a phantom OT-session row instead of updating the primary punch, even with Overwrite ticked (money-adjacent — see HTML/GAS changelog). No SW/caching-strategy change.
 const NETWORK_FIRST_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 const FACE_WEIGHT_MARKERS = ['face-api.js@master/weights', '/weights/tiny_face_detector_model', '/weights/face_landmark_68', '/weights/face_recognition_model', 'weights_manifest.json'];
