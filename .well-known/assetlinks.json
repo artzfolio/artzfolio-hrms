@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.artzfolio.twa",
+      "sha256_cert_fingerprints": [
+        "2D:8A:CC:4D:10:A1:F1:E9:38:03:D0:C6:13:83:39:52:E8:FC:78:54:7B:B7:EF:F0:EE:47:18:C7:02:28:02:CB"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.artzfolio.admin.twa",
+      "sha256_cert_fingerprints": [
+        "FD:2B:FB:69:51:86:17:3B:EC:D3:63:07:1B:3D:AD:9C:8A:6A:2C:A6:E1:4F:63:F2:C3:51:EA:F2:0E:95:FB:AD"
+      ]
+    }
+  }
+]
