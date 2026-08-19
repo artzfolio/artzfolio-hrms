@@ -1,9 +1,9 @@
-// ArtzFolio HRMS -- Service Worker · cache key artzfolio-hrms-v618-2026-08-19
-// Extracted directly from ArtzFolio_HRMS_v618_candidates-offerletters-realtable.html's own inline
+// ArtzFolio HRMS -- Service Worker · cache key artzfolio-hrms-v620-2026-08-19
+// Extracted directly from ArtzFolio_HRMS_v620_noticeperiod-exitform-realtable.html's own inline
 // `swCode` string (2026-08-19) -- the exact, current, functionally-correct service worker for this
-// version. v618 note: no service-worker-relevant change this round (Candidates/OfferLetters Postgres
-// promotion is pure GAS-side + Settings-card text -- no cached-asset-list change). CACHE key bump is
-// version-lockstep housekeeping only, same as v617/v616/v615/v610 before it.
+// version. v620 note: no service-worker-relevant change this round (Notice_Period_Records/ExitForm_Clauses
+// Postgres promotion is GAS/Supabase-side + a client-side data-shape fix -- no cached-asset-list change).
+// CACHE key bump is version-lockstep housekeeping only, same as v619/v618/v617/v616 before it.
 
 
 
@@ -11,7 +11,18 @@
 
 
 
-const CACHE = 'artzfolio-hrms-v618-2026-08-19'; /* v618: P13 areas 2-3 of 4 -- Candidates + OfferLetters
+const CACHE = 'artzfolio-hrms-v620-2026-08-19'; /* v620: P13 area 4 of 4 (FINAL) -- owner-approved
+   full-scope Notice_Period_Records + ExitForm_Clauses promoted to real structured Postgres tables +
+   instant write-mirror, same pattern as the prior 3 P13 areas. HTML-side changes: the Settings
+   backup-mirror card's static table-count text corrected (25->23 mirrored, 35->37 promoted), and the
+   ExitForm_Clauses client-side fast-reader (_v555ExitFormClausesFast) updated to read the new
+   real-column shape instead of the old {_rk,rowjson} blob. See decision_log/
+   2026.08.19_HRMS_v620_noticeperiod-exitform-realtable_v1.md. */
+   /* v619: HTML marker bump only -- this round's real work is
+   GAS-side + Supabase-side (owner-approved FK between OfferLetters and Candidates; fixed a pre-existing
+   bug where the public job-application webhook's source field was silently dropped on write). See
+   decision_log/2026.08.19_HRMS_v619_offerletters-fk-and-candidatesource-fix_v1.md. */
+   /* v618: P13 areas 2-3 of 4 -- Candidates + OfferLetters
    promoted to real structured Postgres tables + instant write-mirror, same pattern as Pulse Survey (v615).
    Both confirmed 0 rows before promotion. HTML-side change: the Settings backup-mirror card's static
    table-count text corrected (27->25 mirrored, 33->35 promoted). See decision_log/
