@@ -1,11 +1,36 @@
-// ArtzFolio HRMS -- Service Worker · cache key artzfolio-hrms-v628-2026-08-20
-// Extracted directly from ArtzFolio_HRMS_v628_timesheets-billablerate-fix.html's own inline `swCode`
-// string (2026-08-20) -- the exact, current, functionally-correct service worker for this version.
-// v628 note: no service-worker-relevant change this round (a single Timesheets call-site revert --
-// no cached-asset-list change). CACHE key bump is version-lockstep housekeeping only.
+// ArtzFolio HRMS -- Service Worker · cache key artzfolio-hrms-v637-2026-08-21
+// Extracted directly from ArtzFolio_HRMS_v637_settings-consolidation.html's own inline `swCode` string
+// (2026-08-21) -- the exact, current, functionally-correct service worker for this version. v637 note:
+// no service-worker-relevant change this round (Settings consolidation is a plain script-body change, no
+// cached-asset-list change). CACHE key bump is version-lockstep housekeeping only.
 
 
-const CACHE = 'artzfolio-hrms-v628-2026-08-20'; /* v628: bugfix -- an independent pass-2 audit of v626 found
+const CACHE = 'artzfolio-hrms-v637-2026-08-21'; /* v637 (Phase 6 Step 3c): Settings Cloud & Speed consolidation -- payroll-engine controls (golden-master + engine cut-over) now live ONLY in the Supabase Speed card, Fast Mode + auto-sync controls now live ONLY in the Migration & Speed Control Center card, migrate-grid trimmed 8->5. No service-worker-relevant change. Prior: v636 (P27): removed FnF Records' client-direct stale (up to ~24h) quick preview -- see loadFnFRecords. Prior: v635 (P26): 6 zero-coverage money-critical tables (Salary_Payment_Status/Time_Penalties/FullFinal/SalarySnapshots/Shift_Freeze_Snapshots/FnF_Waivers) added to the daily Postgres backup mirror -- pure additive, no read/write path changed. Prior: v634: Phase 11 -- Activities promoted to a real
+   structured table + instant-mirror (fixed the same 3-part gap class caught for Milestones at v633);
+   client-side _v556ActivitiesFast updated to read flat columns instead of blob JSON. No cached-asset-list
+   change -- CACHE key bump is version-lockstep housekeeping only. */
+/* v633: Phase 12 -- Milestones promoted to a real
+   structured table + instant-mirror; client-side _v558MilestonesFast updated to read flat columns instead
+   of blob JSON. No cached-asset-list change -- CACHE key bump is version-lockstep housekeeping only. */
+/* v632: Phase 10 -- GAS-ONLY change (closed 2 of 3
+   flagged write-path instant-mirror gaps: OfferAcceptances, Bonus_Ledger). No HTML/frontend logic changed
+   this round -- CACHE key bump is version-lockstep housekeeping only. */
+/* v631: Phase 9 item 3 -- KRA Assessments (the "real
+   bottleneck" per v607's own comment) now has a fast-read path (_v631KRAAssessmentsFast), same pattern as
+   the existing KRA_Templates/FnF_Records/Performance_Reviews wrappers. Also fixed a real live bug in
+   _v607KRATemplatesFast: it never passed the signed owner JWT hrms-read's v36 OWNER_GATED requirement
+   needs, so it has 403'd and silently fallen through to the slow path on every call since 2026-08-16 --
+   fixed. No new cached asset, no service-worker-relevant change -- CACHE key bump is version-lockstep
+   housekeeping only. */
+/* v630: Phase 9 item 1 -- Attendance's single-employee
+   date-range view now has a fast-read path (_v303EmpAttRangeFast), reusing the month view's already-
+   proven Supabase query shape with a range filter instead of a month-prefix filter. No new cached asset,
+   no service-worker-relevant change -- CACHE key bump is version-lockstep housekeeping only. */
+/* v629: Phase 6 Step 3a -- the "Atomic Go-Live Wipe" tool
+   removed entirely (owner-approved), not disabled/hidden. Client modal + GAS handler + routing entry all
+   deleted; grepped for stray references, none found. No service-worker-relevant change -- CACHE key bump
+   is version-lockstep housekeeping only. See decision_log/2026.08.20_HRMS_v629_remove-golive-wipe_v1.md. */
+/* v628: bugfix -- an independent pass-2 audit of v626 found
    Timesheets reads emp.billableRate (a compensation-adjacent field) on data that could come from v626's
    Employees-picker fast path, and the safe view backing that path carries neither salary nor billableRate.
    Reverted ONLY the Timesheets call site to the original slow-but-complete path; Attendance and Roster
