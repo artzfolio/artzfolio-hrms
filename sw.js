@@ -1,17 +1,31 @@
-// ArtzFolio HRMS -- Service Worker · cache key artzfolio-hrms-v620-2026-08-19
-// Extracted directly from ArtzFolio_HRMS_v620_noticeperiod-exitform-realtable.html's own inline
-// `swCode` string (2026-08-19) -- the exact, current, functionally-correct service worker for this
-// version. v620 note: no service-worker-relevant change this round (Notice_Period_Records/ExitForm_Clauses
-// Postgres promotion is GAS/Supabase-side + a client-side data-shape fix -- no cached-asset-list change).
-// CACHE key bump is version-lockstep housekeeping only, same as v619/v618/v617/v616 before it.
+// ArtzFolio HRMS -- Service Worker · cache key artzfolio-hrms-v623-2026-08-20
+// Extracted directly from ArtzFolio_HRMS_v623_bulk-late-waiver.html's own inline `swCode` string
+// (2026-08-20) -- the exact, current, functionally-correct service worker for this version. v623 note:
+// no service-worker-relevant change this round (the Bulk Late-Penalty Waiver feature is pure client-side
+// JS logic + 2 new GAS actions -- no cached-asset-list change). CACHE key bump is version-lockstep
+// housekeeping only, same as v622/v621/v620 before it.
 
 
-
-
-
-
-
-const CACHE = 'artzfolio-hrms-v620-2026-08-19'; /* v620: P13 area 4 of 4 (FINAL) -- owner-approved
+const CACHE = 'artzfolio-hrms-v623-2026-08-20'; /* v623: Phase 2 -- new Bulk Late-Penalty Waiver tool (date
+   range or custom date list, one or many employees, one action). Pure loop over the unchanged
+   _v417ExcuseLateOne per-employee-per-day waiver -- no new money/deduction logic. No service-worker-relevant
+   change -- CACHE key bump is version-lockstep housekeeping only. See decision_log/
+   2026.08.20_HRMS_v623_bulk-late-waiver_v1.md. */
+/* v622: Phase 1 clock-in lock-contention overlay/double-toast
+   fix -- background confirmatory write no longer raises the shared "please wait" overlay, 'System busy,
+   please try again' added to the soft-error suppression list, two stale comments corrected re:
+   PendingAttendance's already-live fast-read path. No service-worker-relevant change -- CACHE key bump is
+   version-lockstep housekeeping only. See decision_log/2026.08.20_HRMS_v622_clockin-lockcontention-phase1_v1.md. */
+/* v621: mobile/kiosk stuck-overlay reliability fix --
+   refreshEmpCard() (fires after every clock-in/out/break-start/break-end) and doCancelLeave()'s
+   post-cancel refresh were raw, unretried API.call('auth',...) calls, the same protection-gap bug class
+   already fixed for showEarnings() at v565. Wrapped both in the existing _v565RetryGas wrapper. Also
+   removed the pointless refreshEmpCard() call inside the offline-punch-queue path -- it only fires after
+   a genuine network failure is already confirmed, so retrying there only prolonged the stuck overlay on
+   the worst-connectivity path. Root-caused via an owner mobile screenshot. See decision_log/
+   2026.08.19_HRMS_mobile-stuck-overlay-rootcause_v1.md and decision_log/
+   2026.08.19_HRMS_v621_mobile-stuck-overlay-fix_v1.md. */
+   /* v620: P13 area 4 of 4 (FINAL) -- owner-approved
    full-scope Notice_Period_Records + ExitForm_Clauses promoted to real structured Postgres tables +
    instant write-mirror, same pattern as the prior 3 P13 areas. HTML-side changes: the Settings
    backup-mirror card's static table-count text corrected (25->23 mirrored, 35->37 promoted), and the
