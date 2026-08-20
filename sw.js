@@ -1,12 +1,39 @@
-// ArtzFolio HRMS -- Service Worker · cache key artzfolio-hrms-v623-2026-08-20
-// Extracted directly from ArtzFolio_HRMS_v623_bulk-late-waiver.html's own inline `swCode` string
-// (2026-08-20) -- the exact, current, functionally-correct service worker for this version. v623 note:
-// no service-worker-relevant change this round (the Bulk Late-Penalty Waiver feature is pure client-side
-// JS logic + 2 new GAS actions -- no cached-asset-list change). CACHE key bump is version-lockstep
-// housekeeping only, same as v622/v621/v620 before it.
+// ArtzFolio HRMS -- Service Worker · cache key artzfolio-hrms-v628-2026-08-20
+// Extracted directly from ArtzFolio_HRMS_v628_timesheets-billablerate-fix.html's own inline `swCode`
+// string (2026-08-20) -- the exact, current, functionally-correct service worker for this version.
+// v628 note: no service-worker-relevant change this round (a single Timesheets call-site revert --
+// no cached-asset-list change). CACHE key bump is version-lockstep housekeeping only.
 
 
-const CACHE = 'artzfolio-hrms-v623-2026-08-20'; /* v623: Phase 2 -- new Bulk Late-Penalty Waiver tool (date
+const CACHE = 'artzfolio-hrms-v628-2026-08-20'; /* v628: bugfix -- an independent pass-2 audit of v626 found
+   Timesheets reads emp.billableRate (a compensation-adjacent field) on data that could come from v626's
+   Employees-picker fast path, and the safe view backing that path carries neither salary nor billableRate.
+   Reverted ONLY the Timesheets call site to the original slow-but-complete path; Attendance and Roster
+   (verified to never read billableRate) correctly stay on the fast path. No service-worker-relevant change
+   -- CACHE key bump is version-lockstep housekeeping only. See decision_log/
+   2026.08.20_HRMS_v628_timesheets-billablerate-fix_v1.md. */
+/* v627: Phase 5 (half-done table sweep) -- Activities
+   promoted from the daily-only backup mirror to instant-mirror (its existing fast-read path was silently
+   serving up to 24h-stale data). GAS-only this round, no HTML/client changes -- CACHE key bump is
+   version-lockstep housekeeping only. See decision_log/2026.08.20_HRMS_v627_activities-instant-mirror_v1.md. */
+/* v626: Phase 3 (Speed & Dependency Audit) -- a
+   salary-safe fast-read for 3 employee-picker call sites (Attendance/Roster/Timesheets, verified to
+   never display salary), the Reimbursements screen wired into its own pre-existing fast-read wrapper,
+   and a diagnosable console/Sentry signal when any fast-read genuinely falls back to slow GAS. No
+   service-worker-relevant change -- CACHE key bump is version-lockstep housekeeping only. See
+   decision_log/2026.08.20_HRMS_v626_employee-picker-fastread_v1.md. */
+/* v625: Phase 2 (REVISED) -- the standing time-based
+   late-grace feature, the owner's actual ask. New "Standing Late Grace (Date Range)" panel in Attendance
+   -> Late Penalty Waivers, alongside (not replacing) v623's Bulk Waiver. No service-worker-relevant
+   change -- CACHE key bump is version-lockstep housekeeping only. See decision_log/
+   2026.08.20_HRMS_v625_standing-late-grace_v1.md. */
+/* v624: Phase 1 -- owner-delegated clock-in lock fix. New
+   hybrid per-employee CacheService lock (handleClockIn/Out/BreakIn/Out), gated behind Config key
+   perEmployeeClockLockEnabled, DEFAULT OFF -- flag-off behavior is byte-identical to v623. New Settings
+   checkbox to flip it (experimental, do not enable without a live-tested rollout). No service-worker-
+   relevant change -- CACHE key bump is version-lockstep housekeeping only. See decision_log/
+   2026.08.20_HRMS_v624_clockin-peremployee-lock_v1.md. */
+/* v623: Phase 2 -- new Bulk Late-Penalty Waiver tool (date
    range or custom date list, one or many employees, one action). Pure loop over the unchanged
    _v417ExcuseLateOne per-employee-per-day waiver -- no new money/deduction logic. No service-worker-relevant
    change -- CACHE key bump is version-lockstep housekeeping only. See decision_log/
