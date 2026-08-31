@@ -1,5 +1,5 @@
 {
-  "gasUrl": "https://script.google.com/macros/s/AKfycbw-VDjk8e1GtzQl5BB8u5MvNzZ3lMM9beB3qCrZHQzllAzpw9h4ga4NtHijkhTLaKExsA/exec",
+  "gasUrl": "https://script.google.com/macros/s/AKfycbw5eUiwbohKDJfz4Oo3vKaAoH-EZN5qriOmHUOUSa4uJAdv7uppqxhKzpgvZPyx__IONA/exec",
   "apiToken": "AZ_TOKEN_9DF679EEEBE13D2D4A0375AA87E058F6",
   "supabaseAuthCheckUrl": "https://vvtwcggcfopnfddiffxb.supabase.co/functions/v1/hrms-auth-check",
   "supabaseAdminLoginFastUrl": "https://vvtwcggcfopnfddiffxb.supabase.co/functions/v1/hrms-admin-login-fast",
