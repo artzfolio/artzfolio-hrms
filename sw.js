@@ -1,5 +1,28 @@
-
-const CACHE = 'artzfolio-hrms-v730-2026-09-02'; /* v730 (2026-09-02, systemic security sweep): 15 more actions
+const CACHE = 'artzfolio-hrms-v734-2026-09-03'; /* v734 (2026-09-03, PRODUCTION OUTAGE hotfix — Tier A):
+  every screen was taking 30-150s or timing out. Root cause was NOT a code regression (doPost is
+  byte-identical v705->v730) and NOT Supabase (healthy, 0.1-1.0s throughout). It was: a ~5s fixed floor on
+  every Apps Script round trip x 13-14 round trips per login (10-11 for Approvals) against a 4-slot browser
+  cap, and — the tipping point — getCachedObjects(SH.EMPLOYEES) silently exceeding CacheService's hard
+  100KB-per-value limit (~293KB live, bloated by faceDescriptor), so all 149 of its call sites were doing a
+  FULL uncached sheet read on every request. Fixes: A1 chunked cache (GAS), A1b caller-freshness (GAS),
+  A2 63 pure reads no longer write an audit row (GAS), A3 read-cache key no longer split by client-only
+  flags, A4 the 30-second logDashboardTime heartbeat no longer wipes the whole read cache, A6 a request
+  aborted by our own 150s ceiling is no longer retried on top of itself + retry jitter.
+  Full evidence: decision_log/2026.09.03_HRMS_outage-phase0-rootcause_v1.md */
+  /* Prior header preserved: v733 (2026-09-02, kiosk auth-gate fix): the final 2
+  permission gaps closed. updateFaceDescriptor -- an in-handler role check, zero HTML change, both real
+  callers already carry a valid roleToken (the v420 Quick Add + Photo Scan flow requires real admin/manager/
+  supervisor permission before it even opens). logDashboardLoginSelfie -- a new short-lived
+  kioskScanTicket, minted server-side at the moment of a verified kiosk PIN/face match, threaded through
+  _v171LoginSelfie()'s one real call site. AUDITED x2.
+  Full detail: decision_log/2026.09.02_HRMS_v733_kiosk-authgate-fix_v1.md */
+  /* Prior header preserved: v732 (2026-09-02, ESS self-service auth-gate fix): 6 of the
+  7 v730-deferred permission gaps closed (addTicket/submitReimbursement/submitKRASelfRating/
+  essRestoreSession/submitRegularisation/addTransaction) by adding each to the role-gate map -- the real ESS
+  self-service flow is unaffected (a valid essToken already short-circuits this gate), this only closes the
+  omit-essToken raw-caller bypass. GAS-only change -- zero HTML content/feature change beyond the version
+  bump. Full detail: decision_log/2026.09.02_HRMS_v732_ess-selfservice-authgate-fix_v1.md */
+  /* Prior header preserved: v730 (2026-09-02, systemic security sweep): 15 more actions
   fixed with the identical missing-gate bug as v729's unblockPIN, found via a mechanical sweep of all 481
   dispatched actions, independently vetted (4 parallel research passes + 1 consolidated adversarial
   re-verification, 22/22 confirmed). A 16th (logDashboardLoginSelfie) was drafted then reverted before
