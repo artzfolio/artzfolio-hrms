@@ -1,4 +1,122 @@
-const CACHE = 'artzfolio-hrms-v734-2026-09-03'; /* v734 (2026-09-03, PRODUCTION OUTAGE hotfix — Tier A):
+const CACHE = 'artzfolio-hrms-v737-2026-09-04'; /* v737 (2026-09-04, REPAIR-DUPLICATES BUTTON + SUPABASE CHECK/SYNC UI):
+  Built on v736 (AUDITED x2, GO). Two independent, deliberately separate pieces of work:
+
+  (1) THE F&F REPAIR-DUPLICATES BUTTON, REBUILT. v736's own post-audit split pulled this button out because
+  it writes FnF_Records.Status, which the salary register reads to decide exit-month exclusion -- money-
+  gating, so Rule 14 held it for its own version. The GAS backend (_v192FixDupFnFCore, existing since v192,
+  owner-token gated, dry-run by default, refuses any group containing an Approved/Paid record) is completely
+  unchanged. What is new here is the HTML: the button, the module-map entry, and two corrections the v9.0
+  master prompt's own audit named for this rebuild --
+    a. the tooltip previously claimed "applying is a separate, explicitly-typed confirmation" when the real
+       confirmation is a plain yes/no dialog. Corrected the copy to describe what actually happens, rather
+       than making the confirmation itself typed (a typed confirmation would be a bigger UX change than this
+       version's scope).
+    b. the all-superseded empty state used to hide this button from exactly the state that needs it (every
+       settlement voided/rejected, nothing "live" to show) -- fixed so the button still renders there.
+  NOT auto-deployed: per Rule 14, a money-gating write needs a live browser test before shipping, which this
+  session does not have a verified way to perform against production. Staged, AUDITED, awaiting that test.
+
+  (2) SUPABASE CHECK/SYNC UI FOR ANY TABLE, not just the 3 hardcoded ones. Settings' existing "Supabase
+  Speed -- Sync & Health Check" card only ever offered Employees/Leaves/Attendance buttons, even though the
+  underlying sbVerifyTable/sbMirrorTable actions already accept any table name on the server's allow-list.
+  This left the owner with no way to check/sync the 9 tables the v9.0 master prompt's button list names
+  (TnC_Clauses, Salary_Payment_Status, Dashboard_Sessions, Orgs, SalaryLadder, Employee_Badges, Leave_Balance,
+  PT_Slabs, Roster) short of a raw API call. Added a free-text table-name box wired to the SAME existing,
+  already-audited v245SbCheck/v245SbSync functions -- zero new backend code, zero new auth surface (still
+  gated by the same _checkOwnerToken this card's other buttons already required). Non-money, read/mirror only.
+  Prior header preserved below.
+  -- v736 (2026-09-03, SYNC INTEGRITY + F&F DISPLAY):
+  Built on v734, NOT on v735 (v735 failed 5 of its own 6 audit rounds; its money-tier F&F work is
+  deliberately deferred to its own version and a live browser test).
+  NO salary, leave, attendance or F&F CALCULATION is touched anywhere in this build.
+
+  ── F&F display integrity (HTML) ──────────────────────────────────────────────────────────────────────
+  BUG 2 — voided settlements rendered as live ones, on FOUR surfaces, not the one that was reported:
+    (1) the FnF Settlement Records list had no status filter at all -> now hides Voided/Rejected by default,
+        with a "Show superseded (N)" toggle that dims them and stamps them SUPERSEDED. The positional
+        _fnfRecordsCache is set to exactly the rendered array, so the row buttons cannot open a wrong record.
+    (2) the empty state can no longer say "No F&F records yet" when records exist but are all superseded.
+    (3) v227DownloadAllFnF — the bulk export — was generating a formal settlement STATEMENT PDF for voided
+        records. This is the worst surface: it produces a document that leaves the system and reaches a
+        person. Now excluded, and the counts say how many were excluded.
+    (4) _v157DerivedNoticeStatus (and its GAS twin _v157FnFByEmp) could let a VOIDED settlement decide the
+        notice badge. Both now skip Voided/Rejected.
+    All four now share ONE definition of superseded, ['Voided','Rejected'] — the same one
+    _v156ViewSettlement and GAS _v192FixDupFnFCore already used independently.
+  BUG 3 — PULLED FROM THIS BUILD (post-audit). handleFixDuplicateFnF has been fully built, routed and
+    owner-gated in GAS since v192, and had ZERO callers in this file, same as before. Its repair writes
+    FnF_Records.Status, a column the salary register reads to decide exit-month exclusion -- a money-gating
+    write, so Rule 14 holds it for its own version with a real Preview-then-Apply UI and a live browser
+    test, not bundled into a display-integrity build. No behaviour change here versus pre-v736.
+  BUG 4 — every ALREADY-EXITED employee rendered a blank identity ("—" / "Shift —") on the F&F screen,
+    because renderFnF fetched the unfiltered roster and threw it away without setting State._allEmployees,
+    while boot loads State.employees with Active + Notice Period only. Three lines, no extra request. Fixes
+    the read-only identity CELL (_empById already prefers State._allEmployees). Does NOT extend to
+    loadFnFEmployee or _v508EnsureExitTypeFor -- both still resolve strictly via State.employees, so an
+    exited employee still cannot be loaded into the calculator this way, and the exit-type ownership stamp
+    still cannot pre-fill from a lookup that finds nothing. (An earlier draft of this comment claimed those
+    two were also silently repaired -- checked against source and that is false; left unfixed here on
+    purpose, since both are money-adjacent per the v510 comment on #fnf-exit-type, and Rule 14 requires
+    live verification or provable correctness-preservation before a money-tier change ships -- neither is
+    available this session. Real gap; scope for a dedicated, live-verified F&F version, not this one.)
+  Plus a one-character latent crash in loadFnFRecords: _v565RetryGas can return null, and the old guard
+    "res && res.ok === false" let that fall through to res.records -> TypeError -> a silently blank section.
+
+  ── Mirror-integrity guards (HTML) ────────────────────────────────────────────────────────────────────
+  Six fast-read wrappers checked only Array.isArray(rows) -- an empty array IS a valid Array, so a zero-row
+  mirror passed through as authoritative: _v544AssetsFast, _v573POSHICCFast, _v573OneOnOneNotesFast,
+  _v574OnboardingChecklistFast (the four originally found), plus two more an audit found this build had
+  missed -- _v579LeaveBalFast and _v577OTClaimsFast, the highest-stakes of the six, since Leave_Balance's
+  own screen offers a "Seed Leave Balances" WRITE action right next to a confidently-rendered empty state.
+  _v544AssetsFast's own guard comment (CORRECTED post-audit) cites the real affected screen -- the
+  owner-only admin Asset Register, not the ESS "My Assets" modal, which reads a different, unguarded code
+  path and remains a separate, still-open instance of the same bug. Live Postgres has all six tables
+  (Assets, POSH_ICC, OneOnOneNotes, OnboardingChecklist, Leave_Balance, OT_Claims) at 0 rows right now. Ten
+  sibling wrappers already carried this exact guard; these six were missed. Now zero rows falls back to the
+  untouched GAS path.
+  The two per-employee wrappers guard the WHOLE TABLE, before their own filter, so an employee legitimately
+  having no notes/tasks still renders instantly without a needless round trip.
+  POST-AUDIT FIX (v9.0 master prompt review): _v579LeaveBalFast's own BULK branch (the no-empId path used by
+  loadAllLeaveBalances, the admin bulk screen) was still missing this exact guard -- only the per-employee
+  branch above got it. With Leave_Balance at 0 rows live, the bulk screen was still rendering "No balance
+  records found. Click 'Seed Leave Balances' to generate" as fact, right next to that WRITE button -- the
+  precise scenario this fix exists to prevent. Now guarded identically to the per-employee branch.
+
+  ── Stale-client detection (HTML) ─────────────────────────────────────────────────────────────────────
+  window.HRMS_EXPECTED_LATEST was frozen at 'v362' for 372 versions and was broken in both directions: a
+  silent no-op in the ribbon (a NUMERIC compare, 734 < 362, is always false) and a permanent FALSE "this
+  device is STALE" in the version dialog (a STRING compare, v362 !== v734, is always true). Bumped, and now
+  asserted by check_drift.py as the 5th lockstep point so it cannot drift a third time.
+  NOTE TO FUTURE EDITORS, CORRECTED POST-AUDIT: this whole header sits INSIDE the swCode template literal --
+  never use a backtick or a dollar-brace in it. What actually happens when you do depends on the shape:
+    * An unescaped backtick with no LATER unescaped backtick anywhere before the literal's real close (the case a v736 draft
+      of THIS comment introduced, and self-caught) leaves swCode unterminated -- a real SyntaxError, and
+      node --check on the extracted script block DOES catch this shape.
+    * A PAIR of unescaped backticks (open + close) does NOT error. It silently ends the string early; the
+      text between them becomes plain JS wedged into the assignment. Concretely, a string literal
+      immediately followed by OR-OR and a number and then a second quoted literal is syntactically valid --
+      the number is used as a tagged-template TAG for that second literal, which is valid grammar even
+      though a number is not callable; OR-OR short-circuits before that tag is ever invoked, so it never
+      throws. node --check CANNOT catch this shape -- it is syntactically valid JavaScript.
+  KNOWN PRE-EXISTING ISSUE, found by a v736 audit, NOT introduced by v736, NOT fixed by v736: exactly this
+  second shape already exists inside a v690 changelog line that quotes a short OR-OR-50 code fragment as an
+  inline example (itself wrapped in a backtick pair, per that era's writing convention), which silently
+  truncates the LIVE, CURRENTLY-DEPLOYED swCode string to ~39KB of changelog text with no service-worker
+  body at all (self.addEventListener never appears in the truncated result -- verified by extracting and
+  evaluating the literal). Impact is bounded: registration prefers the static physical sw_vNNN.js file
+  (unaffected -- it is generated by extracting this region as plain TEXT via build_scripts/regen_sw_v736.py,
+  which does not care about backticks); this blob is used only as the on-the-fly fallback if that file 404s,
+  and would then fail to register any handlers. Not fixed here: untangling every backtick in ~39KB of
+  multi-version prepended changelog history under time pressure is a large, unbounded surgical risk on a
+  region this file's own rules say never to touch casually -- scope it as its own dedicated, live-verified
+  version rather than as a side effect of an F&F/sync-integrity build.
+
+  ── GAS ───────────────────────────────────────────────────────────────────────────────────────────────
+  Six silent-failure modes in the Supabase mirror engine (never stamp a signature on a no-op; the two
+  unconditional stamps; the silent column auto-strip; the reconciler's missing resume cursor; two sheets
+  that had never synced at all). See the GAS version header for the full account.
+
+  Prior header preserved: v734 (2026-09-03, PRODUCTION OUTAGE hotfix — Tier A):
   every screen was taking 30-150s or timing out. Root cause was NOT a code regression (doPost is
   byte-identical v705->v730) and NOT Supabase (healthy, 0.1-1.0s throughout). It was: a ~5s fixed floor on
   every Apps Script round trip x 13-14 round trips per login (10-11 for Approvals) against a 4-slot browser
