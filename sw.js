@@ -1,4 +1,33 @@
-const CACHE = 'artzfolio-hrms-v737-2026-09-04'; /* v737 (2026-09-04, REPAIR-DUPLICATES BUTTON + SUPABASE CHECK/SYNC UI):
+const CACHE = 'artzfolio-hrms-v741-2026-09-04'; /* v739 (2026-09-04, ROLETOKEN SECRET SPLIT — SECURITY FIX): built on v737,
+  AUDITED x2, GO. ONLY change: _v91RoleTokenSecret() now uses a dedicated, never-client-shipped
+  'roleTokenSecret' config value instead of reusing the public apiToken as the HMAC secret that signs
+  roleTokens. apiToken is shipped in cleartext in the public, pre-login config.json (by design — it's
+  the base API bearer every client needs), so reusing it as the roleToken signing secret meant anyone
+  who fetched config.json could locally forge a roleToken with role:'owner' (bypassing every
+  module-gate-only action — calcAllSalaries, saveSalaries, getTransactions, etc — confirmed none of
+  these call _checkOwnerToken; module gate is their only defense) OR role:'ess' for ANY empId
+  (impersonating any employee's self-service session — found by this build's own 2nd independent audit
+  pass, broader than the original R3 finding). Found by an independent ULTRAREVIEW security pass (R3),
+  2026-09-04. handleRevokeRoleSession's {all:true} "sign out everywhere" path now rotates BOTH apiToken
+  and the new roleTokenSecret together, preserving its existing behavior and client UI byte-for-byte
+  (the owner still sees and copies a new apiToken exactly as before) while actually invalidating every
+  outstanding roleToken via the new dedicated secret.
+  DEPLOY WILL INVALIDATE EVERY CURRENTLY-ACTIVE SESSION, ADMIN AND ESS ALIKE (ESS login also issues a
+  roleToken, role:'ess', via this same function — the 1st audit pass's "no employee-facing flow touched"
+  claim was WRONG, corrected by the 2nd pass): every logged-in owner/manager/supervisor and every
+  employee mid-session on the ESS portal will need to re-authenticate once. Kiosk PIN/face clock-in
+  itself is unaffected (open action, no roleToken involved). The two short-lived kiosk tickets
+  (tnc/kscan, 10-min TTL) that also use _v91RoleTokenSecret() self-heal in normal operation — only a
+  ticket issued in the exact instant before this deploy could fail verification after, a negligible
+  edge case (the user simply retries the PIN/face scan). Also fixed by the 1st audit pass before this
+  header was written: the new roleTokenSecret key was missing from GAS's _SETTINGS_REDACT, so it would
+  have leaked via the open getSettings action — added; and the Config-read-failure fallback previously
+  reverted to apiToken (silently reopening the hole) — now returns a fixed non-public literal, matching
+  the established _v328KioskSalt fallback pattern. NOT YET LIVE-VERIFIED — this build has not been
+  deployed. 2nd audit pass recommends one real login smoke-test (owner + 1 admin role + 1 ESS)
+  immediately after deploy — not a blocker, just cheap and worthwhile given this is auth code. See
+  decision_log/2026.09.04_HRMS_v739_roletoken-secret-fix_v1.md. Prior header preserved below.
+  ── v737 (2026-09-04, REPAIR-DUPLICATES BUTTON + SUPABASE CHECK/SYNC UI):
   Built on v736 (AUDITED x2, GO). Two independent, deliberately separate pieces of work:
 
   (1) THE F&F REPAIR-DUPLICATES BUTTON, REBUILT. v736's own post-audit split pulled this button out because
