@@ -1,4 +1,12 @@
-const CACHE = 'artzfolio-hrms-v741-2026-09-04'; /* v739 (2026-09-04, ROLETOKEN SECRET SPLIT — SECURITY FIX): built on v737,
+const CACHE = 'artzfolio-hrms-v743-2026-09-05'; /* v743 (2026-09-05, PIN REACTIVATION FEE FIX + LOYALTYWALLET_ADJUSTMENTS PROMOTION):
+  built on v742. PIN fee now genuinely charges (see window.HRMS_VERSION comment above for the full writeup),
+  client confirmation dialog added, ||500 defaults fixed, LoyaltyWallet_Adjustments promoted to structured.
+  Full detail: decision_log/2026.09.05_HRMS_v743-pinfee-fix-and-gw55-loyaltyadj-leavetypes_v1.md.
+  ── Prior header preserved below ── */ /* v742 (2026-09-05, TIME_PENALTIES TABLE PROMOTION + WRITE-RPCS):
+  built on v741. GAS-only functional change (Time_Penalties promoted from the blob-backup tier to a real
+  structured Postgres mirror + 3 new dark write-RPCs) -- no HTML/client logic touched, this file is bumped
+  for version-lockstep parity only. Full detail: decision_log/2026.09.05_HRMS_gw54_timepenalty-promotion-and-writerpcs_v1.md.
+  ── Prior header preserved below ── */ /* v739 (2026-09-04, ROLETOKEN SECRET SPLIT — SECURITY FIX): built on v737,
   AUDITED x2, GO. ONLY change: _v91RoleTokenSecret() now uses a dedicated, never-client-shipped
   'roleTokenSecret' config value instead of reusing the public apiToken as the HMAC secret that signs
   roleTokens. apiToken is shipped in cleartext in the public, pre-login config.json (by design — it's
